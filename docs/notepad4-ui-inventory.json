@@ -1,0 +1,3787 @@
+{
+  "upstream_revision": "3fcfb70fd0d3c8802100c85f7293ccb326aa8b64",
+  "note": "All conditional resource variants are included. Inventory does not imply implementation or behavioral parity.",
+  "counts": {
+    "menu_entries": 448,
+    "unique_menu_commands": 418,
+    "dialogs": 32,
+    "toolbar_commands": 27,
+    "status_items": 13,
+    "legacy_command_cases": 344
+  },
+  "menu_entries": [
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&New\\tCtrl+N",
+      "command": "IDM_FILE_NEW",
+      "value": 40000,
+      "line": 115
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "New &Window\\tAlt+N",
+      "command": "IDM_FILE_NEWWINDOW",
+      "value": 40011,
+      "line": 116
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Open...\\tCtrl+O",
+      "command": "IDM_FILE_OPEN",
+      "value": 40001,
+      "line": 117
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Save\\tCtrl+S",
+      "command": "IDM_FILE_SAVE",
+      "value": 40004,
+      "line": 118
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Save &As...\\tF6",
+      "command": "IDM_FILE_SAVEAS",
+      "value": 40005,
+      "line": 119
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Save Back&up",
+      "command": "IDM_FILE_SAVEBACKUP",
+      "value": 40028,
+      "line": 120
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Save Cop&y...\\tCtrl+F6",
+      "command": "IDM_FILE_SAVECOPY",
+      "value": 40006,
+      "line": 121
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Save with Original Time",
+      "command": "IDM_FILE_SAVEORIGINALTIMESTAMP",
+      "value": 40029,
+      "line": 122
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Read Only &File",
+      "command": "IDM_FILE_READONLY_FILE",
+      "value": 40007,
+      "line": 126
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Read Only Mode\\tF10",
+      "command": "IDM_FILE_READONLY_MODE",
+      "value": 40024,
+      "line": 127
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Large File Mode",
+      "command": "IDM_FILE_LARGE_FILE_MODE",
+      "value": 40025,
+      "line": 129
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Re&vert\\tF5",
+      "command": "IDM_FILE_REVERT",
+      "value": 40002,
+      "line": 132
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "As UTF-&8\\tShift+F8",
+      "command": "CMD_RELOADUTF8",
+      "value": 40559,
+      "line": 135
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "As &ANSI\\tCtrl+Shift+A",
+      "command": "CMD_RELOADANSI",
+      "value": 40557,
+      "line": 136
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "As &OEM\\tCtrl+Shift+O",
+      "command": "CMD_RELOADOEM",
+      "value": 40558,
+      "line": 137
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default Encoding\\tCtrl+Alt+F",
+      "command": "CMD_RECODEDEFAULT",
+      "value": 40556,
+      "line": 139
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&With Encoding...\\tF8",
+      "command": "IDM_RECODE_SELECT",
+      "value": 40106,
+      "line": 140
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&No File Variables\\tAlt+F8",
+      "command": "CMD_RELOADNOFILEVARS",
+      "value": 40560,
+      "line": 142
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Large File Mode",
+      "command": "IDM_FILE_LARGE_FILE_MODE_RELOAD",
+      "value": 40026,
+      "line": 144
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&ANSI",
+      "command": "IDM_ENCODING_ANSI",
+      "value": 40100,
+      "line": 150
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "UTF-&8",
+      "command": "IDM_ENCODING_UTF8",
+      "value": 40103,
+      "line": 151
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "UTF-8 B&OM",
+      "command": "IDM_ENCODING_UTF8SIGN",
+      "value": 40104,
+      "line": 152
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "UTF-16&LE BOM",
+      "command": "IDM_ENCODING_UNICODE",
+      "value": 40101,
+      "line": 153
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "UTF-16&BE BOM",
+      "command": "IDM_ENCODING_UNICODEREV",
+      "value": 40102,
+      "line": 154
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&More...\\tF9",
+      "command": "IDM_ENCODING_SELECT",
+      "value": 40105,
+      "line": 155
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default...",
+      "command": "IDM_ENCODING_SETDEFAULT",
+      "value": 40107,
+      "line": 157
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Windows (CR+LF)",
+      "command": "IDM_LINEENDINGS_CRLF",
+      "value": 40108,
+      "line": 161
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Unix/macOS (LF)",
+      "command": "IDM_LINEENDINGS_LF",
+      "value": 40110,
+      "line": 162
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Classic &Mac OS (CR)",
+      "command": "IDM_LINEENDINGS_CR",
+      "value": 40109,
+      "line": 163
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default...",
+      "command": "IDM_LINEENDINGS_SETDEFAULT",
+      "value": 40111,
+      "line": 165
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Page Se&tup...",
+      "command": "IDM_FILE_PAGESETUP",
+      "value": 40013,
+      "line": 168
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Print...\\tCtrl+P",
+      "command": "IDM_FILE_PRINT",
+      "value": 40014,
+      "line": 169
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Propert&ies...",
+      "command": "IDM_FILE_PROPERTIES",
+      "value": 40015,
+      "line": 171
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Open &Containing Folder",
+      "command": "IDM_FILE_OPEN_CONTAINING_FOLDER",
+      "value": 40023,
+      "line": 172
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Create Desktop Lin&k",
+      "command": "IDM_FILE_CREATELINK",
+      "value": 40016,
+      "line": 173
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Update File Time",
+      "command": "IDM_FILE_UPDATE_TIMESTAMP",
+      "value": 40030,
+      "line": 174
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Browse...\\tCtrl+M",
+      "command": "IDM_FILE_BROWSE",
+      "value": 40003,
+      "line": 176
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Open Favorites...\\tAlt+I",
+      "command": "IDM_FILE_OPENFAV",
+      "value": 40017,
+      "line": 179
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Add Current File...\\tAlt+K",
+      "command": "IDM_FILE_ADDTOFAV",
+      "value": 40018,
+      "line": 180
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Manage...\\tAlt+F9",
+      "command": "IDM_FILE_MANAGEFAV",
+      "value": 40019,
+      "line": 181
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Recent (&History)...\\tAlt+H",
+      "command": "IDM_FILE_RECENT",
+      "value": 40020,
+      "line": 183
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "E&xit\\tAlt+F4",
+      "command": "IDM_FILE_EXIT",
+      "value": 40021,
+      "line": 185
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Undo\\tCtrl+Z",
+      "command": "IDM_EDIT_UNDO",
+      "value": 40300,
+      "line": 189
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Redo\\tCtrl+Y",
+      "command": "IDM_EDIT_REDO",
+      "value": 40301,
+      "line": 190
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Cu&t\\tCtrl+X",
+      "command": "IDM_EDIT_CUT",
+      "value": 40302,
+      "line": 192
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Copy\\tCtrl+C",
+      "command": "IDM_EDIT_COPY",
+      "value": 40303,
+      "line": 193
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Paste\\tCtrl+V",
+      "command": "IDM_EDIT_PASTE",
+      "value": 40306,
+      "line": 194
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Delete\\tDelete",
+      "command": "IDM_EDIT_DELETE",
+      "value": 40308,
+      "line": 195
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select &All\\tCtrl+A",
+      "command": "IDM_EDIT_SELECTALL",
+      "value": 40310,
+      "line": 196
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "S&wap\\tCtrl+K",
+      "command": "IDM_EDIT_SWAP",
+      "value": 40307,
+      "line": 197
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Clear Docu&ment",
+      "command": "IDM_EDIT_CLEARDOCUMENT",
+      "value": 40398,
+      "line": 199
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Clear Clip&board",
+      "command": "IDM_EDIT_CLEARCLIPBOARD",
+      "value": 40309,
+      "line": 200
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&File Name",
+      "command": "CMD_COPYFILENAME_NOEXT",
+      "value": 40584,
+      "line": 203
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "File Name and &Ext.\\tShift+F9",
+      "command": "CMD_COPYFILENAME",
+      "value": 40579,
+      "line": 204
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Full &Path Name\\tAlt+Shift+F9",
+      "command": "CMD_COPYPATHNAME",
+      "value": 40580,
+      "line": 205
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Copy &All\\tAlt+A",
+      "command": "IDM_EDIT_COPYALL",
+      "value": 40304,
+      "line": 207
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Copy A&dd\\tCtrl+E",
+      "command": "IDM_EDIT_COPYADD",
+      "value": 40305,
+      "line": 208
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Copy as &RTF",
+      "command": "IDM_EDIT_COPYRTF",
+      "value": 40377,
+      "line": 209
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Window Position\\tCtrl+Shift+K",
+      "command": "CMD_COPYWINPOS",
+      "value": 40581,
+      "line": 215
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Duplicate\\tAlt+D",
+      "command": "IDM_EDIT_SELECTIONDUPLICATE",
+      "value": 40328,
+      "line": 220
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "T&oggle Line Comment\\tCtrl+/",
+      "command": "IDM_EDIT_LINECOMMENT",
+      "value": 40354,
+      "line": 222
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Toggle Block &Comment\\tCtrl+Q",
+      "command": "IDM_EDIT_STREAMCOMMENT",
+      "value": 40355,
+      "line": 223
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Indent\\tTab",
+      "command": "IDM_EDIT_INDENT",
+      "value": 40325,
+      "line": 224
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Unindent\\tShift+Tab",
+      "command": "IDM_EDIT_UNINDENT",
+      "value": 40326,
+      "line": 225
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Strip &Trailing Blanks\\tAlt+T",
+      "command": "IDM_EDIT_TRIMLINES",
+      "value": 40332,
+      "line": 227
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Strip &First Character\\tAlt+Z",
+      "command": "IDM_EDIT_STRIP1STCHAR",
+      "value": 40330,
+      "line": 228
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Strip &Last Character\\tAlt+L",
+      "command": "IDM_EDIT_STRIPLASTCHAR",
+      "value": 40331,
+      "line": 229
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Strip Leading Blan&ks",
+      "command": "IDM_EDIT_TRIMLEAD",
+      "value": 40374,
+      "line": 230
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Merge &Blank Lines\\tAlt+B",
+      "command": "IDM_EDIT_MERGEBLANKLINES",
+      "value": 40334,
+      "line": 232
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Remove Blank Lines\\tAlt+R",
+      "command": "IDM_EDIT_REMOVEBLANKLINES",
+      "value": 40335,
+      "line": 233
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Merge Duplicate Lines",
+      "command": "IDM_EDIT_MERGEDUPLICATELINE",
+      "value": 40341,
+      "line": 234
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Remo&ve Duplicate Lines",
+      "command": "IDM_EDIT_REMOVEDUPLICATELINE",
+      "value": 40342,
+      "line": 235
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Pad With Spaces\\tAlt+P",
+      "command": "IDM_EDIT_PADWITHSPACES",
+      "value": 40329,
+      "line": 236
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Compress &Whitespace\\tAlt+W",
+      "command": "IDM_EDIT_COMPRESSWS",
+      "value": 40333,
+      "line": 237
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&With...\\tAlt+Q",
+      "command": "IDM_EDIT_ENCLOSESELECTION",
+      "value": 40327,
+      "line": 241
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&HTML/XML Tag...\\tAlt+X",
+      "command": "IDM_EDIT_INSERT_XMLTAG",
+      "value": 40348,
+      "line": 242
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Triple &Single Quotes\\tCtrl+3",
+      "command": "CMD_ENCLOSE_TRIPLE_SQ",
+      "value": 40571,
+      "line": 244
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Triple &Double Quotes\\tCtrl+6",
+      "command": "CMD_ENCLOSE_TRIPLE_DQ",
+      "value": 40572,
+      "line": 245
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Triple &Backticks\\tCtrl+9",
+      "command": "CMD_ENCLOSE_TRIPLE_BT",
+      "value": 40573,
+      "line": 246
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Move &Up\\tAlt+Up",
+      "command": "IDM_EDIT_MOVELINEUP",
+      "value": 40313,
+      "line": 250
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Mo&ve Down\\tAlt+Down",
+      "command": "IDM_EDIT_MOVELINEDOWN",
+      "value": 40314,
+      "line": 251
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "T&ranspose\\tAlt+S",
+      "command": "IDM_EDIT_LINETRANSPOSE",
+      "value": 40253,
+      "line": 252
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "S&ort Lines...\\tAlt+O",
+      "command": "IDM_EDIT_SORTLINES",
+      "value": 40337,
+      "line": 254
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Modify Lines...\\tAlt+M",
+      "command": "IDM_EDIT_MODIFYLINES",
+      "value": 40336,
+      "line": 255
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Alig&n Lines...\\tAlt+J",
+      "command": "IDM_EDIT_ALIGN",
+      "value": 40338,
+      "line": 256
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Duplicate Line\\tCtrl+D",
+      "command": "IDM_EDIT_DUPLICATELINE",
+      "value": 40315,
+      "line": 258
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Cu&t Line\\tCtrl+Shift+X",
+      "command": "IDM_EDIT_CUTLINE",
+      "value": 40316,
+      "line": 259
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Copy Line\\tCtrl+Shift+C",
+      "command": "IDM_EDIT_COPYLINE",
+      "value": 40317,
+      "line": 260
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "D&elete Line\\tCtrl+Shift+D",
+      "command": "IDM_EDIT_DELETELINE",
+      "value": 40318,
+      "line": 261
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Join Lines\\tCtrl+J",
+      "command": "IDM_EDIT_JOINLINES",
+      "value": 40323,
+      "line": 263
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Split Lines\\tCtrl+I",
+      "command": "IDM_EDIT_SPLITLINES",
+      "value": 40322,
+      "line": 264
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Column &Wrap...",
+      "command": "IDM_EDIT_COLUMNWRAP",
+      "value": 40321,
+      "line": 265
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Join &Paragraphs\\tCtrl+Shift+J",
+      "command": "IDM_EDIT_JOINLINESEX",
+      "value": 40324,
+      "line": 266
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Upper Case\\tCtrl+Shift+U",
+      "command": "IDM_EDIT_CONVERTUPPERCASE",
+      "value": 40339,
+      "line": 270
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Lower Case\\tCtrl+U",
+      "command": "IDM_EDIT_CONVERTLOWERCASE",
+      "value": 40340,
+      "line": 271
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "In&vert Case\\tCtrl+Alt+U",
+      "command": "IDM_EDIT_INVERTCASE",
+      "value": 40208,
+      "line": 272
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Title &Case\\tCtrl+Alt+I",
+      "command": "IDM_EDIT_TITLECASE",
+      "value": 40210,
+      "line": 273
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Sentence Case\\tCtrl+Alt+O",
+      "command": "IDM_EDIT_SENTENCECASE",
+      "value": 40209,
+      "line": 274
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Tabify Selection\\tCtrl+Shift+T",
+      "command": "IDM_EDIT_CONVERTSPACES",
+      "value": 40345,
+      "line": 276
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "U&ntabify Selection\\tCtrl+Shift+S",
+      "command": "IDM_EDIT_CONVERTTABS",
+      "value": 40344,
+      "line": 277
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Tabify &Indent\\tCtrl+Alt+T",
+      "command": "IDM_EDIT_CONVERTSPACES2",
+      "value": 40347,
+      "line": 278
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Untabi&fy Indent\\tCtrl+Alt+S",
+      "command": "IDM_EDIT_CONVERTTABS2",
+      "value": 40346,
+      "line": 279
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "To &Hexadecimal\\tCtrl+Alt+H",
+      "command": "IDM_EDIT_NUM2HEX",
+      "value": 40394,
+      "line": 281
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "To &Decimal\\tCtrl+Alt+D",
+      "command": "IDM_EDIT_NUM2DEC",
+      "value": 40392,
+      "line": 282
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "To &Binary\\tCtrl+Alt+B",
+      "command": "IDM_EDIT_NUM2BIN",
+      "value": 40391,
+      "line": 283
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "To &Octet",
+      "command": "IDM_EDIT_NUM2OCT",
+      "value": 40393,
+      "line": 284
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Complete &Word\\tAlt+/",
+      "command": "IDM_EDIT_COMPLETEWORD",
+      "value": 40373,
+      "line": 288
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&HTML/XML Tag...\\tAlt+X",
+      "command": "IDM_EDIT_INSERT_XMLTAG",
+      "value": 40348,
+      "line": 290
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "New &GUID",
+      "command": "IDM_EDIT_INSERT_GUID",
+      "value": 40380,
+      "line": 291
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "WJ\\t&Word joiner",
+      "command": "IDM_INSERT_UNICODE_WJ",
+      "value": 40280,
+      "line": 294
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ZWJ\\tZero width &joiner",
+      "command": "IDM_INSERT_UNICODE_ZWJ",
+      "value": 40262,
+      "line": 295
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ZWNJ\\tZero width &non-joiner",
+      "command": "IDM_INSERT_UNICODE_ZWNJ",
+      "value": 40263,
+      "line": 296
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "LRM\\t&Left-to-right mark",
+      "command": "IDM_INSERT_UNICODE_LRM",
+      "value": 40260,
+      "line": 297
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "RLM\\t&Right-to-left mark",
+      "command": "IDM_INSERT_UNICODE_RLM",
+      "value": 40261,
+      "line": 298
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "LRE\\tStart of left-to-right &embedding",
+      "command": "IDM_INSERT_UNICODE_LRE",
+      "value": 40264,
+      "line": 299
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "RLE\\tStart of right-to-left e&mbedding",
+      "command": "IDM_INSERT_UNICODE_RLE",
+      "value": 40265,
+      "line": 300
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "LRO\\tStart of left-to-right &override",
+      "command": "IDM_INSERT_UNICODE_LRO",
+      "value": 40266,
+      "line": 301
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "RLO\\tStart of right-to-left o&verride",
+      "command": "IDM_INSERT_UNICODE_RLO",
+      "value": 40267,
+      "line": 302
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "LRI\\tLeft-to-&right isolate",
+      "command": "IDM_INSERT_UNICODE_LRI",
+      "value": 40281,
+      "line": 303
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "RLI\\tRight-to-&left isolate",
+      "command": "IDM_INSERT_UNICODE_RLI",
+      "value": 40282,
+      "line": 304
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "FSI\\t&First strong isolate",
+      "command": "IDM_INSERT_UNICODE_FSI",
+      "value": 40283,
+      "line": 305
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "PDI\\tPo&p directional isolate",
+      "command": "IDM_INSERT_UNICODE_PDI",
+      "value": 40284,
+      "line": 306
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "PDF\\t&Pop directional formatting",
+      "command": "IDM_INSERT_UNICODE_PDF",
+      "value": 40268,
+      "line": 307
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "NADS\\tN&ational digit shapes substitution",
+      "command": "IDM_INSERT_UNICODE_NADS",
+      "value": 40269,
+      "line": 308
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "NODS\\tNominal (European) &digit shapes",
+      "command": "IDM_INSERT_UNICODE_NODS",
+      "value": 40270,
+      "line": 309
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ASS\\tActivate &symmetric swapping",
+      "command": "IDM_INSERT_UNICODE_ASS",
+      "value": 40271,
+      "line": 310
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ISS\\tInhibit s&ymmetric swapping",
+      "command": "IDM_INSERT_UNICODE_ISS",
+      "value": 40272,
+      "line": 311
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "AAFS\\tActivate Arabic &form shaping",
+      "command": "IDM_INSERT_UNICODE_AAFS",
+      "value": 40273,
+      "line": 312
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "IAFS\\tInhibit Arabic form s&haping",
+      "command": "IDM_INSERT_UNICODE_IAFS",
+      "value": 40274,
+      "line": 313
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ALM\\t&Arabic letter mark",
+      "command": "IDM_INSERT_UNICODE_ALM",
+      "value": 40285,
+      "line": 314
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "RS\\tRecord Separator (&Block separator)",
+      "command": "IDM_INSERT_UNICODE_RS",
+      "value": 40275,
+      "line": 315
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "US\\tUnit Separator (&Segment separator)",
+      "command": "IDM_INSERT_UNICODE_US",
+      "value": 40276,
+      "line": 316
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "LS\\tL&ine Separator",
+      "command": "IDM_INSERT_UNICODE_LS",
+      "value": 40277,
+      "line": 317
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "PS\\tPara&graph Separator",
+      "command": "IDM_INSERT_UNICODE_PS",
+      "value": 40278,
+      "line": 318
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ZWSP\\t&Zero width space",
+      "command": "IDM_INSERT_UNICODE_ZWSP",
+      "value": 40279,
+      "line": 319
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "SHY\\tSoft &hyphen",
+      "command": "IDM_INSERT_UNICODE_SHY",
+      "value": 40286,
+      "line": 320
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&File Name",
+      "command": "CMD_INSERTFILENAME_NOEXT",
+      "value": 40585,
+      "line": 323
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "File Name and E&xtension\\tCtrl+F9",
+      "command": "IDM_EDIT_INSERT_FILENAME",
+      "value": 40352,
+      "line": 324
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Full &Path Name\\tCtrl+Shift+F9",
+      "command": "IDM_EDIT_INSERT_PATHNAME",
+      "value": 40353,
+      "line": 325
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Current &Date",
+      "command": "IDM_EDIT_INSERT_LOC_DATE",
+      "value": 40381,
+      "line": 327
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Current Date &Time",
+      "command": "IDM_EDIT_INSERT_LOC_DATETIME",
+      "value": 40382,
+      "line": 328
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&UTC Date Time",
+      "command": "IDM_EDIT_INSERT_UTC_DATETIME",
+      "value": 40383,
+      "line": 329
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Unix Timesta&mp",
+      "command": "IDM_EDIT_INSERT_TIMESTAMP",
+      "value": 40384,
+      "line": 330
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Millisecond (ms)",
+      "command": "IDM_EDIT_INSERT_TIMESTAMP_MS",
+      "value": 40385,
+      "line": 333
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Micro&second (us)",
+      "command": "IDM_EDIT_INSERT_TIMESTAMP_US",
+      "value": 40386,
+      "line": 334
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Nanosecond (ns)",
+      "command": "IDM_EDIT_INSERT_TIMESTAMP_NS",
+      "value": 40387,
+      "line": 335
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Time/Date (&Short Form)\\tCtrl+F5",
+      "command": "IDM_EDIT_INSERT_SHORTDATE",
+      "value": 40350,
+      "line": 337
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Time/Date (&Long Form)\\tCtrl+Shift+F5",
+      "command": "IDM_EDIT_INSERT_LONGDATE",
+      "value": 40351,
+      "line": 338
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Encoding Identifier\\tCtrl+F8",
+      "command": "IDM_EDIT_INSERT_ENCODING",
+      "value": 40349,
+      "line": 340
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Script She&bang Line",
+      "command": "IDM_EDIT_INSERT_SHEBANG",
+      "value": 40388,
+      "line": 341
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "C&haracter to Hex\\tCtrl+Alt+X",
+      "command": "IDM_EDIT_CHAR2HEX",
+      "value": 40202,
+      "line": 345
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Hex to Cha&racter\\tCtrl+Alt+C",
+      "command": "IDM_EDIT_HEX2CHAR",
+      "value": 40203,
+      "line": 346
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Show Hex Code",
+      "command": "IDM_EDIT_SHOW_HEX",
+      "value": 40467,
+      "line": 347
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show Character &Info",
+      "command": "IDM_EDIT_SHOW_CHAR_INFO",
+      "value": 40399,
+      "line": 348
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Esca&pe C Chars\\tCtrl+Alt+E",
+      "command": "IDM_EDIT_ESCAPECCHARS",
+      "value": 40204,
+      "line": 350
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Unescape C Chars\\tCtrl+Alt+R",
+      "command": "IDM_EDIT_UNESCAPECCHARS",
+      "value": 40205,
+      "line": 351
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Delete &Line Left\\tCtrl+Shift+Back",
+      "command": "IDM_EDIT_DELETELINELEFT",
+      "value": 40319,
+      "line": 353
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Delete Li&ne Right\\tCtrl+Shift+Del",
+      "command": "IDM_EDIT_DELETELINERIGHT",
+      "value": 40320,
+      "line": 354
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Delete Word Le&ft\\tCtrl+Back",
+      "command": "CMD_CTRLBACK",
+      "value": 40553,
+      "line": 355
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Delete Word Ri&ght\\tCtrl+Del",
+      "command": "CMD_CTRLDEL",
+      "value": 40554,
+      "line": 356
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Update &Timestamps\\tShift+F5",
+      "command": "CMD_TIMESTAMPS",
+      "value": 40561,
+      "line": 358
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Find...\\tCtrl+F",
+      "command": "IDM_EDIT_FIND",
+      "value": 40364,
+      "line": 363
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Sa&ve Find Text\\tAlt+F3",
+      "command": "IDM_EDIT_SAVEFIND",
+      "value": 40365,
+      "line": 364
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Find &Next\\tF3",
+      "command": "IDM_EDIT_FINDNEXT",
+      "value": 40366,
+      "line": 365
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Find &Previous\\tShift+F3",
+      "command": "IDM_EDIT_FINDPREV",
+      "value": 40367,
+      "line": 366
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "R&eplace...\\tCtrl+H",
+      "command": "IDM_EDIT_REPLACE",
+      "value": 40368,
+      "line": 367
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Repl&ace Next\\tF4",
+      "command": "IDM_EDIT_REPLACENEXT",
+      "value": 40369,
+      "line": 368
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Find Matching &Brace\\tCtrl+B",
+      "command": "IDM_EDIT_FINDMATCHINGBRACE",
+      "value": 40362,
+      "line": 370
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select to Matching B&race\\tCtrl+Shift+B",
+      "command": "IDM_EDIT_SELTOMATCHINGBRACE",
+      "value": 40363,
+      "line": 371
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select &Word\\tCtrl+Alt+Space",
+      "command": "IDM_EDIT_SELECTWORD",
+      "value": 40311,
+      "line": 372
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select &Lines (Expand Selection)\\tCtrl+Shift+Space",
+      "command": "IDM_EDIT_SELECTLINE",
+      "value": 40312,
+      "line": 373
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select Lines in &Current Block\\tAlt+Shift+]",
+      "command": "IDM_EDIT_SELECTLINE_BLOCK",
+      "value": 40252,
+      "line": 374
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select to Document Star&t",
+      "command": "IDM_EDIT_SELTODOCSTART",
+      "value": 40390,
+      "line": 376
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select to Document En&d",
+      "command": "IDM_EDIT_SELTODOCEND",
+      "value": 40389,
+      "line": 377
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select to Ne&xt\\tCtrl+Alt+F2",
+      "command": "IDM_EDIT_SELTONEXT",
+      "value": 40371,
+      "line": 378
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Select to Previou&s\\tCtrl+Alt+Shift+F2",
+      "command": "IDM_EDIT_SELTOPREV",
+      "value": 40372,
+      "line": 379
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Toggle\\tCtrl+F2",
+      "command": "BME_EDIT_BOOKMARKTOGGLE",
+      "value": 40254,
+      "line": 383
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto &Next\\tF2",
+      "command": "BME_EDIT_BOOKMARKNEXT",
+      "value": 40255,
+      "line": 385
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto &Previous\\tShift+F2",
+      "command": "BME_EDIT_BOOKMARKPREV",
+      "value": 40257,
+      "line": 386
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Select All\\tAlt+F6",
+      "command": "BME_EDIT_BOOKMARKSELECT",
+      "value": 40258,
+      "line": 388
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Clear All\\tAlt+F2",
+      "command": "BME_EDIT_BOOKMARKCLEAR",
+      "value": 40256,
+      "line": 389
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Goto Line...\\tCtrl+G",
+      "command": "IDM_EDIT_GOTOLINE",
+      "value": 40370,
+      "line": 393
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto Blo&ck Start\\tAlt+[",
+      "command": "IDM_EDIT_GOTO_BLOCK_START",
+      "value": 40485,
+      "line": 398
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto Bloc&k End\\tAlt+]",
+      "command": "IDM_EDIT_GOTO_BLOCK_END",
+      "value": 40486,
+      "line": 399
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto &Previous Block\\tAlt+Comma (<,)",
+      "command": "IDM_EDIT_GOTO_PREVIOUS_BLOCK",
+      "value": 40487,
+      "line": 400
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto &Next Block\\tAlt+Period (>.)",
+      "command": "IDM_EDIT_GOTO_NEXT_BLOCK",
+      "value": 40488,
+      "line": 401
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto P&revious Sibling Block\\tCtrl+Alt+Comma (<,)",
+      "command": "IDM_EDIT_GOTO_PREV_SIBLING_BLOCK",
+      "value": 40489,
+      "line": 402
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto N&ext Sibling Block\\tCtrl+Alt+Period (>.)",
+      "command": "IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK",
+      "value": 40490,
+      "line": 403
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto &Selection Start\\tCtrl+Shift+Comma (<,)",
+      "command": "CMD_JUMP2SELSTART",
+      "value": 40577,
+      "line": 405
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Goto Selec&tion End\\tCtrl+Shift+Period (>.)",
+      "command": "CMD_JUMP2SELEND",
+      "value": 40578,
+      "line": 406
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Default &Code Font...\\tAlt+F12",
+      "command": "IDM_VIEW_DEFAULT_CODE_FONT",
+      "value": 40403,
+      "line": 411
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default Text Font...",
+      "command": "IDM_VIEW_DEFAULT_TEXT_FONT",
+      "value": 40421,
+      "line": 412
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Block (&OVR Mode)",
+      "command": "IDM_VIEW_CARET_STYLE_BLOCK_OVR",
+      "value": 40069,
+      "line": 415
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Block (&INS Mode)",
+      "command": "IDM_VIEW_CARET_STYLE_BLOCK",
+      "value": 40070,
+      "line": 417
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Line Width &1",
+      "command": "IDM_VIEW_CARET_STYLE_WIDTH1",
+      "value": 40071,
+      "line": 418
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Line Width &2",
+      "command": "IDM_VIEW_CARET_STYLE_WIDTH2",
+      "value": 40072,
+      "line": 419
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Line Width &3",
+      "command": "IDM_VIEW_CARET_STYLE_WIDTH3",
+      "value": 40073,
+      "line": 420
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&No Blink",
+      "command": "IDM_VIEW_CARET_STYLE_NOBLINK",
+      "value": 40074,
+      "line": 422
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Draw Block Caret in &Selection",
+      "command": "IDM_VIEW_CARET_STYLE_SELECTION",
+      "value": 40075,
+      "line": 423
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Word W&rap\\tCtrl+Shift+W",
+      "command": "IDM_VIEW_WORDWRAP",
+      "value": 40404,
+      "line": 426
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Long Line Marker\\tCtrl+Shift+L",
+      "command": "IDM_VIEW_LONGLINEMARKER",
+      "value": 40405,
+      "line": 427
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Indentation &Guides\\tCtrl+Shift+G",
+      "command": "IDM_VIEW_SHOWINDENTGUIDES",
+      "value": 40406,
+      "line": 428
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show &Whitespace\\tCtrl+Shift+8",
+      "command": "IDM_VIEW_SHOWWHITESPACE",
+      "value": 40407,
+      "line": 430
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show Line &Endings\\tCtrl+Shift+9",
+      "command": "IDM_VIEW_SHOWEOLS",
+      "value": 40408,
+      "line": 431
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show Wrap S&ymbols\\tCtrl+Shift+0",
+      "command": "IDM_VIEW_WORDWRAPSYMBOLS",
+      "value": 40409,
+      "line": 432
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Un&icode Control Character",
+      "command": "IDM_VIEW_UNICODE_CONTROL_CHAR",
+      "value": 40063,
+      "line": 433
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Visual Brace Matching\\tCtrl+Shift+V",
+      "command": "IDM_VIEW_MATCHBRACES",
+      "value": 40410,
+      "line": 435
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Highlight Current &Block",
+      "command": "IDM_VIEW_HIGHLIGHTCURRENT_BLOCK",
+      "value": 40453,
+      "line": 436
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&No Highlight",
+      "command": "IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE",
+      "value": 40474,
+      "line": 439
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Background &Color\\tCtrl+Shift+I",
+      "command": "IDM_VIEW_HIGHLIGHTCURRENTLINE_BACK",
+      "value": 40475,
+      "line": 440
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Outline &Frame\\tCtrl+Shift+F",
+      "command": "IDM_VIEW_HIGHLIGHTCURRENTLINE_FRAME",
+      "value": 40476,
+      "line": 441
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Highlight &Subline",
+      "command": "IDM_VIEW_HIGHLIGHTCURRENTLINE_SUBLINE",
+      "value": 40411,
+      "line": 443
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Off",
+      "command": "IDM_VIEW_MARKOCCURRENCES_OFF",
+      "value": 40445,
+      "line": 447
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Match &Case",
+      "command": "IDM_VIEW_MARKOCCURRENCES_CASE",
+      "value": 40446,
+      "line": 448
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Match &Whole Word Only",
+      "command": "IDM_VIEW_MARKOCCURRENCES_WORD",
+      "value": 40447,
+      "line": 449
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Bookmark &Matched Line",
+      "command": "IDM_VIEW_MARKOCCURRENCES_BOOKMARK",
+      "value": 40448,
+      "line": 450
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Off",
+      "command": "IDM_VIEW_SHOWCALLTIP_OFF",
+      "value": 40055,
+      "line": 454
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&RGBA Color",
+      "command": "IDM_VIEW_SHOWCALLTIP_RGBA",
+      "value": 40056,
+      "line": 455
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "AR&GB Color",
+      "command": "IDM_VIEW_SHOWCALLTIP_ARGB",
+      "value": 40057,
+      "line": 456
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&BGRA Color",
+      "command": "IDM_VIEW_SHOWCALLTIP_BGRA",
+      "value": 40058,
+      "line": 457
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&ABGR Color",
+      "command": "IDM_VIEW_SHOWCALLTIP_ABGR",
+      "value": 40059,
+      "line": 458
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Line &Numbers\\tCtrl+Shift+N",
+      "command": "IDM_VIEW_LINENUMBERS",
+      "value": 40412,
+      "line": 461
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Bookmark &Margin\\tCtrl+Shift+M",
+      "command": "IDM_VIEW_MARGIN",
+      "value": 40413,
+      "line": 462
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Change &History Marker",
+      "command": "IDM_VIEW_CHANGE_HISTORY_MARKER",
+      "value": 40422,
+      "line": 463
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show Code &Folding\\tCtrl+Shift+Alt+F",
+      "command": "IDM_VIEW_SHOW_FOLDING",
+      "value": 40452,
+      "line": 465
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default Levels\\tShift+Alt+D",
+      "command": "IDM_VIEW_FOLD_DEFAULT",
+      "value": 40454,
+      "line": 468
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&All Levels\\tShift+Alt+A",
+      "command": "IDM_VIEW_FOLD_ALL",
+      "value": 40455,
+      "line": 469
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Current Block\\tAlt+C",
+      "command": "IDM_VIEW_FOLD_CURRENT_BLOCK",
+      "value": 40466,
+      "line": 470
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Current &Level",
+      "command": "IDM_VIEW_FOLD_CURRENT_LEVEL",
+      "value": 40449,
+      "line": 471
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &1\\tAlt+1",
+      "command": "IDM_VIEW_FOLD_LEVEL1",
+      "value": 40456,
+      "line": 473
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &2\\tAlt+2",
+      "command": "IDM_VIEW_FOLD_LEVEL2",
+      "value": 40457,
+      "line": 474
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &3\\tAlt+3",
+      "command": "IDM_VIEW_FOLD_LEVEL3",
+      "value": 40458,
+      "line": 475
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &4\\tAlt+4",
+      "command": "IDM_VIEW_FOLD_LEVEL4",
+      "value": 40459,
+      "line": 476
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &5\\tAlt+5",
+      "command": "IDM_VIEW_FOLD_LEVEL5",
+      "value": 40460,
+      "line": 477
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &6\\tAlt+6",
+      "command": "IDM_VIEW_FOLD_LEVEL6",
+      "value": 40461,
+      "line": 478
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &7\\tAlt+7",
+      "command": "IDM_VIEW_FOLD_LEVEL7",
+      "value": 40462,
+      "line": 479
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &8\\tAlt+8",
+      "command": "IDM_VIEW_FOLD_LEVEL8",
+      "value": 40463,
+      "line": 480
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level &9\\tAlt+9",
+      "command": "IDM_VIEW_FOLD_LEVEL9",
+      "value": 40464,
+      "line": 481
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Level 1&0",
+      "command": "IDM_VIEW_FOLD_LEVEL10",
+      "value": 40465,
+      "line": 482
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Zoom &In\\tCtrl++",
+      "command": "IDM_VIEW_ZOOMIN",
+      "value": 40414,
+      "line": 487
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Zoom &Out\\tCtrl+-",
+      "command": "IDM_VIEW_ZOOMOUT",
+      "value": 40415,
+      "line": 488
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Zoom &Level...",
+      "command": "IDM_VIEW_ZOOM_LEVEL",
+      "value": 40473,
+      "line": 489
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Reset Zoom\\tCtrl+\\\\",
+      "command": "IDM_VIEW_RESETZOOM",
+      "value": 40416,
+      "line": 490
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Toggle Full &Screen\\tF11 [Esc]",
+      "command": "IDM_VIEW_TOGGLE_FULLSCREEN",
+      "value": 40468,
+      "line": 492
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Syntax Scheme...\\tF12",
+      "command": "IDM_VIEW_SCHEME",
+      "value": 40400,
+      "line": 496
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Customize Schemes...\\tCtrl+F12",
+      "command": "IDM_VIEW_SCHEME_CONFIG",
+      "value": 40402,
+      "line": 497
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Favorite Schemes...",
+      "command": "IDM_VIEW_SCHEME_FAVORITE",
+      "value": 40424,
+      "line": 498
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Use Default Code Style\\tShift+F12",
+      "command": "IDM_VIEW_USEDEFAULT_CODESTYLE",
+      "value": 40401,
+      "line": 500
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default",
+      "command": "IDM_VIEW_STYLE_THEME_DEFAULT",
+      "value": 40478,
+      "line": 503
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Dar&k",
+      "command": "IDM_VIEW_STYLE_THEME_DARK",
+      "value": 40479,
+      "line": 504
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Text File",
+      "command": "IDM_LEXER_TEXTFILE",
+      "value": 40700,
+      "line": 509
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&2nd Text File",
+      "command": "IDM_LEXER_2NDTEXTFILE",
+      "value": 40701,
+      "line": 510
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "CSV File...",
+      "command": "IDM_LEXER_CSV",
+      "value": 40702,
+      "line": 512
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&CSS Style Sheet",
+      "command": "IDM_LEXER_CSS",
+      "value": 40703,
+      "line": 515
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&SCSS Style Sheet",
+      "command": "IDM_LEXER_SCSS",
+      "value": 40704,
+      "line": 516
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Less Style Sheet",
+      "command": "IDM_LEXER_LESS",
+      "value": 40705,
+      "line": 517
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&HSS Style Sheet",
+      "command": "IDM_LEXER_HSS",
+      "value": 40706,
+      "line": 518
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&JavaScript",
+      "command": "IDM_LEXER_JAVASCRIPT",
+      "value": 40707,
+      "line": 522
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Java&Script JSX",
+      "command": "IDM_LEXER_JAVASCRIPT_JSX",
+      "value": 40708,
+      "line": 523
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&TypeScript",
+      "command": "IDM_LEXER_TYPESCRIPT",
+      "value": 40709,
+      "line": 524
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "TypeScript TS&X",
+      "command": "IDM_LEXER_TYPESCRIPT_TSX",
+      "value": 40710,
+      "line": 525
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Web Source Code",
+      "command": "IDM_LEXER_WEB",
+      "value": 40711,
+      "line": 529
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&PHP Page",
+      "command": "IDM_LEXER_PHP",
+      "value": 40718,
+      "line": 530
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&JSP Page",
+      "command": "IDM_LEXER_JSP",
+      "value": 40716,
+      "line": 531
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "JSP &XML",
+      "command": "IDM_LEXER_JSPX",
+      "value": 40717,
+      "line": 532
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ASP.NET (&C#)",
+      "command": "IDM_LEXER_ASPX_CS",
+      "value": 40712,
+      "line": 533
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ASP.NET (&VB.NET)",
+      "command": "IDM_LEXER_ASPX_VB",
+      "value": 40713,
+      "line": 534
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ASP (V&BScript)",
+      "command": "IDM_LEXER_ASP_VBS",
+      "value": 40714,
+      "line": 535
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "ASP (J&Script)",
+      "command": "IDM_LEXER_ASP_JS",
+      "value": 40715,
+      "line": 536
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Apache Config",
+      "command": "IDM_LEXER_APACHE",
+      "value": 40738,
+      "line": 537
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Git&Hub GFM",
+      "command": "IDM_LEXER_MARKDOWN_GITHUB",
+      "value": 40719,
+      "line": 541
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Git&Lab GLFM",
+      "command": "IDM_LEXER_MARKDOWN_GITLAB",
+      "value": 40720,
+      "line": 542
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Pandoc",
+      "command": "IDM_LEXER_MARKDOWN_PANDOC",
+      "value": 40721,
+      "line": 543
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Mathematica",
+      "command": "IDM_LEXER_MATHEMATICA",
+      "value": 40722,
+      "line": 547
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&MATLAB",
+      "command": "IDM_LEXER_MATLAB",
+      "value": 40723,
+      "line": 548
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Octave",
+      "command": "IDM_LEXER_OCTAVE",
+      "value": 40724,
+      "line": 549
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Scilab",
+      "command": "IDM_LEXER_SCILAB",
+      "value": 40725,
+      "line": 550
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Shell Script",
+      "command": "IDM_LEXER_BASH",
+      "value": 40726,
+      "line": 554
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&C Shell",
+      "command": "IDM_LEXER_CSHELL",
+      "value": 40727,
+      "line": 555
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&M4 Macro",
+      "command": "IDM_LEXER_M4",
+      "value": 40728,
+      "line": 556
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Visual &Basic",
+      "command": "IDM_LEXER_VBNET",
+      "value": 40735,
+      "line": 561
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&VBA / VB 6.0",
+      "command": "IDM_LEXER_VBA",
+      "value": 40736,
+      "line": 562
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "VB&Script",
+      "command": "IDM_LEXER_VBS",
+      "value": 40737,
+      "line": 563
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&XML Document",
+      "command": "IDM_LEXER_XML",
+      "value": 40729,
+      "line": 567
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "XML &Schema",
+      "command": "IDM_LEXER_XSD",
+      "value": 40730,
+      "line": 568
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "XSL&T Stylesheet",
+      "command": "IDM_LEXER_XSLT",
+      "value": 40731,
+      "line": 569
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "XML &DTD",
+      "command": "IDM_LEXER_DTD",
+      "value": 40732,
+      "line": 570
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Property List",
+      "command": "IDM_LEXER_PROPERTY_LIST",
+      "value": 40733,
+      "line": 571
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "SV&G Document",
+      "command": "IDM_LEXER_SVG",
+      "value": 40734,
+      "line": 572
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Insert Tabs as &Spaces",
+      "command": "IDM_VIEW_TABSASSPACES",
+      "value": 40417,
+      "line": 577
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Tab Settings...\\tCtrl+T",
+      "command": "IDM_VIEW_TABSETTINGS",
+      "value": 40418,
+      "line": 578
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Word &Wrap Settings...",
+      "command": "IDM_VIEW_WORDWRAPSETTINGS",
+      "value": 40419,
+      "line": 579
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Long Line Settings...",
+      "command": "IDM_VIEW_LONGLINESETTINGS",
+      "value": 40420,
+      "line": 580
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Auto Completion Settings...",
+      "command": "IDM_VIEW_AUTOCOMPLETION_SETTINGS",
+      "value": 40450,
+      "line": 581
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Auto Completion I&gnore Case",
+      "command": "IDM_VIEW_AUTOCOMPLETION_IGNORECASE",
+      "value": 40451,
+      "line": 582
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Enable LaTe&X Input Method",
+      "command": "IDM_SET_LATEX_INPUT_METHOD",
+      "value": 40043,
+      "line": 583
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Enable &Multiple Selection",
+      "command": "IDM_SET_MULTIPLE_SELECTION",
+      "value": 40080,
+      "line": 586
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Copy &Selection as Find Text",
+      "command": "IDM_SET_SELECTIONASFINDTEXT",
+      "value": 40081,
+      "line": 587
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Copy &Paste Buffer as Find Text",
+      "command": "IDM_SET_PASTEBUFFERASFINDTEXT",
+      "value": 40082,
+      "line": 588
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Undo Redo &Remember Selection",
+      "command": "IDM_SET_UNDO_REDO_SELECTION",
+      "value": 40083,
+      "line": 589
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&None",
+      "command": "IDM_LINE_SELECTION_MODE_NONE",
+      "value": 40076,
+      "line": 592
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Visual Studio",
+      "command": "IDM_LINE_SELECTION_MODE_VS",
+      "value": 40077,
+      "line": 593
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Old Visual Studio",
+      "command": "IDM_LINE_SELECTION_MODE_OLDVS",
+      "value": 40079,
+      "line": 594
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Nor&mal",
+      "command": "IDM_LINE_SELECTION_MODE_NORMAL",
+      "value": 40078,
+      "line": 595
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show &Menu\\tAlt+F11",
+      "command": "IDM_VIEW_MENU",
+      "value": 40471,
+      "line": 601
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "S&how Toolbar\\tCtrl+F11",
+      "command": "IDM_VIEW_TOOLBAR",
+      "value": 40440,
+      "line": 602
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Customi&ze Toolbar...",
+      "command": "IDM_VIEW_CUSTOMIZE_TOOLBAR",
+      "value": 40441,
+      "line": 603
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Auto Scale Toolbar",
+      "command": "IDM_VIEW_AUTO_SCALE_TOOLBAR",
+      "value": 40064,
+      "line": 604
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Use Lar&ge Toolbar",
+      "command": "IDM_VIEW_USE_LARGE_TOOLBAR",
+      "value": 40054,
+      "line": 606
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Show Stat&usbar\\tShift+F11",
+      "command": "IDM_VIEW_STATUSBAR",
+      "value": 40442,
+      "line": 608
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Transparent Mode\\tCtrl+0",
+      "command": "IDM_VIEW_TRANSPARENT",
+      "value": 40427,
+      "line": 610
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Transparent on Los&ing Focus",
+      "command": "IDM_VIEW_TRANSPARENT_INACTIVE",
+      "value": 40428,
+      "line": 611
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "On &Startup",
+      "command": "IDM_VIEW_FULLSCREEN_ON_START",
+      "value": 40469,
+      "line": 614
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Hide &Title",
+      "command": "IDM_VIEW_FULLSCREEN_HIDE_TITLE",
+      "value": 40470,
+      "line": 615
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&No",
+      "command": "IDM_VIEW_SCROLLPASTLASTLINE_NO",
+      "value": 40481,
+      "line": 619
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&One Page",
+      "command": "IDM_VIEW_SCROLLPASTLASTLINE_ONE",
+      "value": 40480,
+      "line": 620
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Half Page",
+      "command": "IDM_VIEW_SCROLLPASTLASTLINE_HALF",
+      "value": 40482,
+      "line": 621
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "1/&3 Page",
+      "command": "IDM_VIEW_SCROLLPASTLASTLINE_THIRD",
+      "value": 40483,
+      "line": 622
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "1/&4 Page",
+      "command": "IDM_VIEW_SCROLLPASTLASTLINE_QUARTER",
+      "value": 40484,
+      "line": 623
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&System Language",
+      "command": "IDM_LANG_USER_DEFAULT",
+      "value": 40650,
+      "line": 629
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Deutsch",
+      "command": "IDM_LANG_GERMAN",
+      "value": 40655,
+      "line": 630
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "English",
+      "command": "IDM_LANG_ENGLISH_US",
+      "value": 40651,
+      "line": 631
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Français",
+      "command": "IDM_LANG_FRENCH_FRANCE",
+      "value": 40659,
+      "line": 632
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Italiano",
+      "command": "IDM_LANG_ITALIAN",
+      "value": 40656,
+      "line": 633
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Polski",
+      "command": "IDM_LANG_POLISH",
+      "value": 40661,
+      "line": 634
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Português (Brasil)",
+      "command": "IDM_LANG_PORTUGUESE_BRAZIL",
+      "value": 40658,
+      "line": 635
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Русский",
+      "command": "IDM_LANG_RUSSIAN",
+      "value": 40660,
+      "line": 636
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Slovenščina",
+      "command": "IDM_LANG_SLOVENIAN",
+      "value": 40662,
+      "line": 637
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "日本語",
+      "command": "IDM_LANG_JAPANESE",
+      "value": 40654,
+      "line": 638
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "한국어",
+      "command": "IDM_LANG_KOREAN",
+      "value": 40657,
+      "line": 639
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "中文(繁體)",
+      "command": "IDM_LANG_CHINESE_TRADITIONAL",
+      "value": 40653,
+      "line": 640
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "中文(简体)",
+      "command": "IDM_LANG_CHINESE_SIMPLIFIED",
+      "value": 40652,
+      "line": 641
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Always On &Top\\tAlt+Shift+T",
+      "command": "IDM_VIEW_ALWAYSONTOP",
+      "value": 40425,
+      "line": 647
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Minimi&ze to Tray",
+      "command": "IDM_VIEW_MINTOTRAY",
+      "value": 40426,
+      "line": 648
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Reuse Window",
+      "command": "IDM_VIEW_REUSEWINDOW",
+      "value": 40423,
+      "line": 650
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Sticky Window Position",
+      "command": "IDM_VIEW_STICKY_WINDOW_POSITION",
+      "value": 40472,
+      "line": 651
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Clear Position &History",
+      "command": "IDM_VIEW_CLEARWINPOS",
+      "value": 40045,
+      "line": 652
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&File Name Only",
+      "command": "IDM_VIEW_SHOWFILENAMEONLY",
+      "value": 40430,
+      "line": 656
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "File Name and &Directory",
+      "command": "IDM_VIEW_SHOWFILENAMEFIRST",
+      "value": 40431,
+      "line": 657
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Full &Path Name",
+      "command": "IDM_VIEW_SHOWFULLPATH",
+      "value": 40432,
+      "line": 658
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Text Excerpt",
+      "command": "IDM_VIEW_SHOWEXCERPT",
+      "value": 40433,
+      "line": 659
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Single &File Instance",
+      "command": "IDM_VIEW_SINGLEFILEINSTANCE",
+      "value": 40040,
+      "line": 662
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "File &Change Notification...\\tAlt+F5",
+      "command": "IDM_VIEW_CHANGENOTIFY",
+      "value": 40429,
+      "line": 663
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "A&utoSave Settings...",
+      "command": "IDM_SET_FILE_AUTOSAVE",
+      "value": 40493,
+      "line": 664
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&None",
+      "command": "IDM_VIEW_NOESCFUNC",
+      "value": 40434,
+      "line": 667
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Minimize Notepad4",
+      "command": "IDM_VIEW_ESCMINIMIZE",
+      "value": 40435,
+      "line": 668
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "E&xit Notepad4",
+      "command": "IDM_VIEW_ESCEXIT",
+      "value": 40436,
+      "line": 669
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Remember Recent &Files",
+      "command": "IDM_VIEW_NOSAVERECENT",
+      "value": 40438,
+      "line": 673
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Remember &Search Options",
+      "command": "IDM_VIEW_NOSAVEFINDREPL",
+      "value": 40439,
+      "line": 674
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Legacy GDI",
+      "command": "IDM_SET_RENDER_TECH_GDI",
+      "value": 40046,
+      "line": 681
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Direct2D",
+      "command": "IDM_SET_RENDER_TECH_D2D",
+      "value": 40047,
+      "line": 682
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Direct2D &Retain",
+      "command": "IDM_SET_RENDER_TECH_D2DRETAIN",
+      "value": 40048,
+      "line": 683
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Direct2D &GDI DC",
+      "command": "IDM_SET_RENDER_TECH_D2DDC",
+      "value": 40049,
+      "line": 684
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Direct&3D",
+      "command": "IDM_SET_RENDER_TECH_D3D",
+      "value": 40050,
+      "line": 685
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Default",
+      "command": "IDM_VIEW_FONTQUALITY_DEFAULT",
+      "value": 40065,
+      "line": 689
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&None",
+      "command": "IDM_VIEW_FONTQUALITY_NONE",
+      "value": 40066,
+      "line": 690
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Standard",
+      "command": "IDM_VIEW_FONTQUALITY_STANDARD",
+      "value": 40067,
+      "line": 691
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&ClearType",
+      "command": "IDM_VIEW_FONTQUALITY_CLEARTYPE",
+      "value": 40068,
+      "line": 692
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Edit Window",
+      "command": "IDM_SET_RTL_LAYOUT_EDIT",
+      "value": 40052,
+      "line": 696
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Other Window",
+      "command": "IDM_SET_RTL_LAYOUT_OTHER",
+      "value": 40053,
+      "line": 697
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&None",
+      "command": "IDM_SET_BIDIRECTIONAL_NONE",
+      "value": 40060,
+      "line": 701
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Left to Right",
+      "command": "IDM_SET_BIDIRECTIONAL_L2R",
+      "value": 40061,
+      "line": 702
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Right to Left",
+      "command": "IDM_SET_BIDIRECTIONAL_R2L",
+      "value": 40062,
+      "line": 703
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Use &Inline Mode IME",
+      "command": "IDM_SET_USE_INLINE_IME",
+      "value": 40041,
+      "line": 705
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&System Integration...",
+      "command": "IDM_SET_SYSTEM_INTEGRATION",
+      "value": 40051,
+      "line": 707
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Open Notepad4.ini\\tCtrl+F7",
+      "command": "CMD_OPENINIFILE",
+      "value": 40583,
+      "line": 708
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Save Settings &On Exit",
+      "command": "IDM_VIEW_SAVESETTINGS",
+      "value": 40443,
+      "line": 710
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Sa&ve Settings Now\\tF7",
+      "command": "IDM_VIEW_SAVESETTINGSNOW",
+      "value": 40444,
+      "line": 711
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Sa&ve Before Running Tools",
+      "command": "IDM_VIEW_SAVEBEFORERUNNINGTOOLS",
+      "value": 40437,
+      "line": 715
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Use &matepath to Open Folder",
+      "command": "IDM_SET_OPEN_FOLDER_MATEPATH",
+      "value": 40044,
+      "line": 716
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Run as &Administrator",
+      "command": "IDM_FILE_RELAUNCH_ELEVATED",
+      "value": 40022,
+      "line": 718
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Restart",
+      "command": "IDM_FILE_RESTART",
+      "value": 40027,
+      "line": 719
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Open &in New Window\\tAlt+0",
+      "command": "IDM_FILE_NEWWINDOW2",
+      "value": 40012,
+      "line": 720
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Execute &Document\\tCtrl+L",
+      "command": "IDM_FILE_LAUNCH",
+      "value": 40008,
+      "line": 722
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "O&pen Document With...",
+      "command": "IDM_FILE_OPENWITH",
+      "value": 40009,
+      "line": 723
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Run &Command...\\tCtrl+R",
+      "command": "IDM_FILE_RUN",
+      "value": 40010,
+      "line": 724
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Open File, Folder, Link, etc.",
+      "command": "CMD_OPEN_PATH_OR_LINK",
+      "value": 40586,
+      "line": 728
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Open Containing &Folder",
+      "command": "CMD_OPEN_CONTAINING_FOLDER",
+      "value": 40587,
+      "line": 729
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Calculate Expression",
+      "command": "CMD_CALCULATE_EXPR",
+      "value": 40588,
+      "line": 731
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Search with &Google",
+      "command": "CMD_ONLINE_SEARCH_GOOGLE",
+      "value": 40562,
+      "line": 733
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Search with &Bing",
+      "command": "CMD_ONLINE_SEARCH_BING",
+      "value": 40563,
+      "line": 734
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Search on &Wikipedia",
+      "command": "CMD_ONLINE_SEARCH_WIKI",
+      "value": 40564,
+      "line": 735
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Custom Action &1\\tCtrl+Shift+1",
+      "command": "CMD_CUSTOM_ACTION1",
+      "value": 40565,
+      "line": 737
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Custom Action &2\\tCtrl+Shift+2",
+      "command": "CMD_CUSTOM_ACTION2",
+      "value": 40566,
+      "line": 738
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Standard &Encode",
+      "command": "IDM_EDIT_BASE64_ENCODE",
+      "value": 40494,
+      "line": 742
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "URL &Safe Encode",
+      "command": "IDM_EDIT_BASE64_SAFE_ENCODE",
+      "value": 40495,
+      "line": 743
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Encode as HTML Embedded &Image",
+      "command": "IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE",
+      "value": 40496,
+      "line": 744
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Decode",
+      "command": "IDM_EDIT_BASE64_DECODE",
+      "value": 40497,
+      "line": 745
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Decode as &Hex",
+      "command": "IDM_EDIT_BASE64_DECODE_AS_HEX",
+      "value": 40498,
+      "line": 746
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Halfwidth Form to Full&width",
+      "command": "IDM_EDIT_MAP_FULLWIDTH",
+      "value": 40211,
+      "line": 750
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Fullwidth Form to H&alfwidth",
+      "command": "IDM_EDIT_MAP_HALFWIDTH",
+      "value": 40212,
+      "line": 751
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Chinese Traditional to &Simplified",
+      "command": "IDM_EDIT_MAP_SIMPLIFIED_CHINESE",
+      "value": 40213,
+      "line": 753
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Chinese Simplified to &Traditional",
+      "command": "IDM_EDIT_MAP_TRADITIONAL_CHINESE",
+      "value": 40214,
+      "line": 754
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Japanese Katakana to &Hiragana",
+      "command": "IDM_EDIT_MAP_HIRAGANA",
+      "value": 40215,
+      "line": 756
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Japanese Hiragana to &Katakana",
+      "command": "IDM_EDIT_MAP_KATAKANA",
+      "value": 40216,
+      "line": 757
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Korean Han&ja to Hangul",
+      "command": "IDM_EDIT_MAP_HANJA_HANGUL",
+      "value": 40222,
+      "line": 759
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Korean Han&gul Decomposition",
+      "command": "IDM_EDIT_MAP_HANGUL_DECOMPOSITION",
+      "value": 40221,
+      "line": 760
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Bengali to Latin",
+      "command": "IDM_EDIT_MAP_BENGALI_LATIN",
+      "value": 40220,
+      "line": 762
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "C&yrillic to Latin",
+      "command": "IDM_EDIT_MAP_CYRILLIC_LATIN",
+      "value": 40219,
+      "line": 763
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Devanagari to Latin",
+      "command": "IDM_EDIT_MAP_DEVANAGARI_LATIN",
+      "value": 40218,
+      "line": 764
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Malayalam to Latin",
+      "command": "IDM_EDIT_MAP_MALAYALAM_LATIN",
+      "value": 40217,
+      "line": 765
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "CSS/JS/JSON &Compress",
+      "command": "IDM_EDIT_CODE_COMPRESS",
+      "value": 40378,
+      "line": 769
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "CSS/JS/JSON &Pretty",
+      "command": "IDM_EDIT_CODE_PRETTY",
+      "value": 40379,
+      "line": 770
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Evaluate JS Expression",
+      "command": "CMD_EVALUATE_JS_EXPR",
+      "value": 40589,
+      "line": 772
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Escape HT&ML/XML Chars\\tAlt+Shift+X",
+      "command": "IDM_EDIT_XHTML_ESCAPE_CHAR",
+      "value": 40206,
+      "line": 773
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Unescape HTML/&XML Chars\\tAlt+Shift+H",
+      "command": "IDM_EDIT_XHTML_UNESCAPE_CHAR",
+      "value": 40207,
+      "line": 774
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&URL Encode\\tCtrl+Shift+E",
+      "command": "IDM_EDIT_URLENCODE",
+      "value": 40356,
+      "line": 776
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "URL Component Encode",
+      "command": "IDM_EDIT_URLCOMPONENTENCODE",
+      "value": 40357,
+      "line": 777
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "UR&L Decode\\tCtrl+Shift+R",
+      "command": "IDM_EDIT_URLDECODE",
+      "value": 40343,
+      "line": 778
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Project &Home",
+      "command": "IDM_HELP_PROJECT_HOME",
+      "value": 40502,
+      "line": 783
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Latest &Release",
+      "command": "IDM_HELP_LATEST_RELEASE",
+      "value": 40503,
+      "line": 784
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Latest &Build",
+      "command": "IDM_HELP_LATEST_BUILD",
+      "value": 40507,
+      "line": 785
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Report &Issue",
+      "command": "IDM_HELP_REPORT_ISSUE",
+      "value": 40504,
+      "line": 786
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Feature Request",
+      "command": "IDM_HELP_FEATURE_REQUEST",
+      "value": 40505,
+      "line": 787
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "Online &Wiki",
+      "command": "IDM_HELP_ONLINE_WIKI",
+      "value": 40506,
+      "line": 789
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&Command Line Help",
+      "command": "IDM_CMDLINE_HELP",
+      "value": 40501,
+      "line": 790
+    },
+    {
+      "menu": "IDR_MAINWND",
+      "label": "&About Notepad4\\tF1",
+      "command": "IDM_HELP_ABOUT",
+      "value": 40500,
+      "line": 792
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Undo",
+      "command": "IDM_EDIT_UNDO",
+      "value": 40300,
+      "line": 800
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Redo",
+      "command": "IDM_EDIT_REDO",
+      "value": 40301,
+      "line": 801
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Cu&t",
+      "command": "IDM_EDIT_CUT",
+      "value": 40302,
+      "line": 803
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Copy",
+      "command": "IDM_EDIT_COPY",
+      "value": 40303,
+      "line": 804
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Paste",
+      "command": "IDM_EDIT_PASTE",
+      "value": 40306,
+      "line": 805
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Delete",
+      "command": "IDM_EDIT_DELETE",
+      "value": 40308,
+      "line": 806
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Select &All",
+      "command": "IDM_EDIT_SELECTALL",
+      "value": 40310,
+      "line": 808
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Toggle &Fold",
+      "command": "IDM_VIEW_FOLD_CURRENT_BLOCK",
+      "value": 40466,
+      "line": 810
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Open",
+      "command": "CMD_OPEN_PATH_OR_LINK",
+      "value": 40586,
+      "line": 812
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Show &Menu",
+      "command": "IDM_VIEW_MENU",
+      "value": 40471,
+      "line": 816
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Show &Toolbar",
+      "command": "IDM_VIEW_TOOLBAR",
+      "value": 40440,
+      "line": 817
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Customize Toolbar...",
+      "command": "IDM_VIEW_CUSTOMIZE_TOOLBAR",
+      "value": 40441,
+      "line": 818
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Auto Scale Toolbar",
+      "command": "IDM_VIEW_AUTO_SCALE_TOOLBAR",
+      "value": 40064,
+      "line": 819
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Use &Large Toolbar",
+      "command": "IDM_VIEW_USE_LARGE_TOOLBAR",
+      "value": 40054,
+      "line": 821
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Show &Statusbar",
+      "command": "IDM_VIEW_STATUSBAR",
+      "value": 40442,
+      "line": 823
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Open Notepad4",
+      "command": "IDM_TRAY_RESTORE",
+      "value": 40540,
+      "line": 827
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "E&xit Notepad4",
+      "command": "IDM_TRAY_EXIT",
+      "value": 40541,
+      "line": 829
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Default Levels",
+      "command": "IDM_VIEW_FOLD_DEFAULT",
+      "value": 40454,
+      "line": 833
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&All Levels",
+      "command": "IDM_VIEW_FOLD_ALL",
+      "value": 40455,
+      "line": 834
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "&Current Block",
+      "command": "IDM_VIEW_FOLD_CURRENT_BLOCK",
+      "value": 40466,
+      "line": 835
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Current &Level",
+      "command": "IDM_VIEW_FOLD_CURRENT_LEVEL",
+      "value": 40449,
+      "line": 836
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &1",
+      "command": "IDM_VIEW_FOLD_LEVEL1",
+      "value": 40456,
+      "line": 838
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &2",
+      "command": "IDM_VIEW_FOLD_LEVEL2",
+      "value": 40457,
+      "line": 839
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &3",
+      "command": "IDM_VIEW_FOLD_LEVEL3",
+      "value": 40458,
+      "line": 840
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &4",
+      "command": "IDM_VIEW_FOLD_LEVEL4",
+      "value": 40459,
+      "line": 841
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &5",
+      "command": "IDM_VIEW_FOLD_LEVEL5",
+      "value": 40460,
+      "line": 842
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &6",
+      "command": "IDM_VIEW_FOLD_LEVEL6",
+      "value": 40461,
+      "line": 843
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &7",
+      "command": "IDM_VIEW_FOLD_LEVEL7",
+      "value": 40462,
+      "line": 844
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &8",
+      "command": "IDM_VIEW_FOLD_LEVEL8",
+      "value": 40463,
+      "line": 845
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level &9",
+      "command": "IDM_VIEW_FOLD_LEVEL9",
+      "value": 40464,
+      "line": 846
+    },
+    {
+      "menu": "IDR_POPUPMENU",
+      "label": "Level 1&0",
+      "command": "IDM_VIEW_FOLD_LEVEL10",
+      "value": 40465,
+      "line": 847
+    }
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_ABOUT",
+      "caption": "Notepad4",
+      "line": 1072
+    },
+    {
+      "id": "IDD_FIND",
+      "caption": "Find Text",
+      "line": 1094
+    },
+    {
+      "id": "IDD_REPLACE",
+      "caption": "Replace Text",
+      "line": 1128
+    },
+    {
+      "id": "IDD_RUN",
+      "caption": "Run",
+      "line": 1167
+    },
+    {
+      "id": "IDD_OPENWITH",
+      "caption": "Open with...",
+      "line": 1181
+    },
+    {
+      "id": "IDD_SYSTEM_INTEGRATION",
+      "caption": "System Integration",
+      "line": 1194
+    },
+    {
+      "id": "IDD_DEFENCODING",
+      "caption": "Encoding",
+      "line": 1211
+    },
+    {
+      "id": "IDD_DEFEOLMODE",
+      "caption": "Line Endings",
+      "line": 1228
+    },
+    {
+      "id": "IDD_WARNLINEENDS",
+      "caption": "Inconsistent Line Endings",
+      "line": 1242
+    },
+    {
+      "id": "IDD_LINENUM",
+      "caption": "Goto",
+      "line": 1261
+    },
+    {
+      "id": "IDD_FILEMRU",
+      "caption": "Open Recent File",
+      "line": 1274
+    },
+    {
+      "id": "IDD_CHANGENOTIFY",
+      "caption": "File Change Notification",
+      "line": 1289
+    },
+    {
+      "id": "IDD_STYLESELECT",
+      "caption": "Select Scheme",
+      "line": 1304
+    },
+    {
+      "id": "IDD_STYLECONFIG",
+      "caption": "Customize Schemes",
+      "line": 1317
+    },
+    {
+      "id": "IDD_TABSETTINGS",
+      "caption": "Tab Settings",
+      "line": 1347
+    },
+    {
+      "id": "IDD_LONGLINES",
+      "caption": "Long Lines Settings",
+      "line": 1380
+    },
+    {
+      "id": "IDD_WORDWRAP",
+      "caption": "Word Wrap Settings",
+      "line": 1393
+    },
+    {
+      "id": "IDD_PAGESETUP",
+      "caption": "Page Setup",
+      "line": 1409
+    },
+    {
+      "id": "IDD_FAVORITES",
+      "caption": "Favorites",
+      "line": 1451
+    },
+    {
+      "id": "IDD_ADDTOFAV",
+      "caption": "Add to Favorites",
+      "line": 1464
+    },
+    {
+      "id": "IDD_COLUMNWRAP",
+      "caption": "Column Wrap",
+      "line": 1476
+    },
+    {
+      "id": "IDD_MODIFYLINES",
+      "caption": "Modify Lines",
+      "line": 1487
+    },
+    {
+      "id": "IDD_INSERTTAG",
+      "caption": "Insert HTML/XML Tag",
+      "line": 1511
+    },
+    {
+      "id": "IDD_ENCLOSESELECTION",
+      "caption": "Enclose Selection",
+      "line": 1525
+    },
+    {
+      "id": "IDD_INFOBOX",
+      "caption": "Notepad4",
+      "line": 1539
+    },
+    {
+      "id": "IDD_SORT",
+      "caption": "Sort Lines",
+      "line": 1554
+    },
+    {
+      "id": "IDD_SELECT_ENCODING",
+      "caption": "Select Encoding",
+      "line": 1574
+    },
+    {
+      "id": "IDD_ALIGN",
+      "caption": "Align Lines",
+      "line": 1586
+    },
+    {
+      "id": "IDD_ZOOMLEVEL",
+      "caption": "Zoom Level",
+      "line": 1600
+    },
+    {
+      "id": "IDD_AUTOCOMPLETION",
+      "caption": "Auto Completion Settings",
+      "line": 1612
+    },
+    {
+      "id": "IDD_AUTOSAVE",
+      "caption": "AutoSave Settings",
+      "line": 1667
+    },
+    {
+      "id": "IDD_CSV_OPTIONS",
+      "caption": "CSV Options",
+      "line": 1684
+    }
+  ],
+  "toolbar_commands": [
+    {
+      "id": "IDT_FILE_NEW",
+      "value": 40600
+    },
+    {
+      "id": "IDT_FILE_OPEN",
+      "value": 40601
+    },
+    {
+      "id": "IDT_FILE_BROWSE",
+      "value": 40602
+    },
+    {
+      "id": "IDT_FILE_SAVE",
+      "value": 40603
+    },
+    {
+      "id": "IDT_EDIT_UNDO",
+      "value": 40604
+    },
+    {
+      "id": "IDT_EDIT_REDO",
+      "value": 40605
+    },
+    {
+      "id": "IDT_EDIT_CUT",
+      "value": 40606
+    },
+    {
+      "id": "IDT_EDIT_COPY",
+      "value": 40607
+    },
+    {
+      "id": "IDT_EDIT_PASTE",
+      "value": 40608
+    },
+    {
+      "id": "IDT_EDIT_FIND",
+      "value": 40609
+    },
+    {
+      "id": "IDT_EDIT_REPLACE",
+      "value": 40610
+    },
+    {
+      "id": "IDT_VIEW_WORDWRAP",
+      "value": 40611
+    },
+    {
+      "id": "IDT_VIEW_ZOOMIN",
+      "value": 40612
+    },
+    {
+      "id": "IDT_VIEW_ZOOMOUT",
+      "value": 40613
+    },
+    {
+      "id": "IDT_VIEW_SCHEME",
+      "value": 40614
+    },
+    {
+      "id": "IDT_VIEW_SCHEMECONFIG",
+      "value": 40615
+    },
+    {
+      "id": "IDT_FILE_EXIT",
+      "value": 40616
+    },
+    {
+      "id": "IDT_FILE_SAVEAS",
+      "value": 40617
+    },
+    {
+      "id": "IDT_FILE_SAVECOPY",
+      "value": 40618
+    },
+    {
+      "id": "IDT_EDIT_DELETE",
+      "value": 40619
+    },
+    {
+      "id": "IDT_FILE_PRINT",
+      "value": 40620
+    },
+    {
+      "id": "IDT_FILE_OPENFAV",
+      "value": 40621
+    },
+    {
+      "id": "IDT_FILE_ADDTOFAV",
+      "value": 40622
+    },
+    {
+      "id": "IDT_VIEW_TOGGLEFOLDS",
+      "value": 40623
+    },
+    {
+      "id": "IDT_FILE_LAUNCH",
+      "value": 40624
+    },
+    {
+      "id": "IDT_VIEW_ALWAYSONTOP",
+      "value": 40625
+    },
+    {
+      "id": "IDT_FILE_NEWWINDOW",
+      "value": 40626
+    }
+  ],
+  "status_items": [
+    "StatusItem_Line",
+    "StatusItem_Column",
+    "StatusItem_Character",
+    "StatusItem_Selection",
+    "StatusItem_SelectedLine",
+    "StatusItem_Find",
+    "StatusItem_Empty",
+    "StatusItem_Lexer",
+    "StatusItem_Encoding",
+    "StatusItem_EolMode",
+    "StatusItem_OvrMode",
+    "StatusItem_Zoom",
+    "StatusItem_DocSize"
+  ],
+  "legacy_command_cases": [
+    "IDM_CMDLINE_HELP",
+    "IDM_EDIT_ALIGN",
+    "IDM_EDIT_BASE64_DECODE",
+    "IDM_EDIT_BASE64_DECODE_AS_HEX",
+    "IDM_EDIT_BASE64_ENCODE",
+    "IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE",
+    "IDM_EDIT_BASE64_SAFE_ENCODE",
+    "IDM_EDIT_CHAR2HEX",
+    "IDM_EDIT_CLEARCLIPBOARD",
+    "IDM_EDIT_CLEARDOCUMENT",
+    "IDM_EDIT_CODE_COMPRESS",
+    "IDM_EDIT_CODE_PRETTY",
+    "IDM_EDIT_COLUMNWRAP",
+    "IDM_EDIT_COMPLETEWORD",
+    "IDM_EDIT_COMPRESSWS",
+    "IDM_EDIT_CONVERTLOWERCASE",
+    "IDM_EDIT_CONVERTSPACES",
+    "IDM_EDIT_CONVERTSPACES2",
+    "IDM_EDIT_CONVERTTABS",
+    "IDM_EDIT_CONVERTTABS2",
+    "IDM_EDIT_CONVERTUPPERCASE",
+    "IDM_EDIT_COPY",
+    "IDM_EDIT_COPYADD",
+    "IDM_EDIT_COPYALL",
+    "IDM_EDIT_COPYLINE",
+    "IDM_EDIT_COPYRTF",
+    "IDM_EDIT_CUT",
+    "IDM_EDIT_CUTLINE",
+    "IDM_EDIT_DELETE",
+    "IDM_EDIT_DELETELINE",
+    "IDM_EDIT_DELETELINELEFT",
+    "IDM_EDIT_DELETELINERIGHT",
+    "IDM_EDIT_DUPLICATELINE",
+    "IDM_EDIT_ENCLOSESELECTION",
+    "IDM_EDIT_ESCAPECCHARS",
+    "IDM_EDIT_FIND",
+    "IDM_EDIT_FINDMATCHINGBRACE",
+    "IDM_EDIT_FINDNEXT",
+    "IDM_EDIT_FINDPREV",
+    "IDM_EDIT_GOTOLINE",
+    "IDM_EDIT_GOTO_BLOCK_END",
+    "IDM_EDIT_GOTO_BLOCK_START",
+    "IDM_EDIT_GOTO_NEXT_BLOCK",
+    "IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK",
+    "IDM_EDIT_GOTO_PREVIOUS_BLOCK",
+    "IDM_EDIT_GOTO_PREV_SIBLING_BLOCK",
+    "IDM_EDIT_HEX2CHAR",
+    "IDM_EDIT_INDENT",
+    "IDM_EDIT_INSERT_ENCODING",
+    "IDM_EDIT_INSERT_FILENAME",
+    "IDM_EDIT_INSERT_GUID",
+    "IDM_EDIT_INSERT_LOC_DATE",
+    "IDM_EDIT_INSERT_LOC_DATETIME",
+    "IDM_EDIT_INSERT_LONGDATE",
+    "IDM_EDIT_INSERT_PATHNAME",
+    "IDM_EDIT_INSERT_SHEBANG",
+    "IDM_EDIT_INSERT_SHORTDATE",
+    "IDM_EDIT_INSERT_TIMESTAMP",
+    "IDM_EDIT_INSERT_TIMESTAMP_MS",
+    "IDM_EDIT_INSERT_TIMESTAMP_NS",
+    "IDM_EDIT_INSERT_TIMESTAMP_US",
+    "IDM_EDIT_INSERT_UTC_DATETIME",
+    "IDM_EDIT_INSERT_XMLTAG",
+    "IDM_EDIT_INVERTCASE",
+    "IDM_EDIT_JOINLINES",
+    "IDM_EDIT_JOINLINESEX",
+    "IDM_EDIT_LINECOMMENT",
+    "IDM_EDIT_LINETRANSPOSE",
+    "IDM_EDIT_MAP_BENGALI_LATIN",
+    "IDM_EDIT_MAP_CYRILLIC_LATIN",
+    "IDM_EDIT_MAP_DEVANAGARI_LATIN",
+    "IDM_EDIT_MAP_FULLWIDTH",
+    "IDM_EDIT_MAP_HALFWIDTH",
+    "IDM_EDIT_MAP_HANGUL_DECOMPOSITION",
+    "IDM_EDIT_MAP_HANJA_HANGUL",
+    "IDM_EDIT_MAP_HIRAGANA",
+    "IDM_EDIT_MAP_KATAKANA",
+    "IDM_EDIT_MAP_MALAYALAM_LATIN",
+    "IDM_EDIT_MAP_SIMPLIFIED_CHINESE",
+    "IDM_EDIT_MAP_TRADITIONAL_CHINESE",
+    "IDM_EDIT_MERGEBLANKLINES",
+    "IDM_EDIT_MERGEDUPLICATELINE",
+    "IDM_EDIT_MODIFYLINES",
+    "IDM_EDIT_MOVELINEDOWN",
+    "IDM_EDIT_MOVELINEUP",
+    "IDM_EDIT_NUM2BIN",
+    "IDM_EDIT_NUM2DEC",
+    "IDM_EDIT_NUM2HEX",
+    "IDM_EDIT_NUM2OCT",
+    "IDM_EDIT_PADWITHSPACES",
+    "IDM_EDIT_PASTE",
+    "IDM_EDIT_REDO",
+    "IDM_EDIT_REMOVEBLANKLINES",
+    "IDM_EDIT_REMOVEDUPLICATELINE",
+    "IDM_EDIT_REPLACE",
+    "IDM_EDIT_REPLACENEXT",
+    "IDM_EDIT_SAVEFIND",
+    "IDM_EDIT_SELECTALL",
+    "IDM_EDIT_SELECTIONDUPLICATE",
+    "IDM_EDIT_SELECTLINE",
+    "IDM_EDIT_SELECTLINE_BLOCK",
+    "IDM_EDIT_SELECTWORD",
+    "IDM_EDIT_SELTODOCEND",
+    "IDM_EDIT_SELTODOCSTART",
+    "IDM_EDIT_SELTOMATCHINGBRACE",
+    "IDM_EDIT_SELTONEXT",
+    "IDM_EDIT_SELTOPREV",
+    "IDM_EDIT_SENTENCECASE",
+    "IDM_EDIT_SHOW_CHAR_INFO",
+    "IDM_EDIT_SHOW_HEX",
+    "IDM_EDIT_SORTLINES",
+    "IDM_EDIT_SPLITLINES",
+    "IDM_EDIT_STREAMCOMMENT",
+    "IDM_EDIT_STRIP1STCHAR",
+    "IDM_EDIT_STRIPLASTCHAR",
+    "IDM_EDIT_SWAP",
+    "IDM_EDIT_TITLECASE",
+    "IDM_EDIT_TRIMLEAD",
+    "IDM_EDIT_TRIMLINES",
+    "IDM_EDIT_UNDO",
+    "IDM_EDIT_UNESCAPECCHARS",
+    "IDM_EDIT_UNINDENT",
+    "IDM_EDIT_URLCOMPONENTENCODE",
+    "IDM_EDIT_URLDECODE",
+    "IDM_EDIT_URLENCODE",
+    "IDM_EDIT_XHTML_ESCAPE_CHAR",
+    "IDM_EDIT_XHTML_UNESCAPE_CHAR",
+    "IDM_ENCODING_ANSI",
+    "IDM_ENCODING_SELECT",
+    "IDM_ENCODING_SETDEFAULT",
+    "IDM_ENCODING_UNICODE",
+    "IDM_ENCODING_UNICODEREV",
+    "IDM_ENCODING_UTF8",
+    "IDM_ENCODING_UTF8SIGN",
+    "IDM_FILE_ADDTOFAV",
+    "IDM_FILE_BROWSE",
+    "IDM_FILE_CREATELINK",
+    "IDM_FILE_EXIT",
+    "IDM_FILE_LARGE_FILE_MODE",
+    "IDM_FILE_LARGE_FILE_MODE_RELOAD",
+    "IDM_FILE_LAUNCH",
+    "IDM_FILE_MANAGEFAV",
+    "IDM_FILE_NEW",
+    "IDM_FILE_NEWWINDOW",
+    "IDM_FILE_NEWWINDOW2",
+    "IDM_FILE_OPEN",
+    "IDM_FILE_OPENFAV",
+    "IDM_FILE_OPENWITH",
+    "IDM_FILE_OPEN_CONTAINING_FOLDER",
+    "IDM_FILE_PAGESETUP",
+    "IDM_FILE_PRINT",
+    "IDM_FILE_PROPERTIES",
+    "IDM_FILE_READONLY_FILE",
+    "IDM_FILE_READONLY_MODE",
+    "IDM_FILE_RECENT",
+    "IDM_FILE_RELAUNCH_ELEVATED",
+    "IDM_FILE_RESTART",
+    "IDM_FILE_REVERT",
+    "IDM_FILE_RUN",
+    "IDM_FILE_SAVE",
+    "IDM_FILE_SAVEAS",
+    "IDM_FILE_SAVEBACKUP",
+    "IDM_FILE_SAVECOPY",
+    "IDM_FILE_SAVEORIGINALTIMESTAMP",
+    "IDM_FILE_UPDATE_TIMESTAMP",
+    "IDM_HELP_ABOUT",
+    "IDM_HELP_FEATURE_REQUEST",
+    "IDM_HELP_LATEST_BUILD",
+    "IDM_HELP_LATEST_RELEASE",
+    "IDM_HELP_ONLINE_WIKI",
+    "IDM_HELP_PROJECT_HOME",
+    "IDM_HELP_REPORT_ISSUE",
+    "IDM_INSERT_UNICODE_AAFS",
+    "IDM_INSERT_UNICODE_ALM",
+    "IDM_INSERT_UNICODE_ASS",
+    "IDM_INSERT_UNICODE_FSI",
+    "IDM_INSERT_UNICODE_IAFS",
+    "IDM_INSERT_UNICODE_ISS",
+    "IDM_INSERT_UNICODE_LRE",
+    "IDM_INSERT_UNICODE_LRI",
+    "IDM_INSERT_UNICODE_LRM",
+    "IDM_INSERT_UNICODE_LRO",
+    "IDM_INSERT_UNICODE_LS",
+    "IDM_INSERT_UNICODE_NADS",
+    "IDM_INSERT_UNICODE_NODS",
+    "IDM_INSERT_UNICODE_PDF",
+    "IDM_INSERT_UNICODE_PDI",
+    "IDM_INSERT_UNICODE_PS",
+    "IDM_INSERT_UNICODE_RLE",
+    "IDM_INSERT_UNICODE_RLI",
+    "IDM_INSERT_UNICODE_RLM",
+    "IDM_INSERT_UNICODE_RLO",
+    "IDM_INSERT_UNICODE_RS",
+    "IDM_INSERT_UNICODE_SHY",
+    "IDM_INSERT_UNICODE_US",
+    "IDM_INSERT_UNICODE_WJ",
+    "IDM_INSERT_UNICODE_ZWJ",
+    "IDM_INSERT_UNICODE_ZWNJ",
+    "IDM_INSERT_UNICODE_ZWSP",
+    "IDM_LANG_CHINESE_SIMPLIFIED",
+    "IDM_LANG_CHINESE_TRADITIONAL",
+    "IDM_LANG_ENGLISH_US",
+    "IDM_LANG_FRENCH_FRANCE",
+    "IDM_LANG_GERMAN",
+    "IDM_LANG_ITALIAN",
+    "IDM_LANG_JAPANESE",
+    "IDM_LANG_KOREAN",
+    "IDM_LANG_POLISH",
+    "IDM_LANG_PORTUGUESE_BRAZIL",
+    "IDM_LANG_RUSSIAN",
+    "IDM_LANG_SLOVENIAN",
+    "IDM_LANG_USER_DEFAULT",
+    "IDM_LINEENDINGS_CR",
+    "IDM_LINEENDINGS_CRLF",
+    "IDM_LINEENDINGS_LF",
+    "IDM_LINEENDINGS_SETDEFAULT",
+    "IDM_LINE_SELECTION_MODE_NONE",
+    "IDM_LINE_SELECTION_MODE_NORMAL",
+    "IDM_LINE_SELECTION_MODE_OLDVS",
+    "IDM_LINE_SELECTION_MODE_VS",
+    "IDM_RECODE_SELECT",
+    "IDM_SET_BIDIRECTIONAL_L2R",
+    "IDM_SET_BIDIRECTIONAL_NONE",
+    "IDM_SET_BIDIRECTIONAL_R2L",
+    "IDM_SET_FILE_AUTOSAVE",
+    "IDM_SET_LATEX_INPUT_METHOD",
+    "IDM_SET_MULTIPLE_SELECTION",
+    "IDM_SET_OPEN_FOLDER_MATEPATH",
+    "IDM_SET_PASTEBUFFERASFINDTEXT",
+    "IDM_SET_RENDER_TECH_D2D",
+    "IDM_SET_RENDER_TECH_D2DDC",
+    "IDM_SET_RENDER_TECH_D2DRETAIN",
+    "IDM_SET_RENDER_TECH_D3D",
+    "IDM_SET_RENDER_TECH_GDI",
+    "IDM_SET_RTL_LAYOUT_EDIT",
+    "IDM_SET_RTL_LAYOUT_OTHER",
+    "IDM_SET_SELECTIONASFINDTEXT",
+    "IDM_SET_SYSTEM_INTEGRATION",
+    "IDM_SET_UNDO_REDO_SELECTION",
+    "IDM_SET_USE_INLINE_IME",
+    "IDM_VIEW_ALWAYSONTOP",
+    "IDM_VIEW_AUTOCOMPLETION_IGNORECASE",
+    "IDM_VIEW_AUTOCOMPLETION_SETTINGS",
+    "IDM_VIEW_AUTO_SCALE_TOOLBAR",
+    "IDM_VIEW_CARET_STYLE_BLOCK",
+    "IDM_VIEW_CARET_STYLE_BLOCK_OVR",
+    "IDM_VIEW_CARET_STYLE_NOBLINK",
+    "IDM_VIEW_CARET_STYLE_SELECTION",
+    "IDM_VIEW_CARET_STYLE_WIDTH1",
+    "IDM_VIEW_CARET_STYLE_WIDTH2",
+    "IDM_VIEW_CARET_STYLE_WIDTH3",
+    "IDM_VIEW_CHANGENOTIFY",
+    "IDM_VIEW_CHANGE_HISTORY_MARKER",
+    "IDM_VIEW_CLEARWINPOS",
+    "IDM_VIEW_CUSTOMIZE_TOOLBAR",
+    "IDM_VIEW_DEFAULT_CODE_FONT",
+    "IDM_VIEW_DEFAULT_TEXT_FONT",
+    "IDM_VIEW_ESCEXIT",
+    "IDM_VIEW_ESCMINIMIZE",
+    "IDM_VIEW_FOLD_ALL",
+    "IDM_VIEW_FOLD_CURRENT_BLOCK",
+    "IDM_VIEW_FOLD_CURRENT_LEVEL",
+    "IDM_VIEW_FOLD_DEFAULT",
+    "IDM_VIEW_FOLD_LEVEL1",
+    "IDM_VIEW_FOLD_LEVEL10",
+    "IDM_VIEW_FOLD_LEVEL2",
+    "IDM_VIEW_FOLD_LEVEL3",
+    "IDM_VIEW_FOLD_LEVEL4",
+    "IDM_VIEW_FOLD_LEVEL5",
+    "IDM_VIEW_FOLD_LEVEL6",
+    "IDM_VIEW_FOLD_LEVEL7",
+    "IDM_VIEW_FOLD_LEVEL8",
+    "IDM_VIEW_FOLD_LEVEL9",
+    "IDM_VIEW_FONTQUALITY_CLEARTYPE",
+    "IDM_VIEW_FONTQUALITY_DEFAULT",
+    "IDM_VIEW_FONTQUALITY_NONE",
+    "IDM_VIEW_FONTQUALITY_STANDARD",
+    "IDM_VIEW_FULLSCREEN_HIDE_TITLE",
+    "IDM_VIEW_FULLSCREEN_ON_START",
+    "IDM_VIEW_HIGHLIGHTCURRENTLINE_BACK",
+    "IDM_VIEW_HIGHLIGHTCURRENTLINE_FRAME",
+    "IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE",
+    "IDM_VIEW_HIGHLIGHTCURRENTLINE_SUBLINE",
+    "IDM_VIEW_HIGHLIGHTCURRENT_BLOCK",
+    "IDM_VIEW_LINENUMBERS",
+    "IDM_VIEW_LONGLINEMARKER",
+    "IDM_VIEW_LONGLINESETTINGS",
+    "IDM_VIEW_MARGIN",
+    "IDM_VIEW_MARKOCCURRENCES_BOOKMARK",
+    "IDM_VIEW_MARKOCCURRENCES_CASE",
+    "IDM_VIEW_MARKOCCURRENCES_OFF",
+    "IDM_VIEW_MARKOCCURRENCES_WORD",
+    "IDM_VIEW_MATCHBRACES",
+    "IDM_VIEW_MENU",
+    "IDM_VIEW_MINTOTRAY",
+    "IDM_VIEW_NOESCFUNC",
+    "IDM_VIEW_NOSAVEFINDREPL",
+    "IDM_VIEW_NOSAVERECENT",
+    "IDM_VIEW_RESETZOOM",
+    "IDM_VIEW_REUSEWINDOW",
+    "IDM_VIEW_SAVEBEFORERUNNINGTOOLS",
+    "IDM_VIEW_SAVESETTINGS",
+    "IDM_VIEW_SAVESETTINGSNOW",
+    "IDM_VIEW_SCHEME",
+    "IDM_VIEW_SCHEME_CONFIG",
+    "IDM_VIEW_SCHEME_FAVORITE",
+    "IDM_VIEW_SCROLLPASTLASTLINE_HALF",
+    "IDM_VIEW_SCROLLPASTLASTLINE_NO",
+    "IDM_VIEW_SCROLLPASTLASTLINE_ONE",
+    "IDM_VIEW_SCROLLPASTLASTLINE_QUARTER",
+    "IDM_VIEW_SCROLLPASTLASTLINE_THIRD",
+    "IDM_VIEW_SHOWCALLTIP_ABGR",
+    "IDM_VIEW_SHOWCALLTIP_ARGB",
+    "IDM_VIEW_SHOWCALLTIP_BGRA",
+    "IDM_VIEW_SHOWCALLTIP_OFF",
+    "IDM_VIEW_SHOWCALLTIP_RGBA",
+    "IDM_VIEW_SHOWEOLS",
+    "IDM_VIEW_SHOWEXCERPT",
+    "IDM_VIEW_SHOWFILENAMEFIRST",
+    "IDM_VIEW_SHOWFILENAMEONLY",
+    "IDM_VIEW_SHOWFULLPATH",
+    "IDM_VIEW_SHOWINDENTGUIDES",
+    "IDM_VIEW_SHOWWHITESPACE",
+    "IDM_VIEW_SHOW_FOLDING",
+    "IDM_VIEW_SINGLEFILEINSTANCE",
+    "IDM_VIEW_STATUSBAR",
+    "IDM_VIEW_STICKY_WINDOW_POSITION",
+    "IDM_VIEW_STYLE_THEME_DARK",
+    "IDM_VIEW_STYLE_THEME_DEFAULT",
+    "IDM_VIEW_TABSASSPACES",
+    "IDM_VIEW_TABSETTINGS",
+    "IDM_VIEW_TOGGLE_FULLSCREEN",
+    "IDM_VIEW_TOOLBAR",
+    "IDM_VIEW_TRANSPARENT",
+    "IDM_VIEW_TRANSPARENT_INACTIVE",
+    "IDM_VIEW_UNICODE_CONTROL_CHAR",
+    "IDM_VIEW_USEDEFAULT_CODESTYLE",
+    "IDM_VIEW_USE_LARGE_TOOLBAR",
+    "IDM_VIEW_WORDWRAP",
+    "IDM_VIEW_WORDWRAPSETTINGS",
+    "IDM_VIEW_WORDWRAPSYMBOLS",
+    "IDM_VIEW_ZOOMIN",
+    "IDM_VIEW_ZOOMOUT",
+    "IDM_VIEW_ZOOM_LEVEL"
+  ],
+  "accelerator_resources": [
+    "IDR_MAINWND",
+    "IDR_ACCFINDREPLACE"
+  ]
+}

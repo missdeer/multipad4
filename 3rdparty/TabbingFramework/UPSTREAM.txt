@@ -1,0 +1,3 @@
+Source: https://github.com/simonsteele/pn/tree/618ea4ad538b26a8795b1cdaa684f08b72d31d09/pnwtl/TabbingFramework
+Revision: 618ea4ad538b26a8795b1cdaa684f08b72d31d09
+Preserve per-file author/license notices.

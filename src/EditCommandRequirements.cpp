@@ -1,0 +1,134 @@
+#include "EditCommandRequirements.h"
+#include "resource.h"
+namespace {
+constexpr UINT menuRequiresDoc[] = {
+    BME_EDIT_BOOKMARKCLEAR,
+    BME_EDIT_BOOKMARKNEXT,
+    BME_EDIT_BOOKMARKPREV,
+    BME_EDIT_BOOKMARKSELECT,
+    BME_EDIT_BOOKMARKTOGGLE,
+    CMD_CTRLBACK,
+    CMD_CTRLDEL,
+    CMD_OPEN_CONTAINING_FOLDER,
+    CMD_OPEN_PATH_OR_LINK,
+    CMD_TIMESTAMPS,
+    IDM_EDIT_CLEARDOCUMENT,
+    IDM_EDIT_COMPLETEWORD,
+    IDM_EDIT_COPY,
+    IDM_EDIT_COPYALL,
+    IDM_EDIT_CUT,
+    IDM_EDIT_DELETE,
+    IDM_EDIT_DELETELINELEFT,
+    IDM_EDIT_DELETELINERIGHT,
+    IDM_EDIT_FIND,
+    IDM_EDIT_FINDMATCHINGBRACE,
+    IDM_EDIT_FINDNEXT,
+    IDM_EDIT_FINDPREV,
+    IDM_EDIT_GOTOLINE,
+    IDM_EDIT_GOTO_BLOCK_END,
+    IDM_EDIT_GOTO_BLOCK_START,
+    IDM_EDIT_GOTO_NEXT_BLOCK,
+    IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK,
+    IDM_EDIT_GOTO_PREVIOUS_BLOCK,
+    IDM_EDIT_GOTO_PREV_SIBLING_BLOCK,
+    IDM_EDIT_REPLACE,
+    IDM_EDIT_REPLACENEXT,
+    IDM_EDIT_SAVEFIND,
+    IDM_EDIT_SELECTALL,
+    IDM_EDIT_SELECTLINE,
+    IDM_EDIT_SELECTLINE_BLOCK,
+    IDM_EDIT_SELECTWORD,
+    IDM_EDIT_SELTODOCEND,
+    IDM_EDIT_SELTODOCSTART,
+    IDM_EDIT_SELTOMATCHINGBRACE,
+    IDM_EDIT_SELTONEXT,
+    IDM_EDIT_SELTOPREV,
+};
+constexpr UINT menuRequiresSelection[] = {
+    CMD_CUSTOM_ACTION1,
+    CMD_CUSTOM_ACTION2,
+    CMD_JUMP2SELEND,
+    CMD_JUMP2SELSTART,
+    CMD_ONLINE_SEARCH_BING,
+    CMD_ONLINE_SEARCH_GOOGLE,
+    CMD_ONLINE_SEARCH_WIKI,
+    CMD_CALCULATE_EXPR,
+    CMD_EVALUATE_JS_EXPR,
+    IDM_EDIT_BASE64_DECODE,
+    IDM_EDIT_BASE64_DECODE_AS_HEX,
+    IDM_EDIT_BASE64_ENCODE,
+    IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE,
+    IDM_EDIT_BASE64_SAFE_ENCODE,
+    IDM_EDIT_CHAR2HEX,
+    IDM_EDIT_COLUMNWRAP,
+    IDM_EDIT_CONVERTLOWERCASE,
+    IDM_EDIT_CONVERTSPACES,
+    IDM_EDIT_CONVERTSPACES2,
+    IDM_EDIT_CONVERTTABS,
+    IDM_EDIT_CONVERTTABS2,
+    IDM_EDIT_CONVERTUPPERCASE,
+    IDM_EDIT_COPYADD,
+    IDM_EDIT_COPYRTF,
+    IDM_EDIT_ESCAPECCHARS,
+    IDM_EDIT_HEX2CHAR,
+    IDM_EDIT_INVERTCASE,
+    IDM_EDIT_JOINLINES,
+    IDM_EDIT_JOINLINESEX,
+    IDM_EDIT_MAP_BENGALI_LATIN,
+    IDM_EDIT_MAP_CYRILLIC_LATIN,
+    IDM_EDIT_MAP_DEVANAGARI_LATIN,
+    IDM_EDIT_MAP_FULLWIDTH,
+    IDM_EDIT_MAP_HALFWIDTH,
+    IDM_EDIT_MAP_HANGUL_DECOMPOSITION,
+    IDM_EDIT_MAP_HANJA_HANGUL,
+    IDM_EDIT_MAP_HIRAGANA,
+    IDM_EDIT_MAP_KATAKANA,
+    IDM_EDIT_MAP_MALAYALAM_LATIN,
+    IDM_EDIT_MAP_SIMPLIFIED_CHINESE,
+    IDM_EDIT_MAP_TRADITIONAL_CHINESE,
+    IDM_EDIT_NUM2BIN,
+    IDM_EDIT_NUM2DEC,
+    IDM_EDIT_NUM2HEX,
+    IDM_EDIT_NUM2OCT,
+    IDM_EDIT_SENTENCECASE,
+    IDM_EDIT_SHOW_HEX,
+    IDM_EDIT_SPLITLINES,
+    IDM_EDIT_TITLECASE,
+    IDM_EDIT_UNESCAPECCHARS,
+    IDM_EDIT_URLCOMPONENTENCODE,
+    IDM_EDIT_URLDECODE,
+    IDM_EDIT_URLENCODE,
+    IDM_EDIT_XHTML_ESCAPE_CHAR,
+    IDM_EDIT_XHTML_UNESCAPE_CHAR,
+    IDM_VIEW_SHOWEXCERPT,
+};
+} // namespace
+CommandState ConstrainUpstreamEditorState(const EditorDocument *document, UINT command, CommandState state) {
+    if (!state.supported || !state.enabled)
+        return state;
+    for (UINT item : menuRequiresDoc)
+        if (command == item && (!document || !document->Send(SCI_GETLENGTH))) {
+            state.enabled = false;
+            return state;
+        }
+    for (UINT item : menuRequiresSelection)
+        if (command == item && (!document || document->Send(SCI_GETSELECTIONEMPTY))) {
+            state.enabled = false;
+            return state;
+        }
+    if (command == IDM_EDIT_SORTLINES || command == IDM_EDIT_REMOVEDUPLICATELINE ||
+        command == IDM_EDIT_MERGEDUPLICATELINE) {
+        if (!document || document->Send(SCI_GETSELECTIONEMPTY))
+            state.enabled = false;
+        else {
+            auto first = document->Send(SCI_LINEFROMPOSITION, document->Send(SCI_GETSELECTIONSTART));
+            auto end = document->Send(SCI_GETSELECTIONEND), last = document->Send(SCI_LINEFROMPOSITION, end);
+            if (last > first && end <= document->Send(SCI_POSITIONFROMLINE, last))
+                --last;
+            state.enabled = last > first;
+        }
+    }
+    if (command == IDM_EDIT_SWAP && document)
+        state.enabled = state.enabled && (!document->Send(SCI_GETSELECTIONEMPTY) || document->Send(SCI_CANPASTE));
+    return state;
+}

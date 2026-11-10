@@ -1,0 +1,18 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include <atlres.h>
+#include "resource.h"
+// The complete upstream menu, accelerator table, dialogs and images are compiled
+// separately by cmake/Notepad4Resources.cmake. Only MDI additions belong here.
+IDR_MDIACCEL ACCELERATORS
+BEGIN
+ "S", ID_SAVEALL, VIRTKEY, CONTROL, ALT
+ "W", ID_CLOSE, VIRTKEY, CONTROL
+ VK_F4, ID_CLOSE, VIRTKEY, CONTROL
+ VK_TAB, ID_NEXTTAB, VIRTKEY, CONTROL
+ VK_TAB, ID_PREVTAB, VIRTKEY, CONTROL, SHIFT
+END
+STRINGTABLE
+BEGIN
+ IDR_MAINFRAME "MultiPad4\nMultiPad4\nMultiPad4\n\n\nMultiPad4.Document\nMultiPad4 Document"
+END

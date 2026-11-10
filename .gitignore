@@ -1,0 +1,7 @@
+/cmake-*-build/
+/out/
+/tmp/
+/.vs/
+CMakeUserPresets.json
+*.user
+/hang-dialog.png
