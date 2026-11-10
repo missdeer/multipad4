@@ -9,6 +9,20 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
         if (!ok) throw std::runtime_error("Matepath regression at line " + std::to_string(where.line()));
     };
     auto& pane = frame.matepath;
+    auto requireBackground = [&] {
+        RECT client{}; pane.GetClientRect(&client);
+        CClientDC windowDC(pane);
+        CDC memory; require(memory.CreateCompatibleDC(windowDC) != nullptr);
+        CBitmap bitmap; require(bitmap.CreateCompatibleBitmap(windowDC, client.right, client.bottom) != nullptr);
+        const auto oldBitmap = memory.SelectBitmap(bitmap);
+        // Seed uncovered space with a stale-content colour. The framework's
+        // default erase handler reports success without changing these pixels.
+        memory.FillSolidRect(&client, GetSysColor(COLOR_BTNFACE) ^ 0x00FFFFFF);
+        pane.SendMessage(WM_ERASEBKGND, reinterpret_cast<WPARAM>(memory.m_hDC));
+        const auto actual = memory.GetPixel(0, 0); // Margin outside all child controls.
+        memory.SelectBitmap(oldBitmap);
+        require(actual == GetSysColor(COLOR_BTNFACE));
+    };
     const auto previous = pane.directory;
     const auto cwd = std::filesystem::current_path();
     const auto folder = root / L"浏览目录";
@@ -48,8 +62,10 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
         pane.SetSide(side);
         require(side == DockSide::Floating ? !pane.IsDocking() : pane.IsDocking());
         require(pane.CurrentSide() == side);
+        requireBackground();
         pane.Toggle(); require(!pane.visible && pane.CurrentSide() == side);
         pane.Toggle(); require(pane.visible && pane.CurrentSide() == side);
+        requireBackground();
     }
     pane.Toggle(); require(!pane.visible); pane.Toggle(); require(pane.visible);
     frame.UpdateLayout(); CaptureQAWindow(frame, L"Matepath-docked");

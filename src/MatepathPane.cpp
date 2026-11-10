@@ -1,6 +1,8 @@
 #include "MatepathPane.h"
 #include <shlobj.h>
 #include <shlwapi.h>
+#include <uxtheme.h>
+#include <vsstyle.h>
 #include "Dlapi.h"
 
 namespace {
@@ -54,10 +56,14 @@ DockSide MatepathPane::CurrentSide() const {
     return side;
 }
 LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
+    tooltips.Create(m_hWnd, rcDefault, nullptr, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX);
     auto button = [&](CButton& control, int id, LPCWSTR text) {
-        control.Create(m_hWnd, rcDefault, text, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, id);
+        // Keep the descriptive caption for accessibility; draw only the icon.
+        control.Create(m_hWnd, rcDefault, text, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, 0, id);
+        CToolInfo info(TTF_IDISHWND | TTF_SUBCLASS, m_hWnd, reinterpret_cast<UINT_PTR>(control.m_hWnd), nullptr, const_cast<LPWSTR>(text));
+        tooltips.AddTool(&info);
     };
-    button(back, Back, L"←"); button(forward, Forward, L"→"); button(up, Up, L"↑"); button(reload, Reload, L"刷新");
+    button(back, Back, L"后退"); button(forward, Forward, L"前进"); button(up, Up, L"上一级"); button(reload, Reload, L"刷新");
     button(go, Go, L"转到"); button(apply, Filter, L"筛选");
     address.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Address);
     pattern.Create(m_hWnd, rcDefault, L"*.*", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Pattern);
@@ -72,12 +78,62 @@ LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     if (GetModuleFileNameW(nullptr, path, MAX_PATH)) Navigate(std::filesystem::path(path).parent_path());
     handled = FALSE; return 0;
 }
+LRESULT MatepathPane::OnEraseBackground(UINT, WPARAM dc, LPARAM, BOOL&) {
+    // The docking base suppresses erasure for panes covered by a single child.
+    // Our controls leave margins and gaps that need their own background.
+    RECT client{}; GetClientRect(&client);
+    FillRect(reinterpret_cast<HDC>(dc), &client, GetSysColorBrush(COLOR_BTNFACE));
+    return 1;
+}
+LRESULT MatepathPane::OnDrawButton(UINT, WPARAM, LPARAM l, BOOL& handled) {
+    const auto* item = reinterpret_cast<DRAWITEMSTRUCT*>(l);
+    if (item->CtlType != ODT_BUTTON || item->CtlID < Back || item->CtlID > Filter) {
+        handled = FALSE; return 0;
+    }
+    // Segoe MDL2 Assets: Back, Forward, Up, Refresh, Forward, Filter.
+    constexpr wchar_t glyphs[]{0xE72B, 0xE72A, 0xE74A, 0xE72C, 0xE72A, 0xE71C};
+    const bool disabled = (item->itemState & ODS_DISABLED) != 0;
+    const bool pressed = (item->itemState & ODS_SELECTED) != 0;
+    RECT rect = item->rcItem;
+    const int saved = SaveDC(item->hDC);
+    HTHEME theme = OpenThemeData(item->hwndItem, L"Button");
+    if (theme) {
+        const int state = disabled ? PBS_DISABLED : pressed ? PBS_PRESSED
+            : (item->itemState & ODS_HOTLIGHT) ? PBS_HOT
+            : (item->itemState & ODS_FOCUS) ? PBS_DEFAULTED : PBS_NORMAL;
+        DrawThemeParentBackground(item->hwndItem, item->hDC, &rect);
+        DrawThemeBackground(theme, item->hDC, BP_PUSHBUTTON, state, &rect, nullptr);
+        CloseThemeData(theme);
+    } else {
+        DrawFrameControl(item->hDC, &rect, DFC_BUTTON, DFCS_BUTTONPUSH
+            | (disabled ? DFCS_INACTIVE : 0) | (pressed ? DFCS_PUSHED : 0));
+        if (pressed) OffsetRect(&rect, 1, 1);
+    }
+    SelectObject(item->hDC, iconFont);
+    SetBkMode(item->hDC, TRANSPARENT);
+    SetTextColor(item->hDC, GetSysColor(disabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
+    DrawTextW(item->hDC, &glyphs[item->CtlID - Back], 1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    if ((item->itemState & (ODS_FOCUS | ODS_NOFOCUSRECT)) == ODS_FOCUS) {
+        RECT focus = item->rcItem; InflateRect(&focus, -3, -3);
+        DrawFocusRect(item->hDC, &focus);
+    }
+    RestoreDC(item->hDC, saved);
+    return TRUE;
+}
 void MatepathPane::Layout() {
     if (!list) return;
     RECT r{}; GetClientRect(&r);
     const int dpi = GetDpiForWindow(m_hWnd);
     auto px = [dpi](int value) { return MulDiv(value, dpi, 96); };
-    const int gap = px(4), row = px(25), width = max(0, static_cast<int>(r.right) - gap * 2), button = px(48);
+    if (iconDpi != dpi) {
+        if (iconFont) iconFont.DeleteObject();
+        iconFont.CreateFontW(-px(16), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets");
+        iconDpi = dpi;
+        for (HWND control : {back.m_hWnd, forward.m_hWnd, up.m_hWnd, reload.m_hWnd, go.m_hWnd, apply.m_hWnd})
+            ::InvalidateRect(control, nullptr, TRUE);
+    }
+    const int gap = px(4), row = px(25), width = max(0, static_cast<int>(r.right) - gap * 2), button = px(32);
     back.MoveWindow(gap, gap, px(32), row); forward.MoveWindow(gap + px(36), gap, px(32), row);
     up.MoveWindow(gap + px(72), gap, px(32), row); reload.MoveWindow(gap + px(108), gap, button, row);
     const int editWidth = max(0, width - button - gap);
@@ -219,5 +275,6 @@ LRESULT MatepathPane::OnDpi(UINT message, WPARAM, LPARAM l, BOOL& handled) {
 }
 LRESULT MatepathPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { ::PostMessageW(owner, WM_MATEPATH_ACTION, 0, 0); return 0; }
 LRESULT MatepathPane::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
+    if (tooltips.IsWindow()) tooltips.DestroyWindow();
     list.DeleteAllItems(); DirList_Destroy(list); handled = FALSE; return 0;
 }

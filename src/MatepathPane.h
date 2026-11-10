@@ -13,6 +13,9 @@ public:
     CListViewCtrl list;
     CEdit address, pattern;
     CButton back, forward, up, reload, go, apply;
+    CToolTipCtrl tooltips;
+    CFont iconFont;
+    int iconDpi = 0;
     std::filesystem::path directory;
     std::wstring fileSpec = L"*.*";
     bool visible = true, showHidden = false, reverse = false;
@@ -33,6 +36,8 @@ public:
     BOOL PreTranslateMessage(MSG* msg);
     BEGIN_MSG_MAP(MatepathPane)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
+        MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
+        MESSAGE_HANDLER(WM_DRAWITEM, OnDrawButton)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         MESSAGE_HANDLER(WM_CLOSE, OnClose)
@@ -44,6 +49,8 @@ public:
         CHAIN_MSG_MAP(Base)
     END_MSG_MAP()
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnDrawButton(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
