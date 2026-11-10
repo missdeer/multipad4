@@ -89,6 +89,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                     out << "\n}\n";
                 }
             } catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); result = 4; }
+            frame.matepath.DestroyPane();
             if (frame.dock.pane.IsWindow()) { if (frame.dock.pane.IsDocking()) frame.dock.pane.Undock(); frame.dock.pane.DestroyWindow(); }
             frame.DestroyWindow();
         } else {

@@ -22,6 +22,11 @@ foreach(framework TabbingFramework DockingFramework)
         "((m_MdiTabOwner.GetStyle() & WS_VISIBLE) != 0) ? m_MdiTabOwner.GetTabAreaHeight() : 0" contents "${contents}")
     endif()
     if(name STREQUAL "WndFrmPkg.h")
+      # CPtrFrame is a deque element and must have non-destructive copy
+      # semantics. Modern deque middle insertion may copy a saved value more
+      # than once; mutable auto_ptr steals it and leaves a null frame behind.
+      # Match the upstream USE_BOOST branch's shared ownership with the STL.
+      string(REPLACE "mutable std::auto_ptr<T> m_ptr;" "std::shared_ptr<T> m_ptr;" contents "${contents}")
       string(REPLACE "virtual void Move()=0;" "virtual ~CSplitterMoveTrackerBase() = default;\n\t\tvirtual void Move()=0;" contents "${contents}")
       string(REPLACE "static distance min_distance" "static typename T::distance min_distance" contents "${contents}")
       string(REPLACE "const distance dist=TMinDist;" "const typename T::distance dist=TMinDist;" contents "${contents}")
@@ -38,6 +43,23 @@ foreach(framework TabbingFramework DockingFramework)
     if(name STREQUAL "DockingWindow.h")
       # Disambiguate the dependent window handle from a function declaration.
       string(REPLACE "CWindowDC dc(m_hWnd);" "WTL::CWindowDC dc(this->m_hWnd);" contents "${contents}")
+      # Desktop XOR feedback is unreliable under DWM. Move floating windows
+      # during tracking, while retaining the framework's dock-target detection.
+      # Mouse messages are relative to the moving window, so keep the grab
+      # offset in screen coordinates rather than relative to its initial origin.
+      string(REPLACE "m_offset.cx=m_dockHdr.rect.left-pt.x;\n\t\t\tm_offset.cy=m_dockHdr.rect.top-pt.y;"
+        "m_liveMove=(::GetWindowLongPtr(m_dockHdr.hdr.hWnd,GWL_STYLE)&WS_CHILD)==0;\n\t\t\t::GetWindowRect(m_dockHdr.hdr.hWnd,&m_originalRect);\n\t\t\tCPoint screenPoint(pt);\n\t\t\t::ClientToScreen(m_dockHdr.hdr.hWnd,&screenPoint);\n\t\t\tm_offset.cx=m_dockHdr.rect.left-screenPoint.x;\n\t\t\tm_offset.cy=m_dockHdr.rect.top-screenPoint.y;" contents "${contents}")
+      string(REPLACE "void DrawGhostRect(CDC& dc,RECT* pRect)\n\t\t{"
+        "void DrawGhostRect(CDC& dc,RECT* pRect)\n\t\t{\n\t\t\tif(m_liveMove) return;" contents "${contents}")
+      string(REPLACE "void EndDrag(bool /*bCanceled*/)\n\t\t{\n\t\t\tCleanGhostRect(m_dc,&m_dockHdr.rect);"
+        "void EndDrag(bool bCanceled)\n\t\t{\n\t\t\tif(m_liveMove && bCanceled)\n\t\t\t\t::SetWindowPos(m_dockHdr.hdr.hWnd,NULL,m_originalRect.left,m_originalRect.top,m_originalRect.Width(),m_originalRect.Height(),SWP_NOZORDER|SWP_NOACTIVATE);\n\t\t\tCleanGhostRect(m_dc,&m_dockHdr.rect);" contents "${contents}")
+      string(REPLACE "m_dockHdr.rect.left=x;\n\t\t\tm_dockHdr.rect.top=y;"
+        "CPoint screenPoint(x,y);\n\t\t\t::ClientToScreen(m_dockHdr.hdr.hWnd,&screenPoint);\n\t\t\tm_dockHdr.rect.left=x;\n\t\t\tm_dockHdr.rect.top=y;" contents "${contents}")
+      string(REPLACE "m_dockHdr.rect.left=x+m_offset.cx;" "m_dockHdr.rect.left=screenPoint.x+m_offset.cx;" contents "${contents}")
+      string(REPLACE "m_dockHdr.rect.top=y+m_offset.cy;" "m_dockHdr.rect.top=screenPoint.y+m_offset.cy;" contents "${contents}")
+      string(REPLACE "DrawGhostRect(m_dc,&m_dockHdr.rect);\n\t\t}\n\t\tbool ProcessWindowMessage"
+        "if(m_liveMove)\n\t\t\t\t::SetWindowPos(m_dockHdr.hdr.hWnd,NULL,screenPoint.x+m_offset.cx,screenPoint.y+m_offset.cy,m_size.cx,m_size.cy,SWP_NOZORDER|SWP_NOACTIVATE);\n\t\t\tDrawGhostRect(m_dc,&m_dockHdr.rect);\n\t\t}\n\t\tbool ProcessWindowMessage" contents "${contents}")
+      string(REPLACE "const CDocker&\tm_docker;" "bool m_liveMove;\n\t\tCRect m_originalRect;\n\t\tconst CDocker&\tm_docker;" contents "${contents}")
     endif()
     if(name STREQUAL "TabbedFrame.h" OR name STREQUAL "TabbedMDI.h")
       string(REPLACE "TTabCtrl::TItem" "typename TTabCtrl::TItem" contents "${contents}")
