@@ -10,9 +10,13 @@ permissions:
 
 jobs:
   build:
-    name: MSVC x64 Release
+    name: MSVC x64 Release (${{ matrix.simd }})
     runs-on: windows-2022
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        simd: [SSE4.2, AVX2, AVX512]
 
     steps:
       - name: Check out source
@@ -24,7 +28,7 @@ jobs:
           arch: x64
 
       - name: Configure Release build
-        run: cmake --preset msvc-x64 -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+        run: cmake --preset msvc-x64 -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DMULTIPAD4_SIMD=${{ matrix.simd }}
 
       - name: Build multipad4
         run: cmake --build --preset msvc-x64 --target multipad4 --parallel 2
@@ -32,7 +36,7 @@ jobs:
       - name: Upload executable
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: multipad4-msvc-x64
+          name: multipad4-msvc-x64-${{ matrix.simd }}
           path: |
             cmake-msvc-build/multipad4.exe
             cmake-msvc-build/Notepad4 DarkTheme.ini

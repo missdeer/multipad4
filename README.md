@@ -31,7 +31,19 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 其他机器可在 x64 VS Developer Command Prompt 中使用 `msvc-x64` CMake configure/build/test presets。正式构建不依赖 `tmp` 或在线下载。
 
-GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 编译 x64 Release。成功后可从运行页面的 `multipad4-msvc-x64` artifact 下载 `multipad4.exe` 和配套的 `Notepad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。
+GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `Notepad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
+
+### SIMD 编译选项
+
+`CMakeLists.txt` 提供三选一的 `MULTIPAD4_SIMD` 缓存开关，默认 `SSE4.2`。应用、文件层、全部 lexer 配置和 Scintilla 使用同一指令集设置；AVX2/AVX512 会启用上游 `VectorISA.h` 中对应的条件分支。配置时会检查参数是否合法及编译器是否支持，避免无效 `/arch` 参数被忽略。
+
+| CMake 开关 | MSVC / oneAPI 编译参数 |
+|---|---|
+| `-DMULTIPAD4_SIMD=SSE4.2` | `/arch:SSE4.2` |
+| `-DMULTIPAD4_SIMD=AVX2` | `/arch:AVX2` |
+| `-DMULTIPAD4_SIMD=AVX512` | `/arch:AVX512` |
+
+例如，在 VS Developer Command Prompt 中使用 `cmake --preset msvc-x64 -DMULTIPAD4_SIMD=AVX2` 配置，再使用对应 build preset 编译。三档均要求 x64 工具链；可执行文件要求 CPU 和操作系统支持所选指令集，不进行运行时自动降级。
 
 ## 当前可运行功能
 
