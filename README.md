@@ -31,6 +31,8 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 其他机器可在 x64 VS Developer Command Prompt 中使用 `msvc-x64` CMake configure/build/test presets。正式构建不依赖 `tmp` 或在线下载。
 
+GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 编译 x64 Release。成功后可从运行页面的 `multipad4-msvc-x64` artifact 下载 `multipad4.exe` 和配套的 `Notepad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。
+
 ## 当前可运行功能
 
 - 多文档标签、拖动排序、独立撤销栈、Ctrl+Tab、原生 MDI 层叠/平铺。
