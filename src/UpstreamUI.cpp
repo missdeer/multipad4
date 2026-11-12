@@ -135,6 +135,9 @@ CommandState MainFrame::QueryState(UINT input) {
     case ID_NEW: case ID_OPEN: case ID_EXIT: case ID_ABOUT: case IDM_FILE_NEWWINDOW:
     case ID_DOCKLEFT: case ID_DOCKRIGHT: case ID_DOCKBOTTOM: case ID_FLOAT:
     case IDM_VIEW_CUSTOMIZE_TOOLBAR: return {true, true, false};
+    case ID_SEARCH_RESULTS: return {true, true, searchResults.visible};
+    case ID_FIND: case IDM_EDIT_REPLACE: return {true, true, false};
+    case ID_SEARCH_FILES: case ID_SEARCH_MARK: return {true, d != nullptr, false};
     case ID_DOCUMENTS: return {true, true, dock.visible};
     case ID_MATEPATH: return {true, true, matepath.visible};
     case ID_MATEPATH_FOLLOW: return {true, Active() && !Active()->path.empty(), false};
@@ -143,8 +146,8 @@ CommandState MainFrame::QueryState(UINT input) {
     case IDM_VIEW_ALWAYSONTOP: return {true, true, (GetExStyle() & WS_EX_TOPMOST) != 0};
     case ID_SAVEALL: case ID_CLOSEALL: case ID_NEXTTAB: case ID_PREVTAB: return {true, !documents.empty(), false};
     case IDM_FILE_REVERT: return {true, d && !d->path.empty(), false};
-    case ID_SAVE: case ID_SAVEAS: case IDM_FILE_SAVECOPY: case ID_CLOSE: case ID_FIND: case ID_FINDNEXT:
-    case IDM_EDIT_FINDPREV: case IDM_EDIT_REPLACE: case IDM_EDIT_GOTOLINE:
+    case ID_SAVE: case ID_SAVEAS: case IDM_FILE_SAVECOPY: case ID_CLOSE: case ID_FINDNEXT:
+    case IDM_EDIT_FINDPREV: case IDM_EDIT_GOTOLINE:
     case IDM_VIEW_ZOOM_LEVEL: case IDM_VIEW_LONGLINESETTINGS:
         return {true, d != nullptr, false};
     default: return {};

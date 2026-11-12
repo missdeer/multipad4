@@ -61,3 +61,18 @@ enumeration items, frees deleted list items through notification data, initializ
 Shell output data, and resolves icons on the owning STA instead of accessing
 Shell interfaces and controls from an un-marshaled worker thread. Host window,
 navigation history, settings and MDI dispatch are in `src/MatepathPane.*`.
+
+## Notepad++ search UI and result lexer
+
+Reference: user-provided `tmp/notepad-plus-plus` checkout at
+`61e17dde113e01f097939b111cac38427879864c`. Original search resource,
+resource IDs and LexSearchResult are preserved in `3rdparty/notepad-plus-plus`.
+`src/SearchDialog.rc` adapts the dialog layout (Copyright 2021 Don HO,
+GPL-3.0-or-later); `SearchDialog.cpp` and `SearchResultsPane.cpp` adapt its
+Find/Replace/Find in Files/Mark and Finder interaction to explicit WTL documents.
+`SearchResultLexer.cpp` adapts LexSearchResult's style/fold model (Copyright
+1998-2001 Neil Hodgson, Copyright 2003 Don HO, GPL-2.0-or-later) using container
+styling rather than the private Lexilla markings-pointer ABI. The upstream
+GPL license is included in `LICENSE`; Scintilla's notice in
+`COPYING.search-result` also applies to the original lexer. Distributing these
+adaptations requires complying with the applicable GPL terms.

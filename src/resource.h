@@ -30,3 +30,5 @@
 #define IDR_MDIACCEL 45010
 #define ID_MATEPATH 45011
 #define ID_MATEPATH_FOLLOW 45012
+
+#include "SearchResources.h"

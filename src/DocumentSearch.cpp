@@ -18,9 +18,9 @@ std::string TransformSlashes(const std::wstring &text) {
             continue;
         }
         wchar_t escape = text[i + 1];
-        auto position = std::wstring_view(L"\\abefnrtv").find(escape);
+        auto position = std::wstring_view(L"\\0abefnrtv").find(escape);
         if (position != std::wstring_view::npos) {
-            segment += L"\\\a\b\x1B\f\n\r\t\v"[position];
+            segment += L"\\\0\a\b\x1B\f\n\r\t\v"[position];
             ++i;
             continue;
         }
@@ -162,12 +162,15 @@ bool EditorDocument::ReplaceOne() {
     if (needle.empty())
         return false;
     auto start = Send(SCI_GETSELECTIONSTART), end = Send(SCI_GETSELECTIONEND);
-    if (Search(*this, needle, start, end) != start || Send(SCI_GETTARGETEND) != end)
+    if (start == end && (search.lastMatchStart != start || search.lastMatchEnd != end))
+        return false;
+    // Lookarounds may inspect text beyond the selected match.
+    if (Search(*this, needle, start, Send(SCI_GETLENGTH)) != start || Send(SCI_GETTARGETEND) != end)
         return false;
     auto replacement = Replacement(*this);
     auto size = Send(ReplaceMessage(*this), replacement.size(), reinterpret_cast<LPARAM>(replacement.data()));
     Send(SCI_SETSEL, start, start + size);
-    search.lastMatchStart = start;
+    search.lastMatchStart = end == start ? start + size : start;
     search.lastMatchEnd = start + size;
     return true;
 }
@@ -263,4 +266,29 @@ size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
             start = end;
     }
     return search.matches;
+}
+
+// Shared enumeration for Count, Mark and Finder. Positions are UTF-8 byte offsets.
+std::vector<SearchMatch> EditorDocument::CollectMatches(bool selectionOnly) {
+    const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);
+    struct Restore { EditorDocument& d; LRESULT flags, from, to;
+        ~Restore() { d.Send(SCI_SETSEARCHFLAGS, flags); d.Send(SCI_SETTARGETRANGE, from, to); }
+    } restore{*this, flags, from, to};
+    std::vector<SearchMatch> matches;
+    if (search.findText.empty()) return matches;
+    const auto needle = Needle(*this);
+    if (needle.empty()) return matches;
+    auto start = selectionOnly ? Send(SCI_GETSELECTIONSTART) : 0;
+    const auto limit = selectionOnly ? Send(SCI_GETSELECTIONEND) : Send(SCI_GETLENGTH);
+    const auto text = std::make_shared<const std::string>(Text());
+    while (start <= limit) {
+        auto found = Search(*this, needle, start, limit);
+        if (found < 0) break;
+        auto end = Send(SCI_GETTARGETEND), line = Send(SCI_LINEFROMPOSITION, found);
+        auto lineStart = Send(SCI_POSITIONFROMLINE, line);
+        matches.push_back({found, end, line, lineStart, text});
+        if (end == found) { if (end >= limit) break; start = Send(SCI_POSITIONAFTER, end); }
+        else start = end;
+    }
+    return matches;
 }

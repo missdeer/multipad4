@@ -23,7 +23,6 @@
 #include "../tests/SystemIntegrationRegistryTests.h"
 #include "../tests/CloseReentrancyTests.h"
 #include "../tests/ResizeGripTests.h"
-#include "../tests/SearchHelpTests.h"
 #include "../tests/ToolbarOpenTests.h"
 #include "../tests/EncodingTreePresentationTests.h"
 #include "../tests/QAArtifacts.h"
@@ -40,6 +39,7 @@ inline void RunSmokeTest(MainFrame& frame) {
     auto dir = std::filesystem::temp_directory_path() / (L"MultiPad4-smoke-" + std::to_wstring(GetCurrentProcessId()));
     std::filesystem::create_directories(dir);
     try {
+        RunSearchAvailabilityTests(frame);
         wchar_t className[32]{}; GetClassNameW(frame.m_hWndMDIClient, className, 32);
         require(wcscmp(className, L"MDIClient") == 0);
         frame.NewDocument(); auto* first = frame.Active(); require(first != nullptr);
@@ -92,7 +92,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunRuntimeFeatureTests(frame);
         RunRuntimeDialogTests(frame);
         RunSearchDialogFeatureTests(frame);
-        RunSearchHelpTests(frame);
+        RunSearchResultTargetTests(frame);
         RunToolbarOpenTests(frame);
         RunSessionFeatureTests(frame);
         RunAutoSaveFeatureTests(frame);

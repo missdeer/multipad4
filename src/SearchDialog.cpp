@@ -1,416 +1,463 @@
+// Notepad++ FindReplaceDlg interaction adapted to WTL document contexts.
+// Layout provenance and licensing: THIRD_PARTY.md.
 #include "SearchDialog.h"
-#include "EditSelection.h"
-#include "InfoDialog.h"
 #include "MainFrame.h"
-#include "resource.h"
+#include "EditSelection.h"
+#include <shlobj.h>
+#include <shlwapi.h>
 namespace {
-void ShowSearchHelp(HWND window, UINT resource) {
-    const wchar_t *value = nullptr;
-    const int length = LoadStringW(_Module.GetModuleInstance(), resource, reinterpret_cast<LPWSTR>(&value), 0);
-    if (length <= 0)
-        return;
-    // RT_STRING entries are counted strings, without a terminating NUL.
-    const std::wstring text(value, static_cast<size_t>(length));
-    const auto title = text.substr(0, text.find(L'\n'));
-    MessageBoxW(window, text.c_str(), title.c_str(), MB_OK);
-}
-std::wstring ResourceText(UINT resource, const wchar_t *fallback) {
-    wchar_t value[1024]{};
-    return LoadStringW(_Module.GetModuleInstance(), resource, value, 1024) ? std::wstring(value)
-                                                                           : std::wstring(fallback);
-}
 std::wstring Field(HWND window, int id) {
-    HWND control = GetDlgItem(window, id);
-    int length = GetWindowTextLengthW(control);
+    HWND control = GetDlgItem(window, id); int length = GetWindowTextLengthW(control);
     std::wstring value(static_cast<size_t>(length) + 1, L'\0');
-    GetWindowTextW(control, value.data(), length + 1);
-    value.resize(length);
-    return value;
+    value.resize(GetWindowTextW(control, value.data(), length + 1)); return value;
 }
-void Remember(std::vector<std::wstring> &history, const std::wstring &text) {
-    if (text.empty())
-        return;
-    std::erase(history, text);
-    history.insert(history.begin(), text);
-    if (history.size() > 32)
-        history.resize(32);
+void Remember(std::vector<std::wstring>& history, const std::wstring& value) {
+    if (value.empty()) return;
+    std::erase(history, value); history.insert(history.begin(), value);
+    if (history.size() > 32) history.resize(32);
 }
-void FillHistory(HWND window, int id, const std::vector<std::wstring> &history, const std::wstring &value) {
-    for (const auto &item : history)
-        SendDlgItemMessageW(window, id, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item.c_str()));
+void Fill(HWND window, int id, const std::vector<std::wstring>& history, const std::wstring& value) {
+    for (const auto& item : history) SendDlgItemMessageW(window, id, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item.c_str()));
     SetDlgItemTextW(window, id, value.c_str());
 }
-} // namespace
-BOOL SearchDialog::PreTranslateMessage(MSG *message) {
-    if (!hwnd || (message->hwnd != hwnd && !IsChild(hwnd, message->hwnd)))
-        return FALSE;
-    if (accelerators && TranslateAcceleratorW(hwnd, accelerators, message))
-        return TRUE;
+struct UseSearch {
+    EditorDocument& document; SearchState original;
+    UseSearch(EditorDocument& d, const SearchState& state) : document(d), original(d.search) { d.search = state; }
+    ~UseSearch() { document.search = std::move(original); }
+};
+}
+BOOL SearchDialog::PreTranslateMessage(MSG* message) {
+    if (!hwnd || (message->hwnd != hwnd && !IsChild(hwnd, message->hwnd))) return FALSE;
+    if (accelerators && TranslateAcceleratorW(hwnd, accelerators, message)) return TRUE;
     return IsDialogMessageW(hwnd, message);
 }
-void SearchDialog::Open(MainFrame &frame, EditorDocument &target, bool replace) {
-    if (hwnd && document == &target && replacing == replace) {
-        SetForegroundWindow(hwnd);
-        return;
+void SearchDialog::Open(MainFrame& frame, EditorDocument& target, bool replace) {
+    if (hwnd && document == &target) {
+        SetPage(replace ? 1 : 0);
+        SetDlgItemTextW(hwnd, IDC_FINDTEXT, target.search.findText.c_str());
+        ShowWindow(hwnd, SW_SHOW); SetForegroundWindow(hwnd); SetFocus(GetDlgItem(hwnd, IDC_FINDTEXT)); return;
     }
-    if (hwnd && document && owner &&
-        std::any_of(owner->documents.begin(), owner->documents.end(),
-                    [&](const auto &item) { return item.get() == document; }))
-        ReadFields();
-    Close();
-    owner = &frame;
-    document = &target;
-    replacing = replace;
-    target.search.closeAfterAction = replace ? target.search.closeAfterReplace : target.search.closeAfterFind;
-    if (!accelerators)
-        accelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
-    hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(replace ? IDD_REPLACE : IDD_FIND),
-                              frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
-    if (hwnd)
-        ShowWindow(hwnd, SW_SHOW);
+    Close(); owner = &frame; document = &target; replacing = replace; page = replace ? 1 : 0;
+    accelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
+    hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_SEARCH), frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
+    if (hwnd) ShowWindow(hwnd, SW_SHOW);
 }
 void SearchDialog::Close() {
-    if (hwnd && IsWindow(hwnd) && document && owner &&
-        std::any_of(owner->documents.begin(), owner->documents.end(),
-                    [&](const auto &item) { return item.get() == document; })) {
-        try {
-            ReadFields();
-        } catch (...) { /* Destruction must not throw through a Win32 callback. */
-        }
+    if (hwnd && IsWindow(hwnd)) {
+        if (fileRunning) FinishFiles(true);
+        if (document && owner && std::any_of(owner->documents.begin(), owner->documents.end(), [&](const auto& d) { return d.get() == document; })) ReadFields();
+        owner->settings.WriteString(L"Search", L"TransparentAlways", transparentAlways ? L"1" : L"0");
+        owner->settings.WriteString(L"Search", L"Opacity", std::to_wstring(opacity));
+        GetWindowRect(hwnd, &savedPosition); hasSavedPosition = true; DestroyWindow(hwnd);
     }
-    if (hwnd && IsWindow(hwnd))
-        DestroyWindow(hwnd);
-    hwnd = nullptr;
-    document = nullptr;
+    hwnd = nullptr; document = nullptr;
+}
+void SearchDialog::SyncDocument() {
+    if (!hwnd || !owner) return;
+    auto* target = owner->Active();
+    if (!target || target == document) return;
+    // The controls hold the ongoing query; changing tabs must not reload an
+    // older query or keep searching the editor from which the dialog opened.
+    ReadFields();
+    document = target;
+    ReadFields();
+    document->search.lastMatchStart = document->search.lastMatchEnd = -1;
 }
 bool SearchDialog::ReadFields() {
-    if (!document || !hwnd)
-        return false;
-    auto &search = document->search;
-    auto previous = search.findText;
-    const auto previousFlags = search.flags;
-    const bool previousRegex = search.regex, previousWildcard = search.wildcard,
-               previousTransform = search.transformBackslashes, previousDot = search.dotMatchesNewline,
-               previousBoost = search.useBoostRegex;
-    search.findText = Field(hwnd, IDC_FINDTEXT);
-    if (replacing)
-        search.replaceText = Field(hwnd, IDC_REPLACETEXT);
-    search.flags = (IsDlgButtonChecked(hwnd, IDC_FINDCASE) ? SCFIND_MATCHCASE : 0) |
-                   (IsDlgButtonChecked(hwnd, IDC_FINDWORD) ? SCFIND_WHOLEWORD : 0) |
-                   (IsDlgButtonChecked(hwnd, IDC_FINDSTART) ? SCFIND_WORDSTART : 0);
-    search.wrap = !IsDlgButtonChecked(hwnd, IDC_NOWRAP);
-    search.regex = IsDlgButtonChecked(hwnd, IDC_FINDREGEXP) == BST_CHECKED;
-    search.useBoostRegex = IsDlgButtonChecked(hwnd, IDC_FIND_CXXREGEX) == BST_CHECKED;
-    search.wildcard = IsDlgButtonChecked(hwnd, IDC_WILDCARDSEARCH) == BST_CHECKED;
-    search.transformBackslashes = IsDlgButtonChecked(hwnd, IDC_FINDTRANSFORMBS) == BST_CHECKED;
-    search.dotMatchesNewline = IsDlgButtonChecked(hwnd, IDC_FIND_DOTALL) == BST_CHECKED;
-    search.closeAfterAction = IsDlgButtonChecked(hwnd, IDC_FINDCLOSE) == BST_CHECKED;
-    if (replacing)
-        search.closeAfterReplace = search.closeAfterAction;
-    else
-        search.closeAfterFind = search.closeAfterAction;
-    search.bookmarkMatches = IsDlgButtonChecked(hwnd, IDC_FINDALLBOOKMARK) == BST_CHECKED;
-    search.useMonospaced = IsDlgButtonChecked(hwnd, IDC_USEMONOSPACEDFONT) == BST_CHECKED;
-    search.transparent = IsDlgButtonChecked(hwnd, IDC_TRANSPARENT) == BST_CHECKED;
-    if (previous != search.findText || previousFlags != search.flags || previousRegex != search.regex ||
-        previousWildcard != search.wildcard || previousTransform != search.transformBackslashes ||
-        previousDot != search.dotMatchesNewline || previousBoost != search.useBoostRegex)
-        search.lastMatchStart = search.lastMatchEnd = -1;
-    Remember(search.findHistory, search.findText);
-    if (replacing)
-        Remember(search.replaceHistory, search.replaceText);
-    return !search.findText.empty();
+    if (!hwnd || !document) return false;
+    auto& s = document->search;
+    const auto text = Field(hwnd, IDC_FINDTEXT);
+    const int flags = (IsDlgButtonChecked(hwnd, IDC_FINDCASE) == BST_CHECKED ? SCFIND_MATCHCASE : 0) |
+        (IsDlgButtonChecked(hwnd, IDC_FINDWORD) == BST_CHECKED ? SCFIND_WHOLEWORD : 0);
+    bool regex = IsDlgButtonChecked(hwnd, IDC_SEARCH_REGEX) == BST_CHECKED;
+    bool extended = IsDlgButtonChecked(hwnd, IDC_SEARCH_EXTENDED) == BST_CHECKED;
+    bool dot = IsDlgButtonChecked(hwnd, IDC_FIND_DOTALL) == BST_CHECKED;
+    if (s.findText != text || s.flags != flags || s.regex != regex || s.transformBackslashes != extended || s.dotMatchesNewline != dot)
+        s.lastMatchStart = s.lastMatchEnd = -1;
+    s.findText = text; s.replaceText = Field(hwnd, IDC_REPLACETEXT); s.flags = flags;
+    s.regex = regex; s.wildcard = false; s.transformBackslashes = extended; s.dotMatchesNewline = dot;
+    s.useBoostRegex = regex; s.wrap = IsDlgButtonChecked(hwnd, IDC_SEARCH_WRAP) == BST_CHECKED;
+    s.closeAfterAction = s.closeAfterFind = s.closeAfterReplace = false;
+    s.transparent = IsDlgButtonChecked(hwnd, IDC_SEARCH_TRANSPARENT) == BST_CHECKED;
+    s.bookmarkMatches = IsDlgButtonChecked(hwnd, IDC_FINDALLBOOKMARK) == BST_CHECKED;
+    Remember(s.findHistory, s.findText); Remember(s.replaceHistory, s.replaceText);
+    return !s.findText.empty();
+}
+bool SearchDialog::Chinese() const {
+    return PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE;
+}
+void SearchDialog::Localize() {
+    if (!Chinese()) return;
+    const std::pair<int, const wchar_t*> labels[] = {
+        {IDC_SEARCH_FIND_LABEL, L"查找目标(&F):"}, {IDC_SEARCH_REPLACE_LABEL, L"替换为(&L):"},
+        {IDC_SEARCH_FILTER_LABEL, L"文件类型(&S):"}, {IDC_SEARCH_DIRECTORY_LABEL, L"目录(&E):"},
+        {IDC_FINDWORD, L"全词匹配(&W)"}, {IDC_FINDCASE, L"匹配大小写(&C)"},
+        {IDC_SEARCH_RECURSIVE, L"包含子目录(&R)"}, {IDC_SEARCH_HIDDEN, L"包含隐藏目录(&H)"},
+        {IDC_SEARCH_BACKWARDS, L"反向查找"}, {IDC_SEARCH_WRAP, L"循环查找(&P)"},
+        {IDC_SEARCH_SELECTION, L"在选区中(&I)"}, {IDC_FINDALLBOOKMARK, L"标记所在行"},
+        {IDC_SEARCH_PURGE, L"每次查找前清除标记"}, {IDC_SEARCH_MODE_GROUP, L"查找模式"},
+        {IDC_SEARCH_NORMAL, L"普通(&N)"}, {IDC_SEARCH_EXTENDED, L"扩展(&X) (\\n, \\r, \\t, \\0, \\x...)"},
+        {IDC_SEARCH_REGEX, L"正则表达式(&G)"}, {IDC_FIND_DOTALL, L". 匹配新行"},
+        {IDC_SEARCH_TRANSPARENT, L"透明度(&Y)"}, {IDC_SEARCH_TRANSPARENT_LOST, L"失去焦点后"},
+        {IDC_SEARCH_TRANSPARENT_ALWAYS, L"始终"}, {IDOK, L"查找下一个"},
+        {IDC_FINDPREV, L"查找上一个"}, {IDC_SEARCH_COUNT, L"计数"},
+        {IDC_FINDALL, L"在当前文档中全部查找"}, {IDC_SEARCH_ALL_OPEN, L"在所有打开的文档中查找"},
+        {IDC_REPLACE, L"替换"}, {IDC_REPLACEALL, L"全部替换"},
+        {IDC_SEARCH_REPLACE_OPEN, L"在所有打开的文档中替换"}, {IDC_SEARCH_FILES, L"全部查找"},
+        {IDC_SEARCH_REPLACE_FILES, L"在文件中替换"}, {IDC_SEARCH_MARK, L"全部标记"},
+        {IDC_SEARCH_CLEAR_MARK, L"清除所有标记"}, {IDCANCEL, L"关闭"}
+    };
+    for (const auto& [id, text] : labels) SetDlgItemTextW(hwnd, id, text);
+}
+void SearchDialog::Layout() {
+    if (!layoutWidth) return;
+    RECT client{};
+    GetClientRect(hwnd, &client);
+    const int dx = client.right - layoutWidth;
+    for (const auto& control : controls) {
+        RECT r = control.rectangle;
+        const int id = GetDlgCtrlID(control.control);
+        if (control.right) OffsetRect(&r, dx, 0);
+        if (control.stretch) r.right += dx;
+        if (id == IDCANCEL && page == 2) {
+            RECT units{298, 62, 389, 76};
+            MapDialogRect(hwnd, &units);
+            r = units;
+            OffsetRect(&r, dx, 0);
+        }
+        if (id == IDC_SEARCH_STATUS && !expanded) {
+            RECT units{8, 138, 388, 146};
+            MapDialogRect(hwnd, &units);
+            r = units;
+            r.right += dx;
+        }
+        if (id == IDC_SEARCH_EXPAND && !expanded) {
+            RECT units{393, 122, 409, 136};
+            MapDialogRect(hwnd, &units);
+            r = units;
+            OffsetRect(&r, dx, 0);
+        }
+        SetWindowPos(control.control, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+void SearchDialog::ResizeHeight() {
+    RECT client{}, rectangle{}, units{0, 0, 0, 147};
+    GetClientRect(hwnd, &client);
+    GetWindowRect(hwnd, &rectangle);
+    MapDialogRect(hwnd, &units);
+    const int height = expanded ? layoutHeight : units.bottom;
+    SetWindowPos(hwnd, nullptr, 0, 0, rectangle.right - rectangle.left,
+        height + rectangle.bottom - rectangle.top - client.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    Layout();
+}
+void SearchDialog::UpdateTransparency() {
+    const bool enabled = IsDlgButtonChecked(hwnd, IDC_SEARCH_TRANSPARENT) == BST_CHECKED;
+    for (int id : {IDC_SEARCH_TRANSPARENT_LOST, IDC_SEARCH_TRANSPARENT_ALWAYS, IDC_SEARCH_OPACITY})
+        EnableWindow(GetDlgItem(hwnd, id), enabled);
+    LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+    if (enabled) {
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
+        SetLayeredWindowAttributes(hwnd, 0, static_cast<BYTE>((active && !transparentAlways) ? 255 : opacity), LWA_ALPHA);
+    } else if (style & WS_EX_LAYERED) {
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
+        RedrawWindow(hwnd, nullptr, nullptr, RDW_ERASE | RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
+    }
+}
+void SearchDialog::Status(const std::wstring& text) { SetDlgItemTextW(hwnd, IDC_SEARCH_STATUS, text.c_str()); }
+void SearchDialog::SetPage(int value) {
+    if (fileRunning) FinishFiles(true);
+    page = value; replacing = page == 1;
+    TabCtrl_SetCurSel(GetDlgItem(hwnd, IDC_SEARCH_TABS), page);
+    const wchar_t* names[] = {L"Find", L"Replace", L"Find in Files", L"Mark"};
+    const wchar_t* chineseNames[] = {L"查找", L"替换", L"文件中查找", L"标记"};
+    SetWindowTextW(hwnd, Chinese() ? chineseNames[page] : names[page]);
+    auto show = [&](int id, bool visible) { ShowWindow(GetDlgItem(hwnd, id), visible ? SW_SHOW : SW_HIDE); };
+    show(IDC_REPLACETEXT, page == 1 || page == 2); show(IDC_SEARCH_REPLACE_LABEL, page == 1 || page == 2);
+    show(IDC_SEARCH_SWAP, page == 1 || page == 2);
+
+    for (int id : {IDC_SEARCH_FILTER, IDC_SEARCH_FILTER_LABEL, IDC_SEARCH_DIRECTORY, IDC_SEARCH_DIRECTORY_LABEL,
+                   IDC_SEARCH_RECURSIVE, IDC_SEARCH_HIDDEN, IDC_SEARCH_BROWSE, IDC_SEARCH_CURRENT_DIRECTORY, IDC_SEARCH_FILTER_HELP, IDC_SEARCH_FILES, IDC_SEARCH_REPLACE_FILES}) show(id, page == 2);
+    for (int id : {IDOK, IDC_SEARCH_COUNT, IDC_FINDALL, IDC_SEARCH_ALL_OPEN}) show(id, page == 0);
+    show(IDOK, page == 0 || page == 1); show(IDC_FINDPREV, page == 0);
+    for (int id : {IDC_REPLACE, IDC_REPLACEALL, IDC_SEARCH_REPLACE_OPEN}) show(id, page == 1);
+    for (int id : {IDC_SEARCH_MARK, IDC_SEARCH_CLEAR_MARK, IDC_FINDALLBOOKMARK, IDC_SEARCH_PURGE}) show(id, page == 3);
+    show(IDC_SEARCH_BACKWARDS, page < 2); show(IDC_SEARCH_WRAP, page < 2);
+    show(IDC_SEARCH_SELECTION, page != 2);
+    SendMessageW(hwnd, DM_SETDEFID, page == 2 ? IDC_SEARCH_FILES : page == 3 ? IDC_SEARCH_MARK : IDOK, 0);
+    Status(L"");
+    for (int id : {IDC_SEARCH_MODE_GROUP, IDC_SEARCH_NORMAL, IDC_SEARCH_EXTENDED, IDC_SEARCH_REGEX,
+                   IDC_FIND_DOTALL, IDC_SEARCH_TRANSPARENT, IDC_SEARCH_TRANSPARENT_GROUP,
+                   IDC_SEARCH_TRANSPARENT_LOST, IDC_SEARCH_TRANSPARENT_ALWAYS, IDC_SEARCH_OPACITY}) show(id, expanded);
+    SetDlgItemTextW(hwnd, IDC_SEARCH_EXPAND, expanded ? L"⌃" : L"⌄");
+    ResizeHeight();
+}
+void SearchDialog::Execute(int command) {
+    if (fileRunning) { Status(L"A file search is running. Close to cancel."); return; }
+    // Resolve synchronously too: WM_MDIACTIVATE notifications are posted and
+    // may still be queued when a button or accelerator invokes this command.
+    SyncDocument();
+    if (!document) return;
+    if (command == IDC_SEARCH_CLEAR_MARK) {
+        document->Send(SCI_SETINDICATORCURRENT, 12); document->Send(SCI_INDICATORCLEARRANGE, 0, document->Send(SCI_GETLENGTH));
+        if (IsDlgButtonChecked(hwnd, IDC_FINDALLBOOKMARK) == BST_CHECKED) document->Send(SCI_MARKERDELETEALL, 0);
+        Status(L"Marks cleared."); return;
+    }
+    if (!ReadFields()) { Status(L"Enter text to find."); return; }
+    auto& target = *document;
+    bool selection = IsDlgButtonChecked(hwnd, IDC_SEARCH_SELECTION) == BST_CHECKED;
+    if (selection && RejectRectangularEdit(target)) return;
+    if (command == IDC_SEARCH_FILES || command == IDC_SEARCH_REPLACE_FILES) { StartFiles(command == IDC_SEARCH_REPLACE_FILES); return; }
+    if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) {
+        size_t count = 0, files = 0;
+        if (command != IDC_SEARCH_COUNT) owner->searchResults.Begin(target.search.findText);
+        auto collect = [&](EditorDocument& d, bool inSelection) {
+            auto matches = d.CollectMatches(inSelection); count += matches.size();
+            if (!matches.empty()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.Add(d, matches); }
+        };
+        if (command == IDC_SEARCH_ALL_OPEN) {
+            for (int i = 0; i < owner->tabs.GetPageCount(); ++i) {
+                auto& d = *static_cast<EditorDocument*>(owner->tabs.GetPageData(i)); UseSearch state(d, target.search); collect(d, false);
+            }
+        } else collect(target, selection);
+        if (command != IDC_SEARCH_COUNT) owner->searchResults.Finish(count, files);
+        Status(std::to_wstring(count) + L" matches in " + std::to_wstring(files) + L" documents."); return;
+    }
+    if (command == IDC_SEARCH_MARK) {
+        const auto matches = target.CollectMatches(selection);
+        target.Send(SCI_SETINDICATORCURRENT, 12); target.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX);
+        target.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
+        if (IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED) {
+            target.Send(SCI_INDICATORCLEARRANGE, 0, target.Send(SCI_GETLENGTH));
+            if (target.search.bookmarkMatches) target.Send(SCI_MARKERDELETEALL, 0);
+        }
+        for (const auto& m : matches) {
+            target.Send(SCI_INDICATORFILLRANGE, m.start, m.end - m.start);
+            if (target.search.bookmarkMatches) target.Send(SCI_MARKERADD, m.line, 0);
+        }
+        Status(std::to_wstring(matches.size()) + L" matches marked."); return;
+    }
+    if (command == IDC_REPLACEALL || command == IDC_SEARCH_REPLACE_OPEN) {
+        if (command == IDC_SEARCH_REPLACE_OPEN && MessageBoxW(hwnd, L"Replace all matches in all opened documents? Each document can be undone separately.", L"Replace", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
+        size_t count = 0;
+        if (command == IDC_SEARCH_REPLACE_OPEN) {
+            // Validate all patterns before modifying any document.
+            for (const auto& d : owner->documents) { UseSearch state(*d, target.search); d->CollectMatches(); }
+            for (const auto& d : owner->documents) { UseSearch state(*d, target.search); count += d->ReplaceAll(); }
+        } else count = target.ReplaceAll(selection);
+        Status(std::to_wstring(count) + L" occurrences replaced."); owner->Refresh(); return;
+    }
+    bool backwards = command == IDC_FINDPREV || (command == IDOK && IsDlgButtonChecked(hwnd, IDC_SEARCH_BACKWARDS) == BST_CHECKED);
+    bool replaced = command == IDC_REPLACE && target.ReplaceOne();
+    bool found = target.FindNext(backwards);
+    Status(found ? (replaced ? L"Replaced. Next match found." : L"Match found.") : L"No further match found."); owner->Refresh();
+}
+void SearchDialog::StartFiles(bool replace) {
+    auto path = std::filesystem::path(Field(hwnd, IDC_SEARCH_DIRECTORY));
+    std::error_code error;
+    if (!std::filesystem::is_directory(path, error)) { Status(L"Select an existing directory."); return; }
+    if (replace && MessageBoxW(hwnd, L"Replace matching text in files on disk using the replacement shown here? This cannot be undone. Open files are changed only in their editor buffers.", L"Replace in Files", MB_OKCANCEL | MB_ICONWARNING) != IDOK) return;
+    document->CollectMatches(); // Validate regex before starting.
+    fileSearch = document->search; replaceFiles = replace;
+    fileFilter = Field(hwnd, IDC_SEARCH_FILTER); if (fileFilter.empty()) fileFilter = L"*.*";
+    recursive = IsDlgButtonChecked(hwnd, IDC_SEARCH_RECURSIVE) == BST_CHECKED;
+    hidden = IsDlgButtonChecked(hwnd, IDC_SEARCH_HIDDEN) == BST_CHECKED;
+    fileHits = foundFiles = fileErrors = 0; directories.clear(); directories.push_back(std::filesystem::absolute(path)); iterator = {};
+    fileRunning = true; owner->searchResults.Begin(fileSearch.findText);
+    SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"停止 / 关闭" : L"Stop / Close"); SetTimer(hwnd, 1, 10, nullptr);
+    Status(L"Searching files...");
+}
+void SearchDialog::FinishFiles(bool cancelled) {
+    KillTimer(hwnd, 1); fileRunning = false; directories.clear(); iterator = {};
+    owner->searchResults.Finish(fileHits, foundFiles);
+    Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
+    SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
+}
+void SearchDialog::FileStep() {
+    // Process one directory entry per timer tick so the modeless UI can cancel.
+    if (!fileRunning) return;
+    std::error_code error;
+    if (iterator == endIterator) {
+        if (directories.empty()) { FinishFiles(false); return; }
+        auto directory = directories.front(); directories.pop_front();
+        iterator = std::filesystem::directory_iterator(directory, error);
+        if (error) ++fileErrors;
+        return;
+    }
+    const auto entry = *iterator; iterator.increment(error); if (error) { ++fileErrors; iterator = {}; }
+    const auto attributes = GetFileAttributesW(entry.path().c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES || (!hidden && (attributes & FILE_ATTRIBUTE_HIDDEN))) return;
+    // Never recurse through junctions/symlinks: prevents cycles and escaping the root.
+    if (entry.is_directory(error)) {
+        if (recursive && !(attributes & FILE_ATTRIBUTE_REPARSE_POINT)) directories.push_back(entry.path()); return;
+    }
+    if (!entry.is_regular_file(error)) return;
+    auto filters = fileFilter; std::replace(filters.begin(), filters.end(), L' ', L';');
+    if (!PathMatchSpecW(entry.path().filename().c_str(), filters.c_str())) return;
+    try {
+        EditorDocument* open = nullptr;
+        for (const auto& d : owner->documents) if (!d->path.empty() && std::filesystem::equivalent(d->path, entry.path(), error)) { open = d.get(); break; }
+        auto process = [&](EditorDocument& d) {
+            UseSearch state(d, fileSearch); auto matches = d.CollectMatches();
+            if (!matches.empty()) {
+                owner->searchResults.Add(d, matches); ++foundFiles; fileHits += matches.size();
+                if (replaceFiles) d.ReplaceAll();
+            }
+            return !matches.empty();
+        };
+        if (open) process(*open);
+        else {
+            auto text = files::Read(entry.path());
+            if (text.utf8.find('\0') != std::string::npos) return; // binary input
+            EditorDocument temporary;
+            if (!temporary.Create(hwnd)) throw std::runtime_error("Cannot create file search buffer.");
+            ShowWindow(temporary.hwnd, SW_HIDE); temporary.path = entry.path(); temporary.Load(text);
+            if (process(temporary) && replaceFiles) { text.utf8 = temporary.Text(); files::WriteAtomic(entry.path(), text); }
+        }
+        Status(L"Searching: " + entry.path().wstring());
+    } catch (const std::exception&) { ++fileErrors; }
 }
 INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LPARAM l) {
+    auto* dialog = reinterpret_cast<SearchDialog*>(GetWindowLongPtrW(window, DWLP_USER));
     try {
-        auto *dialog = reinterpret_cast<SearchDialog *>(GetWindowLongPtrW(window, DWLP_USER));
         if (message == WM_INITDIALOG) {
-            dialog = reinterpret_cast<SearchDialog *>(l);
-            dialog->hwnd = window;
-            SetWindowLongPtrW(window, DWLP_USER, l);
-            const auto &search = dialog->document->search;
-            wchar_t caption[256]{};
-            GetWindowTextW(window, caption, 256);
-            std::wstring title = std::wstring(caption) + L" — " + dialog->document->Title();
-            SetWindowTextW(window, title.c_str());
-            FillHistory(window, IDC_FINDTEXT, search.findHistory, search.findText);
-            FillHistory(window, IDC_REPLACETEXT, search.replaceHistory, search.replaceText);
+            dialog = reinterpret_cast<SearchDialog*>(l); dialog->hwnd = window; SetWindowLongPtrW(window, DWLP_USER, l);
+            const wchar_t* names[] = {L"Find", L"Replace", L"Find in Files", L"Mark"};
+            const wchar_t* chineseNames[] = {L"查找", L"替换", L"文件中查找", L"标记"};
+            for (int index = 0; index < 4; ++index) {
+                const auto* name = dialog->Chinese() ? chineseNames[index] : names[index];
+                TCITEMW item{}; item.mask = TCIF_TEXT; item.pszText = const_cast<wchar_t*>(name);
+                TabCtrl_InsertItem(GetDlgItem(window, IDC_SEARCH_TABS), TabCtrl_GetItemCount(GetDlgItem(window, IDC_SEARCH_TABS)), &item);
+            }
+            const auto& s = dialog->document->search;
+            Fill(window, IDC_FINDTEXT, s.findHistory, s.findText); Fill(window, IDC_REPLACETEXT, s.replaceHistory, s.replaceText);
             auto check = [&](int id, bool value) { CheckDlgButton(window, id, value ? BST_CHECKED : BST_UNCHECKED); };
-            check(IDC_FINDCASE, (search.flags & SCFIND_MATCHCASE) != 0);
-            check(IDC_FINDWORD, (search.flags & SCFIND_WHOLEWORD) != 0);
-            check(IDC_FINDSTART, (search.flags & SCFIND_WORDSTART) != 0);
-            check(IDC_NOWRAP, !search.wrap);
-            check(IDC_FINDREGEXP, search.regex);
-            check(IDC_WILDCARDSEARCH, search.wildcard);
-            check(IDC_FINDTRANSFORMBS, search.transformBackslashes);
-            check(IDC_FIND_DOTALL, search.dotMatchesNewline);
-            check(IDC_FINDCLOSE, search.closeAfterAction);
-            check(IDC_FINDALLBOOKMARK, search.bookmarkMatches);
-            check(IDC_USEMONOSPACEDFONT, search.useMonospaced);
-            check(IDC_TRANSPARENT, search.transparent);
-            check(IDC_FIND_CXXREGEX, search.useBoostRegex);
-            // The upstream resize helper replaces this template placeholder.
-            // Native thick-frame resizing remains available without covering the links.
-            ShowWindow(GetDlgItem(window, IDC_RESIZEGRIP2), SW_HIDE);
-            dialog->ApplyFont();
-            if (dialog->hasSavedPosition)
-                SetWindowPos(window, nullptr, dialog->savedPosition.left, dialog->savedPosition.top, 0, 0,
-                             SWP_NOSIZE | SWP_NOZORDER);
-            else
-                CWindow(window).CenterWindow(dialog->owner->m_hWnd);
-            RECT client{};
-            GetClientRect(window, &client);
-            dialog->layoutWidth = client.right;
-            dialog->layoutHeight = client.bottom;
+            check(IDC_FINDCASE, s.flags & SCFIND_MATCHCASE); check(IDC_FINDWORD, s.flags & SCFIND_WHOLEWORD);
+            check(IDC_SEARCH_WRAP, s.wrap); check(IDC_FIND_DOTALL, s.dotMatchesNewline);
+            CheckRadioButton(window, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, s.regex ? IDC_SEARCH_REGEX : s.transformBackslashes ? IDC_SEARCH_EXTENDED : IDC_SEARCH_NORMAL);
+            check(IDC_SEARCH_TRANSPARENT, s.transparent);
+            dialog->transparentAlways = dialog->owner->settings.ReadString(L"Search", L"TransparentAlways") == L"1";
+            const auto alpha = dialog->owner->settings.ReadString(L"Search", L"Opacity", L"180");
+            dialog->opacity = std::clamp(_wtoi(alpha.c_str()), 50, 255);
+            CheckRadioButton(window, IDC_SEARCH_TRANSPARENT_LOST, IDC_SEARCH_TRANSPARENT_ALWAYS,
+                dialog->transparentAlways ? IDC_SEARCH_TRANSPARENT_ALWAYS : IDC_SEARCH_TRANSPARENT_LOST);
+            SendDlgItemMessageW(window, IDC_SEARCH_OPACITY, TBM_SETRANGE, TRUE, MAKELPARAM(50, 255));
+            SendDlgItemMessageW(window, IDC_SEARCH_OPACITY, TBM_SETPOS, TRUE, dialog->opacity);
+            dialog->Localize();
+            dialog->UpdateTransparency();
+            check(IDC_FINDALLBOOKMARK, s.bookmarkMatches); check(IDC_SEARCH_PURGE, true); check(IDC_SEARCH_RECURSIVE, true);
+            for (const auto* mask : {L"*.*", L"*.txt", L"*.cpp;*.h", L"*.csv"})
+                SendDlgItemMessageW(window, IDC_SEARCH_FILTER, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(mask));
+            SetDlgItemTextW(window, IDC_SEARCH_FILTER, L"*.*");
+            auto directory = dialog->document->path.empty() ? std::filesystem::current_path() : dialog->document->path.parent_path();
+            SendDlgItemMessageW(window, IDC_SEARCH_DIRECTORY, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(directory.c_str()));
+            SetDlgItemTextW(window, IDC_SEARCH_DIRECTORY, directory.c_str());
+            if (dialog->hasSavedPosition) SetWindowPos(window, nullptr, dialog->savedPosition.left, dialog->savedPosition.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+            else CWindow(window).CenterWindow(dialog->owner->m_hWnd);
+            RECT client{}; GetClientRect(window, &client); dialog->layoutWidth = client.right; dialog->layoutHeight = client.bottom;
             dialog->controls.clear();
             for (HWND child = GetWindow(window, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
-                RECT rectangle{};
-                GetWindowRect(child, &rectangle);
-                MapWindowPoints(nullptr, window, reinterpret_cast<POINT *>(&rectangle), 2);
+                RECT r{}; GetWindowRect(child, &r); MapWindowPoints(nullptr, window, reinterpret_cast<POINT*>(&r), 2);
                 int id = GetDlgCtrlID(child);
-                bool stretch = id == IDC_FINDTEXT || id == IDC_REPLACETEXT;
-                bool right = rectangle.left > client.right * 2 / 3 && !stretch;
-                dialog->controls.push_back({child, rectangle, right, stretch});
+                bool stretch = id == IDC_FINDTEXT || id == IDC_REPLACETEXT || id == IDC_SEARCH_DIRECTORY || id == IDC_SEARCH_FILTER || id == IDC_SEARCH_TABS || id == IDC_SEARCH_STATUS;
+                bool right = id == IDC_SEARCH_SWAP || id == IDC_SEARCH_FILTER_HELP || id == IDC_SEARCH_BROWSE || id == IDC_SEARCH_CURRENT_DIRECTORY || (!stretch && r.left > client.right * 2 / 3);
+                dialog->controls.push_back({child, r, right, stretch});
             }
-            return TRUE;
+            dialog->SetPage(dialog->page); return TRUE;
         }
-        if (!dialog)
-            return FALSE;
-        if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) {
-            try {
-                dialog->ReadFields();
-            } catch (const std::exception &error) {
-                dialog->owner->Error(error);
-            }
-            dialog->Close();
-            return TRUE;
+        if (!dialog) return FALSE;
+        if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
+        if (message == WM_NCDESTROY) { dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == WM_TIMER && w == 1) { dialog->FileStep(); return TRUE; }
+        if (message == WM_ACTIVATE) {
+            dialog->active = LOWORD(w) != WA_INACTIVE;
+            dialog->UpdateTransparency();
         }
-        if (message == WM_NCDESTROY) {
-            if (dialog->monoFont) {
-                DeleteObject(dialog->monoFont);
-                dialog->monoFont = nullptr;
-            }
-            dialog->hwnd = nullptr;
-            dialog->document = nullptr;
-            return FALSE;
+        if (message == WM_HSCROLL && reinterpret_cast<HWND>(l) == GetDlgItem(window, IDC_SEARCH_OPACITY)) {
+            dialog->opacity = static_cast<int>(SendDlgItemMessageW(window, IDC_SEARCH_OPACITY, TBM_GETPOS, 0, 0));
+            dialog->UpdateTransparency();
+            return TRUE;
         }
         if (message == WM_GETMINMAXINFO && dialog->layoutWidth) {
-            auto *bounds = reinterpret_cast<MINMAXINFO *>(l);
-            RECT windowRect{}, client{};
-            GetWindowRect(window, &windowRect);
-            GetClientRect(window, &client);
-            bounds->ptMinTrackSize.x = dialog->layoutWidth + (windowRect.right - windowRect.left - client.right);
-            bounds->ptMinTrackSize.y = dialog->layoutHeight + (windowRect.bottom - windowRect.top - client.bottom);
+            RECT r{}, c{}, units{0, 0, 0, 147};
+            GetWindowRect(window, &r); GetClientRect(window, &c); MapDialogRect(window, &units);
+            auto* bounds = reinterpret_cast<MINMAXINFO*>(l);
+            bounds->ptMinTrackSize = {dialog->layoutWidth + r.right - r.left - c.right,
+                (dialog->expanded ? dialog->layoutHeight : units.bottom) + r.bottom - r.top - c.bottom};
+            bounds->ptMaxTrackSize.y = bounds->ptMinTrackSize.y;
             return TRUE;
         }
-        if (message == WM_SIZE && dialog->layoutWidth) {
-            int delta = LOWORD(l) - dialog->layoutWidth;
-            for (const auto &control : dialog->controls) {
-                auto rectangle = control.rectangle;
-                if (control.right)
-                    OffsetRect(&rectangle, delta, 0);
-                if (control.stretch)
-                    rectangle.right += delta;
-                SetWindowPos(control.control, nullptr, rectangle.left, rectangle.top, rectangle.right - rectangle.left,
-                             rectangle.bottom - rectangle.top, SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-            return TRUE;
-        }
-        if (message == WM_ACTIVATE && dialog->document && dialog->document->search.transparent) {
-            LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-            SetWindowLongPtrW(window, GWL_EXSTYLE, style | WS_EX_LAYERED);
-            SetLayeredWindowAttributes(window, 0, LOWORD(w) == WA_INACTIVE ? 180 : 255, LWA_ALPHA);
-        }
+        if (message == WM_SIZE && dialog->layoutWidth) { dialog->Layout(); return TRUE; }
         if (message == WM_NOTIFY) {
-            auto *notification = reinterpret_cast<NMHDR *>(l);
-            if (notification->code != NM_CLICK && notification->code != NM_RETURN)
-                return FALSE;
-            switch (notification->idFrom) {
-            case IDC_TOGGLEFINDREPLACE: {
-                auto *target = dialog->document;
-                auto *frame = dialog->owner;
-                bool replace = !dialog->replacing;
-                dialog->ReadFields();
-                dialog->Open(*frame, *target, replace);
+            const auto* n = reinterpret_cast<NMHDR*>(l);
+            if (n->idFrom == IDC_SEARCH_SWAP && n->code == BCN_DROPDOWN) {
+                HMENU menu = CreatePopupMenu();
+                AppendMenuW(menu, MF_STRING, IDC_SEARCH_SWAP, dialog->Chinese() ? L"交换查找和替换内容" : L"Swap Find and Replace");
+                AppendMenuW(menu, MF_STRING, IDC_SEARCH_COPY_FIND, dialog->Chinese() ? L"复制查找到替换" : L"Copy Find to Replace");
+                AppendMenuW(menu, MF_STRING, IDC_SEARCH_COPY_REPLACE, dialog->Chinese() ? L"复制替换到查找" : L"Copy Replace to Find");
+                RECT r{}; GetWindowRect(n->hwndFrom, &r);
+                int selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, r.left, r.bottom, 0, window, nullptr);
+                DestroyMenu(menu);
+                if (selected) SendMessageW(window, WM_COMMAND, selected, 0);
                 return TRUE;
             }
-            case IDC_CLEAR_FIND:
-                dialog->document->search.findHistory.clear();
-                SendDlgItemMessageW(window, IDC_FINDTEXT, CB_RESETCONTENT, 0, 0);
-                return TRUE;
-            case IDC_CLEAR_REPLACE:
-                dialog->document->search.replaceHistory.clear();
-                SendDlgItemMessageW(window, IDC_REPLACETEXT, CB_RESETCONTENT, 0, 0);
-                return TRUE;
-            case IDC_SAVEPOSITION:
-                GetWindowRect(window, &dialog->savedPosition);
-                dialog->hasSavedPosition = true;
-                return TRUE;
-            case IDC_RESETPOSITION:
-                dialog->hasSavedPosition = false;
-                CWindow(window).CenterWindow(dialog->owner->m_hWnd);
-                return TRUE;
-            case IDC_REGEXPHELP:
-                ShowSearchHelp(window, IDS_REGEXPHELP);
-                return TRUE;
-            case IDC_BACKSLASHHELP:
-                ShowSearchHelp(window, IDS_BACKSLASHHELP);
-                return TRUE;
-            case IDC_WILDCARDHELP:
-                ShowSearchHelp(window, IDS_WILDCARDHELP);
-                return TRUE;
-            }
+            if (n->idFrom == IDC_SEARCH_TABS && n->code == TCN_SELCHANGE) { dialog->ReadFields(); dialog->SetPage(TabCtrl_GetCurSel(n->hwndFrom)); return TRUE; }
         }
-        if (message != WM_COMMAND)
-            return FALSE;
-        WORD id = LOWORD(w);
-        bool extendSelection = false;
+        if (message != WM_COMMAND) return FALSE;
+        int id = LOWORD(w);
+        if (id == IDC_SEARCH_TRANSPARENT || id == IDC_SEARCH_TRANSPARENT_LOST || id == IDC_SEARCH_TRANSPARENT_ALWAYS) {
+            dialog->transparentAlways = IsDlgButtonChecked(window, IDC_SEARCH_TRANSPARENT_ALWAYS) == BST_CHECKED;
+            dialog->UpdateTransparency();
+            return TRUE;
+        }
+        if (id == IDC_SEARCH_EXPAND) {
+            dialog->ReadFields();
+            dialog->expanded = !dialog->expanded;
+            dialog->SetPage(dialog->page);
+            return TRUE;
+        }
+        if (id == IDC_SEARCH_SWAP || id == IDC_SEARCH_COPY_FIND || id == IDC_SEARCH_COPY_REPLACE) {
+            const auto find = Field(window, IDC_FINDTEXT), replacement = Field(window, IDC_REPLACETEXT);
+            if (id != IDC_SEARCH_COPY_FIND) SetDlgItemTextW(window, IDC_FINDTEXT, replacement.c_str());
+            if (id != IDC_SEARCH_COPY_REPLACE) SetDlgItemTextW(window, IDC_REPLACETEXT, find.c_str());
+            return TRUE;
+        }
+        if (id == IDC_SEARCH_CURRENT_DIRECTORY) {
+            auto* target = dialog->owner->Active();
+            const auto path = target && !target->path.empty() ? target->path.parent_path() : std::filesystem::current_path();
+            SetDlgItemTextW(window, IDC_SEARCH_DIRECTORY, path.c_str());
+            return TRUE;
+        }
+        if (id == IDC_SEARCH_FILTER_HELP) {
+            MessageBoxW(window, dialog->Chinese() ? L"使用 * 和 ? 匹配文件名。多个类型可用分号或空格分隔，例如 *.cpp;*.h。" :
+                L"Use * and ? to match file names. Separate multiple patterns with semicolons or spaces, for example *.cpp;*.h.",
+                dialog->Chinese() ? L"文件类型" : L"File filters", MB_OK | MB_ICONINFORMATION);
+            return TRUE;
+        }
+        if (id == IDC_SEARCH_BROWSE) {
+            IFileDialog* picker = nullptr;
+            if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&picker)))) {
+                picker->SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+                if (SUCCEEDED(picker->Show(window))) {
+                    IShellItem* item = nullptr;
+                    if (SUCCEEDED(picker->GetResult(&item))) { PWSTR path = nullptr;
+                        if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) { SetDlgItemTextW(window, IDC_SEARCH_DIRECTORY, path); CoTaskMemFree(path); } item->Release(); }
+                } picker->Release();
+            } return TRUE;
+        }
+        if (id == IDACC_FIND || id == IDACC_REPLACE) { dialog->ReadFields(); dialog->SetPage(id == IDACC_REPLACE ? 1 : 0); return TRUE; }
+        if (id == IDACC_FINDNEXT) id = IDOK;
+        if (id == IDACC_FINDPREV) id = IDC_FINDPREV;
+        if (id == IDACC_REPLACENEXT) id = IDC_REPLACE;
         switch (id) {
-        case IDACC_FIND:
-        case IDACC_REPLACE: {
-            auto *target = dialog->document;
-            auto *owner = dialog->owner;
-            dialog->ReadFields();
-            dialog->Open(*owner, *target, id == IDACC_REPLACE);
-            return TRUE;
+        case IDOK: case IDC_FINDPREV: case IDC_REPLACE: case IDC_REPLACEALL: case IDC_FINDALL:
+        case IDC_SEARCH_COUNT: case IDC_SEARCH_ALL_OPEN: case IDC_SEARCH_REPLACE_OPEN:
+        case IDC_SEARCH_MARK: case IDC_SEARCH_CLEAR_MARK: case IDC_SEARCH_FILES: case IDC_SEARCH_REPLACE_FILES:
+            dialog->Execute(id); return TRUE;
         }
-        case IDACC_FINDNEXT:
-            id = IDOK;
-            break;
-        case IDACC_FINDPREV:
-            id = IDC_FINDPREV;
-            break;
-        case IDACC_REPLACENEXT:
-            if (!dialog->replacing)
-                return TRUE;
-            id = IDC_REPLACE;
-            break;
-        case IDACC_SELTONEXT:
-            id = IDOK;
-            extendSelection = true;
-            break;
-        case IDACC_SELTOPREV:
-            id = IDC_FINDPREV;
-            extendSelection = true;
-            break;
-        case IDACC_SAVEFIND: {
-            if (!dialog->document)
-                return TRUE;
-            ExecuteEditorCommand(*dialog->document, IDM_EDIT_SAVEFIND);
-            SetDlgItemTextW(window, IDC_FINDTEXT, dialog->document->search.findText.c_str());
-            CheckDlgButton(window, IDC_FINDREGEXP, BST_UNCHECKED);
-            CheckDlgButton(window, IDC_FINDTRANSFORMBS, BST_UNCHECKED);
-            SetFocus(GetDlgItem(window, IDC_FINDTEXT));
-            return TRUE;
-        }
-        }
-        if ((id == IDOK || id == IDC_FINDPREV) && (GetKeyState(VK_SHIFT) & 0x8000))
-            extendSelection = true;
-        if (id == IDC_TRANSPARENT) {
-            dialog->ReadFields();
-            if (!dialog->document->search.transparent) {
-                auto style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-                SetWindowLongPtrW(window, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
-                RedrawWindow(window, nullptr, nullptr, RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
-            }
-            return TRUE;
-        }
-        if (id == IDC_USEMONOSPACEDFONT) {
-            dialog->ReadFields();
-            dialog->ApplyFont();
-            return TRUE;
-        }
-        if (id == IDC_FINDREGEXP && IsDlgButtonChecked(window, id))
-            CheckDlgButton(window, IDC_WILDCARDSEARCH, BST_UNCHECKED);
-        if (id == IDC_WILDCARDSEARCH && IsDlgButtonChecked(window, id))
-            CheckDlgButton(window, IDC_FINDREGEXP, BST_UNCHECKED);
-        if (id != IDOK && id != IDC_FINDPREV && id != IDC_REPLACE && id != IDC_REPLACEALL && id != IDC_REPLACEINSEL &&
-            id != IDC_FINDALL)
-            return FALSE;
-        if (!dialog->document || std::none_of(dialog->owner->documents.begin(), dialog->owner->documents.end(),
-                                              [&](const auto &d) { return d.get() == dialog->document; }))
-            return TRUE;
-        try {
-            if (!dialog->ReadFields()) {
-                ShowInfoDialog(window, dialog->owner->settings, ResourceText(IDS_NOTFOUND, L"Cannot find the text."),
-                               L"Find Text", MB_OK | MB_ICONWARNING, L"MsgNotFound");
-                return TRUE;
-            }
-            auto &target = *dialog->document;
-            if (id == IDC_FINDALL || (id == IDC_REPLACEALL && !dialog->replacing)) {
-                if (!target.FindAll(id == IDC_REPLACEALL, target.search.bookmarkMatches))
-                    ShowInfoDialog(window, dialog->owner->settings,
-                                   ResourceText(IDS_NOTFOUND, L"Cannot find the text."), L"Find Text",
-                                   MB_OK | MB_ICONWARNING, L"MsgNotFound");
-            } else if (id == IDC_REPLACEALL || id == IDC_REPLACEINSEL) {
-                if (id == IDC_REPLACEINSEL && RejectRectangularEdit(target))
-                    return TRUE;
-                const auto count = target.ReplaceAll(id == IDC_REPLACEINSEL);
-                auto result = ResourceText(IDS_REPLCOUNT, L"%s occurrence(s) replaced.");
-                if (auto placeholder = result.find(L"%s"); placeholder != std::wstring::npos)
-                    result.replace(placeholder, 2, std::to_wstring(count));
-                ShowInfoDialog(window, dialog->owner->settings,
-                               count ? result : ResourceText(IDS_NOTFOUND, L"Cannot find the text."), L"Replace Text",
-                               MB_OK | (count ? MB_ICONINFORMATION : MB_ICONWARNING),
-                               count ? L"MsgReplaceCount" : L"MsgNotFound");
-            } else {
-                bool replaced = id == IDC_REPLACE && dialog->replacing && target.ReplaceOne();
-                bool cancelled = false;
-                auto confirmWrap = [&](bool backwards) {
-                    wchar_t message[512]{};
-                    LoadStringW(_Module.GetModuleInstance(), backwards ? IDS_FIND_WRAPRE : IDS_FIND_WRAPFW, message,
-                                512);
-                    const auto result =
-                        ShowInfoDialog(window, dialog->owner->settings, message, L"Find Text",
-                                       MB_OKCANCEL | MB_ICONINFORMATION, backwards ? L"MsgFindWrap2" : L"MsgFindWrap1");
-                    cancelled = result != IDOK;
-                    return !cancelled;
-                };
-                const bool backwards = id == IDC_FINDPREV;
-                auto oldAnchor = target.Send(SCI_GETANCHOR), oldCaret = target.Send(SCI_GETCURRENTPOS);
-                struct RestoreWrap {
-                    bool &value;
-                    bool old;
-                    ~RestoreWrap() {
-                        value = old;
-                    }
-                } restore{target.search.wrap, target.search.wrap};
-                if (extendSelection)
-                    target.search.wrap = false;
-                const bool found = target.FindNext(backwards, confirmWrap);
-                if (found && extendSelection)
-                    target.Send(SCI_SETSEL, backwards ? max(oldAnchor, oldCaret) : min(oldAnchor, oldCaret),
-                                target.Send(backwards ? SCI_GETSELECTIONSTART : SCI_GETSELECTIONEND));
-                if (!found && !replaced && !cancelled)
-                    ShowInfoDialog(window, dialog->owner->settings,
-                                   ResourceText(IDS_NOTFOUND, L"Cannot find the text."), L"Find Text",
-                                   MB_OK | MB_ICONWARNING, L"MsgNotFound");
-            }
-            dialog->owner->Refresh();
-            if (target.search.closeAfterAction && !(dialog->replacing && id == IDOK))
-                dialog->Close();
-        } catch (const std::exception &error) {
-            dialog->owner->Error(error);
-        }
-        return TRUE;
-    } catch (const std::exception &error) {
-        auto *dialog = reinterpret_cast<SearchDialog *>(GetWindowLongPtrW(window, DWLP_USER));
-        if (dialog && dialog->owner)
-            dialog->owner->Error(error);
+    } catch (const std::exception& error) {
+        if (dialog) { if (dialog->fileRunning) dialog->FinishFiles(true); dialog->Status(files::FromUtf8(error.what())); }
         return TRUE;
     }
-}
-void SearchDialog::ApplyFont() {
-    if (!hwnd || !document)
-        return;
-    if (!monoFont) {
-        LOGFONTW font{};
-        font.lfHeight = -MulDiv(10, GetDpiForWindow(hwnd), 72);
-        wcscpy_s(font.lfFaceName, L"Consolas");
-        monoFont = CreateFontIndirectW(&font);
-    }
-    auto font =
-        document->search.useMonospaced ? monoFont : reinterpret_cast<HFONT>(SendMessageW(hwnd, WM_GETFONT, 0, 0));
-    for (int id : {IDC_FINDTEXT, IDC_REPLACETEXT})
-        SendDlgItemMessageW(hwnd, id, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+    return FALSE;
 }

@@ -6,6 +6,7 @@
 #include "MatepathPane.h"
 #include "EditorCommands.h"
 #include "SearchDialog.h"
+#include "SearchResultsPane.h"
 #include "AppSettings.h"
 #include <optional>
 class MainFrame;
@@ -20,6 +21,7 @@ public:
     std::vector<std::unique_ptr<EditorDocument>> documents;
     unsigned untitledCount = 0;
     SearchDialog searchDialog;
+    SearchResultsPane searchResults;
     AppSettings settings;
     DocumentStyleState defaultStyle;
     FrameRuntime runtime;

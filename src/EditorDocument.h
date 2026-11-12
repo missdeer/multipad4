@@ -17,7 +17,10 @@ struct SearchState {
     LRESULT lastMatchStart = -1, lastMatchEnd = -1;
     size_t matches = 0;
 };
+struct SearchMatch { LRESULT start = 0, end = 0, line = 0, lineStart = 0; std::shared_ptr<const std::string> source; };
 struct EditorDocument {
+    inline static unsigned long long nextSearchIdentity = 0;
+    const unsigned long long searchIdentity = ++nextSearchIdentity;
     ~EditorDocument() { if (hwnd && ::IsWindow(hwnd)) ::DestroyWindow(hwnd); }
     HWND hwnd = nullptr;
     std::filesystem::path path;
@@ -45,6 +48,7 @@ struct EditorDocument {
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     bool ReplaceOne();
     size_t ReplaceAll(bool selectionOnly = false);
+    std::vector<SearchMatch> CollectMatches(bool selectionOnly = false);
     size_t FindAll(bool selectAll = false, bool bookmark = false);
     void SetEncoding(files::Encoding value);
 };

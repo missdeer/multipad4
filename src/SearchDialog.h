@@ -1,28 +1,45 @@
 #pragma once
 #include "EditorDocument.h"
+#include "SearchResources.h"
+#include <deque>
 class MainFrame;
 class SearchDialog {
-  public:
+public:
     HWND hwnd = nullptr;
-    MainFrame *owner = nullptr;
-    EditorDocument *document = nullptr;
+    MainFrame* owner = nullptr;
+    EditorDocument* document = nullptr;
     bool replacing = false;
-    HFONT monoFont = nullptr;
     HACCEL accelerators = nullptr;
-    BOOL PreTranslateMessage(MSG *message);
     RECT savedPosition{};
     bool hasSavedPosition = false;
-    void ApplyFont();
-    int layoutWidth = 0, layoutHeight = 0;
-    struct ControlLayout {
-        HWND control;
-        RECT rectangle;
-        bool right;
-        bool stretch;
-    };
+    int page = 0, layoutWidth = 0, layoutHeight = 0;
+    struct ControlLayout { HWND control; RECT rectangle; bool right, stretch; };
     std::vector<ControlLayout> controls;
-    void Open(MainFrame &frame, EditorDocument &target, bool replace);
+    BOOL PreTranslateMessage(MSG* message);
+    void Open(MainFrame& frame, EditorDocument& target, bool replace);
+    void SetPage(int value);
+    void Layout();
+    void UpdateTransparency();
     void Close();
+    void SyncDocument();
     bool ReadFields();
+    void Execute(int command);
+    void Status(const std::wstring& text);
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
+private:
+    bool fileRunning = false, replaceFiles = false;
+    bool expanded = true, active = true, transparentAlways = false;
+    int opacity = 180;
+    bool Chinese() const;
+    void Localize();
+    void ResizeHeight();
+    size_t fileHits = 0, foundFiles = 0, fileErrors = 0;
+    SearchState fileSearch;
+    std::wstring fileFilter;
+    bool recursive = true, hidden = false;
+    std::deque<std::filesystem::path> directories;
+    std::filesystem::directory_iterator iterator, endIterator;
+    void StartFiles(bool replace);
+    void FileStep();
+    void FinishFiles(bool cancelled);
 };

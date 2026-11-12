@@ -11,6 +11,7 @@
 #include "Session.h"
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
     if (matepath.IsWindow() && matepath.PreTranslateMessage(msg)) return TRUE;
+    if (searchResults.PreTranslateMessage(msg)) return TRUE;
     if (searchDialog.PreTranslateMessage(msg)) return TRUE;
     if (mdiAccelerators && ::TranslateAcceleratorW(m_hWnd, mdiAccelerators, msg)) return TRUE;
     return MainFrameBase::PreTranslateMessage(msg);
@@ -25,12 +26,18 @@ void MainFrame::Error(const std::exception& error) {
 }
 LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     CreateUpstreamUI();
+    HMENU searchMenu = GetSubMenu(GetMenu(), 2);
+    AppendMenuW(searchMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_FILES, L"Find in Files...\tCtrl+Shift+F");
+    AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_MARK, L"Mark...\tCtrl+M");
+    AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_RESULTS, L"Search results\tF7");
     InitializeDockingFrame();
     SetTabOwnerParent(m_hWnd);
     CreateMDIClient(windowMenu);
     m_tabbedClient.HideMDITabsWhenMDIChildNotMaximized(FALSE);
     tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();
     dock.Create(m_hWnd);
+    searchResults.CreatePane(*this);
     matepath.CreatePane(m_hWnd);
     auto folder = settings.ReadString(L"Matepath", L"Directory");
     matepath.fileSpec = settings.ReadString(L"Matepath", L"Filter", L"*.*");
@@ -214,6 +221,7 @@ bool MainFrame::Relaunch(bool elevated, bool empty, bool closeCurrent) {
 }
 void MainFrame::Refresh() {
     auto* active = Active();
+    searchDialog.SyncDocument();
     std::vector<std::wstring> labels;
     for (int i = 0; i < tabs.GetPageCount(); ++i) {
         auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i)); auto title = d->Title();
@@ -252,7 +260,10 @@ void MainFrame::Refresh() {
     UpdateStatus(); UpdateCommandUI();
 }
 void MainFrame::ShowSearch(bool replace) {
-    if (auto* d = Active()) {
+    if (searchDialog.hwnd) searchDialog.ReadFields();
+    auto* d = Active();
+    if (!d) d = NewDocument();
+    if (d) {
         if (settings.Get(IDM_SET_SELECTIONASFINDTEXT, 1) && !d->Send(SCI_GETSELECTIONEMPTY)) {
             auto length = d->Send(SCI_GETSELTEXT);
             if (length > 0 && length < 32768) {
@@ -269,19 +280,20 @@ void MainFrame::ShowSearch(bool replace) {
     }
 }
 void MainFrame::FindNext(bool backwards) {
+    if (searchDialog.hwnd) {
+        searchDialog.Execute(backwards ? IDC_FINDPREV : IDOK);
+        return;
+    }
     auto* d = Active(); if (!d) return;
     if (d->search.findText.empty()) { ShowSearch(false); return; }
-    bool cancelled = false;
-    if (!d->FindNext(backwards, [&](bool previous) {
-        bool accepted = ConfirmSearchWrap(previous);
-        cancelled = !accepted; return accepted;
-    }) && !cancelled) ShowInfoDialog(m_hWnd, settings, L"The text was not found.", L"Find Text", MB_OK | MB_ICONEXCLAMATION, L"MsgNotFound");
+    if (!d->FindNext(backwards)) {
+        if (searchDialog.hwnd) searchDialog.Status(L"No further match found.");
+        else ::SendMessageW(m_hWndStatusBar, SB_SETTEXTW, 0, reinterpret_cast<LPARAM>(L"No further match found."));
+    }
 }
-bool MainFrame::ConfirmSearchWrap(bool backwards) {
-    wchar_t message[512]{};
-    LoadStringW(_Module.GetModuleInstance(), backwards ? IDS_FIND_WRAPRE : IDS_FIND_WRAPFW, message, _countof(message));
-    return ShowInfoDialog(m_hWnd, settings, message, L"Find Text", MB_OKCANCEL | MB_ICONINFORMATION,
-        backwards ? L"MsgFindWrap2" : L"MsgFindWrap1") == IDOK;
+bool MainFrame::ConfirmSearchWrap(bool) {
+    // Notepad++ wraps directly when Wrap around is enabled.
+    return true;
 }
 LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     FrameOperation operation(runtime, m_hWnd);
@@ -327,6 +339,9 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
         if (n) tabs.SetActivePage((tabs.GetActivePage() + n + (id == ID_NEXTTAB ? 1 : -1)) % n);
         break;
     }
+    case ID_SEARCH_RESULTS: searchResults.Reveal(); break;
+    case ID_SEARCH_FILES: ShowSearch(false); searchDialog.SetPage(2); break;
+    case ID_SEARCH_MARK: ShowSearch(false); searchDialog.SetPage(3); break;
     case ID_FIND: ShowSearch(false); break;
     case IDM_EDIT_REPLACE: ShowSearch(true); break;
     case ID_FINDNEXT: FindNext(); break;

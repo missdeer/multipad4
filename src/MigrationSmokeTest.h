@@ -7,13 +7,15 @@ inline void RunMigrationSmokeTest(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Migration assertion failed at line " + std::to_string(where.line()));
     };
-    for (UINT id : {IDD_ABOUT, IDD_FIND, IDD_REPLACE, IDD_RUN, IDD_OPENWITH, IDD_SYSTEM_INTEGRATION,
+    for (UINT id : {IDD_ABOUT, IDD_SEARCH, IDD_RUN, IDD_OPENWITH, IDD_SYSTEM_INTEGRATION,
         IDD_DEFENCODING, IDD_DEFEOLMODE, IDD_WARNLINEENDS, IDD_LINENUM, IDD_FILEMRU, IDD_CHANGENOTIFY,
         IDD_STYLESELECT, IDD_STYLECONFIG, IDD_TABSETTINGS, IDD_LONGLINES, IDD_WORDWRAP, IDD_PAGESETUP,
         IDD_FAVORITES, IDD_ADDTOFAV, IDD_COLUMNWRAP, IDD_MODIFYLINES, IDD_INSERTTAG, IDD_ENCLOSESELECTION,
         IDD_INFOBOX, IDD_SORT, IDD_SELECT_ENCODING, IDD_ALIGN, IDD_ZOOMLEVEL, IDD_AUTOCOMPLETION,
         IDD_AUTOSAVE, IDD_CSV_OPTIONS})
         require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(id), RT_DIALOG) != nullptr);
+    require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_FIND), RT_DIALOG) == nullptr);
+    require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_REPLACE), RT_DIALOG) == nullptr);
     require(ImageList_GetImageCount(frame.toolbarImages) == 27);
     require(::SendMessageW(frame.m_hWndToolBar, TB_COMMANDTOINDEX, IDT_FILE_SAVE, 0) >= 0);
     require(GetMenuState(frame.GetMenu(), IDM_EDIT_REPLACE, MF_BYCOMMAND) != static_cast<UINT>(-1));
@@ -90,8 +92,12 @@ inline void RunMigrationSmokeTest(MainFrame& frame) {
     SetDlgItemTextW(dialog, IDC_REPLACETEXT, L"replacement");
     target->Send(SCI_SETSEL, 0, 5);
     const int targetIndex = frame.tabs.GetActivePage();
+    const auto targetText = target->Text();
     frame.tabs.SetActivePage(0); frame.Refresh();
-    require(frame.Active() == first && frame.searchDialog.document == target);
+    require(frame.Active() == first && frame.searchDialog.document == first);
+    ::SendMessageW(dialog, WM_COMMAND, IDC_REPLACE, 0);
+    require(target->Text() == targetText && first->Text() == original);
+    frame.tabs.SetActivePage(targetIndex); frame.Refresh();
     ::SendMessageW(dialog, WM_COMMAND, IDC_REPLACE, 0);
     require(target->Text().starts_with("replacement ALPHA"));
     require(first->Text() == original);
