@@ -10,6 +10,7 @@
 #include "InfoDialog.h"
 #include "Session.h"
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
+    if (pluginAdmin.hwnd && ::IsWindowVisible(pluginAdmin.hwnd) && ::IsDialogMessageW(pluginAdmin.hwnd, msg)) return TRUE;
     if (plugins.PreTranslate(msg)) return TRUE;
     if (matepath.IsWindow() && matepath.PreTranslateMessage(msg)) return TRUE;
     if (searchResults.PreTranslateMessage(msg)) return TRUE;
@@ -388,6 +389,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
         settings.Save();
     }
     else settings.SaveOption(IDM_VIEW_SAVESETTINGS);
+    pluginAdmin.Close();
     plugins.Shutdown();
     searchDialog.Close();
     matepath.DestroyPane();
@@ -395,6 +397,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     DestroyWindow(); return 0;
 }
 LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
+    pluginAdmin.Close();
     plugins.Shutdown();
     RemoveClipboardFormatListener(m_hWnd);
     KillTimer(1); SetTrayVisible(*this, false);

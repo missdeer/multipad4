@@ -101,3 +101,19 @@ are idempotent. This addresses a captured failure where Matepath was floating
 but a right-side package still referenced its HWND. Regressions inspect package
 membership independently of HWND parenting, exercise repeated registration and
 cancel/float transitions, and check deferred container destruction.
+
+## Notepad++ Plugins Admin
+
+`src/PluginAdmin.*` adapts the Plugins Admin menu/handler, modeless dialog,
+five category lists, search and checked batch operations from the same local
+Notepad++ reference. Original resources and GPL notices are retained under
+`3rdparty/notepad-plus-plus/PluginsAdmin`. Menu command IDs 48014/48015 are
+reserved from dynamic plugin commands and routed explicitly before their range.
+`src/PluginAdminWorker.ps1` supplies a MultiPad4-specific exit/wait, package
+verification, staging, rollback and restart adapter instead of N++'s GUP process.
+
+The bundled x64 catalogue comes from the official nppPluginList repository;
+`CATALOG_REVISION` pins its source revision and `README.catalog.md` retains its
+upstream documentation. It is metadata, not a guarantee that every listed
+plugin works with MultiPad4's partial N++ host API. The JSON parser is unmodified
+nlohmann/json 3.12.0 from the reference checkout (MIT license included).

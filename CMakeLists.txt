@@ -52,7 +52,7 @@ set_source_files_properties("${PROJECT_BINARY_DIR}/Notepad4Resources.rc" PROPERT
   INCLUDE_DIRECTORIES "${NOTEPAD4_SOURCE_DIR}")
 target_compile_definitions(multipad4 PRIVATE _WTL_NO_CSTRING _ATL_NO_AUTOMATIC_NAMESPACE _HAS_AUTO_PTR_ETC=1)
 target_compile_options(multipad4 PRIVATE /W4 /EHsc /permissive /Zc:twoPhase- /wd4996)
-target_link_libraries(multipad4 PRIVATE multipad_files notepad4_scintilla comctl32 comdlg32 shlwapi shell32 ole32 oleaut32 uuid uxtheme imm32 crypt32)
+target_link_libraries(multipad4 PRIVATE multipad_files notepad4_scintilla comctl32 comdlg32 shlwapi shell32 ole32 oleaut32 uuid uxtheme imm32 crypt32 version)
 set_target_properties(multipad4 PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 if(BUILD_TESTING)
   add_executable(fileio_tests tests/FileIOTests.cpp)
@@ -60,6 +60,7 @@ if(BUILD_TESTING)
   target_compile_options(fileio_tests PRIVATE /W4 /EHsc)
   add_test(NAME fileio_roundtrip COMMAND fileio_tests)
   add_test(NAME editor_integration COMMAND multipad4 --smoke-test)
+  add_test(NAME plugin_admin_worker COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/PluginAdminWorkerTests.ps1")
   set_tests_properties(editor_integration PROPERTIES TIMEOUT 30)
   # Real binary compatibility checks are available when the supplied plugins exist.
   if(EXISTS "${PROJECT_BINARY_DIR}/plugins/JsonTools/JsonTools.dll" AND

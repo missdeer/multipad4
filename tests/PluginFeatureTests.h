@@ -22,6 +22,32 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
         throw std::runtime_error("Required plugin command missing");
     };
     require(host.plugins.size() == 5 && host.errors.empty(), "load all five supplied plugins");
+    const auto savedCommand = host.nextCommand;
+    host.nextCommand = IDM_SETTING_OPENPLUGINSDIR - 1;
+    int allocatedCommand = 0;
+    require(host.Message(NPPM_ALLOCATECMDID, 3, reinterpret_cast<LPARAM>(&allocatedCommand)) &&
+        allocatedCommand == static_cast<int>(IDM_SETTING_PLUGINADM + 1) && host.nextCommand == IDM_SETTING_PLUGINADM + 4,
+        "dynamic plugin command blocks skip admin menu IDs");
+    host.nextCommand = savedCommand;
+    require(GetMenuState(host.menu, IDM_SETTING_PLUGINADM, MF_BYCOMMAND) != static_cast<UINT>(-1), "plugin admin menu exists");
+    frame.SendMessage(WM_COMMAND, IDM_SETTING_PLUGINADM);
+    auto& admin = frame.pluginAdmin;
+    require(IsWindow(admin.hwnd) && IsWindowVisible(admin.hwnd), "plugin admin command opens modeless dialog");
+    require(TabCtrl_GetItemCount(admin.tab) == 5 && !admin.entries.empty(), "plugin admin loads catalogue and five tabs");
+    require(!admin.visible.empty(), "available plugins shown");
+    TabCtrl_SetCurSel(admin.tab, 2); admin.Populate();
+    require(admin.visible.size() == 5, "installed plugins reflect loaded host");
+    SetDlgItemTextW(admin.hwnd, IDC_PLUGINADM_SEARCH_EDIT, L"JsonTools"); admin.Search();
+    int row = ListView_GetNextItem(admin.list, -1, LVNI_SELECTED);
+    require(row >= 0 && admin.entries[admin.visible[row]].folder == L"JsonTools", "plugin admin searches names");
+    qaArtifactDirectory = host.config / L"MultiPad4-QA";
+    CaptureQAWindow(admin.hwnd, L"plugins-admin-installed");
+    auto originalDialog = admin.hwnd;
+    ::SendMessageW(admin.hwnd, WM_COMMAND, IDCANCEL, 0);
+    require(!IsWindowVisible(admin.hwnd), "plugin admin close hides dialog");
+    frame.SendMessage(WM_COMMAND, IDM_SETTING_PLUGINADM);
+    require(admin.hwnd == originalDialog && IsWindowVisible(admin.hwnd), "plugin admin reuses existing dialog");
+    admin.Close();
     auto checkFloatCleanup = [&]() {
         frame.matepath.SetSide(DockSide::Right);
         HWND oldBar = ::GetParent(frame.matepath);

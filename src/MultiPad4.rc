@@ -21,3 +21,7 @@ STRINGTABLE
 BEGIN
  IDR_MAINFRAME "MultiPad4\nMultiPad4\nMultiPad4\n\n\nMultiPad4.Document\nMultiPad4 Document"
 END
+
+#include "../3rdparty/notepad-plus-plus/PluginsAdmin/pluginsAdmin.rc"
+5515 RCDATA "../3rdparty/notepad-plus-plus/PluginsAdmin/pl.x64.json"
+5516 RCDATA "PluginAdminWorker.ps1"

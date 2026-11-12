@@ -10,6 +10,7 @@
 #include "AppSettings.h"
 #include <optional>
 #include "PluginHost.h"
+#include "PluginAdmin.h"
 class MainFrame;
 enum class SaveMode { Normal, As, Copy };
 using MainFrameBase = dockwins::CDockingFrameImplBase<MainFrame, CTabbedMDIFrameWindowImpl<MainFrame>>;
@@ -17,6 +18,7 @@ class MainFrame : public MainFrameBase, public CMessageFilter {
 public:
     DECLARE_FRAME_WND_CLASS(L"MultiPad4.MainFrame", IDR_MAINFRAME)
     PluginHost plugins;
+    PluginAdmin pluginAdmin;
     DockHost dock;
     MatepathPane matepath;
     EditorTabs tabs;
@@ -54,6 +56,8 @@ public:
     BEGIN_MSG_MAP(MainFrame)
         MESSAGE_RANGE_HANDLER(NPPMSG, NPPMSG + 999, OnPluginMessage)
         MESSAGE_RANGE_HANDLER(RUNCOMMAND_USER, RUNCOMMAND_USER + 100, OnPluginMessage)
+        COMMAND_ID_HANDLER(IDM_SETTING_PLUGINADM, OnPluginAdmin)
+        COMMAND_ID_HANDLER(IDM_SETTING_OPENPLUGINSDIR, OnPluginAdmin)
         COMMAND_RANGE_HANDLER(46000, 55999, OnPluginCommand)
         MESSAGE_HANDLER(WM_APP + 0x120, OnPluginNotify)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -95,6 +99,11 @@ public:
     }
     LRESULT OnPluginNotify(UINT, WPARAM, LPARAM l, BOOL&) { plugins.ScintillaNotification(*reinterpret_cast<SCNotification*>(l)); return 0; }
     LRESULT OnPluginMessage(UINT msg, WPARAM w, LPARAM l, BOOL&) { return plugins.Message(msg, w, l); }
+    LRESULT OnPluginAdmin(WORD, WORD id, HWND, BOOL&) {
+        if (id == IDM_SETTING_PLUGINADM) pluginAdmin.Show(*this);
+        else ShellExecuteW(m_hWnd, L"open", plugins.home.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        return 0;
+    }
     LRESULT OnPluginCommand(WORD, WORD id, HWND, BOOL&) { plugins.Execute(id); return 0; }
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);

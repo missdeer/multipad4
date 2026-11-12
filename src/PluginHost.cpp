@@ -72,16 +72,20 @@ void PluginHost::Initialize(MainFrame& owner) {
     if (!enabled) return;
     wchar_t exe[32768]{}; GetModuleFileNameW(nullptr, exe, _countof(exe));
     home = std::filesystem::path(exe).parent_path() / L"plugins"; config = home / L"Config";
-    if (!std::filesystem::is_directory(home)) return;
-    std::filesystem::create_directories(config);
+
+    std::error_code directoryError;
+    std::filesystem::create_directories(config, directoryError);
     WNDCLASSW cls{}; cls.hInstance = _Module.GetModuleInstance(); cls.lpfnWndProc = ProxyProc; cls.lpszClassName = L"MultiPad4.PluginScintilla";
     RegisterClassW(&cls);
     proxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     secondProxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     menu = CreatePopupMenu();
-    InsertMenuW(owner.GetMenu(), GetMenuItemCount(owner.GetMenu()) - 1, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), L"&Plugins");
+    InsertMenuW(owner.GetMenu(), GetMenuItemCount(owner.GetMenu()) - 1, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), L"插件(&P)");
+    AppendMenuW(menu, MF_STRING, IDM_SETTING_PLUGINADM, L"插件管理...");
+    AppendMenuW(menu, MF_STRING, IDM_SETTING_OPENPLUGINSDIR, L"打开插件文件夹...");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     std::vector<std::filesystem::path> candidates;
-    for (auto& entry : std::filesystem::directory_iterator(home)) {
+    for (auto& entry : std::filesystem::directory_iterator(home, directoryError)) {
         if (!entry.is_directory()) continue;
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
@@ -102,11 +106,12 @@ void PluginHost::Initialize(MainFrame& owner) {
             errors.push_back(plugin.module + L": invalid Unicode plugin exports"); FreeLibrary(plugin.library); continue;
         }
         plugin.name = name(); info({owner, proxy, secondProxy}); plugin.items = funcs(&plugin.count);
-        if (!plugin.items || plugin.count <= 0 || plugin.count > 4096 || nextCommand + plugin.count >= 56000) {
+        if (!plugin.items || plugin.count <= 0 || plugin.count > 4096 || nextCommand + plugin.count + 2 >= 56000) {
             errors.push_back(plugin.module + L": invalid command table"); FreeLibrary(plugin.library); continue;
         }
         HMENU submenu = CreatePopupMenu();
         for (int i = 0; i < plugin.count; ++i) {
+            if (nextCommand == IDM_SETTING_OPENPLUGINSDIR) nextCommand += 2;
             auto& item = plugin.items[i]; item._cmdID = nextCommand++;
             if (!item._pFunc) { AppendMenuW(submenu, MF_SEPARATOR, 0, nullptr); continue; }
             AppendMenuW(submenu, MF_STRING | (item._init2Check ? MF_CHECKED : 0), item._cmdID, item._itemName);
@@ -276,8 +281,13 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
         int start = msg == NPPM_ALLOCATECMDID ? nextCommand : msg == NPPM_ALLOCATEMARKER ? nextMarker : nextIndicator;
         int limit = msg == NPPM_ALLOCATECMDID ? 56000 : msg == NPPM_ALLOCATEMARKER ? 24 : 32;
         if (!w || w > static_cast<WPARAM>(limit - start)) return FALSE;
+        if (msg == NPPM_ALLOCATECMDID && start <= static_cast<int>(IDM_SETTING_PLUGINADM) &&
+            start + static_cast<int>(w) > static_cast<int>(IDM_SETTING_OPENPLUGINSDIR)) {
+            start = IDM_SETTING_PLUGINADM + 1;
+            if (w > static_cast<WPARAM>(limit - start)) return FALSE;
+        }
         *reinterpret_cast<int*>(l) = start;
-        if (msg == NPPM_ALLOCATECMDID) nextCommand += static_cast<UINT>(w); else if (msg == NPPM_ALLOCATEMARKER) nextMarker += static_cast<int>(w); else nextIndicator += static_cast<int>(w);
+        if (msg == NPPM_ALLOCATECMDID) nextCommand = start + static_cast<UINT>(w); else if (msg == NPPM_ALLOCATEMARKER) nextMarker += static_cast<int>(w); else nextIndicator += static_cast<int>(w);
         return TRUE;
     }
     case NPPM_GETEDITORDEFAULTFOREGROUNDCOLOR: return d ? d->Send(SCI_STYLEGETFORE, STYLE_DEFAULT) : RGB(0,0,0);
