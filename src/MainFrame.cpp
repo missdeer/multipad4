@@ -10,6 +10,7 @@
 #include "InfoDialog.h"
 #include "Session.h"
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
+    if (plugins.PreTranslate(msg)) return TRUE;
     if (matepath.IsWindow() && matepath.PreTranslateMessage(msg)) return TRUE;
     if (searchResults.PreTranslateMessage(msg)) return TRUE;
     if (searchDialog.PreTranslateMessage(msg)) return TRUE;
@@ -57,6 +58,7 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     _Module.GetMessageLoop()->AddMessageFilter(this);
     SetTimer(1, 1000);
     AddClipboardFormatListener(m_hWnd);
+    plugins.Initialize(*this);
     return 0;
 }
 EditorDocument* MainFrame::NewDocument() {
@@ -92,7 +94,7 @@ bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::En
         if (!tabs.AddPage(raw->hwnd, raw->Title().c_str(), -1, raw)) {
             ::DestroyWindow(raw->hwnd); throw std::runtime_error("Cannot add document tab.");
         }
-        documents.push_back(std::move(document)); RecordOpenedFile(*this, path); Refresh(); return true;
+        documents.push_back(std::move(document)); RecordOpenedFile(*this, path); plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(raw)); Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }
 }
 bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
@@ -115,13 +117,14 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
                 || std::filesystem::equivalent(other->path, path, ec))
                 throw std::runtime_error("This file is already open in another tab.");
         }
+        if (!copy) plugins.Notify(NPPN_FILEBEFORESAVE, plugins.Buffer(&document));
         PrepareFileSave(*this, document);
         files::Text output;
         if (!PrepareEncodingSave(*this, document, output, copy)) return false;
         files::WriteAtomic(path, output);
         if (copy) return true; // A copy must retain path, lexer, encoding and dirty state.
         document.path = path; document.ConfigureLexer(); document.Send(SCI_SETSAVEPOINT); document.encodingDirty = false;
-        SnapshotDocument(document); RemoveDocumentRecovery(*this, document, keepBackup); RecordOpenedFile(*this, path); Refresh(); return true;
+        SnapshotDocument(document); RemoveDocumentRecovery(*this, document, keepBackup); RecordOpenedFile(*this, path); plugins.Notify(NPPN_FILESAVED, plugins.Buffer(&document)); Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }
 }
 bool MainFrame::Reload(EditorDocument& document) {
@@ -172,8 +175,11 @@ bool MainFrame::Close(int i) {
     }
     if (runtime.pasteBoard == d->hwnd) runtime.pasteBoard = nullptr;
     RemoveDocumentRecovery(*this, *d, true); ForgetDocumentStyle(*d);
+    const auto buffer = plugins.Buffer(d);
+    plugins.Notify(NPPN_FILEBEFORECLOSE, buffer);
     tabs.RemovePage(i);
     std::erase_if(documents, [d](const auto& p) { return p.get() == d; });
+    plugins.Notify(NPPN_FILECLOSED, buffer);
     Refresh(); return true;
 }
 bool MainFrame::ConfirmClose(EditorDocument& document, bool keepBackup) {
@@ -221,6 +227,7 @@ bool MainFrame::Relaunch(bool elevated, bool empty, bool closeCurrent) {
 }
 void MainFrame::Refresh() {
     auto* active = Active();
+    plugins.Activated();
     searchDialog.SyncDocument();
     std::vector<std::wstring> labels;
     for (int i = 0; i < tabs.GetPageCount(); ++i) {
@@ -367,8 +374,9 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
 }
 LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     FrameOperation operation(runtime, m_hWnd);
+    plugins.Notify(NPPN_BEFORESHUTDOWN);
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
-    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) return 0;
+    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
         settings.WriteString(L"Matepath", L"Directory", matepath.directory.wstring());
         settings.WriteString(L"Matepath", L"Filter", matepath.fileSpec);
@@ -380,12 +388,14 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
         settings.Save();
     }
     else settings.SaveOption(IDM_VIEW_SAVESETTINGS);
+    plugins.Shutdown();
     searchDialog.Close();
     matepath.DestroyPane();
     if (dock.pane.IsWindow()) { if (dock.pane.IsDocking()) dock.pane.Undock(); dock.pane.DestroyWindow(); }
     DestroyWindow(); return 0;
 }
 LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
+    plugins.Shutdown();
     RemoveClipboardFormatListener(m_hWnd);
     KillTimer(1); SetTrayVisible(*this, false);
     searchDialog.Close();

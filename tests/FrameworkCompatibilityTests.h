@@ -53,10 +53,61 @@ inline void RunFloatingMoveTests(HWND frame) {
     probe.Verify(frame);
 }
 
+// Query the framework's layout records independently of the HWND hierarchy.
+// A floating pane must not be present in any package, even if an old package
+// still has visible pixels or is waiting for its deferred close.
+inline void VerifyPaneLayoutMembership(MainFrame& frame, HWND pane, bool docked) {
+    if (((::GetWindowLongPtrW(pane, GWL_STYLE) & WS_CHILD) != 0) != docked)
+        throw std::runtime_error("Pane docking ownership and native WS_CHILD disagree");
+    int memberships = 0;
+    for (HWND bar = ::GetWindow(frame, GW_CHILD); bar; bar = ::GetWindow(bar, GW_HWNDNEXT)) {
+        wchar_t name[96]{}; GetClassNameW(bar, name, _countof(name));
+        if (wcscmp(name, L"CPackageWindowFrame::CPackageWindow") != 0) continue;
+        dockwins::DFDOCKPOS query{};
+        query.hdr.hWnd = pane; query.hdr.hBar = bar; query.hdr.code = DC_GETDOCKPOSITION;
+        if (::SendMessageW(bar, WMDF_DOCK, 0, reinterpret_cast<LPARAM>(&query))) {
+            ++memberships;
+            if (!docked || ::GetParent(pane) != bar)
+                throw std::runtime_error("Dock layout still owns a floating or reparented HWND");
+        }
+    }
+    if (memberships != (docked ? 1 : 0)) throw std::runtime_error("Pane HWND has inconsistent dock layout membership");
+}
+
+// Repeated docking messages must not leave two layout records for one HWND.
+// A later float must remove the pane from the container completely.
+inline void RunRepeatedDockRegistrationTests(MainFrame& frame) {
+    FloatingMoveProbe probe;
+    probe.owner = frame;
+    RECT floating{180, 160, 520, 620};
+    if (!probe.Create(frame, floating, L"Repeated dock registration"))
+        throw std::runtime_error("Cannot create repeated docking probe");
+    dockwins::DFDOCKPOS pos{};
+    pos.hdr.hWnd = probe; pos.hdr.hBar = frame;
+    pos.dwDockSide = dockwins::CDockingSide::sRight | dockwins::CDockingSide::sSingle;
+    pos.nWidth = 220; pos.nHeight = 400;
+    if (!probe.SetDockingPosition(&pos)) throw std::runtime_error("Cannot dock repeated registration probe");
+    HWND bar = ::GetParent(probe);
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        dockwins::DFDOCKRECT header{};
+        header.hdr.hWnd = probe; header.hdr.hBar = bar;
+        probe.GetWindowRect(&header.rect);
+        if (!probe.DockMe(&header)) throw std::runtime_error("Repeated docking request failed");
+    }
+    if (!probe.Float(&floating)) throw std::runtime_error("Cannot float repeated registration probe");
+    VerifyPaneLayoutMembership(frame, probe, false);
+    if (::IsWindowVisible(bar))
+        throw std::runtime_error("Floating HWND remains in the old dock layout after repeated registration");
+    MSG message{};
+    while (PeekMessageW(&message, bar, WM_CLOSE, WM_CLOSE, PM_REMOVE)) DispatchMessageW(&message);
+    if (::IsWindow(bar)) throw std::runtime_error("Repeated registration left an orphan docking container");
+}
+
 // Drag/drop uses DC_ACCEPT + DC_DOCK, whereas menu docking uses
 // DC_SETDOCKPOSITION. Inserting a new bar between existing bars exercises a
 // different owning-container path, and must not empty another frame's pointer.
 inline void RunDragDockTests(MainFrame& frame) {
+    RunRepeatedDockRegistrationTests(frame);
     // Keep bars on both sides so new drop targets include middle insertions.
     FloatingMoveProbe extra;
     extra.owner = frame;
@@ -70,6 +121,7 @@ inline void RunDragDockTests(MainFrame& frame) {
     if (!extra.SetDockingPosition(&position)) throw std::runtime_error("Cannot dock additional bar");
     for (int round = 0; round < 6; ++round) {
         frame.matepath.SetSide(DockSide::Floating);
+        VerifyPaneLayoutMembership(frame, frame.matepath, false);
         frame.UpdateLayout();
         RECT client{}; frame.GetClientRect(&client);
         std::vector<POINT> targets;
@@ -96,6 +148,7 @@ inline void RunDragDockTests(MainFrame& frame) {
         POINT grab{20, -10};
         if (!frame.matepath.BeginMoving(grab) || !frame.matepath.IsDocking())
             throw std::runtime_error("Drag/drop could not dock a new frame bar");
+        VerifyPaneLayoutMembership(frame, frame.matepath, true);
         frame.UpdateLayout();
     }
     frame.matepath.SetSide(DockSide::Right);

@@ -202,6 +202,8 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
             if (msg->hwnd == address) SendMessage(WM_COMMAND, Go);
             else if (msg->hwnd == pattern) SendMessage(WM_COMMAND, Filter);
             else if (msg->hwnd == list) ActivateSelection();
+            else if (const int id = ::GetDlgCtrlID(msg->hwnd); id >= Back && id <= Filter)
+                ::SendMessageW(msg->hwnd, BM_CLICK, 0, 0);
             else return FALSE;
             return TRUE;
         }
@@ -211,7 +213,16 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
     if (msg->message == WM_SYSKEYDOWN && (msg->wParam == VK_LEFT || msg->wParam == VK_RIGHT || msg->wParam == VK_UP)) {
         SendMessage(WM_COMMAND, msg->wParam == VK_LEFT ? Back : msg->wParam == VK_RIGHT ? Forward : Up); return TRUE;
     }
-    return IsDialogMessage(msg);
+    // This is a docking window, not a dialog. IsDialogMessage sends
+    // DM_GETDEFID (WM_USER), which the framework interprets as an undock
+    // notification. That clears its owner without changing WS_CHILD/parent.
+    if (msg->message == WM_KEYDOWN && msg->wParam == VK_TAB
+        && GetKeyState(VK_CONTROL) >= 0 && GetKeyState(VK_MENU) >= 0) {
+        if (HWND next = ::GetNextDlgTabItem(m_hWnd, msg->hwnd, GetKeyState(VK_SHIFT) < 0))
+            ::SetFocus(next);
+        return TRUE;
+    }
+    return FALSE;
 }
 LRESULT MatepathPane::OnCommand(WORD, WORD id, HWND, BOOL&) {
     switch (id) {

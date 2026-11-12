@@ -28,6 +28,24 @@ foreach(framework TabbingFramework DockingFramework)
       # Match the upstream USE_BOOST branch's shared ownership with the STL.
       string(REPLACE "mutable std::auto_ptr<T> m_ptr;" "std::shared_ptr<T> m_ptr;" contents "${contents}")
       string(REPLACE "virtual void Move()=0;" "virtual ~CSplitterMoveTrackerBase() = default;\n\t\tvirtual void Move()=0;" contents "${contents}")
+      # The last pane is reparented synchronously, but its empty package is
+      # destroyed by a posted WM_CLOSE. Hide it before the frame rearranges:
+      # otherwise DWM/DeferWindowPos can preserve and stretch its stale pixels
+      # while nested modal/drag loops delay the queued close.
+      string(REPLACE "dockHdr.code=DC_UNDOCK;\n\t\t\t::SendMessage(dockHdr.hBar"
+        "dockHdr.code=DC_UNDOCK;\n\t\t\t::ShowWindow(dockHdr.hWnd,SW_HIDE);\n\t\t\t::SendMessage(dockHdr.hBar" contents "${contents}")
+      # A pane HWND must occur once in a package. Repeated docking requests
+      # otherwise append duplicate records; undocking only one copy leaves a
+      # floating HWND in the old package, which keeps positioning its window.
+      set(remove_existing_frame "\n\t\tfor(;;) {\n\t\t\titerator existing=std::find_if(m_frames.begin(),m_frames.end(),CFrame::CCmp(frame.hwnd()));\n\t\t\tif(existing==m_frames.end()) break;\n\t\t\tm_frames.erase(existing);\n\t\t}\n")
+      string(REPLACE "bool Dock(CFrame& frame,const DFDOCKRECT* pHdr,const CRect& rc)\n\t{"
+        "bool Dock(CFrame& frame,const DFDOCKRECT* pHdr,const CRect& rc)\n\t{${remove_existing_frame}" contents "${contents}")
+      string(REPLACE "position pos=m_frames.low()+position((m_frames.hi()-m_frames.low())*pHdr->fPctPos);"
+        "for(;;) {\n\t\t\titerator existing=std::find_if(m_frames.begin(),m_frames.end(),CFrame::CCmp(pHdr->hdr.hWnd));\n\t\t\tif(existing==m_frames.end()) break;\n\t\t\tm_frames.erase(existing);\n\t\t}\n\t\tposition pos=m_frames.low()+position((m_frames.hi()-m_frames.low())*pHdr->fPctPos);" contents "${contents}")
+      string(REPLACE "assert(i!=m_frames.end());\n\t\tm_frames.erase(i);\n\t\treturn Arrange(rc);"
+        "if(i==m_frames.end()) return false;\n\t\tdo {\n\t\t\tm_frames.erase(i);\n\t\t\ti=std::find_if(m_frames.begin(),m_frames.end(),CFrame::CCmp(pHdr->hWnd));\n\t\t} while(i!=m_frames.end());\n\t\treturn Arrange(rc);" contents "${contents}")
+      string(REPLACE "bool bRes=baseClass::Undock(pHdr,rc);\n\t\tassert(bRes);"
+        "bool bRes=baseClass::Undock(pHdr,rc);\n\t\tif(!bRes) return false;" contents "${contents}")
       string(REPLACE "static distance min_distance" "static typename T::distance min_distance" contents "${contents}")
       string(REPLACE "const distance dist=TMinDist;" "const typename T::distance dist=TMinDist;" contents "${contents}")
       string(REPLACE "bool AcceptDock(const_iterator i," "bool AcceptDock(typename baseClass::const_iterator i," contents "${contents}")
@@ -43,6 +61,9 @@ foreach(framework TabbingFramework DockingFramework)
     if(name STREQUAL "DockingWindow.h")
       # Disambiguate the dependent window handle from a function declaration.
       string(REPLACE "CWindowDC dc(m_hWnd);" "WTL::CWindowDC dc(this->m_hWnd);" contents "${contents}")
+      # A repeated request to the same bar is idempotent for ownership too.
+      string(REPLACE "assert(!IsDocking());\n\t\tm_hBarOwner=hBar;"
+        "assert(!IsDocking() || GetOwnerDockingBar()==hBar);\n\t\tm_hBarOwner=hBar;" contents "${contents}")
       # Desktop XOR feedback is unreliable under DWM. Move floating windows
       # during tracking, while retaining the framework's dock-target detection.
       # Mouse messages are relative to the moving window, so keep the grab

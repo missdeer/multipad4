@@ -1,5 +1,6 @@
 #include "MainFrame.h"
 #include "SmokeTest.h"
+#include "../tests/PluginFeatureTests.h"
 #include <shellapi.h>
 #include <cstdio>
 #include <fstream>
@@ -20,6 +21,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     extern UINT g_uSystemDPI; g_uSystemDPI = GetDpiForSystem();
     if (!Scintilla_RegisterClasses(instance)) { _Module.Term(); OleUninitialize(); return 2; }
     int count = 0; LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
+    bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool smoke = count == 2 && wcscmp(args[1], L"--smoke-test") == 0;
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
@@ -28,13 +30,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     {
         CMessageLoop loop; _Module.AddMessageLoop(&loop);
         MainFrame frame;
-        frame.settings.Initialize(smoke || report || render);
-        SetThreadUILanguage(smoke || report || render ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
+        frame.plugins.enabled = !(smoke || report || render);
+        frame.settings.Initialize(smoke || report || render || pluginTest);
+        SetThreadUILanguage(smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         if (frame.settings.persistent) LoadStylePreferences(frame.settings.path.c_str());
         if (frame.settings.persistent) LoadEditPreferences(frame.settings.path);
         ParsedCommandLine options;
         bool reused = false;
-        if (!smoke && !report && !render) {
+        if (!smoke && !report && !render && !pluginTest) {
             try {
                 options = ParseCommandLine(GetCommandLineW());
                 if (!options.appId.empty()) SetCurrentProcessExplicitAppUserModelID(options.appId.c_str());
@@ -74,9 +77,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
         else if (!frame.CreateEx(nullptr, rect)) result = 3;
-        else if (smoke || report || render) {
+        else if (smoke || report || render || pluginTest) {
+            if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
+            frame.plugins.Ready();
             try {
-                if (smoke || render) { if (render) frame.ShowWindow(SW_SHOWNORMAL); RunSmokeTest(frame); }
+                if (pluginTest) {
+                    RunPluginFeatureTests(frame);
+                } else if (smoke || render) { if (render) frame.ShowWindow(SW_SHOWNORMAL); RunSmokeTest(frame); }
                 else {
                     frame.NewDocument();
                     std::ofstream out{std::filesystem::path(args[2])};
@@ -89,6 +96,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                     out << "\n}\n";
                 }
             } catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); result = 4; }
+            frame.plugins.Shutdown();
             frame.matepath.DestroyPane();
             if (frame.dock.pane.IsWindow()) { if (frame.dock.pane.IsDocking()) frame.dock.pane.Undock(); frame.dock.pane.DestroyWindow(); }
             frame.DestroyWindow();
@@ -96,6 +104,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             frame.ShowWindow(frame.runtime.restoredShowCmd == SW_SHOWMAXIMIZED ? SW_SHOWMAXIMIZED : show); frame.UpdateWindow();
             try { ApplyCommandLine(frame, options); } catch (const std::exception& error) { frame.Error(error); }
             if (frame.documents.empty()) frame.NewDocument();
+            frame.plugins.Ready();
             if (options.help) ExecuteFrameCommand(frame, IDM_CMDLINE_HELP);
             if (options.print) frame.PostMessage(WM_CLOSE);
             result = loop.Run();

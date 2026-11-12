@@ -4,7 +4,35 @@
 #include "Dlapi.h"
 #include "QAArtifacts.h"
 
+// IsDialogMessage sends DM_GETDEFID (WM_USER) to its dialog target. The
+// docking shell uses WM_USER for WMDF_NDOCKSTATECHANGED, so input filtering
+// must not run the dialog manager against the shell itself.
+inline void RunMatepathInputRegression(MainFrame& frame) {
+    auto& pane = frame.matepath;
+    pane.SetSide(DockSide::Right);
+    HWND bar = ::GetParent(pane);
+    MSG input{}; input.hwnd = pane.list; input.message = WM_KEYDOWN; input.wParam = VK_TAB;
+    pane.PreTranslateMessage(&input);
+    if (!pane.IsDocking() || pane.GetOwnerDockingBar() != bar || ::GetParent(pane) != bar)
+        throw std::runtime_error("Matepath Tab input corrupts docking ownership via DM_GETDEFID");
+    for (UINT pointerMessage : {WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_LBUTTONUP}) {
+        input.message = pointerMessage;
+        if (pane.PreTranslateMessage(&input)) throw std::runtime_error("Matepath filters native pointer input");
+    }
+    if (::IsWindowVisible(pane)) {
+        pane.address.SetFocus();
+        HWND next = ::GetNextDlgTabItem(pane, pane.address, FALSE);
+        input.hwnd = pane.address; input.message = WM_KEYDOWN; input.wParam = VK_TAB;
+        if (!pane.PreTranslateMessage(&input) || (next && ::GetFocus() != next))
+            throw std::runtime_error("Matepath Tab navigation does not move focus");
+    }
+    pane.SendMessage(WM_COMMAND, MatepathPane::Reload);
+    if (!pane.IsDocking() || pane.GetOwnerDockingBar() != bar)
+        throw std::runtime_error("Matepath controls changed docking ownership");
+}
+
 inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& root) {
+    RunMatepathInputRegression(frame);
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Matepath regression at line " + std::to_string(where.line()));
     };

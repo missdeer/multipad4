@@ -61,6 +61,15 @@ if(BUILD_TESTING)
   add_test(NAME fileio_roundtrip COMMAND fileio_tests)
   add_test(NAME editor_integration COMMAND multipad4 --smoke-test)
   set_tests_properties(editor_integration PROPERTIES TIMEOUT 30)
+  # Real binary compatibility checks are available when the supplied plugins exist.
+  if(EXISTS "${PROJECT_BINARY_DIR}/plugins/JsonTools/JsonTools.dll" AND
+     EXISTS "${PROJECT_BINARY_DIR}/plugins/XMLTools/XMLTools.dll" AND
+     EXISTS "${PROJECT_BINARY_DIR}/plugins/mimeTools/mimeTools.dll" AND
+     EXISTS "${PROJECT_BINARY_DIR}/plugins/NppConverter/NppConverter.dll" AND
+     EXISTS "${PROJECT_BINARY_DIR}/plugins/NppExport/NppExport.dll")
+    add_test(NAME notepadpp_plugins COMMAND multipad4 --plugin-test)
+    set_tests_properties(notepadpp_plugins PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+  endif()
 endif()
 
 

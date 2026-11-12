@@ -76,3 +76,28 @@ styling rather than the private Lexilla markings-pointer ABI. The upstream
 GPL license is included in `LICENSE`; Scintilla's notice in
 `COPYING.search-result` also applies to the original lexer. Distributing these
 adaptations requires complying with the applicable GPL terms.
+
+
+## Notepad++ plugin interface
+
+`3rdparty/notepad-plus-plus-plugin-api` contains unmodified `PluginInterface.h`,
+`Notepad_plus_msgs.h`, and `Docking.h` from the user-provided
+`tmp/notepad-plus-plus` checkout, together with its GPL-3.0-or-later `LICENSE`.
+The headers retain their copyright and license notices. `src/PluginHost.cpp`
+implements the host adapter, using the upstream plugin loading sequence and ABI
+as references; it does not import Notepad++'s application or docking manager.
+Plugin DLLs in the generated build directory are user-provided runtime inputs,
+not redistributed source dependencies. Their own licenses continue to apply.
+
+Empty docking package windows are hidden synchronously when their last pane
+leaves. Destruction still uses the upstream posted `WM_CLOSE`, preserving the
+active docking callback. This prevents stale pane pixels from remaining visible
+while a nested drag or modal loop delays that close. The compatibility regression
+checks immediate invisibility and eventual HWND destruction with plugins loaded.
+
+Repeated docking requests now replace a package's existing HWND records, and
+undocking removes all records for that HWND. Same-bar ownership notifications
+are idempotent. This addresses a captured failure where Matepath was floating
+but a right-side package still referenced its HWND. Regressions inspect package
+membership independently of HWND parenting, exercise repeated registration and
+cancel/float transitions, and check deferred container destruction.

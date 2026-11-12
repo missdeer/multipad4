@@ -69,6 +69,7 @@ public:
     }
     LRESULT OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
         auto* n = reinterpret_cast<NMHDR*>(l);
+        if (document && n->hwndFrom == document->hwnd) ::SendMessageW(owner, WM_APP + 0x120, 0, l);
         if (document && n->hwndFrom == document->hwnd) HandleStyleNotification(*document, *reinterpret_cast<SCNotification*>(l));
         if (n->code == SCN_SAVEPOINTLEFT || n->code == SCN_SAVEPOINTREACHED || n->code == SCN_UPDATEUI || n->code == SCN_ZOOM)
             ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
