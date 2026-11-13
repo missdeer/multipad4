@@ -5,6 +5,17 @@ file(GLOB SCI_SOURCES CONFIGURE_DEPENDS
   "${SCI_ROOT}/lexlib/*.cxx" "${SCI_ROOT}/lexers/*.cxx")
 add_library(notepad4_scintilla STATIC ${SCI_SOURCES})
 target_include_directories(notepad4_scintilla PUBLIC "${SCI_ROOT}/include" PRIVATE "${SCI_ROOT}/src" "${SCI_ROOT}/lexlib")
+
+if(MINGW)
+  # MinGW's _bittest intrinsics dereference long*, which cannot alias uint32_t*
+  # under GCC optimization. Use the upstream type-safe bit operations instead.
+  set(SCI_COMPAT_INCLUDE_DIR "${PROJECT_BINARY_DIR}/framework-compat/Scintilla")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${SCI_ROOT}/include/VectorISA.h")
+  file(READ "${SCI_ROOT}/include/VectorISA.h" vector_isa)
+  string(REPLACE "#if NP2_TARGET_ARM\ninline bool bittest" "#if NP2_TARGET_ARM || defined(__GNUC__)\ninline bool bittest" vector_isa "${vector_isa}")
+  file(CONFIGURE OUTPUT "${SCI_COMPAT_INCLUDE_DIR}/VectorISA.h" CONTENT "${vector_isa}" @ONLY)
+  target_include_directories(notepad4_scintilla BEFORE PUBLIC "${SCI_COMPAT_INCLUDE_DIR}")
+endif()
 target_compile_definitions(notepad4_scintilla PRIVATE BOOST_REGEX_STANDALONE _CRT_SECURE_NO_WARNINGS _SCL_SECURE_NO_WARNINGS)
-target_compile_options(notepad4_scintilla PRIVATE /W3 /EHsc)
+target_compile_options(notepad4_scintilla PRIVATE ${MULTIPAD4_VENDOR_WARNINGS})
 target_link_libraries(notepad4_scintilla PUBLIC imm32 ole32 oleaut32 gdi32 user32 shlwapi)

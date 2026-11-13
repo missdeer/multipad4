@@ -76,6 +76,26 @@ The `msvc-x64` configure/build/test presets in `CMakePresets.json` are also avai
 
 The GitHub Actions [MSVC Build](.github/workflows/msvc-build.yml) workflow runs on pushes, pull requests, and manual dispatch. It builds three x64 Release variants on Windows 2022 / VS 2022: SSE4.2, AVX2, and AVX512. Each uses its corresponding `MULTIPAD4_SIMD` value and uploads a `multipad4-msvc-x64-SSE4.2`, `multipad4-msvc-x64-AVX2`, or `multipad4-msvc-x64-AVX512` artifact containing `multipad4.exe` and `MultiPad4 DarkTheme.ini`. This workflow only builds the application; it does not run tests. A failure in one variant does not cancel the others.
 
+### MinGW-w64 / OpenATL
+
+A MinGW-w64 x64 build uses the pinned MIT-licensed OpenATL snapshot instead of
+Microsoft ATL. Install GCC, binutils (windres), CMake, Ninja, and Python 3.10+.
+The existing local wrappers select the MinGW64 toolchain by directory name:
+
+```powershell
+New-Item -ItemType Directory -Force cmake-mingw64-build
+bash -lc "cmake-reconfigure cmake-mingw64-build"
+bash -lc "cmake-build cmake-mingw64-build"
+ctest --test-dir cmake-mingw64-build --output-on-failure
+```
+
+On other machines, the `mingw64-x64` configure/build/test presets can be used
+from an MSYS2 MinGW64 terminal. Keep the selected toolchain's `bin` directory
+on PATH when launching the executable, or deploy its runtime DLLs alongside it.
+No Microsoft ATL or Visual Studio installation is needed for this build.
+OpenATL, WTL, and the tabbing/docking snapshots remain unchanged; compatibility
+patches are applied to build-directory copies. See [THIRD_PARTY.md](THIRD_PARTY.md).
+
 ### SIMD build options
 
 `CMakeLists.txt` provides the `MULTIPAD4_SIMD` cache option with three choices, defaulting to `SSE4.2`. The application, file layer, complete lexer configuration catalogue, and Scintilla use the same instruction-set setting. AVX2/AVX512 enable the corresponding branches in upstream `VectorISA.h`. Configuration checks both the option value and compiler support so unsupported `/arch` flags are not silently ignored.
@@ -92,10 +112,11 @@ Application-side SIMD is used for UTF-8/UTF-16/ASCII detection, line-ending stat
 
 ## Validation
 
-CMake currently defines **eight regular tests** and conditionally registers `notepadpp_plugins` when all five plugin DLLs listed above are present in the build directory, bringing the total to nine. CI currently builds only and does not run these tests.
+CMake currently defines **nine regular tests** and conditionally registers `notepadpp_plugins` when all five plugin DLLs listed above are present in the build directory, bringing the total to ten. CI currently builds only and does not run these tests.
 
 | CTest name | Main coverage |
 |---|---|
+| `scintilla_line_index` | LF/CRLF/CR line counts and offsets across scalar/SIMD boundaries, with both line-index widths |
 | `fileio_roundtrip` | Encodings, Chinese/emoji, line endings, invalid input, and failed-save protection |
 | `editor_integration` | Real WTL/Scintilla windows, MDI isolation, commands/UI, search/replace, styles, settings, sessions, autosave, and Matepath |
 | `simd_boundaries` | Guard pages, random input, invalid/truncated encodings, line endings across blocks, and graphics tail boundaries |

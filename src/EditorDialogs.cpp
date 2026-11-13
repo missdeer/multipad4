@@ -99,6 +99,8 @@ const std::wstring BuildDetails = [] {
         (__INTEL_LLVM_COMPILER / 100) % 100, __INTEL_LLVM_COMPILER % 100);
 #elif defined(__clang__)
     swprintf_s(compiler, L"Clang %d.%d.%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#elif defined(__GNUC__)
+    swprintf_s(compiler, L"GCC %d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #else
     swprintf_s(compiler, L"Visual C++ %d.%02d.%05d.%d", _MSC_VER / 100,
         _MSC_VER % 100, _MSC_FULL_VER % 100000, _MSC_BUILD);

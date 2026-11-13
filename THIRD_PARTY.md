@@ -4,6 +4,36 @@
 
 User-provided WTL 10.0 checkout at `3rdparty/wtl`, copyright Microsoft Corporation and WTL Team. Headers state the Microsoft Public License (MS-PL). No upstream changes.
 
+## OpenATL (MinGW-w64 builds)
+
+Source: https://github.com/kkHAIKE/OpenATL, pinned at
+`e46308c1359bd6c2eaf0ee2981531bb4759738f7`, stored unchanged in
+`3rdparty/OpenATL`. MIT license; see `3rdparty/OpenATL/LICENSE`.
+MSVC builds continue to use Microsoft's ATL.
+
+MinGW builds use `cmake/CompilerCompatibility.cmake` and
+`cmake/FrameworkCompatibility.cmake` to generate framework copies.
+`cmake/MinGWCompatibility.py` applies the exact patches in `cmake/mingw/`
+to those copies, checking every context line. These patches qualify dependent
+base names and types, preserve publicly exposed template aliases, supply
+explicit-class window registration macros, add CString/CRect interfaces used
+by the editor, replace legacy tracker auto_ptr ownership with unique_ptr, and
+correct dormant syntax errors in the pinned frameworks. WTL registry-property
+specializations become standard C++ overloads, and newer EDIT wrappers are
+enabled only when the SDK declares their messages.
+
+`cmake/openatl/atlcoll.h` supplies the indexed CAtlArray subset used by the
+tabbing framework. Its standard C++ storage preserves elements through middle
+insertions and removals. This is a project compatibility layer, not a complete
+replacement for Microsoft's ATL collection library.
+
+For MinGW, `cmake/scintilla/CMakeLists.txt` also generates a copy of
+`VectorISA.h` that selects the upstream portable bit-test operations. The
+x86 `_bittest` helpers cast `uint32_t*` to `long*`, which violates GCC's aliasing
+rules and caused missed line endings under optimization. The dedicated
+`scintilla_line_index` regression checks all three EOL sequences and both line
+index widths across short inputs, SIMD blocks, and line-position batches.
+
 ## WTL Tabbing Framework
 
 Daniel Bowen, copyright 2002–2005, with CustomTabCtrl/atlgdix contributions by Bjarke Viksoe. Snapshot: `3rdparty/TabbingFramework`.

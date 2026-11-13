@@ -23,14 +23,14 @@ LRESULT SearchResultsPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { Hide(); visibl
 void SearchResultsPane::Reveal() { Show(); visible = true; }
 void SearchResultsPane::Clear() {
     ++generation;
-    SendMessageW(editor, SCI_SETREADONLY, FALSE, 0); SendMessageW(editor, SCI_CLEARALL, 0, 0);
-    SendMessageW(editor, SCI_SETREADONLY, TRUE, 0); targets.clear(); lines.clear(); archives.clear();
+    ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0); ::SendMessageW(editor, SCI_CLEARALL, 0, 0);
+    ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0); targets.clear(); lines.clear(); archives.clear();
 }
 void SearchResultsPane::Append(const std::string& text, SearchResultLexer::Line style, Target target) {
-    SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
+    ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
     auto value = text + "\n";
-    SendMessageW(editor, SCI_APPENDTEXT, value.size(), reinterpret_cast<LPARAM>(value.data()));
-    SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
+    ::SendMessageW(editor, SCI_APPENDTEXT, value.size(), reinterpret_cast<LPARAM>(value.data()));
+    ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
     lines.push_back(std::move(style)); targets.push_back(std::move(target));
 }
 void SearchResultsPane::Begin(const std::wstring& query) {
@@ -82,14 +82,14 @@ bool SearchResultsPane::LoadMore(size_t archive) {
     SearchResultLexer::Colourise(editor, lines); return true;
 }
 void SearchResultsPane::Finish(size_t hits, size_t files) {
-    auto start = SendMessageW(editor, SCI_POSITIONFROMLINE, header, 0);
-    auto end = SendMessageW(editor, SCI_GETLINEENDPOSITION, header, 0);
+    auto start = ::SendMessageW(editor, SCI_POSITIONFROMLINE, header, 0);
+    auto end = ::SendMessageW(editor, SCI_GETLINEENDPOSITION, header, 0);
     std::string suffix = " (" + std::to_string(hits) + " hits in " + std::to_string(files) + " files)";
-    SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
-    SendMessageW(editor, SCI_INSERTTEXT, end, reinterpret_cast<LPARAM>(suffix.c_str()));
-    SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
+    ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
+    ::SendMessageW(editor, SCI_INSERTTEXT, end, reinterpret_cast<LPARAM>(suffix.c_str()));
+    ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
     SearchResultLexer::Colourise(editor, lines);
-    SendMessageW(editor, SCI_GOTOPOS, start, 0); SendMessageW(editor, SCI_EMPTYUNDOBUFFER, 0, 0);
+    ::SendMessageW(editor, SCI_GOTOPOS, start, 0); ::SendMessageW(editor, SCI_EMPTYUNDOBUFFER, 0, 0);
 }
 bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
     if (line >= targets.size() || lines[line].style != SearchResultLexer::Default) return false;
@@ -130,22 +130,22 @@ bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
 }
 BOOL SearchResultsPane::PreTranslateMessage(MSG* message) {
     if (message->hwnd == editor && message->message == WM_KEYDOWN && message->wParam == VK_RETURN) {
-        Navigate(SendMessageW(editor, SCI_LINEFROMPOSITION, SendMessageW(editor, SCI_GETCURRENTPOS, 0, 0), 0)); return TRUE;
+        Navigate(::SendMessageW(editor, SCI_LINEFROMPOSITION, ::SendMessageW(editor, SCI_GETCURRENTPOS, 0, 0), 0)); return TRUE;
     } return FALSE;
 }
 LRESULT SearchResultsPane::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
     auto* n = reinterpret_cast<SCNotification*>(l);
     if (n->nmhdr.hwndFrom != editor) { handled = FALSE; return 0; }
     if (n->nmhdr.code == SCN_DOUBLECLICK) {
-        auto line = SendMessageW(editor, SCI_LINEFROMPOSITION, n->position, 0);
+        auto line = ::SendMessageW(editor, SCI_LINEFROMPOSITION, n->position, 0);
         size_t index = 0;
         if (line >= 0 && static_cast<size_t>(line) < lines.size()) {
-            auto column = n->position - SendMessageW(editor, SCI_POSITIONFROMLINE, line, 0);
+            auto column = n->position - ::SendMessageW(editor, SCI_POSITIONFROMLINE, line, 0);
             const auto& segments = lines[line].segments;
             for (size_t i = 0; i < segments.size(); ++i) if (column >= segments[i].first && column <= segments[i].second) { index = i; break; }
         }
-        if (!Navigate(line, index)) SendMessageW(editor, SCI_TOGGLEFOLD, line, 0);
-    } else if (n->nmhdr.code == SCN_MARGINCLICK) SendMessageW(editor, SCI_TOGGLEFOLD, SendMessageW(editor, SCI_LINEFROMPOSITION, n->position, 0), 0);
+        if (!Navigate(line, index)) ::SendMessageW(editor, SCI_TOGGLEFOLD, line, 0);
+    } else if (n->nmhdr.code == SCN_MARGINCLICK) ::SendMessageW(editor, SCI_TOGGLEFOLD, ::SendMessageW(editor, SCI_LINEFROMPOSITION, n->position, 0), 0);
     else if (n->nmhdr.code == SCN_STYLENEEDED) SearchResultLexer::Colourise(editor, lines);
     return 0;
 }
@@ -157,9 +157,9 @@ LRESULT SearchResultsPane::OnContext(UINT, WPARAM, LPARAM l, BOOL&) {
     AppendMenuW(menu, MF_STRING, 5, L"Clear all"); AppendMenuW(menu, MF_STRING, 6, L"Hide");
     POINT point{GET_X_LPARAM(l), GET_Y_LPARAM(l)}; if (point.x == -1) { point = {20,20}; ClientToScreen(&point); }
     int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, 0, m_hWnd, nullptr); DestroyMenu(menu);
-    if (command == 1) SendMessageW(editor, SCI_COPY, 0, 0);
-    if (command == 2) SendMessageW(editor, SCI_SELECTALL, 0, 0);
-    if (command == 3 || command == 4) SendMessageW(editor, SCI_FOLDALL, command == 3 ? SC_FOLDACTION_CONTRACT : SC_FOLDACTION_EXPAND, 0);
+    if (command == 1) ::SendMessageW(editor, SCI_COPY, 0, 0);
+    if (command == 2) ::SendMessageW(editor, SCI_SELECTALL, 0, 0);
+    if (command == 3 || command == 4) ::SendMessageW(editor, SCI_FOLDALL, command == 3 ? SC_FOLDACTION_CONTRACT : SC_FOLDACTION_EXPAND, 0);
     if (command == 7 && !archives.empty()) LoadMore(archives.size() - 1);
     if (command == 5) Clear(); if (command == 6) { Hide(); visible = false; } return 0;
 }

@@ -1,0 +1,72 @@
+--- OpenATL/atlstr.h
++++ OpenATL/atlstr.h
+@@ -83,6 +83,8 @@
+     }
+ 
+     operator LPCTSTR() const noexcept { return m_str.c_str(); }
++
++    LPCTSTR GetString() const noexcept { return m_str.c_str(); }
+ 
+     int GetLength() const noexcept { return (int)m_str.length(); }
+     bool IsEmpty() const noexcept { return m_str.empty(); }
+--- OpenATL/atltypes.h
++++ OpenATL/atltypes.h
+@@ -113,6 +113,13 @@
+     BOOL operator==(const RECT& rect) const noexcept { return ::EqualRect(this, &rect); }
+     BOOL operator!=(const RECT& rect) const noexcept { return !::EqualRect(this, &rect); }
+ 
++    operator LPRECT() noexcept { return this; }
++    operator LPCRECT() const noexcept { return this; }
++    void operator+=(SIZE size) noexcept { OffsetRect(size); }
++    void operator-=(SIZE size) noexcept { OffsetRect(-size.cx, -size.cy); }
++    void operator+=(POINT point) noexcept { OffsetRect(point); }
++    void operator-=(POINT point) noexcept { OffsetRect(-point.x, -point.y); }
++
+     void operator=(const RECT& srcRect) noexcept { ::CopyRect(this, &srcRect); }
+ };
+ 
+--- OpenATL/atlwin.h
++++ OpenATL/atlwin.h
+@@ -1884,6 +1884,42 @@
+     return wc; \
+ }
+ 
++#define DECLARE_WND_CLASS2(WndClassName, EnclosingClass) \
++static ATL::CWndClassInfo& GetWndClassInfo() \
++{ \
++    static ATL::CWndClassInfo wc = \
++    { \
++        { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, EnclosingClass::StartWindowProc, \
++          0, 0, NULL, NULL, NULL, (HBRUSH)(COLOR_WINDOW + 1), NULL, (LPCTSTR)(WndClassName), NULL }, \
++        NULL, NULL, IDC_ARROW, TRUE, 0, _T("") \
++    }; \
++    return wc; \
++}
++
++#define DECLARE_WND_CLASS_EX2(WndClassName, EnclosingClass, style, bkgnd) \
++static ATL::CWndClassInfo& GetWndClassInfo() \
++{ \
++    static ATL::CWndClassInfo wc = \
++    { \
++        { sizeof(WNDCLASSEX), style, EnclosingClass::StartWindowProc, \
++          0, 0, NULL, NULL, NULL, (HBRUSH)(bkgnd + 1), NULL, (LPCTSTR)(WndClassName), NULL }, \
++        NULL, NULL, IDC_ARROW, TRUE, 0, _T("") \
++    }; \
++    return wc; \
++}
++
++#define DECLARE_WND_SUPERCLASS2(WndClassName, EnclosingClass, OrigWndClassName) \
++static ATL::CWndClassInfo& GetWndClassInfo() \
++{ \
++    static ATL::CWndClassInfo wc = \
++    { \
++        { sizeof(WNDCLASSEX), 0, EnclosingClass::StartWindowProc, \
++          0, 0, NULL, NULL, NULL, NULL, NULL, WndClassName, NULL }, \
++        OrigWndClassName, NULL, NULL, TRUE, 0, _T("") \
++    }; \
++    return wc; \
++}
++
+ namespace ATL { // reopen namespace
+ 
+ ///////////////////////////////////////////////////////////////////////////////

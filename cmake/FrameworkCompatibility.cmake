@@ -59,6 +59,9 @@ foreach(framework TabbingFramework DockingFramework)
       string(REPLACE "std::bind2nd(std::plus<position>(),n)" "[n](const auto& value) { return value + n; }" contents "${contents}")
     endif()
     if(name STREQUAL "DockingWindow.h")
+      # Value-initialize the aggregate base; Clang rejects passing integer zero
+      # to its first (DFMHDR) member under C++20 aggregate initialization.
+      string(REPLACE ":DFDOCKPOS(0),m_dw(dw)" ":DFDOCKPOS{},m_dw(dw)" contents "${contents}")
       # Disambiguate the dependent window handle from a function declaration.
       string(REPLACE "CWindowDC dc(m_hWnd);" "WTL::CWindowDC dc(this->m_hWnd);" contents "${contents}")
       # A repeated request to the same bar is idempotent for ownership too.
@@ -91,6 +94,10 @@ foreach(framework TabbingFramework DockingFramework)
       # requiring two implicit user-defined conversions in the initializer.
       string(REPLACE "CBrush brush = CDCHandle::GetHalftoneBrush();" "CBrush brush(CDCHandle::GetHalftoneBrush().m_hBrush);" contents "${contents}")
     endif()
+    if(name STREQUAL "CustomTabCtrl.h" AND NOT MINGW)
+      # NMHDR::idFrom is pointer-sized on Win64, unlike GetDlgCtrlID().
+      string(REPLACE "this->GetDlgCtrlID()," "static_cast<UINT_PTR>(this->GetDlgCtrlID())," contents "${contents}")
+    endif()
     string(REPLACE "CClientDC dc(m_hWnd);" "CClientDC dc(this->m_hWnd);" contents "${contents}")
     if(name STREQUAL "DockImpl.cpp")
       string(REPLACE "sizeof(sEllipsis)-1" "static_cast<int>(_tcslen(sEllipsis))" contents "${contents}")
@@ -98,3 +105,12 @@ foreach(framework TabbingFramework DockingFramework)
     file(CONFIGURE OUTPUT "${FRAMEWORK_COMPAT_DIR}/${framework}/${name}" CONTENT "${contents}" @ONLY)
   endforeach()
 endforeach()
+
+if(MINGW)
+  find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+  file(GLOB mingw_patches CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/cmake/mingw/*.patch")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/cmake/MinGWCompatibility.py" ${mingw_patches})
+  execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/MinGWCompatibility.py"
+    "${FRAMEWORK_COMPAT_DIR}" COMMAND_ERROR_IS_FATAL ANY)
+endif()

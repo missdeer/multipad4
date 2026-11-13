@@ -1,0 +1,2255 @@
+--- TabbingFramework/CustomTabCtrl.h
++++ TabbingFramework/CustomTabCtrl.h
+@@ -735,14 +735,15 @@
+ 
+ typedef ATL::CWinTraits<WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CTCS_TOOLTIPS, 0> CCustomTabCtrlWinTraits;
+ 
+-template <class T, class TItem = CCustomTabItem, class TBase = ATL::CWindow, class TWinTraits = CCustomTabCtrlWinTraits>
++template <class T, class TItemType = CCustomTabItem, class TBase = ATL::CWindow, class TWinTraits = CCustomTabCtrlWinTraits>
+ class ATL_NO_VTABLE CCustomTabCtrl : 
+ 	public ATL::CWindowImpl< T, TBase, TWinTraits >,
+ 	public COffscreenDrawRect< T >
+ {
+ public:
++    typedef TItemType TItem;
+ 	// Expose the item type (that's a template parameter to this base class)
+-	typedef typename TItem TItem;
++	
+ 
+ protected:
+ 	typedef ATL::CWindowImpl< T, TBase, TWinTraits > baseClass;
+@@ -908,7 +909,7 @@
+ 		{
+ 			// Be sure InitCommonControlsEx is called before this,
+ 			//  with one of the flags that includes the tooltip control
+-			m_tooltip.Create(m_hWnd, NULL, NULL, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP /* | TTS_BALLOON */, WS_EX_TOOLWINDOW);
++			m_tooltip.Create(this->m_hWnd, NULL, NULL, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP /* | TTS_BALLOON */, WS_EX_TOOLWINDOW);
+ 			if(m_tooltip.IsWindow())
+ 			{
+ 				m_tooltip.SetWindowPos(HWND_TOPMOST, 0, 0, 0, 0,
+@@ -1094,8 +1095,8 @@
+ 	{
+ 		T* pT = static_cast<T*>(this);
+ 
+-		NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_ACCEPTITEMDRAG }, m_iDragItemOriginal, m_iDragItem, {-1,-1}};
+-		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++		NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_ACCEPTITEMDRAG }, m_iDragItemOriginal, m_iDragItem, {-1,-1}};
++		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 
+ 		// In this implementation, the tab is moved as they drag.
+ 		pT->StopItemDrag(bRedrawEffectedArea);
+@@ -1115,8 +1116,8 @@
+ 			pT->EnsureVisible(m_iDragItemOriginal);
+ 		}
+ 
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_CANCELITEMDRAG }, m_iDragItemOriginal, {-1,-1}};
+-		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_CANCELITEMDRAG }, m_iDragItemOriginal, {-1,-1}};
++		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 
+ 		pT->StopItemDrag(bRedrawEffectedArea);
+ 	}
+@@ -1130,7 +1131,7 @@
+ 			// Restore the default cursor
+ // need conditional code because types don't match in winuser.h
+ #ifdef _WIN64
+-			::SetCursor((HCURSOR)::GetClassLongPtr(m_hWnd, GCLP_HCURSOR));
++			::SetCursor((HCURSOR)::GetClassLongPtr(this->m_hWnd, GCLP_HCURSOR));
+ #else
+ 			::SetCursor((HCURSOR)LongToHandle(::GetClassLongPtr(m_hWnd, GCLP_HCURSOR)));
+ #endif
+@@ -1166,8 +1167,8 @@
+ 
+ 			if(CTCS_DRAGREARRANGE == (dwStyle & CTCS_DRAGREARRANGE))
+ 			{
+-				NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_BEGINITEMDRAG }, index, {ptDragOrigin.x, ptDragOrigin.y} };
+-				if(FALSE != ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++				NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_BEGINITEMDRAG }, index, {ptDragOrigin.x, ptDragOrigin.y} };
++				if(FALSE != ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 				{
+ 					// Returning non-zero prevents our default handling.
+ 					// We've possibly already set a couple things that we
+@@ -1317,7 +1318,7 @@
+ 
+ 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+ 	{
+-		LRESULT lRes = DefWindowProc();
++		LRESULT lRes = this->DefWindowProc();
+ 		if(lRes == -1)
+ 		{
+ 			return -1;
+@@ -1355,7 +1356,7 @@
+ 
+ 	LRESULT OnGetDlgCode(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+ 	{
+-		return DefWindowProc(uMsg, wParam, lParam) | DLGC_WANTARROWS;
++		return this->DefWindowProc(uMsg, wParam, lParam) | DLGC_WANTARROWS;
+ 	}
+ 
+ 	LRESULT OnMouseMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+@@ -1363,7 +1364,7 @@
+ 		bHandled = FALSE;
+ 		if(m_tooltip.IsWindow())
+ 		{
+-			MSG msg = { m_hWnd, uMsg, wParam, lParam };
++			MSG msg = { this->m_hWnd, uMsg, wParam, lParam };
+ 			m_tooltip.RelayEvent(&msg);
+ 		}
+ 		return 1;
+@@ -1382,7 +1383,7 @@
+ 			TRACKMOUSEEVENT tme = { 0 };
+ 			tme.cbSize = sizeof(tme);
+ 			tme.dwFlags = TME_LEAVE;
+-			tme.hwndTrack = m_hWnd;
++			tme.hwndTrack = this->m_hWnd;
+ 			if( _TrackMouseEvent(&tme) )
+ 			{
+ 				m_dwState |= ectcMouseInWindow;
+@@ -1659,8 +1660,8 @@
+ 			tchti.pt = ptCursor;
+ 			int nIndex = pT->HitTest(&tchti);
+ 
+-			NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_CLICK }, nIndex, {ptCursor.x, ptCursor.y} };
+-			if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++			NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_CLICK }, nIndex, {ptCursor.x, ptCursor.y} };
++			if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 			{
+ 				// returning FALSE let's us do our default handling
+ 				if(nIndex >= 0)
+@@ -1688,7 +1689,7 @@
+ 
+ 	LRESULT OnLButtonUp(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
+ 	{
+-		if(m_hWnd == ::GetCapture())
++		if(this->m_hWnd == ::GetCapture())
+ 		{
+ 			T* pT = static_cast<T*>(this);
+ 
+@@ -1709,8 +1710,8 @@
+ 				ectcMouseOver_CloseButton == (dwState & ectcMouseOver))
+ 			{
+ 				// Close Button
+-				NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_CLOSE }, m_iCurSel, {ptCursor.x, ptCursor.y}};
+-				::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++				NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_CLOSE }, m_iCurSel, {ptCursor.x, ptCursor.y}};
++				::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 			}
+ 
+ 			pT->UpdateLayout();
+@@ -1730,8 +1731,8 @@
+ 		int nIndex = pT->HitTest(&tchti);
+ 
+ 		// returning TRUE tells us not to do our default handling
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_DBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
+-		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_DBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 		{
+ 			// returning FALSE let's us do our default handling
+ 			if(nIndex >= 0)
+@@ -1755,8 +1756,8 @@
+ 		int nIndex = pT->HitTest(&tchti);
+ 
+ 		// returning TRUE tells us not to do our default handling
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_RCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
+-		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_RCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
++		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 		{
+ 			// returning FALSE let's us do our default handling
+ 			if(nIndex >= 0)
+@@ -1788,8 +1789,8 @@
+ 		int nIndex = pT->HitTest(&tchti);
+ 
+ 		// returning TRUE tells us not to do our default handling
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_RDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
+-		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_RDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 		{
+ 			// returning FALSE let's us do our default handling
+ 			if(nIndex >= 0)
+@@ -1813,8 +1814,8 @@
+ 		int nIndex = pT->HitTest(&tchti);
+ 
+ 		// returning TRUE tells us not to do our default handling
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
+-		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
++		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 		{
+ 			// returning FALSE let's us do our default handling
+ 			if( nIndex!=-1 )
+@@ -1844,8 +1845,8 @@
+ 		int nIndex = pT->HitTest(&tchti);
+ 
+ 		// returning TRUE tells us not to do our default handling
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
+-		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
+ 		{
+ 			// returning FALSE let's us do our default handling
+ 			if( nIndex!=-1 )
+@@ -1949,8 +1950,8 @@
+ 				{
+ 					if(m_tooltip.IsWindow())
+ 					{
+-						m_tooltip.AddTool(m_hWnd, _T("Scroll Right"), &rcDefault, (UINT)ectcToolTip_ScrollRight);
+-						m_tooltip.AddTool(m_hWnd, _T("Scroll Left"), &rcDefault, (UINT)ectcToolTip_ScrollLeft);
++						m_tooltip.AddTool(this->m_hWnd, _T("Scroll Right"), &this->rcDefault, (UINT)ectcToolTip_ScrollRight);
++						m_tooltip.AddTool(this->m_hWnd, _T("Scroll Left"), &this->rcDefault, (UINT)ectcToolTip_ScrollLeft);
+ 					}
+ 
+ 					//pT->UpdateLayout();
+@@ -1961,8 +1962,8 @@
+ 				{
+ 					if(m_tooltip.IsWindow())
+ 					{
+-						m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_ScrollRight);
+-						m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_ScrollLeft);
++						m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_ScrollRight);
++						m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_ScrollLeft);
+ 					}
+ 
+ 					m_iScrollOffset = 0;
+@@ -1976,7 +1977,7 @@
+ 				{
+ 					if(m_tooltip.IsWindow())
+ 					{
+-						m_tooltip.AddTool(m_hWnd, _T("Close"), &rcDefault, (UINT)ectcToolTip_Close);
++						m_tooltip.AddTool(this->m_hWnd, _T("Close"), &this->rcDefault, (UINT)ectcToolTip_Close);
+ 					}
+ 
+ 					//pT->UpdateLayout();
+@@ -1987,7 +1988,7 @@
+ 				{
+ 					if(m_tooltip.IsWindow())
+ 					{
+-						m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_Close);
++						m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_Close);
+ 					}
+ 
+ 					//pT->UpdateLayout();
+@@ -2168,8 +2169,8 @@
+ 		{
+ 			if(m_tooltip.IsWindow())
+ 			{
+-				m_tooltip.AddTool(m_hWnd, _T("Scroll Right"), &rcDefault, (UINT)ectcToolTip_ScrollRight);
+-				m_tooltip.AddTool(m_hWnd, _T("Scroll Left"), &rcDefault, (UINT)ectcToolTip_ScrollLeft);
++				m_tooltip.AddTool(this->m_hWnd, _T("Scroll Right"), &this->rcDefault, (UINT)ectcToolTip_ScrollRight);
++				m_tooltip.AddTool(this->m_hWnd, _T("Scroll Left"), &this->rcDefault, (UINT)ectcToolTip_ScrollLeft);
+ 			}
+ 		}
+ 
+@@ -2177,7 +2178,7 @@
+ 		{
+ 			if(m_tooltip.IsWindow())
+ 			{
+-				m_tooltip.AddTool(m_hWnd, _T("Close"), &rcDefault, (UINT)ectcToolTip_Close);
++				m_tooltip.AddTool(this->m_hWnd, _T("Close"), &this->rcDefault, (UINT)ectcToolTip_Close);
+ 			}
+ 		}
+ 	}
+@@ -2192,13 +2193,13 @@
+ 		{
+ 			if(CTCS_SCROLL == (dwStyle & CTCS_SCROLL))
+ 			{
+-				m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_ScrollRight);
+-				m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_ScrollLeft);
++				m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_ScrollRight);
++				m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_ScrollLeft);
+ 			}
+ 
+ 			if(CTCS_CLOSEBUTTON == (dwStyle & CTCS_CLOSEBUTTON))
+ 			{
+-				m_tooltip.DelTool(m_hWnd, (UINT)ectcToolTip_Close);
++				m_tooltip.DelTool(this->m_hWnd, (UINT)ectcToolTip_Close);
+ 			}
+ 		}
+ 
+@@ -2241,8 +2242,8 @@
+ 
+ 	void UpdateLayout(void)
+ 	{
+-		if(	!m_hWnd ||
+-			!::IsWindow(m_hWnd) ||
++		if(	!this->m_hWnd ||
++			!::IsWindow(this->m_hWnd) ||
+ 			(ectcEnableRedraw != (m_dwState & ectcEnableRedraw)))
+ 		{
+ 			return;
+@@ -2364,7 +2365,7 @@
+ 				// don't intersect at all, we still need
+ 				// to update the tool rect, or we'll get the wrong
+ 				// tooltip in some cases.
+-				m_tooltip.SetToolRect(m_hWnd, (UINT)i+1, &rcIntersect);
++				m_tooltip.SetToolRect(this->m_hWnd, (UINT)i+1, &rcIntersect);
+ 			}
+ 		}
+ 	}
+@@ -2440,7 +2441,7 @@
+ 
+ 		// Make sure we don't paint outside client area (possible with paint dc)
+ 		RECT rcClient = {0};
+-		GetClientRect(&rcClient);
++		this->GetClientRect(&rcClient);
+ 		dc.IntersectClipRect(&rcClient);
+ 
+ 
+@@ -2451,7 +2452,7 @@
+ 		LRESULT lResCustom;
+ 		NMCTCCUSTOMDRAW nmc = { 0 };
+ 		LPNMCUSTOMDRAW pnmcd= &(nmc.nmcd);
+-		pnmcd->hdr.hwndFrom = m_hWnd;
++		pnmcd->hdr.hwndFrom = this->m_hWnd;
+ 		pnmcd->hdr.idFrom = this->GetDlgCtrlID();
+ 		pnmcd->hdr.code = NM_CUSTOMDRAW;
+ 		pnmcd->hdc = dc;
+@@ -2460,7 +2461,7 @@
+ 		pT->InitializeDrawStruct(&nmc);
+ 
+ 		pnmcd->dwDrawStage = CDDS_PREPAINT;
+-		lResCustom = ::SendMessage(GetParent(), WM_NOTIFY, pnmcd->hdr.idFrom, (LPARAM)&nmc);
++		lResCustom = ::SendMessage(this->GetParent(), WM_NOTIFY, pnmcd->hdr.idFrom, (LPARAM)&nmc);
+ 
+ 		if( CDRF_SKIPDEFAULT != (lResCustom & CDRF_SKIPDEFAULT) )
+ 		{
+@@ -2577,7 +2578,7 @@
+ 			pnmcd->dwItemSpec = 0;
+ 			pnmcd->uItemState = 0;
+ 			pnmcd->rc = rcClient;
+-			::SendMessage(GetParent(), WM_NOTIFY, pnmcd->hdr.idFrom, (LPARAM)&nmc);
++			::SendMessage(this->GetParent(), WM_NOTIFY, pnmcd->hdr.idFrom, (LPARAM)&nmc);
+ 		}
+ 
+ 		dc.RestoreDC(nSave);
+@@ -2589,7 +2590,7 @@
+ 		if( CDRF_NOTIFYITEMDRAW == (lResCustom & CDRF_NOTIFYITEMDRAW) )
+ 		{
+ 			lpNMCustomDraw->nmcd.dwDrawStage = CDDS_ITEMPREPAINT;
+-			lResItem = ::SendMessage(GetParent(), WM_NOTIFY, lpNMCustomDraw->nmcd.hdr.idFrom, (LPARAM)lpNMCustomDraw);
++			lResItem = ::SendMessage(this->GetParent(), WM_NOTIFY, lpNMCustomDraw->nmcd.hdr.idFrom, (LPARAM)lpNMCustomDraw);
+ 		}
+ 		if( CDRF_SKIPDEFAULT != (lResCustom & CDRF_SKIPDEFAULT) )
+ 		{
+@@ -2601,7 +2602,7 @@
+ 			CDRF_NOTIFYPOSTPAINT == (lResItem & CDRF_NOTIFYPOSTPAINT))
+ 		{
+ 			lpNMCustomDraw->nmcd.dwDrawStage = CDDS_ITEMPOSTPAINT;
+-			::SendMessage(GetParent(), WM_NOTIFY, lpNMCustomDraw->nmcd.hdr.idFrom, (LPARAM)lpNMCustomDraw);
++			::SendMessage(this->GetParent(), WM_NOTIFY, lpNMCustomDraw->nmcd.hdr.idFrom, (LPARAM)lpNMCustomDraw);
+ 		}
+ 	}
+ 
+@@ -2685,7 +2686,7 @@
+ 		m_imageList = hImageList;
+ 		return imageListOld;
+ 	}
+-	WTL::CImageList& GetImageList() const
++	const WTL::CImageList& GetImageList() const
+ 	{
+ 		return m_imageList;
+ 	}
+@@ -2751,7 +2752,7 @@
+ 		ATLASSERT(::IsWindow(m_hWnd));
+ 		ATLASSERT(pItem);
+ 		ATLASSERT(nItem >= 0 && nItem <= (int)m_Items.GetCount());
+-		if(!::IsWindow(m_hWnd) || pItem == NULL)
++		if(!::IsWindow(this->m_hWnd) || pItem == NULL)
+ 		{
+ 			return -1;
+ 		}
+@@ -2768,8 +2769,8 @@
+ 		size_t nNewCount = m_Items.GetCount();
+ 
+ 		// Send notification
+-		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_INSERTITEM }, nItem, {-1,-1}};
+-		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_INSERTITEM }, nItem, {-1,-1}};
++		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 		// Select if first tab
+ 		if( nNewCount==1 )
+ 		{
+@@ -2788,7 +2789,7 @@
+ 		// We supply the RECT and text elsewhere.
+ 		if(m_tooltip.IsWindow())
+ 		{
+-			m_tooltip.AddTool(m_hWnd, LPSTR_TEXTCALLBACK, &rcDefault, (UINT)nNewCount);
++			m_tooltip.AddTool(this->m_hWnd, LPSTR_TEXTCALLBACK, &this->rcDefault, (UINT)nNewCount);
+ 		}
+ 
+ 		pT->UpdateLayout();
+@@ -2804,7 +2805,7 @@
+ 		ATLASSERT(nFromIndex < m_Items.GetCount());
+ 		ATLASSERT(nToIndex < m_Items.GetCount());
+ 
+-		if(!::IsWindow(m_hWnd) || nFromIndex >= m_Items.GetCount() || nToIndex >= m_Items.GetCount())
++		if(!::IsWindow(this->m_hWnd) || nFromIndex >= m_Items.GetCount() || nToIndex >= m_Items.GetCount())
+ 		{
+ 			return FALSE;
+ 		}
+@@ -2826,8 +2827,8 @@
+ 
+ 		if(bNotify)
+ 		{
+-			NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MOVEITEM }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
+-			::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++			NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MOVEITEM }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
++			::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 		}
+ 
+ 		return TRUE;
+@@ -2841,7 +2842,7 @@
+ 		ATLASSERT(nFromIndex < m_Items.GetCount());
+ 		ATLASSERT(nToIndex < m_Items.GetCount());
+ 
+-		if(!::IsWindow(m_hWnd) || nFromIndex >= m_Items.GetCount() || nToIndex >= m_Items.GetCount())
++		if(!::IsWindow(this->m_hWnd) || nFromIndex >= m_Items.GetCount() || nToIndex >= m_Items.GetCount())
+ 		{
+ 			return FALSE;
+ 		}
+@@ -2869,8 +2870,8 @@
+ 
+ 		if(bNotify)
+ 		{
+-			NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_SWAPITEMPOSITIONS }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
+-			::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++			NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_SWAPITEMPOSITIONS }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
++			::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 		}
+ 
+ 		return TRUE;
+@@ -2890,8 +2891,8 @@
+ 		if(bNotify)
+ 		{
+ 			// Returning TRUE tells us not to delete the item
+-			NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_DELETEITEM }, (int)nItem, {-1,-1}};
+-			if( TRUE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
++			NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_DELETEITEM }, (int)nItem, {-1,-1}};
++			if( TRUE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
+ 			{
+ 				// Cancel the attempt
+ 				return FALSE;
+@@ -2993,7 +2994,7 @@
+ 		// We supply the RECT and text elsewhere.
+ 		if(m_tooltip.IsWindow())
+ 		{
+-			m_tooltip.DelTool(m_hWnd, (UINT)m_Items.GetCount());
++			m_tooltip.DelTool(this->m_hWnd, (UINT)m_Items.GetCount());
+ 		}
+ 
+ 		TItem* pItem = m_Items[nItem];
+@@ -3112,10 +3113,10 @@
+ 
+ 		int iOldSel = m_iCurSel;
+ 		// Send notification
+-		NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_SELCHANGING }, iOldSel, nItem, {-1,-1}};
++		NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_SELCHANGING }, iOldSel, nItem, {-1,-1}};
+ 		if(bNotify)
+ 		{
+-			if( TRUE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
++			if( TRUE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
+ 			{
+ 				// Cancel the attempt
+ 				return -1;
+@@ -3138,7 +3139,7 @@
+ 		{
+ 			// Send notification
+ 			nmh.hdr.code = CTCN_SELCHANGE;
+-			::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
++			::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
+ 		}
+ 		return iOldSel;
+ 	}
+@@ -3274,7 +3275,7 @@
+ 		ATLASSERT(pItem != NULL);
+ 
+ 		RECT rcOld = pItem->GetRect();
+-		RECT rcNew = { rcOld.left, rcOld.top, rcOld.left + cx, rcOld.top cy };
++		RECT rcNew = { rcOld.left, rcOld.top, rcOld.left + cx, rcOld.top + cy };
+ 		pItem->SetRect(rcNew);
+ 		T* pT = static_cast<T*>(this);
+ 		pT->UpdateLayout();
+@@ -3333,7 +3334,7 @@
+ 
+ 	void SetPadding(int iPadding) 
+ 	{ 
+-		m_iPadding = iPadding; 
++		this->m_settings.iPadding = static_cast<signed char>(iPadding); 
+ 		T* pT = static_cast<T*>(this);
+ 		pT->UpdateLayout();
+ 		this->Invalidate();
+--- TabbingFramework/DotNetTabCtrl.h
++++ TabbingFramework/DotNetTabCtrl.h
+@@ -143,7 +143,7 @@
+ 
+ // Message Handling
+ public:
+-	DECLARE_WND_CLASS_EX(_T("WTL_DotNetTabCtrl"), CS_DBLCLKS, COLOR_WINDOW)
++	DECLARE_WND_CLASS_EX2(_T("WTL_DotNetTabCtrl"), CDotNetTabCtrlImpl, CS_DBLCLKS, COLOR_WINDOW)
+ 
+ 	BEGIN_MSG_MAP(thisClass)
+ 		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
+@@ -162,10 +162,10 @@
+ 		::SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lfIcon), &lfIcon, 0);
+ 
+ 		bool bResetFont = true;
+-		if(!m_font.IsNull())
++		if(!this->m_font.IsNull())
+ 		{
+ 			LOGFONT lf = {0};
+-			if(m_font.GetLogFont(&lf))
++			if(this->m_font.GetLogFont(&lf))
+ 			{
+ 				if(lstrcmpi(lf.lfFaceName, lfIcon.lfFaceName) == 0 &&
+ 					lf.lfHeight == lfIcon.lfHeight)
+@@ -177,13 +177,13 @@
+ 
+ 		if(bResetFont)
+ 		{
+-			if(!m_font.IsNull()) m_font.DeleteObject();
+-			if(!m_fontSel.IsNull()) m_fontSel.DeleteObject();
+-
+-			HFONT font = m_font.CreateFontIndirect(&lfIcon);
++			if(!this->m_font.IsNull()) this->m_font.DeleteObject();
++			if(!this->m_fontSel.IsNull()) this->m_fontSel.DeleteObject();
++
++			HFONT font = this->m_font.CreateFontIndirect(&lfIcon);
+ 			if(font==NULL)
+ 			{
+-				m_font.Attach(AtlGetDefaultGuiFont());
++				this->m_font.Attach(AtlGetDefaultGuiFont());
+ 			}
+ 
+ 			if(CTCS_BOLDSELECTEDTAB == (dwStyle & CTCS_BOLDSELECTEDTAB))
+@@ -191,10 +191,10 @@
+ 				lfIcon.lfWeight = FW_BOLD;
+ 			}
+ 
+-			font = m_fontSel.CreateFontIndirect(&lfIcon);
++			font = this->m_fontSel.CreateFontIndirect(&lfIcon);
+ 			if(font==NULL)
+ 			{
+-				m_fontSel.Attach(AtlGetDefaultGuiFont());
++				this->m_fontSel.Attach(AtlGetDefaultGuiFont());
+ 			}
+ 		}
+ 
+@@ -286,10 +286,10 @@
+ 			m_clrTextInactiveTab = ::GetSysColor(COLOR_GRAYTEXT);
+ 		}
+ 
+-		m_settings.iIndent = 5;
+-		m_settings.iPadding = 4;
+-		m_settings.iMargin = 3;
+-		m_settings.iSelMargin = 3;
++		this->m_settings.iIndent = 5;
++		this->m_settings.iPadding = 4;
++		this->m_settings.iMargin = 3;
++		this->m_settings.iSelMargin = 3;
+ 
+ 		int nHeightLogicalUnits = -lfIcon.lfHeight;
+ 		// In MSDN for "LOGFONT", they give the following formula for calculating
+@@ -322,9 +322,9 @@
+ 		RECT rcClip = {0};
+ 		dc.GetClipBox(&rcClip);
+ 
+-		if(::EqualRect(&rcClip, &m_rcCloseButton) ||
+-			::EqualRect(&rcClip, &m_rcScrollRight) ||
+-			::EqualRect(&rcClip, &m_rcScrollLeft))
++		if(::EqualRect(&rcClip, &this->m_rcCloseButton) ||
++			::EqualRect(&rcClip, &this->m_rcScrollRight) ||
++			::EqualRect(&rcClip, &this->m_rcScrollLeft))
+ 		{
+ 			// Paint needed in only "other button" area
+ 
+@@ -495,20 +495,20 @@
+ 			if(CTCS_BOTTOM == (dwStyle & CTCS_BOTTOM))
+ 			{
+ 				RECT rcHighlight = {rcTab.left+1, rcTab.top+3, rcTab.right-2, rcTab.bottom-1};
+-				if(nItem - 1 == m_iCurSel) rcHighlight.left += 1;  // Item to the right of the selected tab
++				if(nItem - 1 == this->m_iCurSel) rcHighlight.left += 1;  // Item to the right of the selected tab
+ 				dc.FillSolidRect(&rcHighlight, lpNMCustomDraw->clrHighlight);
+ 			}
+ 			else
+ 			{
+ 				RECT rcHighlight = {rcTab.left+1, rcTab.top+2, rcTab.right-2, rcTab.bottom-2};
+-				if(nItem - 1 == m_iCurSel) rcHighlight.left += 1;  // Item to the right of the selected tab
++				if(nItem - 1 == this->m_iCurSel) rcHighlight.left += 1;  // Item to the right of the selected tab
+ 				dc.FillSolidRect(&rcHighlight, lpNMCustomDraw->clrHighlight);
+ 			}
+ 		}
+ 
+ 		// Draw division line on right, unless we're the item
+ 		// on the left of the selected tab
+-		if(nItem + 1 == m_iCurSel)
++		if(nItem + 1 == this->m_iCurSel)
+ 		{
+ 			// Item just left of selected tab
+ 		}
+@@ -592,20 +592,20 @@
+ 		//    | M | P | Text | P | M |
+ 		//     ----------------------
+ 
+-		//rcText.left += (bSelected ? m_settings.iSelMargin : m_settings.iMargin);
+-		rcText.left += m_settings.iMargin;
+-		rcText.right -= m_settings.iMargin;
+-		if (pItem->UsingImage() && !m_imageList.IsNull())
++		//rcText.left += (bSelected ? this->m_settings.iSelMargin : this->m_settings.iMargin);
++		rcText.left += this->m_settings.iMargin;
++		rcText.right -= this->m_settings.iMargin;
++		if (pItem->UsingImage() && !this->m_imageList.IsNull())
+ 		{
+ 			// Draw the image.
+ 			IMAGEINFO ii = {0};
+ 			int nImageIndex = pItem->GetImageIndex();
+-			m_imageList.GetImageInfo(nImageIndex, &ii);
++			this->m_imageList.GetImageInfo(nImageIndex, &ii);
+ 
+ 			if((ii.rcImage.right - ii.rcImage.left) < (rcTab.right - rcTab.left))
+ 			{
+ 				int nImageHalfHeight = (ii.rcImage.bottom - ii.rcImage.top) / 2;
+-				m_imageList.Draw(dc, nImageIndex, rcText.left, nIconVerticalCenter - nImageHalfHeight + m_nFontSizeTextTopOffset, ILD_NORMAL);
++				this->m_imageList.Draw(dc, nImageIndex, rcText.left, nIconVerticalCenter - nImageHalfHeight + m_nFontSizeTextTopOffset, ILD_NORMAL);
+ 			}
+ 
+ 			// Offset on the right of the image.
+@@ -614,7 +614,7 @@
+ 
+ 		if (rcText.left + m_nMinWidthToDisplayText < rcText.right)
+ 		{
+-			::InflateRect(&rcText, -m_settings.iPadding, 0);
++			::InflateRect(&rcText, -this->m_settings.iPadding, 0);
+ 
+ 			_CSTRING_NS::CString sText = pItem->GetText();
+ 			dc.DrawText(sText, sText.GetLength(), &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_NOPREFIX);
+@@ -636,11 +636,11 @@
+ 		WTL::CPenHandle penOld = dc.SelectPen(penButtons);
+ 		WTL::CBrushHandle brushOld = dc.SelectBrush(brushArrow);
+ 
+-		RECT rcX = m_rcCloseButton;
+-
+-		if(ectcMouseDownL_CloseButton == (m_dwState & ectcMouseDown))
+-		{
+-			if(ectcMouseOver_CloseButton == (m_dwState & ectcMouseOver))
++		RECT rcX = this->m_rcCloseButton;
++
++		if(this->ectcMouseDownL_CloseButton == (this->m_dwState & this->ectcMouseDown))
++		{
++			if(this->ectcMouseOver_CloseButton == (this->m_dwState & this->ectcMouseOver))
+ 			{
+ 				::OffsetRect(&rcX, 1, 1);
+ 			}
+@@ -658,16 +658,16 @@
+ 		dc.MoveTo(rcX.left+sp, rcX.bottom-sp -1);
+ 		dc.LineTo(rcX.right-sp, rcX.top+sp -1);
+ 
+-		if(ectcMouseDownL_CloseButton == (m_dwState & ectcMouseDown))
+-		{
+-			if(ectcMouseOver_CloseButton == (m_dwState & ectcMouseOver))
+-			{
+-				dc.DrawEdge(&m_rcCloseButton, BDR_SUNKENOUTER, BF_RECT);
+-			}
+-		}
+-		else if(ectcHotTrack_CloseButton == (m_dwState & ectcHotTrack))
+-		{
+-			dc.DrawEdge(&m_rcCloseButton, BDR_RAISEDINNER, BF_RECT);
++		if(this->ectcMouseDownL_CloseButton == (this->m_dwState & this->ectcMouseDown))
++		{
++			if(this->ectcMouseOver_CloseButton == (this->m_dwState & this->ectcMouseOver))
++			{
++				dc.DrawEdge(&this->m_rcCloseButton, BDR_SUNKENOUTER, BF_RECT);
++			}
++		}
++		else if(this->ectcHotTrack_CloseButton == (this->m_dwState & this->ectcHotTrack))
++		{
++			dc.DrawEdge(&this->m_rcCloseButton, BDR_RAISEDINNER, BF_RECT);
+ 		}
+ 
+ 		dc.SelectBrush(brushOld);
+@@ -686,24 +686,24 @@
+ 		WTL::CPenHandle penOld = dc.SelectPen(penButtons);
+ 		WTL::CBrushHandle brushOld = dc.SelectBrush(brushArrow);
+ 
+-		RECT rcArrowRight = m_rcScrollRight;
+-		RECT rcArrowLeft = m_rcScrollLeft;
+-
+-		if(ectcMouseDownL_ScrollRight == (m_dwState & ectcMouseDown))
+-		{
+-			if(ectcMouseOver_ScrollRight == (m_dwState & ectcMouseOver))
+-			{
+-				if(ectcOverflowRight == (m_dwState & ectcOverflowRight))
++		RECT rcArrowRight = this->m_rcScrollRight;
++		RECT rcArrowLeft = this->m_rcScrollLeft;
++
++		if(this->ectcMouseDownL_ScrollRight == (this->m_dwState & this->ectcMouseDown))
++		{
++			if(this->ectcMouseOver_ScrollRight == (this->m_dwState & this->ectcMouseOver))
++			{
++				if(this->ectcOverflowRight == (this->m_dwState & this->ectcOverflowRight))
+ 				{
+ 					::OffsetRect(&rcArrowRight, 1, 1);
+ 				}
+ 			}
+ 		}
+-		if(ectcMouseDownL_ScrollLeft == (m_dwState & ectcMouseDown))
+-		{
+-			if(ectcMouseOver_ScrollLeft == (m_dwState & ectcMouseOver))
+-			{
+-				if(ectcOverflowLeft == (m_dwState & ectcOverflowLeft))
++		if(this->ectcMouseDownL_ScrollLeft == (this->m_dwState & this->ectcMouseDown))
++		{
++			if(this->ectcMouseOver_ScrollLeft == (this->m_dwState & this->ectcMouseOver))
++			{
++				if(this->ectcOverflowLeft == (this->m_dwState & this->ectcOverflowLeft))
+ 				{
+ 					::OffsetRect(&rcArrowLeft, 1, 1);
+ 				}
+@@ -716,10 +716,10 @@
+ 		POINT ptsArrowRight[] = {
+ 			{rcArrowRight.left+spRight, rcArrowRight.top+spRight -2},
+ 			{rcArrowRight.left+spRight, rcArrowRight.bottom-spRight +1},
+-			{rcArrowRight.right-spRight -1, (rcArrowRight.bottom + m_rcScrollRight.top) / 2},
++			{rcArrowRight.right-spRight -1, (rcArrowRight.bottom + this->m_rcScrollRight.top) / 2},
+ 			{rcArrowRight.left+spRight, rcArrowRight.top+spRight -2}
+ 		};
+-		if(ectcOverflowRight != (m_dwState & ectcOverflowRight))
++		if(this->ectcOverflowRight != (this->m_dwState & this->ectcOverflowRight))
+ 		{
+ 			dc.Polyline(ptsArrowRight, 4);
+ 		}
+@@ -727,26 +727,26 @@
+ 		{
+ 			dc.Polygon(ptsArrowRight, 4);
+ 
+-			if(ectcMouseDownL_ScrollRight == (m_dwState & ectcMouseDown))
+-			{
+-				if(ectcMouseOver_ScrollRight == (m_dwState & ectcMouseOver))
++			if(this->ectcMouseDownL_ScrollRight == (this->m_dwState & this->ectcMouseDown))
++			{
++				if(this->ectcMouseOver_ScrollRight == (this->m_dwState & this->ectcMouseOver))
+ 				{
+-					dc.DrawEdge(&m_rcScrollRight, BDR_SUNKENOUTER, BF_RECT);
++					dc.DrawEdge(&this->m_rcScrollRight, BDR_SUNKENOUTER, BF_RECT);
+ 				}
+ 			}
+-			else if(ectcHotTrack_ScrollRight == (m_dwState & ectcHotTrack))
+-			{
+-				dc.DrawEdge(&m_rcScrollRight, BDR_RAISEDINNER, BF_RECT);
++			else if(this->ectcHotTrack_ScrollRight == (this->m_dwState & this->ectcHotTrack))
++			{
++				dc.DrawEdge(&this->m_rcScrollRight, BDR_RAISEDINNER, BF_RECT);
+ 			}
+ 		}
+ 
+ 		POINT ptsArrowLeft[] = {
+ 			{rcArrowLeft.right-spLeft, rcArrowLeft.top+spLeft -3},
+ 			{rcArrowLeft.right-spLeft, rcArrowLeft.bottom-spLeft +2},
+-			{rcArrowLeft.left+spLeft -1, (rcArrowLeft.bottom + m_rcScrollLeft.top) / 2},
++			{rcArrowLeft.left+spLeft -1, (rcArrowLeft.bottom + this->m_rcScrollLeft.top) / 2},
+ 			{rcArrowLeft.right-spLeft, rcArrowLeft.top+spLeft -3}
+ 		};
+-		if(ectcOverflowLeft != (m_dwState & ectcOverflowLeft))
++		if(this->ectcOverflowLeft != (this->m_dwState & this->ectcOverflowLeft))
+ 		{
+ 			dc.Polyline(ptsArrowLeft, 4);
+ 		}
+@@ -754,16 +754,16 @@
+ 		{
+ 			dc.Polygon(ptsArrowLeft, 4);
+ 
+-			if(ectcMouseDownL_ScrollLeft == (m_dwState & ectcMouseDown))
+-			{
+-				if(ectcMouseOver_ScrollLeft == (m_dwState & ectcMouseOver))
++			if(this->ectcMouseDownL_ScrollLeft == (this->m_dwState & this->ectcMouseDown))
++			{
++				if(this->ectcMouseOver_ScrollLeft == (this->m_dwState & this->ectcMouseOver))
+ 				{
+-					dc.DrawEdge(&m_rcScrollLeft, BDR_SUNKENOUTER, BF_RECT);
++					dc.DrawEdge(&this->m_rcScrollLeft, BDR_SUNKENOUTER, BF_RECT);
+ 				}
+ 			}
+-			else if(ectcHotTrack_ScrollLeft == (m_dwState & ectcHotTrack))
+-			{
+-				dc.DrawEdge(&m_rcScrollLeft, BDR_RAISEDINNER, BF_RECT);
++			else if(this->ectcHotTrack_ScrollLeft == (this->m_dwState & this->ectcHotTrack))
++			{
++				dc.DrawEdge(&this->m_rcScrollLeft, BDR_RAISEDINNER, BF_RECT);
+ 			}
+ 		}
+ 
+@@ -778,8 +778,8 @@
+ 	{
+ 		//DWORD dwStyle = this->GetStyle();
+ 
+-		lpNMCustomDraw->hFontInactive = m_font;
+-		lpNMCustomDraw->hFontSelected = m_fontSel;
++		lpNMCustomDraw->hFontInactive = this->m_font;
++		lpNMCustomDraw->hFontSelected = this->m_fontSel;
+ 		lpNMCustomDraw->hBrushBackground = m_hbrBackground;
+ 		lpNMCustomDraw->clrTextSelected = ::GetSysColor(COLOR_BTNTEXT);
+ 		lpNMCustomDraw->clrTextInactive = m_clrTextInactiveTab;
+@@ -845,9 +845,9 @@
+ 		// Close Button
+ 		if(CTCS_CLOSEBUTTON == (dwStyle & CTCS_CLOSEBUTTON))
+ 		{
+-			if( (m_iCurSel >= 0) && ((size_t)m_iCurSel < m_Items.GetCount()) )
+-			{
+-				TItem* pItem = m_Items[m_iCurSel];
++			if( (this->m_iCurSel >= 0) && ((size_t)this->m_iCurSel < this->m_Items.GetCount()) )
++			{
++				TItem* pItem = this->m_Items[this->m_iCurSel];
+ 				ATLASSERT(pItem != NULL);
+ 				if((pItem != NULL) && pItem->CanClose())
+ 				{
+@@ -915,37 +915,37 @@
+ 
+ 		if((prcTabItemArea->right - prcTabItemArea->left) < nButtonSizeX)
+ 		{
+-			::SetRectEmpty(&m_rcCloseButton);
++			::SetRectEmpty(&this->m_rcCloseButton);
+ 			return;
+ 		}
+ 
+-		m_rcCloseButton = *prcTabItemArea;
++		this->m_rcCloseButton = *prcTabItemArea;
+ 
+ 		DWORD dwStyle = this->GetStyle();
+ 
+ 		if (CTCS_BOTTOM == (dwStyle & CTCS_BOTTOM))
+ 		{
+-			m_rcCloseButton.top += 3;
+-			m_rcCloseButton.right -= 3;
++			this->m_rcCloseButton.top += 3;
++			this->m_rcCloseButton.right -= 3;
+ 		}
+ 		else
+ 		{
+-			m_rcCloseButton.top += 1;
+-			m_rcCloseButton.bottom -= 2;
+-			m_rcCloseButton.right -= 2;
+-		}
+-		m_rcCloseButton.top = (m_rcCloseButton.bottom + m_rcCloseButton.top - nButtonSizeY) / 2;
+-		m_rcCloseButton.bottom = m_rcCloseButton.top + nButtonSizeY;
+-
+-		m_rcCloseButton.left = m_rcCloseButton.right - (nButtonSizeX);
+-
+-		if(m_tooltip.IsWindow())
+-		{
+-			m_tooltip.SetToolRect(m_hWnd, (UINT)ectcToolTip_Close, &m_rcCloseButton);
++			this->m_rcCloseButton.top += 1;
++			this->m_rcCloseButton.bottom -= 2;
++			this->m_rcCloseButton.right -= 2;
++		}
++		this->m_rcCloseButton.top = (this->m_rcCloseButton.bottom + this->m_rcCloseButton.top - nButtonSizeY) / 2;
++		this->m_rcCloseButton.bottom = this->m_rcCloseButton.top + nButtonSizeY;
++
++		this->m_rcCloseButton.left = this->m_rcCloseButton.right - (nButtonSizeX);
++
++		if(this->m_tooltip.IsWindow())
++		{
++			this->m_tooltip.SetToolRect(this->m_hWnd, (UINT)this->ectcToolTip_Close, &this->m_rcCloseButton);
+ 		}
+ 
+ 		// Adjust the tab area
+-		prcTabItemArea->right = m_rcCloseButton.left;
++		prcTabItemArea->right = this->m_rcCloseButton.left;
+ 	}
+ 
+ 	void CalcSize_ScrollButtons(LPRECT prcTabItemArea)
+@@ -959,8 +959,8 @@
+ 
+ 		if((prcTabItemArea->right - prcTabItemArea->left) < nButtonSizeX)
+ 		{
+-			::SetRectEmpty(&m_rcScrollRight);
+-			::SetRectEmpty(&m_rcScrollLeft);
++			::SetRectEmpty(&this->m_rcScrollRight);
++			::SetRectEmpty(&this->m_rcScrollLeft);
+ 			return;
+ 		}
+ 
+@@ -988,22 +988,22 @@
+ 		rcScroll.top = (rcScroll.bottom + rcScroll.top - nButtonSizeY) / 2;
+ 		rcScroll.bottom = rcScroll.top + nButtonSizeY;
+ 
+-		m_rcScrollRight = rcScroll;
+-		m_rcScrollLeft = rcScroll;
+-
+-		m_rcScrollRight.left = m_rcScrollRight.right - nButtonSizeX;
+-
+-		m_rcScrollLeft.right = m_rcScrollRight.left;
+-		m_rcScrollLeft.left = m_rcScrollLeft.right - nButtonSizeX;
+-
+-		if(m_tooltip.IsWindow())
+-		{
+-			m_tooltip.SetToolRect(m_hWnd, (UINT)ectcToolTip_ScrollRight, &m_rcScrollRight);
+-			m_tooltip.SetToolRect(m_hWnd, (UINT)ectcToolTip_ScrollLeft, &m_rcScrollLeft);
++		this->m_rcScrollRight = rcScroll;
++		this->m_rcScrollLeft = rcScroll;
++
++		this->m_rcScrollRight.left = this->m_rcScrollRight.right - nButtonSizeX;
++
++		this->m_rcScrollLeft.right = this->m_rcScrollRight.left;
++		this->m_rcScrollLeft.left = this->m_rcScrollLeft.right - nButtonSizeX;
++
++		if(this->m_tooltip.IsWindow())
++		{
++			this->m_tooltip.SetToolRect(this->m_hWnd, (UINT)this->ectcToolTip_ScrollRight, &this->m_rcScrollRight);
++			this->m_tooltip.SetToolRect(this->m_hWnd, (UINT)this->ectcToolTip_ScrollLeft, &this->m_rcScrollLeft);
+ 		}
+ 
+ 		// Adjust the tab area
+-		prcTabItemArea->right = m_rcScrollLeft.left;
++		prcTabItemArea->right = this->m_rcScrollLeft.left;
+ 	}
+ 
+ 
+@@ -1016,7 +1016,7 @@
+ 
+ 		WTL::CClientDC dc(this->m_hWnd);
+ 		//HFONT hOldFont = dc.SelectFont(lpNMCustomDraw->hFontInactive);
+-		HFONT hOldFont = dc.SelectFont(m_font);
++		HFONT hOldFont = dc.SelectFont(this->m_font);
+ 
+ 		LONG nTabAreaWidth = (rcTabItemArea.right - rcTabItemArea.left);
+ 
+@@ -1026,28 +1026,28 @@
+ 		// Recalculate tab positions and widths
+ 		// See DrawItem_ImageAndText for a discussion of how CDotNetTabCtrlImpl
+ 		//  interprets margin, padding, etc.
+-		size_t nCount = m_Items.GetCount();
+-		int xpos = m_settings.iIndent;
++		size_t nCount = this->m_Items.GetCount();
++		int xpos = this->m_settings.iIndent;
+ 		HFONT hRestoreNormalFont = NULL;
+ 		for( size_t i=0; i<nCount; ++i )
+ 		{
+-			bool bSelected = ((int)i == m_iCurSel);
++			bool bSelected = ((int)i == this->m_iCurSel);
+ 			if(bSelected)
+ 			{
+ 				//hRestoreNormalFont = dc.SelectFont(lpNMCustomDraw->hFontSelected);
+-				hRestoreNormalFont = dc.SelectFont(m_fontSel);
+-			}
+-
+-			TItem* pItem = m_Items[i];
++				hRestoreNormalFont = dc.SelectFont(this->m_fontSel);
++			}
++
++			TItem* pItem = this->m_Items[i];
+ 			ATLASSERT(pItem != NULL);
+ 			rcItem.left = rcItem.right = xpos;
+-			//rcItem.right += ((bSelected ? m_settings.iSelMargin : m_settings.iMargin));
+-			rcItem.right += m_settings.iMargin;
+-			if(pItem->UsingImage() && !m_imageList.IsNull())
++			//rcItem.right += ((bSelected ? this->m_settings.iSelMargin : this->m_settings.iMargin));
++			rcItem.right += this->m_settings.iMargin;
++			if(pItem->UsingImage() && !this->m_imageList.IsNull())
+ 			{
+ 				IMAGEINFO ii = {0};
+ 				int nImageIndex = pItem->GetImageIndex();
+-				m_imageList.GetImageInfo(nImageIndex, &ii);
++				this->m_imageList.GetImageInfo(nImageIndex, &ii);
+ 				rcItem.right += (ii.rcImage.right - ii.rcImage.left);
+ 			}
+ 			if(pItem->UsingText())
+@@ -1055,9 +1055,9 @@
+ 				RECT rcText = {0};
+ 				_CSTRING_NS::CString sText = pItem->GetText();
+ 				dc.DrawText(sText, sText.GetLength(), &rcText, DT_SINGLELINE | DT_CALCRECT | DT_NOPREFIX);
+-				rcItem.right += (rcText.right - rcText.left) + (m_settings.iPadding * 2);
+-			}
+-			rcItem.right += m_settings.iMargin;
++				rcItem.right += (rcText.right - rcText.left) + (this->m_settings.iPadding * 2);
++			}
++			rcItem.right += this->m_settings.iMargin;
+ 			pItem->SetRect(rcItem);
+ 			xpos += (rcItem.right - rcItem.left);
+ 
+@@ -1079,9 +1079,9 @@
+ 				}
+ 			}
+ 		}
+-		xpos += m_settings.iIndent;
+-
+-		if(xpos > nTabAreaWidth && nCount > 0 && m_iCurSel >= 0)
++		xpos += this->m_settings.iIndent;
++
++		if(xpos > nTabAreaWidth && nCount > 0 && this->m_iCurSel >= 0)
+ 		{
+ 			// Our desired widths are more than the width of the client area.
+ 			// We need to have some or all of the tabs give up some real estate
+@@ -1089,11 +1089,11 @@
+ 			// We'll try to let the selected tab have its fully desired width.
+ 			// If it can't, we'll make all the tabs the same width.
+ 
+-			RECT rcSelected = m_Items[m_iCurSel]->GetRect();
++			RECT rcSelected = this->m_Items[this->m_iCurSel]->GetRect();
+ 			LONG nSelectedWidth = (rcSelected.right - rcSelected.left);
+ 
+-			long cxClientInactiveTabs = nTabAreaWidth - (m_settings.iIndent * 2) - nSelectedWidth;
+-			long cxDesiredInactiveTabs = xpos - (m_settings.iIndent * 2) - nSelectedWidth;
++			long cxClientInactiveTabs = nTabAreaWidth - (this->m_settings.iIndent * 2) - nSelectedWidth;
++			long cxDesiredInactiveTabs = xpos - (this->m_settings.iIndent * 2) - nSelectedWidth;
+ 
+ 			double nRatioWithSelectionFullSize = 0.0;
+ 			if(cxDesiredInactiveTabs != 0)
+@@ -1101,7 +1101,7 @@
+ 				nRatioWithSelectionFullSize = (double) (cxClientInactiveTabs) / (double)(cxDesiredInactiveTabs);
+ 			}
+ 
+-			long nInactiveSameSizeWidth = (m_nMinWidthToDisplayText + (m_settings.iMargin*2) + (m_settings.iPadding));
++			long nInactiveSameSizeWidth = (m_nMinWidthToDisplayText + (this->m_settings.iMargin*2) + (this->m_settings.iPadding));
+ 
+ 			if(cxClientInactiveTabs > (nInactiveSameSizeWidth * (long)(nCount-1)))
+ 			{
+@@ -1110,14 +1110,14 @@
+ 
+ 				bool bMakeInactiveSameSize = ((nMinInactiveWidth * nRatioWithSelectionFullSize) < nInactiveSameSizeWidth);
+ 
+-				xpos = m_settings.iIndent;
++				xpos = this->m_settings.iIndent;
+ 				for(size_t i=0; i<nCount; ++i )
+ 				{
+-					TItem* pItem = m_Items[i];
++					TItem* pItem = this->m_Items[i];
+ 					ATLASSERT(pItem != NULL);
+ 					RECT rcItemDesired = pItem->GetRect();
+ 					rcItem.left = rcItem.right = xpos;
+-					if((int)i == m_iCurSel)
++					if((int)i == this->m_iCurSel)
+ 					{
+ 						rcItem.right += (rcItemDesired.right - rcItemDesired.left);
+ 					}
+@@ -1139,15 +1139,15 @@
+ 			else
+ 			{
+ 				// We're down pretty small, so just make all the tabs the same width
+-				int cxItem = (nTabAreaWidth - (m_settings.iIndent*2)) / (int)nCount;
+-
+-				xpos = m_settings.iIndent;
++				int cxItem = (nTabAreaWidth - (this->m_settings.iIndent*2)) / (int)nCount;
++
++				xpos = this->m_settings.iIndent;
+ 
+ 				for(size_t i=0; i<nCount; ++i)
+ 				{
+ 					rcItem.left = rcItem.right = xpos;
+ 					rcItem.right += cxItem;
+-					m_Items[i]->SetRect(rcItem);
++					this->m_Items[i]->SetRect(rcItem);
+ 					xpos += (rcItem.right-rcItem.left);
+ 				}
+ 			}
+@@ -1167,7 +1167,7 @@
+ 
+ 		WTL::CClientDC dc(this->m_hWnd);
+ 		//HFONT hOldFont = dc.SelectFont(lpNMCustomDraw->hFontInactive);
+-		HFONT hOldFont = dc.SelectFont(m_font);
++		HFONT hOldFont = dc.SelectFont(this->m_font);
+ 
+ 		RECT rcItem = rcClient;
+ 		// rcItem.top and rcItem.bottom aren't really going to change
+@@ -1175,28 +1175,28 @@
+ 		// Recalculate tab positions and widths
+ 		// See DrawItem_ImageAndText for a discussion of how CDotNetTabCtrlImpl
+ 		//  interprets margin, padding, etc.
+-		size_t nCount = m_Items.GetCount();
+-		int xpos = m_settings.iIndent;
++		size_t nCount = this->m_Items.GetCount();
++		int xpos = this->m_settings.iIndent;
+ 		HFONT hRestoreNormalFont = NULL;
+ 		for( size_t i=0; i<nCount; ++i )
+ 		{
+-			bool bSelected = ((int)i == m_iCurSel);
++			bool bSelected = ((int)i == this->m_iCurSel);
+ 			if(bSelected)
+ 			{
+ 				//hRestoreNormalFont = dc.SelectFont(lpNMCustomDraw->hFontSelected);
+-				hRestoreNormalFont = dc.SelectFont(m_fontSel);
+-			}
+-
+-			TItem* pItem = m_Items[i];
++				hRestoreNormalFont = dc.SelectFont(this->m_fontSel);
++			}
++
++			TItem* pItem = this->m_Items[i];
+ 			ATLASSERT(pItem != NULL);
+ 			rcItem.left = rcItem.right = xpos;
+-			//rcItem.right += ((bSelected ? m_settings.iSelMargin : m_settings.iMargin));
+-			rcItem.right += m_settings.iMargin;
+-			if(pItem->UsingImage() && !m_imageList.IsNull())
++			//rcItem.right += ((bSelected ? this->m_settings.iSelMargin : this->m_settings.iMargin));
++			rcItem.right += this->m_settings.iMargin;
++			if(pItem->UsingImage() && !this->m_imageList.IsNull())
+ 			{
+ 				IMAGEINFO ii = {0};
+ 				int nImageIndex = pItem->GetImageIndex();
+-				m_imageList.GetImageInfo(nImageIndex, &ii);
++				this->m_imageList.GetImageInfo(nImageIndex, &ii);
+ 				rcItem.right += (ii.rcImage.right - ii.rcImage.left);
+ 			}
+ 			if(pItem->UsingText())
+@@ -1204,9 +1204,9 @@
+ 				RECT rcText = {0};
+ 				_CSTRING_NS::CString sText = pItem->GetText();
+ 				dc.DrawText(sText, sText.GetLength(), &rcText, DT_SINGLELINE | DT_CALCRECT | DT_NOPREFIX);
+-				rcItem.right += (rcText.right - rcText.left) + (m_settings.iPadding * 2);
+-			}
+-			rcItem.right += m_settings.iMargin;
++				rcItem.right += (rcText.right - rcText.left) + (this->m_settings.iPadding * 2);
++			}
++			rcItem.right += this->m_settings.iMargin;
+ 			pItem->SetRect(rcItem);
+ 			xpos += (rcItem.right - rcItem.left);
+ 
+@@ -1216,14 +1216,14 @@
+ 				hRestoreNormalFont = NULL;
+ 			}
+ 		}
+-		xpos += m_settings.iIndent;
++		xpos += this->m_settings.iIndent;
+ 
+ 		// If we've been scrolled to the left, and resize so
+ 		// there's more client area to the right, adjust the
+ 		// scroll offset accordingly.
+-		if((xpos + m_iScrollOffset) < rcTabItemArea.right)
+-		{
+-			m_iScrollOffset = (rcTabItemArea.right - xpos);
++		if((xpos + this->m_iScrollOffset) < rcTabItemArea.right)
++		{
++			this->m_iScrollOffset = (rcTabItemArea.right - xpos);
+ 		}
+ 
+ 		dc.SelectFont(hOldFont);
+@@ -1247,7 +1247,7 @@
+ 
+ public:
+ 
+-	DECLARE_WND_CLASS_EX(_T("WTL_DotNetTabCtrl"), CS_DBLCLKS, COLOR_WINDOW)
++	DECLARE_WND_CLASS_EX2(_T("WTL_DotNetTabCtrl"), CDotNetTabCtrl, CS_DBLCLKS, COLOR_WINDOW)
+ 
+ 	//We have nothing special to add.
+ 	//BEGIN_MSG_MAP(thisClass)
+@@ -1269,13 +1269,13 @@
+ 	{
+ 		// We can't use a member initialization list to initialize
+ 		// members of our base class, so do it explictly by assignment here.
+-		m_clrTextInactiveTab = ::GetSysColor(COLOR_BTNTEXT);
+-		m_clrSelectedTab = ::GetSysColor(COLOR_WINDOW);
++		this->m_clrTextInactiveTab = ::GetSysColor(COLOR_BTNTEXT);
++		this->m_clrSelectedTab = ::GetSysColor(COLOR_WINDOW);
+ 	}
+ 
+ // Message Handling
+ public:
+-	DECLARE_WND_CLASS_EX(_T("WTL_DotNetButtonTabCtrl"), CS_DBLCLKS, COLOR_WINDOW)
++	DECLARE_WND_CLASS_EX2(_T("WTL_DotNetButtonTabCtrl"), CDotNetButtonTabCtrlImpl, CS_DBLCLKS, COLOR_WINDOW)
+ 
+ 	BEGIN_MSG_MAP(thisClass)
+ 		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
+@@ -1294,10 +1294,10 @@
+ 		::SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lfIcon), &lfIcon, 0);
+ 
+ 		bool bResetFont = true;
+-		if(!m_font.IsNull())
++		if(!this->m_font.IsNull())
+ 		{
+ 			LOGFONT lf = {0};
+-			if(m_font.GetLogFont(&lf))
++			if(this->m_font.GetLogFont(&lf))
+ 			{
+ 				if(lstrcmpi(lf.lfFaceName, lfIcon.lfFaceName) == 0 &&
+ 					lf.lfHeight == lfIcon.lfHeight)
+@@ -1309,13 +1309,13 @@
+ 
+ 		if(bResetFont)
+ 		{
+-			if(!m_font.IsNull()) m_font.DeleteObject();
+-			if(!m_fontSel.IsNull()) m_fontSel.DeleteObject();
+-
+-			HFONT font = m_font.CreateFontIndirect(&lfIcon);
++			if(!this->m_font.IsNull()) this->m_font.DeleteObject();
++			if(!this->m_fontSel.IsNull()) this->m_fontSel.DeleteObject();
++
++			HFONT font = this->m_font.CreateFontIndirect(&lfIcon);
+ 			if(font==NULL)
+ 			{
+-				m_font.Attach(AtlGetDefaultGuiFont());
++				this->m_font.Attach(AtlGetDefaultGuiFont());
+ 			}
+ 
+ 			if(CTCS_BOLDSELECTEDTAB == (dwStyle & CTCS_BOLDSELECTEDTAB))
+@@ -1323,22 +1323,22 @@
+ 				lfIcon.lfWeight = FW_BOLD;
+ 			}
+ 
+-			font = m_fontSel.CreateFontIndirect(&lfIcon);
++			font = this->m_fontSel.CreateFontIndirect(&lfIcon);
+ 			if(font==NULL)
+ 			{
+-				m_fontSel.Attach(AtlGetDefaultGuiFont());
++				this->m_fontSel.Attach(AtlGetDefaultGuiFont());
+ 			}
+ 		}
+ 
+ 		// Background brush
+-		if(!m_hbrBackground.IsNull() ) m_hbrBackground.DeleteObject();
+-
+-		m_hbrBackground.CreateSysColorBrush(COLOR_BTNFACE);
+-
+-		m_settings.iIndent = 5;
+-		m_settings.iPadding = 4;
+-		m_settings.iMargin = 3;
+-		m_settings.iSelMargin = 3;
++		if(!this->m_hbrBackground.IsNull() ) this->m_hbrBackground.DeleteObject();
++
++		this->m_hbrBackground.CreateSysColorBrush(COLOR_BTNFACE);
++
++		this->m_settings.iIndent = 5;
++		this->m_settings.iPadding = 4;
++		this->m_settings.iMargin = 3;
++		this->m_settings.iSelMargin = 3;
+ 
+ 		T* pT = static_cast<T*>(this);
+ 		pT->UpdateLayout();
+@@ -1431,7 +1431,7 @@
+ 
+ public:
+ 
+-	DECLARE_WND_CLASS_EX(_T("WTL_DotNetButtonTabCtrl"), CS_DBLCLKS, COLOR_WINDOW)
++	DECLARE_WND_CLASS_EX2(_T("WTL_DotNetButtonTabCtrl"), CDotNetButtonTabCtrl, CS_DBLCLKS, COLOR_WINDOW)
+ 
+ 	//We have nothing special to add.
+ 	//BEGIN_MSG_MAP(thisClass)
+--- TabbingFramework/TabbedFrame.h
++++ TabbingFramework/TabbedFrame.h
+@@ -129,7 +129,7 @@
+ //   * Replace
+ //      DECLARE_FRAME_WND_CLASS(_T("TabbedFrame"), 0)
+ //     with
+-//      DECLARE_FRAME_WND_CLASS_EX(_T("TabbedFrame"), 0, 0, COLOR_APPWORKSPACE)
++//      DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedFrame"), CTabbedFrameImpl, 0, 0, COLOR_APPWORKSPACE)
+ //     (gets rid of CS_DBLCLKS, CS_HREDRAW and CS_VREDRAW, sets background brush)
+ //   * Support "empty" tabbed frame (have window class brush, 
+ //     let default handling of WM_ERASEBKGND happen if no active view,
+@@ -138,13 +138,13 @@
+ //   * Replace
+ //      DECLARE_FRAME_WND_CLASS(_T("TabbedPopupFrame"), 0)
+ //     with
+-//      DECLARE_FRAME_WND_CLASS_EX(_T("TabbedPopupFrame"), 0, 0, COLOR_APPWORKSPACE)
++//      DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedPopupFrame"), CTabbedPopupFrame, 0, 0, COLOR_APPWORKSPACE)
+ //     (gets rid of CS_DBLCLKS, CS_HREDRAW and CS_VREDRAW, sets background brush)
+ // - CTabbedChildWindow -
+ //   * Replace
+ //      DECLARE_WND_CLASS(_T("TabbedChildWindow"))
+ //     with
+-//      DECLARE_FRAME_WND_CLASS_EX(_T("TabbedChildWindow"), 0, 0, COLOR_APPWORKSPACE)
++//      DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedChildWindow"), CTabbedChildWindow, 0, 0, COLOR_APPWORKSPACE)
+ //     (gets rid of CS_DBLCLKS, CS_HREDRAW and CS_VREDRAW, sets background brush)
+ //
+ // 2003/02/27: Daniel Bowen
+@@ -311,7 +311,7 @@
+ 	{
+ 		if(m_nTabAreaHeight != nNewTabAreaHeight)
+ 		{
+-			m_nTabAreaHeight = nForceTabAreaHeight;
++			m_nTabAreaHeight = nNewTabAreaHeight;
+ 
+ 			/*
+ 			T* pT = static_cast<T*>(this);
+@@ -870,8 +870,8 @@
+ 		m_nTabStyles(CTCS_BOTTOM | CTCS_TOOLTIPS),
+ 		m_hWndActive(NULL)
+ 	{
+-		m_nMinTabCountForVisibleTabs = 1;
+-		m_bKeepTabsHidden = (m_nMinTabCountForVisibleTabs > 0);
++		this->m_nMinTabCountForVisibleTabs = 1;
++		this->m_bKeepTabsHidden = (this->m_nMinTabCountForVisibleTabs > 0);
+ 	}
+ 
+ // Methods
+@@ -933,7 +933,7 @@
+ // Message Handling
+ public:
+ 	// The class that derives from this class should set an appropriate background brush
+-	DECLARE_FRAME_WND_CLASS_EX(_T("TabbedFrame"), 0, 0, COLOR_APPWORKSPACE)
++	DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedFrame"), CTabbedFrameImpl, 0, 0, COLOR_APPWORKSPACE)
+ 
+ 	BEGIN_MSG_MAP(thisClass)
+ 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+@@ -979,7 +979,7 @@
+ 	LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+ 	{
+ 		// "baseClass::OnCreate()"
+-		LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
++		LRESULT lRet = this->DefWindowProc(uMsg, wParam, lParam);
+ 		bHandled = TRUE;
+ 		if(lRet == -1)
+ 		{
+@@ -990,14 +990,14 @@
+ 		// the window class (DECLARE_FRAME_WND_CLASS_EX)
+ 		//::SetClassLongPtr(m_hWnd, GCLP_HBRBACKGROUND, COLOR_APPWORKSPACE+1);
+ 
+-		this->CreateTabWindow(m_hWnd, rcDefault, m_nTabStyles);
++		this->CreateTabWindow(this->m_hWnd, this->rcDefault, m_nTabStyles);
+ 
+ 		return 0;
+ 	}
+ 
+ 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
+ 	{
+-		DestroyTabWindow();
++		this->DestroyTabWindow();
+ 
+ 		// Say that we didn't handle it so that anyone else
+ 		//  interested gets to handle the message
+@@ -1011,7 +1011,7 @@
+ 		//  so that it can adjust its font metrics first.
+ 		// NOTE: This causes the tab to get the WM_SETTINGCHANGE message twice,
+ 		//  but that's OK.
+-		m_TabCtrl.SendMessage(uMsg, wParam, lParam);
++		this->m_TabCtrl.SendMessage(uMsg, wParam, lParam);
+ 
+ 		T* pT = static_cast<T*>(this);
+ 		pT->CalcTabAreaHeight();
+@@ -1046,7 +1046,7 @@
+ 		{
+ 			// Also - only forward the focus on to the active view
+ 			// if the tab isn't currently capturing the mouse
+-			if(m_TabCtrl != ::GetCapture())
++			if(this->m_TabCtrl != ::GetCapture())
+ 			{
+ 				::SetFocus(m_hWndActive);
+ 			}
+@@ -1072,14 +1072,14 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If they left click on an item, set focus on the tab view,
+ 			// but only if the view was already the active tab view.
+ 			NMCTCITEM* item = (NMCTCITEM*)pnmh;
+-			if(item && (item->iItem >= 0) && (item->iItem == m_TabCtrl.GetCurSel()))
+-			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem);
++			if(item && (item->iItem >= 0) && (item->iItem == this->m_TabCtrl.GetCurSel()))
++			{
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -1095,13 +1095,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If finished dragging, set focus on the tab view.
+ 			NMCTC2ITEMS* item = (NMCTC2ITEMS*)pnmh;
+ 			if(item && (item->iItem2 >= 0))
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem2);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem2);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -1117,13 +1117,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If finished dragging, set focus on the tab view.
+ 			NMCTCITEM* item = (NMCTCITEM*)pnmh;
+ 			if(item && (item->iItem >= 0))
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -1139,7 +1139,7 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 		}
+ 
+@@ -1151,7 +1151,7 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 		}
+ 
+@@ -1163,13 +1163,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
+-		{
+-			int nNewTab = m_TabCtrl.GetCurSel();
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
++		{
++			int nNewTab = this->m_TabCtrl.GetCurSel();
+ 
+ 			if(nNewTab >= 0)
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(nNewTab);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(nNewTab);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					HWND hWndNew = pItem->GetTabView();
+@@ -1217,21 +1217,21 @@
+ 
+ 	void SetTabAreaHeight(int nNewTabAreaHeight)
+ 	{
+-		if(m_bKeepTabsHidden)
+-		{
+-			m_nTabAreaHeight = 0;
++		if(this->m_bKeepTabsHidden)
++		{
++			this->m_nTabAreaHeight = 0;
+ 
+ 			T* pT = static_cast<T*>(this);
+ 			pT->UpdateLayout();
+-			Invalidate();
+-		}
+-		else if(m_nTabAreaHeight != nNewTabAreaHeight)
+-		{
+-			m_nTabAreaHeight = nNewTabAreaHeight;
++			this->Invalidate();
++		}
++		else if(this->m_nTabAreaHeight != nNewTabAreaHeight)
++		{
++			this->m_nTabAreaHeight = nNewTabAreaHeight;
+ 
+ 			T* pT = static_cast<T*>(this);
+ 			pT->UpdateLayout();
+-			Invalidate();
++			this->Invalidate();
+ 		}
+ 	}
+ 
+@@ -1241,7 +1241,7 @@
+ 	void UpdateLayout(BOOL bResizeBars = TRUE)
+ 	{
+ 		RECT rect;
+-		GetClientRect(&rect);
++		this->GetClientRect(&rect);
+ 
+ 		// position bars and offset their dimensions
+ 		T* pT = static_cast<T*>(this);
+@@ -1256,23 +1256,23 @@
+ 		*/
+ 
+ 		int nWindowPosCount=0;
+-		if(m_TabCtrl) nWindowPosCount++;
++		if(this->m_TabCtrl) nWindowPosCount++;
+ 		if(m_hWndActive) nWindowPosCount++;
+ 
+ 		if(nWindowPosCount > 0)
+ 		{
+ 			HDWP hdwp = BeginDeferWindowPos(nWindowPosCount);
+-			DWORD dwStyle = (DWORD)m_TabCtrl.GetWindowLong(GWL_STYLE);
++			DWORD dwStyle = (DWORD)this->m_TabCtrl.GetWindowLong(GWL_STYLE);
+ 			if(CTCS_BOTTOM == (dwStyle & CTCS_BOTTOM))
+ 			{
+-				if(m_TabCtrl)
++				if(this->m_TabCtrl)
+ 				{
+ 					::DeferWindowPos(
+ 						hdwp,
+-						m_TabCtrl,
++						this->m_TabCtrl,
+ 						NULL,
+-						rect.left, rect.bottom - m_nTabAreaHeight,
+-						rect.right - rect.left, m_nTabAreaHeight,
++						rect.left, rect.bottom - this->m_nTabAreaHeight,
++						rect.right - rect.left, this->m_nTabAreaHeight,
+ 						SWP_NOZORDER | SWP_NOACTIVATE);
+ 				}
+ 				if(m_hWndActive)
+@@ -1282,20 +1282,20 @@
+ 						m_hWndActive,
+ 						NULL,
+ 						rect.left, rect.top,
+-						rect.right - rect.left, (rect.bottom-m_nTabAreaHeight) - rect.top,
++						rect.right - rect.left, (rect.bottom-this->m_nTabAreaHeight) - rect.top,
+ 						SWP_NOZORDER | SWP_SHOWWINDOW);
+ 				}
+ 			}
+ 			else
+ 			{
+-				if(m_TabCtrl)
++				if(this->m_TabCtrl)
+ 				{
+ 					::DeferWindowPos(
+ 						hdwp,
+-						m_TabCtrl,
++						this->m_TabCtrl,
+ 						NULL,
+ 						rect.left, rect.top,
+-						rect.right-rect.left, m_nTabAreaHeight,
++						rect.right-rect.left, this->m_nTabAreaHeight,
+ 						SWP_NOZORDER | SWP_NOACTIVATE);
+ 				}
+ 				if(m_hWndActive)
+@@ -1304,16 +1304,16 @@
+ 						hdwp,
+ 						m_hWndActive,
+ 						NULL,
+-						rect.left, rect.top + m_nTabAreaHeight,
++						rect.left, rect.top + this->m_nTabAreaHeight,
+ 						rect.right - rect.left,
+-						rect.bottom - (rect.top+m_nTabAreaHeight),
++						rect.bottom - (rect.top+this->m_nTabAreaHeight),
+ 						SWP_NOZORDER | SWP_SHOWWINDOW);
+ 				}
+ 			}
+ 			EndDeferWindowPos(hdwp);
+ 		}
+ 
+-		m_TabCtrl.UpdateLayout();
++		this->m_TabCtrl.UpdateLayout();
+ 	}
+ };
+ 
+@@ -1362,7 +1362,7 @@
+ 
+ // Message Handling
+ public:
+-	DECLARE_FRAME_WND_CLASS_EX(_T("TabbedPopupFrame"), 0, 0, COLOR_APPWORKSPACE)
++	DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedPopupFrame"), CTabbedPopupFrame, 0, 0, COLOR_APPWORKSPACE)
+ 
+ 	BOOL PreTranslateMessage(MSG* pMsg)
+ 	{
+@@ -1372,11 +1372,11 @@
+ 		//return m_view.PreTranslateMessage(pMsg);
+ 
+ 		HWND hWndFocus = ::GetFocus();
+-		if(m_hWndActive != NULL && ::IsWindow(m_hWndActive) &&
+-			(m_hWndActive == hWndFocus || ::IsChild(m_hWndActive, hWndFocus)))
++		if(this->m_hWndActive != NULL && ::IsWindow(this->m_hWndActive) &&
++			(this->m_hWndActive == hWndFocus || ::IsChild(this->m_hWndActive, hWndFocus)))
+ 		{
+ 			//active.PreTranslateMessage(pMsg);
+-			if(::SendMessage(m_hWndActive, WM_FORWARDMSG, 0, (LPARAM)pMsg))
++			if(::SendMessage(this->m_hWndActive, WM_FORWARDMSG, 0, (LPARAM)pMsg))
+ 			{
+ 				return TRUE;
+ 			}
+@@ -1465,7 +1465,7 @@
+ 
+ // Message Handling
+ public:
+-	DECLARE_FRAME_WND_CLASS_EX(_T("TabbedChildWindow"), 0, 0, COLOR_APPWORKSPACE)
++	DECLARE_FRAME_WND_CLASS_EX2(_T("TabbedChildWindow"), CTabbedChildWindow, 0, 0, COLOR_APPWORKSPACE)
+ 
+ 	BOOL PreTranslateMessage(MSG* pMsg)
+ 	{
+@@ -1475,11 +1475,11 @@
+ 		//return m_view.PreTranslateMessage(pMsg);
+ 
+ 		HWND hWndFocus = ::GetFocus();
+-		if(m_hWndActive != NULL && ::IsWindow(m_hWndActive) &&
+-			(m_hWndActive == hWndFocus || ::IsChild(m_hWndActive, hWndFocus)))
++		if(this->m_hWndActive != NULL && ::IsWindow(this->m_hWndActive) &&
++			(this->m_hWndActive == hWndFocus || ::IsChild(this->m_hWndActive, hWndFocus)))
+ 		{
+ 			//active.PreTranslateMessage(pMsg);
+-			if(::SendMessage(m_hWndActive, WM_FORWARDMSG, 0, (LPARAM)pMsg))
++			if(::SendMessage(this->m_hWndActive, WM_FORWARDMSG, 0, (LPARAM)pMsg))
+ 			{
+ 				return TRUE;
+ 			}
+--- TabbingFramework/TabbedMDI.h
++++ TabbingFramework/TabbedMDI.h
+@@ -402,7 +402,7 @@
+ 	{
+ 		ATLASSERT(m_hWndMDIClient && ::IsWindow(m_hWndMDIClient));
+ 
+-		return m_tabbedClient.SubclassWindow(m_hWndMDIClient);
++		return m_tabbedClient.SubclassWindow(this->m_hWndMDIClient);
+ 	}
+ 
+ 	void SetTabOwnerParent(HWND hWndTabOwnerParent)
+@@ -487,7 +487,7 @@
+ 				RDW_INVALIDATE | RDW_ALLCHILDREN);
+ 		}
+ 
+-		if(hWnd != NULL && ::IsWindow(m_hWnd) && !::IsChild(hWnd, ::GetFocus()))
++		if(hWnd != NULL && ::IsWindow(this->m_hWnd) && !::IsChild(hWnd, ::GetFocus()))
+ 			::SetFocus(hWnd);
+ 
+ 		return hWnd;
+@@ -501,18 +501,18 @@
+ 
+ 		if(bUpdateTabText)
+ 		{
+-			::SendMessage(m_hWndMDIClient, UWM_MDICHILDTABTEXTCHANGE, (WPARAM)m_hWnd, (LPARAM)sNewTitle);
++			::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDTABTEXTCHANGE, (WPARAM)this->m_hWnd, (LPARAM)sNewTitle);
+ 		}
+ 	}
+ 
+ 	void SetTabText(LPCTSTR sNewTabText)
+ 	{
+-		::SendMessage(m_hWndMDIClient, UWM_MDICHILDTABTEXTCHANGE, (WPARAM)m_hWnd, (LPARAM)sNewTabText);
++		::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDTABTEXTCHANGE, (WPARAM)this->m_hWnd, (LPARAM)sNewTabText);
+ 	}
+ 
+ 	void SetTabToolTip(LPCTSTR sNewToolTip)
+ 	{
+-		::SendMessage(m_hWndMDIClient, UWM_MDICHILDTABTOOLTIPCHANGE, (WPARAM)m_hWnd, (LPARAM)sNewToolTip);
++		::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDTABTOOLTIPCHANGE, (WPARAM)this->m_hWnd, (LPARAM)sNewToolTip);
+ 	}
+ 
+ // Message Handling
+@@ -537,9 +537,9 @@
+ 		//HWND hWndDeactivating = (HWND)wParam;
+ 		HWND hWndActivating = (HWND)lParam;
+ 
+-		if(m_hWnd == hWndActivating)
+-		{
+-			::SendMessage(m_hWndMDIClient, UWM_MDICHILDACTIVATIONCHANGE, (WPARAM)m_hWnd, 0);
++		if(this->m_hWnd == hWndActivating)
++		{
++			::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDACTIVATIONCHANGE, (WPARAM)this->m_hWnd, 0);
+ 		}
+ 
+ 		bHandled = FALSE;
+@@ -559,12 +559,12 @@
+ 		if(wParam == SIZE_MAXIMIZED && m_bMaximized == false)
+ 		{
+ 			m_bMaximized = true;
+-			::SendMessage(m_hWndMDIClient, UWM_MDICHILDMAXIMIZED, (WPARAM)m_hWnd, lParam);
++			::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDMAXIMIZED, (WPARAM)this->m_hWnd, lParam);
+ 		}
+ 		else if(wParam != SIZE_MAXIMIZED && m_bMaximized == true)
+ 		{
+ 			m_bMaximized = false;
+-			::SendMessage(m_hWndMDIClient, UWM_MDICHILDUNMAXIMIZED, (WPARAM)m_hWnd, lParam);
++			::SendMessage(this->m_hWndMDIClient, UWM_MDICHILDUNMAXIMIZED, (WPARAM)this->m_hWnd, lParam);
+ 		}
+ 
+ 		bHandled = FALSE;
+@@ -579,9 +579,9 @@
+ 
+ 		// activate window if necessary
+ 		HWND hWndActive = this->MDIGetActive();
+-		if(m_hWnd != hWndActive)
+-		{
+-			this->MDIActivate(m_hWnd);
++		if(this->m_hWnd != hWndActive)
++		{
++			this->MDIActivate(this->m_hWnd);
+ 		}
+ 
+ 		return lRes;
+@@ -591,9 +591,9 @@
+ 	{
+ 		// NOTE: ::IsWindowVisible(m_hWndClient) will be false if
+ 		//  the frame is maximized.  So just use "IsWindow" instead.
+-		if(m_hWndClient != NULL && ::IsWindow(m_hWndClient))
+-		{
+-			::SetFocus(m_hWndClient);
++		if(this->m_hWndClient != NULL && ::IsWindow(this->m_hWndClient))
++		{
++			::SetFocus(this->m_hWndClient);
+ 		}
+ 
+ 		bHandled = FALSE;
+@@ -624,13 +624,13 @@
+ 		WTL::CMenuHandle menu = this->GetSystemMenu(FALSE);
+ 
+ 		UINT command = (UINT)menu.TrackPopupMenu(TPM_LEFTBUTTON | TPM_VERTICAL | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, 
+-			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), m_hWnd);
++			GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), this->m_hWnd);
+ 
+ 		// See MSDN about "GetSystemMenu".  Returns codes greater than
+ 		//  0xF000 (which happens to be SC_SIZE) are sent with WM_SYSCOMMAND
+ 		if(command >= SC_SIZE)
+ 		{
+-			::PostMessage(m_hWnd, WM_SYSCOMMAND, command, 0L);
++			::PostMessage(this->m_hWnd, WM_SYSCOMMAND, command, 0L);
+ 		}
+ 		else if(command != 0)
+ 		{
+@@ -678,14 +678,16 @@
+ //
+ /////////////////////////////////////////////////////////////////////////////
+ 
+-template< class T, class TTabCtrl >
++template< class T, class TTabCtrlType >
+ class CMDITabOwnerImpl :
+ 	public ATL::CWindowImpl<T>,
+-	public CCustomTabOwnerImpl<T, TTabCtrl>
++	public CCustomTabOwnerImpl<T, TTabCtrlType>
+ {
+ public:
++    using TTabCtrl = TTabCtrlType;
++
+ 	// Expose the type of tab control
+-	typedef typename TTabCtrl TTabCtrl;
++	
+ 
+ protected:
+ 	typedef CMDITabOwnerImpl<T, TTabCtrl> thisClass;
+@@ -708,8 +710,8 @@
+ 		m_bForceNoTabs(false)
+ 	{
+ 		ATLASSERT(UWM_MDICHILDACTIVATIONCHANGE != 0 && "The TabbedMDI Messages didn't get registered properly");
+-		m_nMinTabCountForVisibleTabs = 1;
+-		m_bKeepTabsHidden = (m_nMinTabCountForVisibleTabs > 0);
++		this->m_nMinTabCountForVisibleTabs = 1;
++		this->m_bKeepTabsHidden = (this->m_nMinTabCountForVisibleTabs > 0);
+ 	}
+ 
+ // Methods
+@@ -748,7 +750,7 @@
+ 
+ 	void ForceShowMDITabControl()
+ 	{
+-		if(m_hWnd && !this->IsWindowVisible())
++		if(this->m_hWnd && !this->IsWindowVisible())
+ 		{
+ 			RECT rcMDIClient;
+ 			::GetWindowRect(m_hWndMDIClient, &rcMDIClient);
+@@ -768,11 +770,11 @@
+ 
+ 	void ForceHideMDITabControl()
+ 	{
+-		if(m_hWnd && this->IsWindowVisible())
++		if(this->m_hWnd && this->IsWindowVisible())
+ 		{
+ 			RECT rcTabs;
+-			m_TabCtrl.GetWindowRect(&rcTabs);
+-			::MapWindowPoints(NULL, m_TabCtrl.GetParent(), (LPPOINT)&rcTabs, 2);
++			this->m_TabCtrl.GetWindowRect(&rcTabs);
++			::MapWindowPoints(NULL, this->m_TabCtrl.GetParent(), (LPPOINT)&rcTabs, 2);
+ 
+ 			this->ShowWindow(SW_HIDE);
+ 
+@@ -787,7 +789,7 @@
+ 			//  We're basically hiding the tabs and
+ 			//  resizing the MDI client area to "cover up"
+ 			//  where the tabs were
+-			DWORD dwStyle = m_TabCtrl.GetStyle();
++			DWORD dwStyle = this->m_TabCtrl.GetStyle();
+ 			if(CTCS_BOTTOM == (dwStyle & CTCS_BOTTOM))
+ 			{
+ 				::SetWindowPos(
+@@ -813,8 +815,8 @@
+ 	{
+ 		if(m_bHideMDITabsWhenMDIChildNotMaximized)
+ 		{
+-			size_t nTabCount = m_TabCtrl.GetItemCount();
+-			if(nTabCount >= m_nMinTabCountForVisibleTabs)
++			size_t nTabCount = this->m_TabCtrl.GetItemCount();
++			if(nTabCount >= this->m_nMinTabCountForVisibleTabs)
+ 			{
+ 				T* pT = static_cast<T*>(this);
+ 				pT->ShowTabControl();
+@@ -833,7 +835,7 @@
+ 
+ // Message Handling
+ public:
+-	DECLARE_WND_CLASS_EX(_T("MdiTabOwner"), 0, COLOR_APPWORKSPACE)
++	DECLARE_WND_CLASS_EX2(_T("MdiTabOwner"), CMDITabOwnerImpl, 0, COLOR_APPWORKSPACE)
+ 
+ 	BEGIN_MSG_MAP(thisClass)
+ 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+@@ -864,14 +866,14 @@
+ 			return -1;
+ 		}
+ 
+-		CreateTabWindow(m_hWnd, rcDefault, m_nTabStyles);
++		this->CreateTabWindow(this->m_hWnd, this->rcDefault, m_nTabStyles);
+ 
+ 		return 0;
+ 	}
+ 
+ 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
+ 	{
+-		DestroyTabWindow();
++		this->DestroyTabWindow();
+ 
+ 		// Say that we didn't handle it so that anyone else
+ 		//  interested gets to handle the message
+@@ -881,7 +883,7 @@
+ 
+ 	LRESULT OnEraseBackground(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
+ 	{
+-		if(m_TabCtrl)
++		if(this->m_TabCtrl)
+ 		{
+ 			// Let the tabs do all the drawing as flicker-free as possible
+ 			return 1;
+@@ -894,10 +896,10 @@
+ 	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
+ 	{
+ 		RECT rect = {0};
+-		GetClientRect(&rect);
+-
+-		m_TabCtrl.SetWindowPos(NULL, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
+-		m_TabCtrl.UpdateLayout();
++		this->GetClientRect(&rect);
++
++		this->m_TabCtrl.SetWindowPos(NULL, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
++		this->m_TabCtrl.UpdateLayout();
+ 
+ 		bHandled = TRUE;
+ 
+@@ -913,31 +915,31 @@
+ 		POINT ptPopup = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+ 		if(ptPopup.x == -1 && ptPopup.y == -1)
+ 		{
+-			nIndex = m_TabCtrl.GetCurSel();
++			nIndex = this->m_TabCtrl.GetCurSel();
+ 			RECT rect = {0};
+ 			if(nIndex >= 0)
+ 			{
+ 				// If there is a selected item, popup the menu under the node,
+ 				// if not, pop it up in the top left of the tree view
+-				m_TabCtrl.GetItemRect(nIndex, &rect);
+-			}
+-			::MapWindowPoints(m_hWnd, NULL, (LPPOINT)&rect, 2);
++				this->m_TabCtrl.GetItemRect(nIndex, &rect);
++			}
++			::MapWindowPoints(this->m_hWnd, NULL, (LPPOINT)&rect, 2);
+ 			ptPopup.x = rect.left;
+ 			ptPopup.y = rect.bottom;
+ 		}
+ 		else
+ 		{
+ 			POINT ptClient = ptPopup;
+-			::MapWindowPoints(NULL, m_hWnd, &ptClient, 1);
++			::MapWindowPoints(NULL, this->m_hWnd, &ptClient, 1);
+ 			CTCHITTESTINFO tchti = { 0 };
+ 			tchti.pt = ptClient;
+ 			//If we become templated, pT->HitTest(&tchti);
+-			nIndex = m_TabCtrl.HitTest(&tchti);
++			nIndex = this->m_TabCtrl.HitTest(&tchti);
+ 		}
+ 
+ 		if( nIndex >= 0 )
+ 		{
+-			typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(nIndex);
++			typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(nIndex);
+ 
+ 			HWND hWndChild = pItem->GetTabView();
+ 			if(hWndChild != NULL)
+@@ -953,16 +955,16 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If they left click on an item, set focus on the tab view,
+ 			// but only if the view was already the active tab view
+ 			// (otherwise our code to reduce flicker when switching
+ 			// MDI children when maximized doesn't kick in).
+ 			NMCTCITEM* item = (NMCTCITEM*)pnmh;
+-			if(item && (item->iItem >= 0) && (item->iItem == m_TabCtrl.GetCurSel()))
+-			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem);
++			if(item && (item->iItem >= 0) && (item->iItem == this->m_TabCtrl.GetCurSel()))
++			{
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -978,13 +980,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If finished dragging, set focus on the tab view.
+ 			NMCTC2ITEMS* item = (NMCTC2ITEMS*)pnmh;
+ 			if(item && (item->iItem2 >= 0))
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem2);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem2);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -1000,13 +1002,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			// If finished dragging, set focus on the tab view.
+ 			NMCTCITEM* item = (NMCTCITEM*)pnmh;
+ 			if(item && (item->iItem >= 0))
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(item->iItem);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(item->iItem);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					::SetFocus(pItem->GetTabView());
+@@ -1022,7 +1024,7 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 		}
+ 
+@@ -1034,7 +1036,7 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 		}
+ 
+@@ -1046,13 +1048,13 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
+-		{
+-			int nNewTab = m_TabCtrl.GetCurSel();
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
++		{
++			int nNewTab = this->m_TabCtrl.GetCurSel();
+ 
+ 			if(nNewTab >= 0)
+ 			{
+-				typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(nNewTab);
++				typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(nNewTab);
+ 				if(pItem->UsingTabView())
+ 				{
+ 					HWND hWndNew = pItem->GetTabView();
+@@ -1114,14 +1116,14 @@
+ 	{
+ 		// Be sure the notification is from the tab control
+ 		// (and not from a sibling like a list view control)
+-		if(pnmh && (m_TabCtrl == pnmh->hwndFrom))
++		if(pnmh && (this->m_TabCtrl == pnmh->hwndFrom))
+ 		{
+ 			LPNMCTCITEM pnmCustomTab = (LPNMCTCITEM)pnmh;
+ 			if(pnmCustomTab)
+ 			{
+ 				if(pnmCustomTab->iItem >= 0)
+ 				{
+-					typename TTabCtrl::TItem* pItem = m_TabCtrl.GetItem(pnmCustomTab->iItem);
++					typename TTabCtrl::TItem* pItem = this->m_TabCtrl.GetItem(pnmCustomTab->iItem);
+ 					if(pItem)
+ 					{
+ 						::PostMessage(pItem->GetTabView(), WM_SYSCOMMAND, SC_CLOSE, 0L);
+@@ -1167,9 +1169,9 @@
+ 			return;
+ 		}
+ 
+-		if(m_bKeepTabsHidden != bKeepTabsHidden)
+-		{
+-			m_bKeepTabsHidden = bKeepTabsHidden;
++		if(this->m_bKeepTabsHidden != bKeepTabsHidden)
++		{
++			this->m_bKeepTabsHidden = bKeepTabsHidden;
+ 
+ 			// CalcTabAreaHeight will end up doing UpdateLayout and Invalidate
+ 			T* pT = static_cast<T*>(this);
+@@ -1178,7 +1180,7 @@
+ 			// For MDI tabs, the UpdateLayout done by CalcTabAreaHeight
+ 			//  is not quite enough to force the tab control to show or hide.
+ 			//  So we'll force the tab control to be shown or hidden.
+-			if(m_bKeepTabsHidden)
++			if(this->m_bKeepTabsHidden)
+ 			{
+ 				pT->ForceHideMDITabControl();
+ 			}
+@@ -1209,7 +1211,7 @@
+ 				// For MDI tabs, the UpdateLayout done by CalcTabAreaHeight
+ 				//  is not quite enough to force the tab control to show or hide.
+ 				//  So we'll force the tab control to be shown or hidden.
+-				if(m_bKeepTabsHidden)
++				if(this->m_bKeepTabsHidden)
+ 				{
+ 					pT->ForceHideMDITabControl();
+ 				}
+@@ -1223,19 +1225,19 @@
+ 
+ 	void SetTabAreaHeight(int nNewTabAreaHeight)
+ 	{
+-		if(m_bKeepTabsHidden)
+-		{
+-			m_nTabAreaHeight = 0;
++		if(this->m_bKeepTabsHidden)
++		{
++			this->m_nTabAreaHeight = 0;
+ 
+ 			//T* pT = static_cast<T*>(this);
+ 			//pT->UpdateLayout();
+ 			//Invalidate();
+ 		}
+-		else if(m_nTabAreaHeight != nNewTabAreaHeight)
+-		{
+-			int nOldTabAreaHeight = m_nTabAreaHeight;
+-
+-			m_nTabAreaHeight = nNewTabAreaHeight;
++		else if(this->m_nTabAreaHeight != nNewTabAreaHeight)
++		{
++			int nOldTabAreaHeight = this->m_nTabAreaHeight;
++
++			this->m_nTabAreaHeight = nNewTabAreaHeight;
+ 
+ 			//T* pT = static_cast<T*>(this);
+ 			//pT->UpdateLayout();
+@@ -1277,13 +1279,16 @@
+ //
+ /////////////////////////////////////////////////////////////////////////////
+ 
+-template< class TTabCtrl, class TTabOwner >
+-class CTabbedMDIClient : public ATL::CWindowImpl<CTabbedMDIClient<TTabCtrl, TTabOwner>, ATL::CWindow>
++template< class TTabCtrlType, class TTabOwnerType >
++class CTabbedMDIClient : public ATL::CWindowImpl<CTabbedMDIClient<TTabCtrlType, TTabOwnerType>, ATL::CWindow>
+ {
+ public:
++    using TTabCtrl = TTabCtrlType;
++    using TTabOwner = TTabOwnerType;
++
+ 	// Expose the type of tab control and tab owner
+-	typedef typename TTabCtrl TTabCtrl;
+-	typedef typename TTabOwner TTabOwner;
++	
++	
+ 
+ protected:
+ 	typedef ATL::CWindowImpl<CTabbedMDIClient, ATL::CWindow> baseClass;
+@@ -1523,7 +1528,7 @@
+ 
+ 	void CloseAll(bool bPreferNoPrompt = false) const
+ 	{
+-		HWND hWndChild = ::GetTopWindow(m_hWnd);
++		HWND hWndChild = ::GetTopWindow(this->m_hWnd);
+ 		while(hWndChild != NULL)
+ 		{
+ 			HWND hWndClose = hWndChild;
+@@ -1578,17 +1583,17 @@
+ 
+ 			m_MdiTabOwner.Create(
+ 				m_hWndTabOwnerParent, 
+-				rcDefault, NULL,
++				this->rcDefault, NULL,
+ 				WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN // start out not visible
+ 				);
+ 
+-			m_MdiTabOwner.SetMDIClient(m_hWnd);
++			m_MdiTabOwner.SetMDIClient(this->m_hWnd);
+ 		}
+ 	}
+ 
+ // Message Handling
+ public:
+-	DECLARE_WND_SUPERCLASS(_T("TabbedMDIClient"), _T("MDIClient"))
++	DECLARE_WND_SUPERCLASS2(_T("TabbedMDIClient"), CTabbedMDIClient, _T("MDIClient"))
+ 
+ 	BEGIN_MSG_MAP(CTabbedMDIClient)
+ 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+@@ -1903,7 +1908,7 @@
+ 	void GetSystemSettings()
+ 	{
+ 		baseClass::GetSystemSettings();
+-		m_cxLeft += 4;
++		this->m_cxLeft += 4;
+ 	}
+ 
+ // Message Handling
+@@ -1957,9 +1962,9 @@
+ // MDI client window message handlers
+ 	LRESULT OnMDISetMenu(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+ 	{
+-		m_wndMDIClient.DefWindowProc(uMsg, NULL, lParam);
+-		HMENU hOldMenu = GetMenu();
+-		BOOL bRet = AttachMenu((HMENU)wParam);
++		this->m_wndMDIClient.DefWindowProc(uMsg, NULL, lParam);
++		HMENU hOldMenu = this->GetMenu();
++		BOOL bRet = this->AttachMenu((HMENU)wParam);
+ 		bRet;   // avoid level 4 warning
+ 		ATLASSERT(bRet);
+ 
+@@ -1975,17 +1980,17 @@
+ 	{
+ 		HWND hWndChild = (HWND)wParam;
+ 
+-		if(m_hWndChildMaximized == hWndChild)
+-		{
+-			bool bMaxOld = m_bChildMaximized;
+-			HICON hIconOld = m_hIconChildMaximized;
+-
+-			m_bChildMaximized = false;
+-			m_hWndChildMaximized = NULL;
+-			m_hIconChildMaximized = NULL;
++		if(this->m_hWndChildMaximized == hWndChild)
++		{
++			bool bMaxOld = this->m_bChildMaximized;
++			HICON hIconOld = this->m_hIconChildMaximized;
++
++			this->m_bChildMaximized = false;
++			this->m_hWndChildMaximized = NULL;
++			this->m_hIconChildMaximized = NULL;
+ 
+ 			T* pT = static_cast<T*>(this);
+-			pT->RefreshMaximizedState((bMaxOld != m_bChildMaximized), (hIconOld != m_hIconChildMaximized));
++			pT->RefreshMaximizedState((bMaxOld != this->m_bChildMaximized), (hIconOld != this->m_hIconChildMaximized));
+ 		}
+ 
+ 		bHandled = FALSE;
+@@ -1996,23 +2001,23 @@
+ 	{
+ 		HWND hWndChild = (HWND)wParam;
+ 
+-		bool bMaxOld = m_bChildMaximized;
+-		HICON hIconOld = m_hIconChildMaximized;
+-
+-		m_bChildMaximized = true;
+-
+-		if(m_hWndChildMaximized != hWndChild)
+-		{
+-			ATL::CWindow wnd = m_hWndChildMaximized = hWndChild;
+-			m_hIconChildMaximized = wnd.GetIcon(FALSE);
+-			if(m_hIconChildMaximized == NULL)	// no icon set with WM_SETICON, get the class one
++		bool bMaxOld = this->m_bChildMaximized;
++		HICON hIconOld = this->m_hIconChildMaximized;
++
++		this->m_bChildMaximized = true;
++
++		if(this->m_hWndChildMaximized != hWndChild)
++		{
++			ATL::CWindow wnd = this->m_hWndChildMaximized = hWndChild;
++			this->m_hIconChildMaximized = wnd.GetIcon(FALSE);
++			if(this->m_hIconChildMaximized == NULL)	// no icon set with WM_SETICON, get the class one
+ 			{
+ // need conditional code because types don't match in winuser.h
+ #ifdef _WIN64
+-				m_hIconChildMaximized = (HICON)::GetClassLongPtr(wnd, GCLP_HICONSM);
+-				if(m_hIconChildMaximized == NULL)
++				this->m_hIconChildMaximized = (HICON)::GetClassLongPtr(wnd, GCLP_HICONSM);
++				if(this->m_hIconChildMaximized == NULL)
+ 				{
+-					m_hIconChildMaximized = (HICON) ::GetClassLongPtr(wnd, GCLP_HICON);
++					this->m_hIconChildMaximized = (HICON) ::GetClassLongPtr(wnd, GCLP_HICON);
+ 				}
+ #else
+ 				m_hIconChildMaximized = (HICON)LongToHandle(::GetClassLongPtr(wnd, GCLP_HICONSM));
+@@ -2025,7 +2030,7 @@
+ 		}
+ 
+ 		T* pT = static_cast<T*>(this);
+-		pT->RefreshMaximizedState((bMaxOld != m_bChildMaximized), (hIconOld != m_hIconChildMaximized));
++		pT->RefreshMaximizedState((bMaxOld != this->m_bChildMaximized), (hIconOld != this->m_hIconChildMaximized));
+ 
+ 		bHandled = FALSE;
+ 		return 0;
+@@ -2035,17 +2040,17 @@
+ 	{
+ 		HWND hWndChild = (HWND)wParam;
+ 
+-		if(m_hWndChildMaximized == hWndChild)
+-		{
+-			bool bMaxOld = m_bChildMaximized;
+-			HICON hIconOld = m_hIconChildMaximized;
+-
+-			m_bChildMaximized = false;
+-			m_hWndChildMaximized = NULL;
+-			m_hIconChildMaximized = NULL;
++		if(this->m_hWndChildMaximized == hWndChild)
++		{
++			bool bMaxOld = this->m_bChildMaximized;
++			HICON hIconOld = this->m_hIconChildMaximized;
++
++			this->m_bChildMaximized = false;
++			this->m_hWndChildMaximized = NULL;
++			this->m_hIconChildMaximized = NULL;
+ 
+ 			T* pT = static_cast<T*>(this);
+-			pT->RefreshMaximizedState((bMaxOld != m_bChildMaximized), (hIconOld != m_hIconChildMaximized));
++			pT->RefreshMaximizedState((bMaxOld != this->m_bChildMaximized), (hIconOld != this->m_hIconChildMaximized));
+ 		}
+ 
+ 		bHandled = FALSE;
+@@ -2063,21 +2068,21 @@
+ #endif
+ 			// assuming we are in a rebar, change our size to accomodate new state
+ 			// we hope that if we are not in a rebar, nCount will be 0
+-			int nCount = (int)::SendMessage(GetParent(), RB_GETBANDCOUNT, 0, 0L);
+-			int cxDiff = (m_bChildMaximized ? 1 : -1) * (m_cxLeft + m_cxRight);
++			int nCount = (int)::SendMessage(this->GetParent(), RB_GETBANDCOUNT, 0, 0L);
++			int cxDiff = (this->m_bChildMaximized ? 1 : -1) * (this->m_cxLeft + this->m_cxRight);
+ 			for(int i = 0; i < nCount; i++)
+ 			{ 
+ #if (_WIN32_IE >= 0x0500)
+ 				REBARBANDINFO rbi = { sizeof(REBARBANDINFO), RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_IDEALSIZE | RBBIM_STYLE };
+-				::SendMessage(GetParent(), RB_GETBANDINFO, i, (LPARAM)&rbi);
+-				if(rbi.hwndChild == m_hWnd)
++				::SendMessage(this->GetParent(), RB_GETBANDINFO, i, (LPARAM)&rbi);
++				if(rbi.hwndChild == this->m_hWnd)
+ 				{
+ 					if((rbi.fStyle & RBBS_USECHEVRON) != 0)
+ 					{
+ 						rbi.fMask = RBBIM_CHILDSIZE | RBBIM_IDEALSIZE;
+ 						rbi.cxMinChild += cxDiff;
+ 						rbi.cxIdeal += cxDiff;
+-						::SendMessage(GetParent(), RB_SETBANDINFO, i, (LPARAM)&rbi);
++						::SendMessage(this->GetParent(), RB_SETBANDINFO, i, (LPARAM)&rbi);
+ 					}
+ 					break;
+ 				}
+@@ -2110,13 +2115,13 @@
+ 		{
+ 			// force size change and redraw everything
+ 			RECT rect = { 0 };
+-			GetWindowRect(&rect);
+-			::MapWindowPoints(NULL, GetParent(), (LPPOINT)&rect, 2);
+-			SetRedraw(FALSE);
+-			SetWindowPos(NULL, 0, 0, 1, 1, SWP_NOZORDER | SWP_NOMOVE);
+-			SetWindowPos(NULL, &rect, SWP_NOZORDER | SWP_NOMOVE);
+-			SetRedraw(TRUE);
+-			RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW);
++			this->GetWindowRect(&rect);
++			::MapWindowPoints(NULL, this->GetParent(), (LPPOINT)&rect, 2);
++			this->SetRedraw(FALSE);
++			this->SetWindowPos(NULL, 0, 0, 1, 1, SWP_NOZORDER | SWP_NOMOVE);
++			this->SetWindowPos(NULL, &rect, SWP_NOZORDER | SWP_NOMOVE);
++			this->SetRedraw(TRUE);
++			this->RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW);
+ 		}
+ 	}
+ };
+@@ -2124,7 +2129,7 @@
+ class CTabbedMDICommandBarCtrl : public CTabbedMDICommandBarCtrlImpl<CTabbedMDICommandBarCtrl>
+ {
+ public:
+-	DECLARE_WND_SUPERCLASS(_T("WTL_TabbedMDICommandBar"), GetWndClassName())
++	DECLARE_WND_SUPERCLASS2(_T("WTL_TabbedMDICommandBar"), CTabbedMDICommandBarCtrl, GetWndClassName())
+ };
+ 
+ /*
+@@ -2135,7 +2140,7 @@
+ 	typedef CTabbedMDICommandBarCtrlImpl<CAnotherTabbedMDICommandBarCtrl> baseClass;
+ 
+ public:
+-	DECLARE_WND_SUPERCLASS(_T("WTL_AnotherTabbedMDICommandBar"), GetWndClassName())
++	DECLARE_WND_SUPERCLASS2(_T("WTL_AnotherTabbedMDICommandBar"), CAnotherTabbedMDICommandBarCtrl, GetWndClassName())
+ 
+ 	BEGIN_MSG_MAP(thisClass)
+ 		CHAIN_MSG_MAP(baseClass)

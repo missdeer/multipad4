@@ -1,10 +1,54 @@
 {
   "version": 6,
-  "configurePresets": [{
-    "name": "msvc-x64", "displayName": "MSVC x64 (Developer Command Prompt)",
-    "generator": "Ninja", "binaryDir": "${sourceDir}/cmake-msvc-build",
-    "cacheVariables": { "CMAKE_CXX_COMPILER": "cl", "CMAKE_BUILD_TYPE": "RelWithDebInfo", "BUILD_TESTING": "ON" }
-  }],
-  "buildPresets": [{ "name": "msvc-x64", "configurePreset": "msvc-x64" }],
-  "testPresets": [{ "name": "msvc-x64", "configurePreset": "msvc-x64", "output": { "outputOnFailure": true } }]
+  "configurePresets": [
+    {
+      "name": "msvc-x64",
+      "displayName": "MSVC x64 (Developer Command Prompt)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-msvc-build",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "mingw64-x64",
+      "displayName": "MinGW-w64 x64 / OpenATL (MinGW terminal)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-mingw64-build",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_RC_COMPILER": "windres",
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "msvc-x64",
+      "configurePreset": "msvc-x64"
+    },
+    {
+      "name": "mingw64-x64",
+      "configurePreset": "mingw64-x64"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "msvc-x64",
+      "configurePreset": "msvc-x64",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "mingw64-x64",
+      "configurePreset": "mingw64-x64",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
 }

@@ -76,6 +76,22 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `MultiPad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
 
+### MinGW-w64 / OpenATL
+
+MinGW-w64 x64 构建使用仓库内固定版本、MIT 许可的 OpenATL，无需微软 ATL 或 Visual Studio。
+需要 GCC、binutils（windres）、CMake、Ninja 和 Python 3.10+。现有本地包装器会按构建目录名称选择 MinGW64：
+
+```powershell
+New-Item -ItemType Directory -Force cmake-mingw64-build
+bash -lc "cmake-reconfigure cmake-mingw64-build"
+bash -lc "cmake-build cmake-mingw64-build"
+ctest --test-dir cmake-mingw64-build --output-on-failure
+```
+
+其它机器可在 MSYS2 MinGW64 终端使用 `mingw64-x64` configure/build/test presets。
+运行程序时，需要将所用工具链的 `bin` 加入 PATH，或将相应运行库 DLL 放到程序旁边。
+OpenATL、WTL 和标签/停靠框架快照均保持原样，兼容补丁只应用到构建目录的副本；来源和适配说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+
 ### SIMD 编译选项
 
 `CMakeLists.txt` 提供三选一的 `MULTIPAD4_SIMD` 缓存开关，默认 `SSE4.2`。应用、文件层、全部 lexer 配置和 Scintilla 使用同一指令集设置；AVX2/AVX512 会启用上游 `VectorISA.h` 中对应的条件分支。配置时会检查参数是否合法及编译器是否支持，避免无效 `/arch` 参数被忽略。
@@ -92,10 +108,11 @@ GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 
 
 ## 验证
 
-当前 CMake 定义 **8 项常规测试**，在构建目录具备上述五个插件 DLL 时额外注册 `notepadpp_plugins`（共 9 项）。CI 当前只编译，不运行这些测试。
+当前 CMake 定义 **9 项常规测试**，在构建目录具备上述五个插件 DLL 时额外注册 `notepadpp_plugins`（共 10 项）。CI 当前只编译，不运行这些测试。
 
 | CTest 名称 | 主要范围 |
 |---|---|
+| `scintilla_line_index` | 三种换行、标量/SIMD 边界、两种行索引宽度下的行数和行起始位置 |
 | `fileio_roundtrip` | 编码、中文/emoji、换行、错误输入及失败保存保护 |
 | `editor_integration` | 真实 WTL/Scintilla 窗口、MDI 隔离、命令/UI、查找替换、样式、设置、会话、自动保存及 Matepath |
 | `simd_boundaries` | 保护页、随机输入、非法/截断编码、跨块换行及图形尾部边界 |

@@ -1,0 +1,104 @@
+--- WTL/atlctrls.h
++++ WTL/atlctrls.h
+@@ -1499,7 +1499,7 @@
+ 	}
+ 
+ 	// New messages added in Windows 10.0.17763
+-#if defined(NTDDI_VERSION) && defined(NTDDI_WIN10_RS5) && (NTDDI_VERSION >= NTDDI_WIN10_RS5)
++#if defined(EM_SETEXTENDEDSTYLE) && defined(EM_GETFILELINECOUNT)
+ 	DWORD SetExtendedStyle(DWORD dwStyle, DWORD dwMask)
+ 	{
+ 		ATLASSERT(::IsWindow(this->m_hWnd));
+--- WTL/atlmisc.h
++++ WTL/atlmisc.h
+@@ -945,7 +945,6 @@
+ 	}
+ 
+ // Specialization for bool
+-	template <>
+ 	LSTATUS ReadProp(LPCTSTR lpstrRegValue, bool& bProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -958,7 +957,6 @@
+ 		return lRet;
+ 	}
+ 
+-	template <>
+ 	LSTATUS WriteProp(LPCTSTR lpstrRegValue, bool& bProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -967,7 +965,6 @@
+ 	}
+ 
+ // Specialization for HFONT
+-	template <>
+ 	LSTATUS ReadProp(LPCTSTR lpstrRegValue, HFONT& hFont)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -988,7 +985,6 @@
+ 		return lRet;
+ 	}
+ 
+-	template <>
+ 	LSTATUS WriteProp(LPCTSTR lpstrRegValue, HFONT& hFont)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -998,7 +994,6 @@
+ 	}
+ 
+ // Specialization for BinaryProp
+-	template <>
+ 	LSTATUS ReadProp(LPCTSTR lpstrRegValue, BinaryProp& binProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -1016,7 +1011,6 @@
+ 		return lRet;
+ 	}
+ 
+-	template <>
+ 	LSTATUS WriteProp(LPCTSTR lpstrRegValue, BinaryProp& binProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -1025,7 +1019,6 @@
+ 	}
+ 
+ // Specialization for CharArrayProp
+-	template <>
+ 	LSTATUS ReadProp(LPCTSTR lpstrRegValue, CharArrayProp& caProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -1043,7 +1036,6 @@
+ 		return lRet;
+ 	}
+ 
+-	template <>
+ 	LSTATUS WriteProp(LPCTSTR lpstrRegValue, CharArrayProp& caProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -1053,7 +1045,6 @@
+ 
+ // Specialization for CString
+ #ifdef __ATLSTR_H__
+-	template <>
+ 	LSTATUS ReadProp(LPCTSTR lpstrRegValue, ATL::CString& strProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+@@ -1069,7 +1060,6 @@
+ 		return lRet;
+ 	}
+ 
+-	template <>
+ 	LSTATUS WriteProp(LPCTSTR lpstrRegValue, ATL::CString& strProp)
+ 	{
+ 		ATLASSERT(m_regkey.m_hKey != NULL);
+--- WTL/atltheme.h
++++ WTL/atltheme.h
+@@ -193,7 +193,7 @@
+ 	HRESULT GetThemePartSize(HDC hDC, int nPartID, int nStateID, LPCRECT pRect, enum THEMESIZE eSize, LPSIZE pSize) const
+ 	{
+ 		ATLASSERT(m_hTheme != NULL);
+-		return ::GetThemePartSize(m_hTheme, hDC, nPartID, nStateID, pRect, eSize, pSize);
++		return ::GetThemePartSize(m_hTheme, hDC, nPartID, nStateID, const_cast<LPRECT>(pRect), eSize, pSize);
+ 	}
+ 
+ 	HRESULT GetThemeTextExtent(HDC hDC, int nPartID, int nStateID, LPCWSTR pszText, int nCharCount, DWORD dwTextFlags, LPCRECT  pBoundingRect, LPRECT pExtentRect) const

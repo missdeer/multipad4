@@ -34,6 +34,11 @@ foreach(locale de fr it ja ko pl pt-BR ru sl zh-Hans zh-Hant)
   string(REPLACE "..\\\\..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/" content "${content}")
   string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" content "${content}")
   set(output "${PROJECT_BINARY_DIR}/Notepad4Resources-${locale}.rc")
+  if(MINGW OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # MS rc accepts the missing comma in the pinned Japanese menu items;
+    # GNU windres and llvm-rc require the documented MENUITEM separator.
+    string(REGEX REPLACE "(MENUITEM [^\n]*\")[ \t]+((IDM_|CMD_)[A-Z0-9_]+)" "\\1, \\2" content "${content}")
+  endif()
   multipad4_brand_resources(content)
   file(WRITE "${output}" "${content}")
   list(APPEND NOTEPAD4_LOCALE_RESOURCES "${output}")

@@ -2,6 +2,7 @@
 #include "FileCommands.h"
 #include "FileDialogs.h"
 #include "MainFrame.h"
+#include <cwchar>
 #include "Printing.h"
 #include "CommandLine.h"
 #include "FileVariables.h"
@@ -87,7 +88,7 @@ bool ExecuteFileCommand(MainFrame& frame,UINT id){auto state=FileCommandState(fr
                 if(value.starts_with(L"file://")){wchar_t path[32768]{};DWORD count=32768;if(SUCCEEDED(PathCreateFromUrlW(value.c_str(),path,&count,0)))value=path;}
                 if(value.find(L"://")==std::wstring::npos){
                     std::wsmatch suffix;long long line=0,column=1;
-                    if(std::regex_search(value,suffix,std::wregex(LR"(:(\d+)(?::(\d+))?$)")) && suffix.position()>1){line=_wtoll(suffix[1].str().c_str());if(suffix[2].matched)column=_wtoll(suffix[2].str().c_str());value.erase(static_cast<size_t>(suffix.position()));while(!value.empty() && (value.back()==L'"'||value.back()==L'\''))value.pop_back();}
+                    if(std::regex_search(value,suffix,std::wregex(LR"(:(\d+)(?::(\d+))?$)")) && suffix.position()>1){line=std::wcstoll(suffix[1].str().c_str(),nullptr,10);if(suffix[2].matched)column=std::wcstoll(suffix[2].str().c_str(),nullptr,10);value.erase(static_cast<size_t>(suffix.position()));while(!value.empty() && (value.back()==L'"'||value.back()==L'\''))value.pop_back();}
                     auto expandedSize=ExpandEnvironmentStringsW(value.c_str(),nullptr,0);if(expandedSize){std::wstring expanded(expandedSize,L'\0');ExpandEnvironmentStringsW(value.c_str(),expanded.data(),expandedSize);expanded.resize(expandedSize-1);value=std::move(expanded);}
                     auto path=std::filesystem::path(value);if(path.is_relative())path=d->path.parent_path()/path;
                     if(id==CMD_OPEN_CONTAINING_FOLDER){OpenFolderRequest(frame,path,FolderOpenRequest::ContainingFolder);break;}
