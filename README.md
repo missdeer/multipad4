@@ -1,66 +1,118 @@
 # MultiPad4
 
-本项目正式名称为 **MultiPad4**，是 Windows only、基于 WTL 框架、支持标签的 MDI 编辑器。完整保留 notepad4 的菜单、工具栏、状态栏、对话框及编辑功能，并将 SDI 行为适配为 MDI。完整目标、状态隔离规则和验收范围见 [PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md)。
+English | [简体中文](README_zh.md)
 
-当前已完成真正的框架替换，并开始接入上游 UI 资源与首批 MDI 命令，**尚未完成 notepad4 的完整功能迁移**。已接通功能、禁用项和剩余依赖见 [MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md)。
+**MultiPad4** is a Windows-only tabbed MDI text editor built with C++20, WTL, and notepad4's optimized Scintilla. It adapts notepad4's editing features to a multi-document workflow and adds a Notepad++-style search interface, a plugin compatibility layer, and a Matepath file browser.
 
-## 框架与源码
+As of **2026-11-13**, routing is in place for **418/418 distinct menu commands** in notepad4's static resource inventory. File and encoding operations, advanced editing, styles, completion, settings, background tasks, and session restoration have implementations; the default large-file path supports on-demand editing and saving. **Full behavioral parity testing is still in progress**: command routing does not establish that every behavior matches upstream.
 
-- WTL 10：`3rdparty/wtl`。
-- Daniel Bowen 的 WTL Tabbing Framework：`3rdparty/TabbingFramework`。
-- Sergey Klimov 的 WTL Docking Framework：`3rdparty/DockingFramework`。
-- notepad4 应用源码与资源基线：`3rdparty/notepad4`。
-- notepad4 优化版 Scintilla：`3rdparty/notepad4-scintilla/scintilla`。
+See [PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md) for project goals and document isolation rules, [MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md) for the notepad4 migration record, and [MIGRATION_ACCEPTANCE.md](docs/MIGRATION_ACCEPTANCE.md) for itemized evidence and pending acceptance checks. Later developments are covered in the feature documents linked below.
 
-主框架以 Docking Framework 的 `CDockingFrameImplBase` 包装 `CTabbedMDIFrameWindowImpl`；文档窗口派生自 `CTabbedMDIChildWindowImpl`。应用使用真实 `MDICLIENT` 和 `WS_EX_MDICHILD` 子窗口。原先自建的停靠算法及 `CTabViewImpl` 已退出正式实现。
+## Current features
 
-两个老框架的上游文件保持原样，`cmake/FrameworkCompatibility.cmake` 在构建目录生成兼容现代 MSVC 的副本。来源、固定提交和许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+- **Multiple documents and docking**: Real MDI child windows, tab switching and drag reordering, independent undo stacks, Ctrl+Tab, and cascading/tiling. Document, search-result, and plugin panes support docking, floating, and hiding.
+- **Files and encodings**: Open multiple files, drag and drop, command-line arguments, single-instance/window reuse, Save/Save As/Save Copy/Save All, reload, and close protection. UTF-8, UTF-16, and code-page detection/conversion, BOM and line-ending preservation, file variables, backups, history, and favorites.
+- **Editing and languages**: Advanced selection and line operations, case/number/encoding conversion, sorting, alignment, and insertion. The complete upstream lexer configuration catalogue, language detection, schemes/fonts/themes, folding, bookmarks, occurrence highlighting, completion, auto-indent, auto-pairing, and LaTeX input.
+- **Find and replace**: A unified modeless Find/Replace/Find in Files/Mark dialog with normal, extended-escape, and regular-expression modes, counting, and searches/replacements in the current or all open documents. The results pane provides hierarchical folding, match highlighting, and navigation. Ctrl+F / Ctrl+H / Ctrl+Shift+F / Ctrl+M open the corresponding tabs; F7 shows results.
+- **Directory search**: File filters, recursion, hidden-directory options, cancellation, and error counts. Disk-file searches use up to eight background threads; open documents use their current unsaved buffers. File replacement retains confirmation, encoding, and atomic-save rules, with independent undo for replacements in open documents.
+- **UI and settings**: notepad4 menus, shortcuts, multilingual resources, 27 toolbar button types with layout customization, and a 13-part status bar. Global/document settings, INI persistence, autosave history, file watching, session restoration, tools/run commands, printing, and system-integration entry points.
 
-## 构建
+The search interface adapts Notepad++'s layout and interactions, with English and Simplified Chinese labels. Its modeless dialog follows the active document while retaining the query. See [Search UI migration](docs/SEARCH_MIGRATION.md) and [File/directory search](docs/FILE_SEARCH.md). Directory search does not yet provide a fully streaming memory model or `.gitignore` rules; file replacement still runs one file at a time on the UI thread.
 
-需要 Windows 10/11、VS 2022 的 C++ 桌面开发组件（含 ATL 与 Windows SDK）、CMake 3.25+、Ninja 和 C++20。无需 Qt 或 MFC。
+### On-demand large-file editing
 
-本机使用既有 MSVC 包装脚本（首次先创建 `cmake-msvc-build` 目录）：
+By default, files **≥300 MiB** use an editable on-demand document. Read-only sliding mappings, a persistent piece tree, an append-only edit journal, and lazy line indexes retain the full document state, while Scintilla displays an editing window of approximately 128 KiB around the current position. Opening and ordinary typing do not require copying the entire file or building a complete line table first.
+
+This mode supports editing at the beginning, middle, and end of a file, global undo/redo, saving to the original path, and saving a copy. Full-document search, regular expressions, replacement, counting, Find All, marking, and jumps to line starts operate directly on the document model. Expensive single-document operations can run in the background and be canceled; plain-text scans use up to eight threads.
+
+In the existing warm-cache benchmark, the median time across five runs to open a 5 GiB file and display an editable first screen was approximately **9.7 ms**. This result applies to the specified machine and data, excludes process startup, and does not measure full-file scanning. Saving the entire file and building an exact line index for the first time still have linear costs. Editor plugins, global multi-selection, full-document Select All, printing, and some encoding/advanced operations require explicitly switching to a complete Scintilla document through `Full editor...`.
+
+See [On-demand editable documents](docs/MAPPED_EDITING.md) and [Parallel large-file search](docs/PARALLEL_SEARCH_EXPERIMENT.md) for implementation details, benchmark conditions, raw data, and compatibility limits.
+
+![Editable on-demand 5 GiB document](docs/images/mapped-editor-5GiB.png)
+
+### Matepath file browser
+
+Open the independent docking pane through Window → Matepath File Browser. It supports directory navigation, back/forward/parent navigation, file filters, hidden files, sorting, refresh, locating the active document, and opening/activating tabs. Directory and pane settings can be saved with application settings. The embedded Shell directory list does not require a separate matepath process.
+
+The upstream directory API still has a `MAX_PATH` limit. Refresh is manual, and loading icons in large directories can pause navigation. See [Matepath integration](docs/MATEPATH_MIGRATION.md).
+
+### Notepad++ plugins and plugin management
+
+Unicode x64 plugins are loaded from `plugins/<name>/<name>.dll` under the executable directory. The host provides plugin menus, shortcuts, notifications, message routing to the active document, and docking panes. Integration checks use real JsonTools, XMLTools, mimeTools, NppConverter, and NppExport DLLs.
+
+Plugins → Plugins Admin supports catalogue search and batch installation, updates, removal, disabling, and enabling. Operations run after restart confirmation and document-save handling, verify downloads with SHA-256, and retain logs and recovery information on failure. Plugin management requires Windows PowerShell 5.1 and a writable installation directory.
+
+The compatibility layer implements only part of the Notepad++ API. **A plugin's presence in the catalogue does not establish compatibility.** The catalogue is a pinned snapshot and does not refresh automatically over the network. External lexers, dual views, and the complete dark-theme API are among the features not provided. Loading diagnostics are written to `plugins/Config/MultiPad4-plugin-load.log`. See [PLUGINS.md](docs/PLUGINS.md) for the compatibility layer; the newer [PLUGIN_ADMIN.md](docs/PLUGIN_ADMIN.md) takes precedence for plugin management.
+
+## Frameworks and source
+
+- WTL 10: `3rdparty/wtl`.
+- Daniel Bowen's WTL Tabbing Framework: `3rdparty/TabbingFramework`.
+- Sergey Klimov's WTL Docking Framework: `3rdparty/DockingFramework`.
+- notepad4 application source and resource baseline: `3rdparty/notepad4`.
+- notepad4's optimized Scintilla: `3rdparty/notepad4-scintilla/scintilla`.
+- Matepath Shell directory list: `3rdparty/matepath`.
+- Notepad++ search/plugin-management reference resources and plugin API: `3rdparty/notepad-plus-plus`, `3rdparty/notepad-plus-plus-plugin-api`.
+
+The main frame uses the Docking Framework's `CDockingFrameImplBase` to wrap `CTabbedMDIFrameWindowImpl`; document windows derive from `CTabbedMDIChildWindowImpl`. The application uses a real `MDICLIENT` and `WS_EX_MDICHILD` windows. The earlier custom docking algorithms and `CTabViewImpl` are no longer part of the production implementation.
+
+Third-party snapshots are preserved unchanged. `cmake/FrameworkCompatibility.cmake` and `cmake/Matepath.cmake` generate host-compatible copies in the build directory. The notepad4 baseline is `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`. See [THIRD_PARTY.md](THIRD_PARTY.md) for provenance, pinned revisions, and licenses.
+
+## Building
+
+Requires Windows 10/11, VS 2022 Desktop development with C++ (including ATL and the Windows SDK), CMake 3.25+, Ninja, and C++20. Qt and MFC are not required.
+
+From the repository root, run the following in a terminal with the x64 MSVC environment initialized, such as an x64 VS Developer Command Prompt:
 
 ```powershell
-bash -lc "cmake-reconfigure cmake-msvc-build"
-bash -lc "cmake-build cmake-msvc-build"
+cmake -S . -B cmake-msvc-build -G Ninja -DCMAKE_CXX_COMPILER=cl -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON -DMULTIPAD4_SIMD=SSE4.2
+cmake --build cmake-msvc-build --parallel
 ctest --test-dir cmake-msvc-build --output-on-failure
 .\cmake-msvc-build\multipad4.exe + .\src\MainFrame.cpp .\src\FileIO.cpp
 ```
 
-其他机器可在 x64 VS Developer Command Prompt 中使用 `msvc-x64` CMake configure/build/test presets。正式构建不依赖 `tmp` 或在线下载。
+The `msvc-x64` configure/build/test presets in `CMakePresets.json` are also available. CMake creates the build directory automatically. Production builds do not depend on `tmp` or online downloads.
 
-GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `MultiPad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
+The GitHub Actions [MSVC Build](.github/workflows/msvc-build.yml) workflow runs on pushes, pull requests, and manual dispatch. It builds three x64 Release variants on Windows 2022 / VS 2022: SSE4.2, AVX2, and AVX512. Each uses its corresponding `MULTIPAD4_SIMD` value and uploads a `multipad4-msvc-x64-SSE4.2`, `multipad4-msvc-x64-AVX2`, or `multipad4-msvc-x64-AVX512` artifact containing `multipad4.exe` and `MultiPad4 DarkTheme.ini`. This workflow only builds the application; it does not run tests. A failure in one variant does not cancel the others.
 
-### SIMD 编译选项
+### SIMD build options
 
-`CMakeLists.txt` 提供三选一的 `MULTIPAD4_SIMD` 缓存开关，默认 `SSE4.2`。应用、文件层、全部 lexer 配置和 Scintilla 使用同一指令集设置；AVX2/AVX512 会启用上游 `VectorISA.h` 中对应的条件分支。配置时会检查参数是否合法及编译器是否支持，避免无效 `/arch` 参数被忽略。
+`CMakeLists.txt` provides the `MULTIPAD4_SIMD` cache option with three choices, defaulting to `SSE4.2`. The application, file layer, complete lexer configuration catalogue, and Scintilla use the same instruction-set setting. AVX2/AVX512 enable the corresponding branches in upstream `VectorISA.h`. Configuration checks both the option value and compiler support so unsupported `/arch` flags are not silently ignored.
 
-| CMake 开关 | MSVC / oneAPI 编译参数 |
+| CMake option | MSVC / oneAPI compiler flag |
 |---|---|
 | `-DMULTIPAD4_SIMD=SSE4.2` | `/arch:SSE4.2` |
 | `-DMULTIPAD4_SIMD=AVX2` | `/arch:AVX2` |
 | `-DMULTIPAD4_SIMD=AVX512` | `/arch:AVX512` |
 
-例如，在 VS Developer Command Prompt 中使用 `cmake --preset msvc-x64 -DMULTIPAD4_SIMD=AVX2` 配置，再使用对应 build preset 编译。三档均要求 x64 工具链；可执行文件要求 CPU 和操作系统支持所选指令集，不进行运行时自动降级。
+For example, configure with `cmake --preset msvc-x64 -DMULTIPAD4_SIMD=AVX2` in a VS Developer Command Prompt, then build with the corresponding build preset. All three variants require an x64 toolchain. The executable requires CPU and operating-system support for the selected instruction set; there is no automatic runtime fallback.
 
-## 当前可运行功能
+Application-side SIMD is used for UTF-8/UTF-16/ASCII detection, line-ending statistics, indentation detection, and some graphics operations. See [SIMD_MIGRATION.md](docs/SIMD_MIGRATION.md) for boundary regression checks and scope.
 
-- 多文档标签、拖动排序、独立撤销栈、Ctrl+Tab、原生 MDI 层叠/平铺。
-- 新建、打开多个文件、拖入文件、命令行文件参数、保存、另存为、全部保存和关闭保护。
-- C/C++、Python、JSON 基础高亮、普通文本查找、自动换行。
-- 文档面板停靠/浮动/隐藏；标题栏拖动、双击和分隔条由 Docking Framework 实现。
-- 原始 notepad4 菜单、快捷键和图像工具栏；首批编辑/视图/编码/换行命令、保存副本、还原及分段状态栏。
-- 使用上游模板的查找/替换、跳转、缩放、长行设置和关于对话框；查找/替换窗口绑定目标文档，关闭目标时销毁。
-- UTF-8 和带 BOM 的 UTF-8/UTF-16 读写、保存保留编码与换行、临时文件替换保存。当前基础文件层限制 256 MiB，不代表最终 notepad4 的文件能力。
+## Validation
 
-完整上游资源已进入可执行文件，但只接通首批业务过程，其余命令与高级对话框选项禁用；不得据此声称达到 notepad4 功能一致性。上游完整文件操作、编码检测、设置、lexer 样式、高级查找替换、自动保存和文件监视仍需迁移。
+CMake currently defines **eight regular tests** and conditionally registers `notepadpp_plugins` when all five plugin DLLs listed above are present in the build directory, bringing the total to nine. CI currently builds only and does not run these tests.
 
-## 验证
+| CTest name | Main coverage |
+|---|---|
+| `fileio_roundtrip` | Encodings, Chinese/emoji, line endings, invalid input, and failed-save protection |
+| `editor_integration` | Real WTL/Scintilla windows, MDI isolation, commands/UI, search/replace, styles, settings, sessions, autosave, and Matepath |
+| `simd_boundaries` | Guard pages, random input, invalid/truncated encodings, line endings across blocks, and graphics tail boundaries |
+| `lazy_document` | Piece tree, random edits, snapshots, transactions, undo/redo, index reuse, and failed-save protection |
+| `large_file_integration` | On-demand view editing/saving, full-document search/replace, cancellation, encodings, and conversion to the full editor |
+| `file_search` | Serial/parallel consistency, directory filtering, encodings, regex, open-document handoff, and cancellation |
+| `single_instance_integration` | Process startup and single-instance/window reuse; skipped if a MultiPad4 window is already open |
+| `plugin_admin_worker` | Enable/disable/removal in isolated temporary directories, batch preflight checks, and rejection of invalid metadata |
+| `notepadpp_plugins` (conditional) | Commands, panes, exports, and document routing for five real plugins |
 
-- `fileio_roundtrip`：编码、中文/emoji、换行、空文件、错误输入和失败保存保护。
-- `editor_integration`：真实 MDI 子窗口、文档隔离、标签重排、查找、C++ 词法样式、文件保存、窗口层叠/平铺和第三方停靠状态。
-- `python tools/inventory_notepad4.py`：重建上游 UI 资源清单。清单不是功能通过报告。
+Generate the resource inventory, command-routing report, and rendered windows with:
 
-界面截图、鼠标拖动、输入法和多显示器 DPI 仍待人工验收。本次图形检查的 Windows UI 服务返回 `Computer Use native pipe is unavailable`。
+```powershell
+python tools/inventory_notepad4.py
+.\cmake-msvc-build\multipad4.exe --migration-report tmp/migration-status-check.json
+python tools/check_migration.py tmp/migration-status-check.json
+.\cmake-msvc-build\multipad4.exe --qa-render tmp/qa-render
+```
+
+Resource counts and command routing establish entry-point coverage only. Window rendering and automated regression checks do not replace interactive acceptance testing. Behavioral parity across all languages, dialogs, and dynamic menus, mouse dragging, IME input, multi-monitor DPI, actual printing, and real system integration still require individual verification.
