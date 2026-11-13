@@ -1,4 +1,4 @@
-# notepad4 MDI 迁移进度
+# MultiPad4 功能迁移进度
 
 更新：2026-11-10。基线为 notepad4 `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`，最终标准见 [PROJECT_SCOPE.md](PROJECT_SCOPE.md)。
 

@@ -1,6 +1,6 @@
 # MultiPad4
 
-目标是 **Windows only、WTL 框架、支持标签的 MDI notepad4**。完整保留 notepad4 的菜单、工具栏、状态栏、对话框及编辑功能，并将 SDI 行为适配为 MDI。完整目标、状态隔离规则和验收范围见 [PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md)。
+本项目正式名称为 **MultiPad4**，是 Windows only、基于 WTL 框架、支持标签的 MDI 编辑器。完整保留 notepad4 的菜单、工具栏、状态栏、对话框及编辑功能，并将 SDI 行为适配为 MDI。完整目标、状态隔离规则和验收范围见 [PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md)。
 
 当前已完成真正的框架替换，并开始接入上游 UI 资源与首批 MDI 命令，**尚未完成 notepad4 的完整功能迁移**。已接通功能、禁用项和剩余依赖见 [MIGRATION_STATUS.md](docs/MIGRATION_STATUS.md)。
 
@@ -31,7 +31,7 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 其他机器可在 x64 VS Developer Command Prompt 中使用 `msvc-x64` CMake configure/build/test presets。正式构建不依赖 `tmp` 或在线下载。
 
-GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `Notepad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
+GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `MultiPad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
 
 ### SIMD 编译选项
 

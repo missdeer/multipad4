@@ -39,5 +39,5 @@ jobs:
           name: multipad4-msvc-x64-${{ matrix.simd }}
           path: |
             cmake-msvc-build/multipad4.exe
-            cmake-msvc-build/Notepad4 DarkTheme.ini
+            cmake-msvc-build/MultiPad4 DarkTheme.ini
           if-no-files-found: error

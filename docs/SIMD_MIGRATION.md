@@ -1,4 +1,4 @@
-# notepad4 SIMD 迁移
+# MultiPad4 SIMD 迁移
 
 基线：本地 `tmp/notepad4/src`，共享 SIMD 辅助头仍使用
 `3rdparty/notepad4-scintilla/scintilla/include`。本次不修改第三方源码。

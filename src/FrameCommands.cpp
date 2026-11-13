@@ -285,12 +285,12 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
     default: {
         const wchar_t* url = nullptr;
         switch (id) {
-        case IDM_HELP_PROJECT_HOME: url = L"https://github.com/zufuliu/notepad4"; break;
-        case IDM_HELP_LATEST_RELEASE: url = L"https://github.com/zufuliu/notepad4/releases/latest"; break;
-        case IDM_HELP_LATEST_BUILD: url = L"https://github.com/zufuliu/notepad4/releases/tag/latest"; break;
-        case IDM_HELP_REPORT_ISSUE: url = L"https://github.com/zufuliu/notepad4/issues"; break;
-        case IDM_HELP_FEATURE_REQUEST: url = L"https://github.com/zufuliu/notepad4/discussions"; break;
-        case IDM_HELP_ONLINE_WIKI: url = L"https://github.com/zufuliu/notepad4/wiki"; break;
+        case IDM_HELP_PROJECT_HOME: url = L"https://github.com/missdeer/multipad4"; break;
+        case IDM_HELP_LATEST_RELEASE: url = L"https://github.com/missdeer/multipad4/releases/latest"; break;
+        case IDM_HELP_LATEST_BUILD: url = L"https://github.com/missdeer/multipad4/actions/workflows/msvc-build.yml"; break;
+        case IDM_HELP_REPORT_ISSUE: url = L"https://github.com/missdeer/multipad4/issues"; break;
+        case IDM_HELP_FEATURE_REQUEST: url = L"https://github.com/missdeer/multipad4/issues/new"; break;
+        case IDM_HELP_ONLINE_WIKI: url = L"https://github.com/missdeer/multipad4/tree/HEAD/docs"; break;
         }
         if (url) ShellExecuteW(frame, L"open", url, nullptr, nullptr, SW_SHOWNORMAL);
         break;

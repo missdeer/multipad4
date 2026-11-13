@@ -83,13 +83,26 @@ INT_PTR CALLBACK EditorProcedure(HWND window, UINT message, WPARAM w, LPARAM l) 
     return TRUE;
     }catch(const std::exception& error){OutputDebugStringA(error.what());MessageBeep(MB_ICONERROR);return TRUE;}
 }
-constexpr wchar_t BuildInfo[] = L"MultiPad4 0.1\r\nWindows / C++20 / WTL / notepad4 Scintilla\r\nMDI migration in progress";
+const std::wstring BuildDetails = [] {
+    wchar_t compiler[128]{};
+#if defined(__INTEL_LLVM_COMPILER)
+    swprintf_s(compiler, L"Intel oneAPI %d.%d.%d", __INTEL_LLVM_COMPILER / 10000,
+        (__INTEL_LLVM_COMPILER / 100) % 100, __INTEL_LLVM_COMPILER % 100);
+#elif defined(__clang__)
+    swprintf_s(compiler, L"Clang %d.%d.%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#else
+    swprintf_s(compiler, L"Visual C++ %d.%02d.%05d.%d", _MSC_VER / 100,
+        _MSC_VER % 100, _MSC_FULL_VER % 100000, _MSC_BUILD);
+#endif
+    return std::wstring(L"Built with ") + compiler + L"\r\nWindows / C++20 / WTL / Scintilla";
+}();
+const std::wstring BuildInfo = L"MultiPad4 0.1\r\n" + BuildDetails;
 INT_PTR CALLBACK AboutProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
     if (message == WM_INITDIALOG) {
         SetWindowTextW(window, L"About MultiPad4");
-        SetDlgItemTextW(window, IDC_VERSION, L"MultiPad4 0.1 — notepad4 MDI migration");
-        SetDlgItemTextW(window, IDC_BUILD_INFO, BuildInfo);
-        SetDlgItemTextW(window, IDC_NEW_PAGE_LINK, L"<a href=\"https://github.com/zufuliu/notepad4\">notepad4 upstream</a>");
+        SetDlgItemTextW(window, IDC_VERSION, L"MultiPad4 0.1");
+        SetDlgItemTextW(window, IDC_BUILD_INFO, BuildDetails.c_str());
+        SetDlgItemTextW(window, IDC_NEW_PAGE_LINK, L"<a href=\"https://github.com/zufuliu/notepad4\">notepad4 upstream</a> | <a href=\"https://github.com/missdeer/multipad4\">MultiPad4</a>");
         SetDlgItemTextW(window, IDC_MOD_PAGE_LINK, L"<a href=\"https://github.com/XhmikosR/notepad2-mod\">Notepad2-mod</a>");
         SetDlgItemTextW(window, IDC_WEBPAGE_LINK, L"<a href=\"https://www.flos-freeware.ch\">www.flos-freeware.ch</a>");
         SetDlgItemTextW(window, IDC_EMAIL_LINK, L"florian.balmer@gmail.com");
@@ -99,10 +112,11 @@ INT_PTR CALLBACK AboutProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
     if (message == WM_COMMAND && (LOWORD(w) == IDOK || LOWORD(w) == IDCANCEL)) { EndDialog(window, LOWORD(w)); return TRUE; }
     if (message == WM_COMMAND && LOWORD(w) == IDC_COPY_BUILD_INFO) {
         if (OpenClipboard(window)) {
-            auto memory = GlobalAlloc(GMEM_MOVEABLE, sizeof(BuildInfo));
+            const size_t bytes = (BuildInfo.size() + 1) * sizeof(wchar_t);
+            auto memory = GlobalAlloc(GMEM_MOVEABLE, bytes);
             if (memory) {
                 auto* data = GlobalLock(memory);
-                if (data) { memcpy(data, BuildInfo, sizeof(BuildInfo)); GlobalUnlock(memory);
+                if (data) { memcpy(data, BuildInfo.c_str(), bytes); GlobalUnlock(memory);
                     EmptyClipboard(); if (!SetClipboardData(CF_UNICODETEXT, memory)) GlobalFree(memory);
                 } else GlobalFree(memory);
             }

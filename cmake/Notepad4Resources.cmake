@@ -1,5 +1,14 @@
-# Compile the pinned UI unchanged except for build-relative asset paths and the
-# SDI executable's manifest/version (the MDI executable supplies its own identity).
+# Adapt the pinned UI at configure time; preserve the vendored resources.
+# Asset filenames and upstream download URLs retain their original identity.
+function(multipad4_brand_resources variable)
+  string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
+  foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
+    string(REPLACE "Notepad4" "MultiPad4" branded_asset "${asset}")
+    string(REPLACE "${branded_asset}" "${asset}" content "${content}")
+  endforeach()
+  set(${variable} "${content}" PARENT_SCOPE)
+endfunction()
+
 set(NOTEPAD4_SOURCE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/src")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${NOTEPAD4_SOURCE_DIR}/Notepad4.rc")
@@ -9,6 +18,7 @@ string(REPLACE "#include \"Notepad4.ver\"" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RES
 string(REPLACE "..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/"
   NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
 string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
+multipad4_brand_resources(NOTEPAD4_RESOURCES)
 file(WRITE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc" "${NOTEPAD4_RESOURCES}")
 
 # The same pinned revision supplies all language resources; build resource-only
@@ -24,6 +34,7 @@ foreach(locale de fr it ja ko pl pt-BR ru sl zh-Hans zh-Hant)
   string(REPLACE "..\\\\..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/" content "${content}")
   string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" content "${content}")
   set(output "${PROJECT_BINARY_DIR}/Notepad4Resources-${locale}.rc")
+  multipad4_brand_resources(content)
   file(WRITE "${output}" "${content}")
   list(APPEND NOTEPAD4_LOCALE_RESOURCES "${output}")
 endforeach()

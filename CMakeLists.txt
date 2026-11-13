@@ -47,7 +47,7 @@ target_include_directories(multipad4 PRIVATE "${MATEPATH_SOURCE_DIR}")
 set(MULTIPAD4_OUTPUT_NAME "multipad4" CACHE STRING "Executable basename for local validation builds")
 set_target_properties(multipad4 PROPERTIES OUTPUT_NAME "${MULTIPAD4_OUTPUT_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/doc/Notepad4 DarkTheme.ini"
-  "${PROJECT_BINARY_DIR}/Notepad4 DarkTheme.ini" COPYONLY)
+  "${PROJECT_BINARY_DIR}/MultiPad4 DarkTheme.ini" COPYONLY)
 target_include_directories(multipad4 PRIVATE src 3rdparty/wtl/Include "${FRAMEWORK_COMPAT_DIR}/TabbingFramework" "${FRAMEWORK_COMPAT_DIR}/DockingFramework")
 target_include_directories(multipad4 PRIVATE "${NOTEPAD4_SOURCE_DIR}" "${NOTEPAD4_SOURCE_DIR}/EditLexers")
 set_source_files_properties("${PROJECT_BINARY_DIR}/Notepad4Resources.rc" PROPERTIES

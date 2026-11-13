@@ -1028,8 +1028,10 @@ void LoadStyleDialogPreferences(const std::filesystem::path&);
 void LoadStylePreferences(const std::filesystem::path& path){
     darkOverrides.clear();
     for(unsigned i=0;i<16;++i){wchar_t key[4]{};swprintf_s(key,L"%02u",i+1);wchar_t color[32]{};GetPrivateProfileStringW(L"Custom Colors",key,L"#FFFFFF",color,32,path.c_str());unsigned value=0xFFFFFF;swscanf_s(color,L"#%x",&value);customColors[i]=RGB((value>>16)&255,(value>>8)&255,value&255);}
-    auto theme=path.parent_path()/L"Notepad4 DarkTheme.ini";
-    if(!std::filesystem::exists(theme)){wchar_t executable[32768]{};GetModuleFileNameW(nullptr,executable,32768);theme=std::filesystem::path(executable).parent_path()/L"Notepad4 DarkTheme.ini";}
+    auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
+    // Keep existing user overrides from profiles written before the brand rename.
+    if(!std::filesystem::exists(theme))theme=path.parent_path()/L"Notepad4 DarkTheme.ini";
+    if(!std::filesystem::exists(theme)){wchar_t executable[32768]{};GetModuleFileNameW(nullptr,executable,32768);theme=std::filesystem::path(executable).parent_path()/L"MultiPad4 DarkTheme.ini";}
     if(std::filesystem::exists(theme))for(auto lexer:lexerCatalog)for(unsigned index=0;index<lexer->iStyleCount;++index){wchar_t value[2048]{};if(GetPrivateProfileStringW(lexer->pszName,lexer->Styles[index].pszName,nullptr,value,2048,theme.c_str()))darkOverrides[{lexer->rid,index}]=value;}
     defaultScheme=std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Style Preferences",L"DefaultScheme",1,path.c_str())),1,static_cast<int>(Count)-1);
     autoSelectScheme=GetPrivateProfileIntW(L"Style Preferences",L"AutoSelect",1,path.c_str())!=0;
@@ -1065,7 +1067,7 @@ void SaveStylePreferences(const std::filesystem::path& path){
     WriteStyleProfile(L"File Extensions",nullptr,nullptr,path.c_str());for(auto& [rid,extensions]:sharedExtensions){auto key=std::to_wstring(rid);WriteStyleProfile(L"File Extensions",key.c_str(),extensions.c_str(),path.c_str());}
     for(auto lexer:lexerCatalog){auto section=L"Styles."+std::to_wstring(lexer->rid);WriteStyleProfile(section.c_str(),nullptr,nullptr,path.c_str());}
     for(auto& [entry,value]:sharedOverrides){auto section=L"Styles."+std::to_wstring(entry.first),key=std::to_wstring(entry.second);WriteStyleProfile(section.c_str(),key.c_str(),value.c_str(),path.c_str());}
-    auto theme=path.parent_path()/L"Notepad4 DarkTheme.ini";
+    auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
     if(!darkOverrides.empty() || std::filesystem::exists(theme)){
         EnsureUnicodeProfile(theme);
         for(auto lexer:lexerCatalog){

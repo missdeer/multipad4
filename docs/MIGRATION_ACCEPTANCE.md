@@ -1,4 +1,4 @@
-# notepad4 MDI 完整功能一致性验收
+# MultiPad4 完整功能一致性验收
 
 基线：notepad4 `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`。验收日期：2026-11-10（Asia/Singapore）。
 
