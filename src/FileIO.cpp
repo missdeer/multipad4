@@ -1,4 +1,5 @@
 #include "FileIO.h"
+#include "SimdText.h"
 #include <windows.h>
 #include <fstream>
 #include <limits>
@@ -19,11 +20,7 @@ size_t Utf8End(const std::string& text,size_t start) {
     return end;
 }
 void Validate(const std::string& text) {
-    for(size_t start=0;start<text.size();) {
-        auto end=Utf8End(text,start);if(end==start)Fail("Invalid UTF-8.");
-        if(!MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,text.data()+start,static_cast<int>(end-start),nullptr,0))Fail("Invalid UTF-8.");
-        start=end;
-    }
+    if (!simd::IsValidUtf8(text)) Fail("Invalid UTF-8.");
 }
 }
 std::string ToUtf8(const std::wstring& text) {
@@ -172,11 +169,12 @@ Text Read(const std::filesystem::path& path, const ReadOptions& options) {
     }
 
     if (bytes.size() >= 2 && bytes.size() % 2 == 0) {
-        size_t even = 0, odd = 0;
-        for (size_t i = 0; i < (std::min)(bytes.size(), size_t(4096)); i += 2) { even += bytes[i] == 0; odd += bytes[i+1] == 0; }
-        if (odd > 2 && odd > even * 4) return Decode(bytes, Encoding::Utf16LEPlain);
-        if (even > 2 && even > odd * 4) return Decode(bytes, Encoding::Utf16BEPlain);
-        try { Validate(bytes); return Decode(bytes, Encoding::Utf8); } catch(const std::runtime_error&) {}
+        const int unicode = simd::DetectUtf16(bytes);
+        if (unicode) {
+            try { return Decode(bytes, unicode == 1 ? Encoding::Utf16LEPlain : Encoding::Utf16BEPlain); }
+            catch (const std::runtime_error&) {}
+        }
+        try { return Decode(bytes, Encoding::Utf8); } catch(const std::runtime_error&) {}
         int unicodeFlags = IS_TEXT_UNICODE_STATISTICS | IS_TEXT_UNICODE_REVERSE_STATISTICS |
             IS_TEXT_UNICODE_CONTROLS | IS_TEXT_UNICODE_REVERSE_CONTROLS | IS_TEXT_UNICODE_ILLEGAL_CHARS;
         if(options.unicodeDetection)IsTextUnicode(bytes.data(), static_cast<int>((std::min)(bytes.size(), size_t(4096))), &unicodeFlags);
@@ -190,7 +188,7 @@ Text Read(const std::filesystem::path& path, const ReadOptions& options) {
             }
         }
     }
-    try { Validate(bytes); return Decode(bytes, Encoding::Utf8); } catch(const std::runtime_error&) {}
+    try { return Decode(bytes, Encoding::Utf8); } catch(const std::runtime_error&) {}
     return Decode(bytes, options.fallback);
 }
 Text ReadForReload(const std::filesystem::path& path,Encoding current,const ReadOptions& options) {
@@ -198,7 +196,7 @@ Text ReadForReload(const std::filesystem::path& path,Encoding current,const Read
     if(bytes.empty())return Decode(bytes,current);
     if(bytes.starts_with("\xEF\xBB\xBF")||bytes.starts_with("\xFF\xFE")||bytes.starts_with("\xFE\xFF"))return Read(path,options);
     const bool unicode=current==Encoding::Utf16LE||current==Encoding::Utf16BE||current==Encoding::Utf16LEPlain||current==Encoding::Utf16BEPlain;
-    const bool ascii=std::all_of(bytes.begin(),bytes.end(),[](unsigned char c){return c<128;});
+    const bool ascii=simd::IsAscii(bytes);
     auto actual=options;
     if(!unicode&&current!=Encoding::Utf8&&current!=Encoding::Utf8Bom)actual.fallback=current;
     Text detected;

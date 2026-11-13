@@ -1,3 +1,4 @@
+#include "SimdGraphics.h"
 // Document-scoped adaptations of operations dispatched by notepad4 Edit.cpp.
 // See THIRD_PARTY.md for the pinned upstream authors and license.
 #include "EditAdvanced.h"
@@ -398,9 +399,9 @@ INT_PTR CALLBACK OptionsProc(HWND window, UINT message, WPARAM w, LPARAM l) {
                 for (auto &character : lower)
                     if (character >= L'A' && character <= L'Z')
                         character += L'a' - L'A';
-                const std::wstring voidTags = L" area base basefont br col command embed frame hr img input isindex "
-                                              L"keygen link meta param source track wbr ";
-                if (o->xml || voidTags.find(L" " + lower + L" ") == std::wstring::npos)
+                const std::string voidTags = " area base basefont br col command embed frame hr img input isindex "
+                                             "keygen link meta param source track wbr ";
+                if (o->xml || voidTags.find(" " + simd::NarrowAsciiTag(lower) + " ") == std::string::npos)
                     closing = L"</" + name + L">";
             }
         }

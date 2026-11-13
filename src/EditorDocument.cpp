@@ -1,4 +1,5 @@
 #include "EditorDocument.h"
+#include "SimdText.h"
 #include "StyleManager.h"
 #include <cwctype>
 #include <stdexcept>
@@ -47,6 +48,8 @@ void EditorDocument::Load(const files::Text& text, int additionalDocumentOptions
     stage(SCI_SETDOCPOINTER, 0, stagedDocument); stage(SCI_RELEASEDOCUMENT, 0, stagedDocument);
     stage(SCI_SETCODEPAGE, SC_CP_UTF8);
     stage(SCI_SETUNDOCOLLECTION, FALSE); stage(SCI_SETSTATUS, SC_STATUS_OK);
+    const auto endings = simd::AnalyzeLineEndings(text.utf8, static_cast<int>(Send(SCI_GETEOLMODE)));
+    stage(SCI_ALLOCATELINES, endings.totalLineCount);
     stage(SCI_ADDTEXT, text.utf8.size(), reinterpret_cast<LPARAM>(text.utf8.data()));
     auto status = stage(SCI_GETSTATUS);
     if ((status != SC_STATUS_OK && status < SC_STATUS_WARN_START) || stage(SCI_GETLENGTH) != static_cast<LRESULT>(text.utf8.size()))
@@ -55,7 +58,7 @@ void EditorDocument::Load(const files::Text& text, int additionalDocumentOptions
     const auto oldDocument = Send(SCI_GETDOCPOINTER), readOnly = Send(SCI_GETREADONLY);
     const auto tabWidth = Send(SCI_GETTABWIDTH), indent = Send(SCI_GETINDENT), useTabs = Send(SCI_GETUSETABS);
     const auto oldPosition = Send(SCI_GETCURRENTPOS), oldAnchor = Send(SCI_GETANCHOR);
-    const auto oldEol = Send(SCI_GETEOLMODE), changeHistory = Send(SCI_GETCHANGEHISTORY), undoSelection = Send(SCI_GETUNDOSELECTIONHISTORY);
+    const auto changeHistory = Send(SCI_GETCHANGEHISTORY), undoSelection = Send(SCI_GETUNDOSELECTIONHISTORY);
     Send(SCI_ADDREFDOCUMENT, 0, oldDocument);
     struct DocumentReference { const EditorDocument& editor; LRESULT value; ~DocumentReference() { editor.Send(SCI_RELEASEDOCUMENT, 0, value); } } retained{*this, oldDocument};
     Send(SCI_SETDOCPOINTER, 0, stagedDocument);
@@ -70,10 +73,7 @@ void EditorDocument::Load(const files::Text& text, int additionalDocumentOptions
     style.colorStart = style.colorEnd = -1; style.calltipHex.clear(); style.calltipColor = 0;
     encodingDirty = false;
     encoding = text.encoding;
-    auto nl = text.utf8.find('\n');
-    if (nl != std::string::npos) Send(SCI_SETEOLMODE, nl && text.utf8[nl - 1] == '\r' ? SC_EOL_CRLF : SC_EOL_LF);
-    else if (text.utf8.find('\r') != std::string::npos) Send(SCI_SETEOLMODE, SC_EOL_CR);
-    else Send(SCI_SETEOLMODE, oldEol);
+    Send(SCI_SETEOLMODE, endings.iEOLMode);
     Send(SCI_EMPTYUNDOBUFFER); Send(SCI_SETSAVEPOINT); Send(SCI_GOTOPOS, 0);
     style.occurrenceNeedle.clear(); style.occurrenceCursor = 0; style.occurrences = 0;
     style.occurrencePending = false; style.occurrenceRevision = style.revision;

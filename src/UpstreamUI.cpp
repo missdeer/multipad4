@@ -1,3 +1,4 @@
+#include "SimdGraphics.h"
 #include "MainFrame.h"
 #include "UpstreamUI.h"
 #include "EditorDialogs.h"
@@ -90,6 +91,17 @@ void MainFrame::CreateUpstreamUI() {
     int size = dpi >= 192 ? 32 : dpi >= 144 ? 24 : 16;
     UINT bitmap = size == 32 ? IDB_TOOLBAR32 : size == 24 ? IDB_TOOLBAR24 : IDB_TOOLBAR16;
     toolbarImages = ImageList_LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(bitmap), size, 0, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION);
+    auto disabledBitmap = static_cast<HBITMAP>(LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(bitmap), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+    if (disabledBitmap) {
+        if (simd::BitmapAlphaBlend(disabledBitmap, GetSysColor(COLOR_3DFACE), 0x60)) {
+            toolbarDisabledImages = ImageList_Create(size, size, ILC_COLOR32 | ILC_MASK, 0, 0);
+            if (toolbarDisabledImages) {
+                ImageList_AddMasked(toolbarDisabledImages, disabledBitmap, CLR_DEFAULT);
+                toolbar.SetDisabledImageList(toolbarDisabledImages);
+            }
+        }
+        DeleteObject(disabledBitmap);
+    }
     toolbar.SetImageList(toolbarImages);
     toolbar.SetBitmapSize(size, size);
     ResetToolbar(toolbar);

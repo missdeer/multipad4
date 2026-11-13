@@ -1,3 +1,4 @@
+#include "SimdText.h"
 #include "FileCommands.h"
 #include "FileDialogs.h"
 #include "MainFrame.h"
@@ -187,7 +188,7 @@ files::Text ReadFileForFrame(MainFrame& frame,const std::filesystem::path& path)
     const bool unicodeDefault=fallback==files::Encoding::Utf16LE||fallback==files::Encoding::Utf16BE||fallback==files::Encoding::Utf16LEPlain||fallback==files::Encoding::Utf16BEPlain;
     auto detectionFallback=preferred.value_or(unicodeDefault||fallback==files::Encoding::Utf8||fallback==files::Encoding::Utf8Bom?files::Encoding::Ansi:fallback);
     auto text=files::Read(path,{!option(L"SkipUnicodeDetection"),!option(L"IgnoreEncodingTags"),detectionFallback});
-    const bool ascii=std::all_of(text.utf8.begin(),text.utf8.end(),[](unsigned char c){return c<128;});
+    const bool ascii=simd::IsAscii(text.utf8);
     if(!preferred&&(extension==L".sh"||text.utf8.starts_with("#!/")))preferred=files::Encoding::Utf8;
     bool declared=false;auto region=filevars::Region(text.utf8);int enabled=1;
     if(!option(L"IgnoreEncodingTags")&&(!filevars::Integer(region,"enable-local-variables",enabled)||enabled))for(auto key:{"encoding","charset","coding","fileencoding","/*!40101 SET NAMES "}){auto name=filevars::String(region,key);files::Encoding encoding=files::Encoding::Utf8;if(!name.empty()&&files::ParseEncodingName(files::FromUtf8(name),encoding)){declared=encoding!=files::Encoding::Utf16LE&&encoding!=files::Encoding::Utf16BE&&encoding!=files::Encoding::Utf16LEPlain&&encoding!=files::Encoding::Utf16BEPlain;if(declared)break;}}
@@ -228,7 +229,11 @@ void InitializeFileDocument(MainFrame& frame,EditorDocument& document){
     DetectDocumentIndentation(document);
     if(frame.settings.ReadString(L"File Settings",L"IgnoreFileVariables",L"0")!=L"1")ApplyFileVariables(document);
     if(frame.settings.ReadString(L"File Settings",L"WarnInconsistentEOL",L"0")!=L"1")return;
-    EolWarning warning{document};auto text=document.Text();for(size_t i=0;i<text.size();++i){if(text[i]=='\r'){if(i+1<text.size()&&text[i+1]=='\n'){++warning.crlf;++i;}else ++warning.cr;}else if(text[i]=='\n')++warning.lf;}
+    EolWarning warning{document};
+    auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
+    auto data = reinterpret_cast<const char*>(document.Send(SCI_GETCHARACTERPOINTER));
+    const auto endings = simd::AnalyzeLineEndings(std::string_view(data, length));
+    warning.crlf = endings.linesCount[0]; warning.cr = endings.linesCount[1]; warning.lf = endings.linesCount[2];
     if((warning.crlf!=0)+(warning.cr!=0)+(warning.lf!=0)<=1)return;
     DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_WARNLINEENDS),frame.m_hWnd,EolProcedure,reinterpret_cast<LPARAM>(&warning));
     frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",warning.always?L"1":L"0");

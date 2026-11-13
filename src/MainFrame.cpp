@@ -402,6 +402,7 @@ LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
     RemoveClipboardFormatListener(m_hWnd);
     KillTimer(1); SetTrayVisible(*this, false);
     searchDialog.Close();
+    if (toolbarDisabledImages) { ImageList_Destroy(toolbarDisabledImages); toolbarDisabledImages = nullptr; }
     if (toolbarImages) { ImageList_Destroy(toolbarImages); toolbarImages = nullptr; }
     _Module.GetMessageLoop()->RemoveMessageFilter(this); PostQuitMessage(0); handled = FALSE; return 0;
 }

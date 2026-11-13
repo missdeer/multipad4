@@ -117,3 +117,19 @@ The bundled x64 catalogue comes from the official nppPluginList repository;
 upstream documentation. It is metadata, not a guarantee that every listed
 plugin works with MultiPad4's partial N++ host API. The JSON parser is unmodified
 nlohmann/json 3.12.0 from the reference checkout (MIT license included).
+
+## Notepad4 SIMD application routines
+
+`src/SimdText.*` adapts the active application SIMD routines from the local
+`tmp/notepad4/src/Edit.cpp` and `EditEncoding.cpp`: EOL counting and mode
+selection, indentation inference, UTF-16 Latin-extension detection, the
+Zach Wegner UTF-8 validator, and `CheckUTF7`'s ASCII scan. Original Notepad4
+licensing is retained under `3rdparty/notepad4/License.txt`; the UTF-8
+validator's MIT notice is also retained in `SimdText.cpp`.
+
+`src/SimdGraphics.*` adapts `Helpers.cpp` bitmap alpha merge/blend and contrast
+verification, plus `Edit.cpp`'s UTF-16 HTML tag packing. GraphicUtils.h and
+VectorISA.h are used directly from the pinned Scintilla fork. Adaptations
+bound input reads, pad short tails locally, handle arbitrary bitmap widths,
+and preserve MultiPad4's deterministic UTF-16 detection when statistical
+Unicode detection is disabled. Vendored sources remain unchanged.

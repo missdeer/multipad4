@@ -1,3 +1,5 @@
+#include "SimdGraphics.h"
+#include "SimdText.h"
 #include "StyleManager.h"
 #include "DialogResizeGrip.h"
 #include "StyleState.h"
@@ -616,7 +618,10 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     element(SC_ELEMENT_WHITE_SPACE,8,L"fore:",RGB(255,64,0));
     element(SC_ELEMENT_SELECTION_BACK,7,L"back:",GetSysColor(COLOR_HIGHLIGHT));
     element(SC_ELEMENT_SELECTION_ADDITIONAL_BACK,7,L"fore:",GetSysColor(COLOR_HIGHLIGHT));
-    element(SC_ELEMENT_CARET,10,L"fore:",d.style.dark?RGB(220,220,220):RGB(0,0,0));
+    auto caret = property(10, L"fore:", d.style.dark ? RGB(220,220,220) : RGB(0,0,0));
+    auto background = static_cast<COLORREF>(d.Send(SCI_STYLEGETBACK, STYLE_DEFAULT));
+    if (!simd::VerifyContrast(caret, background)) caret = static_cast<COLORREF>(d.Send(SCI_STYLEGETFORE, STYLE_DEFAULT));
+    d.Send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET, caret | 0xff000000U);
     d.Send(SCI_SETWHITESPACESIZE,std::clamp(property(8,L"size:",2),1u,16u));
     d.Send(SCI_SETEDGECOLOUR,property(12,L"fore:",RGB(255,192,0)));
     auto spacing=std::clamp(property(13,L"size:",2),0u,32u);d.Send(SCI_SETEXTRAASCENT,spacing/2);d.Send(SCI_SETEXTRADESCENT,spacing-spacing/2);
@@ -1075,18 +1080,16 @@ void SaveStylePreferences(const std::filesystem::path& path){
 
 void DetectDocumentIndentation(EditorDocument& d){
     if(!d.style.detectIndentation)return;
-    auto text=d.Text();unsigned spaces[17]{};unsigned tabs=0,spaceLines=0;size_t at=0;int previous=0;
-    for(unsigned lines=0;at<text.size()&&lines<1000;++lines){
-        unsigned indent=0;bool tab=false;size_t first=at;while(at<text.size()&&(text[at]==' '||text[at]=='\t')){if(text[at]=='\t')tab=true;++indent;++at;}
-        if(at<text.size()&&text[at]!='\r'&&text[at]!='\n'&&at>first){
-            if(tab)++tabs;else{++spaceLines;int difference=abs(static_cast<int>(indent)-previous);if(difference>0&&difference<=16)++spaces[difference];previous=static_cast<int>(indent);}
-        }
-        at=text.find('\n',at);if(at==std::string::npos)break;++at;
+    auto length = (std::min)(static_cast<size_t>(d.Send(SCI_GETLENGTH)), size_t(1024 * 1024));
+    auto data = reinterpret_cast<const char*>(d.Send(SCI_GETCHARACTERPOINTER));
+    const int width = simd::DetectIndentation(std::string_view(data, length));
+    if (!width) return;
+    const bool spaces = width <= 8;
+    d.Send(SCI_SETUSETABS, !spaces); d.style.tabsAsSpaces = spaces;
+    if (spaces) {
+        d.Send(SCI_SETTABWIDTH, width); d.Send(SCI_SETINDENT, width);
+        d.style.tabWidth = width; d.style.indentWidth = width;
     }
-    if(tabs>spaceLines){d.Send(SCI_SETUSETABS,TRUE);d.style.tabsAsSpaces=false;return;}
-    if(spaceLines<2)return;
-    unsigned width=0;for(unsigned i=2;i<=8;++i)if(!width||spaces[i]>spaces[width])width=i;
-    if(width&&spaces[width]){d.Send(SCI_SETUSETABS,FALSE);d.Send(SCI_SETTABWIDTH,width);d.Send(SCI_SETINDENT,width);d.style.tabsAsSpaces=true;d.style.tabWidth=width;d.style.indentWidth=width;}
 }
 
 void ProcessStyleBackground(EditorDocument& d){

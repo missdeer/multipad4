@@ -31,6 +31,7 @@ public:
     FrameRuntime runtime;
     HMENU windowMenu = nullptr;
     HIMAGELIST toolbarImages = nullptr;
+    HIMAGELIST toolbarDisabledImages = nullptr;
     HACCEL mdiAccelerators = nullptr;
     bool toolbarVisible = true, statusVisible = true;
     BOOL PreTranslateMessage(MSG* msg) override;

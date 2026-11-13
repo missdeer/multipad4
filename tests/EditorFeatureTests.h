@@ -17,6 +17,14 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
         document.search = {};
         document.Send(SCI_SELECTALL);
     };
+    // Loading uses the majority EOL and retains the preference on a tie.
+    load("first\nsecond\r\nthird\r\n");
+    require(document.Send(SCI_GETLINECOUNT) == 4 && document.Send(SCI_GETEOLMODE) == SC_EOL_CRLF);
+    document.Send(SCI_SETEOLMODE, SC_EOL_CR);
+    load("a\rb\n");
+    require(document.Send(SCI_GETEOLMODE) == SC_EOL_CR && document.Send(SCI_GETLINECOUNT) == 3);
+    load("no newline");
+    require(document.Send(SCI_GETEOLMODE) == SC_EOL_CR);
     load("  α  \r\n  β\t\r\n");
     require(ExecuteEditorCommand(document, IDM_EDIT_TRIMLINES));
     require(document.Text() == "  α\r\n  β\r\n");
