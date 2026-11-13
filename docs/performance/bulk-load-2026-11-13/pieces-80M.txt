@@ -1,0 +1,11 @@
+Piece storage prototype Unicode/index/edit/save checks passed.
+piece,owned-blocks,0,load=570.405,read=111.278,validate=9.467,indexCallback=448.937,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.018
+piece,mapped,0,load=492.050,read=0.000,validate=40.864,indexCallback=450.656,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.013
+piece,mapped,1,load=508.860,read=0.000,validate=41.352,indexCallback=467.043,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.015
+piece,owned-blocks,1,load=588.605,read=112.034,validate=10.476,indexCallback=465.346,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.013
+piece,owned-blocks,2,load=563.884,read=106.050,validate=9.701,indexCallback=447.356,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.012
+piece,mapped,2,load=512.268,read=0.000,validate=41.122,indexCallback=470.490,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.014
+piece,mapped,3,load=509.965,read=0.000,validate=42.031,indexCallback=467.388,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.014
+piece,owned-blocks,3,load=597.638,read=111.987,validate=10.257,indexCallback=474.672,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.014
+piece,owned-blocks,4,load=581.771,read=110.614,validate=10.878,indexCallback=459.377,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.013
+piece,mapped,4,load=528.748,read=0.000,validate=42.319,indexCallback=485.857,bytes=320000000,lines=80000001,pieces=21,initialCopied=0,editedCopied=3,edits=0.014

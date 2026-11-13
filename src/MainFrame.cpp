@@ -120,7 +120,14 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
                 throw std::runtime_error("This file is already open in another tab.");
         }
         if (!copy) plugins.Notify(NPPN_FILEBEFORESAVE, plugins.Buffer(&document));
-        if (document.FastView() && !copy) throw std::runtime_error("Fast View is read only. Use Load for editing before saving changes.");
+        if (document.FastView()) {
+            document.fastView->Save(path, copy);
+            if (!copy) {
+                document.path = path; document.encodingDirty = false;
+                SnapshotDocument(document); RemoveDocumentRecovery(*this, document, keepBackup); RecordOpenedFile(*this, path); Refresh();
+            }
+            return true;
+        }
         PrepareFileSave(*this, document);
         if (document.LargeFile()) document.SaveStreaming(path);
         else {
@@ -139,13 +146,14 @@ bool MainFrame::Reload(EditorDocument& document) {
         MB_OKCANCEL | MB_ICONWARNING) != IDOK) return false;
     try {
 
-        auto position = document.Send(SCI_GETCURRENTPOS);
+        auto position = document.FastView() ? static_cast<LRESULT>(document.fastView->Caret()) : document.Send(SCI_GETCURRENTPOS);
         if (!LoadLargeFileForFrame(*this, document, document.path))
             document.Load(ReadFileForReload(*this, document));
         RestoreFileVariables(document);
         document.ConfigureLexer(); InitializeFileDocument(*this, document);
         RemoveDocumentRecovery(*this, document);
-        document.Send(SCI_GOTOPOS, min(position, document.Send(SCI_GETLENGTH)));
+        if (document.FastView()) document.fastView->Seek((std::min)(static_cast<large::Position>(position), document.fastView->Size()));
+        else document.Send(SCI_GOTOPOS, min(position, document.Send(SCI_GETLENGTH)));
         SnapshotDocument(document);
         Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }

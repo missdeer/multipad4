@@ -39,7 +39,7 @@ LRESULT PluginHost::SciMessage(UINT msg, WPARAM w, LPARAM l) {
     if (msg == SCI_GETDIRECTFUNCTION) return reinterpret_cast<LRESULT>(&Direct);
     if (msg == SCI_GETDIRECTSTATUSFUNCTION) return reinterpret_cast<LRESULT>(&DirectStatus);
     if (msg == SCI_GETDIRECTPOINTER) return reinterpret_cast<LRESULT>(this);
-    auto* d = frame->Active(); if (!d) return 0;
+    auto* d = frame->Active(); if (!d || d->FastView()) return 0;
     // N++'s bundled fork returns text lengths excluding the terminator.
     if (msg == SCI_GETSELTEXT) return d->Send(msg, 0, l);
     if (msg == 2041 || msg == 2042 || msg == 2292) return d->Send(msg == 2041 ? SCI_MARKERSETFORETRANSLUCENT : msg == 2042 ? SCI_MARKERSETBACKTRANSLUCENT : SCI_MARKERSETBACKSELECTEDTRANSLUCENT, w, l | 0xFF000000u);

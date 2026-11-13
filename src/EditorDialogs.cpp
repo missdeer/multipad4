@@ -22,6 +22,11 @@ INT_PTR CALLBACK EditorProcedure(HWND window, UINT message, WPARAM w, LPARAM l) 
         auto& d = context->document;
         switch (context->resource) {
         case IDD_LINENUM: {
+            if (d.FastView()) {
+                SetDlgItemInt(window, IDC_LINENUM, 1, FALSE); SetDlgItemInt(window, IDC_COLNUM, 1, FALSE);
+                SetDlgItemTextW(window, IDC_LINE_RANGE, L"&Line (indexed on demand):");
+                SetDlgItemTextW(window, IDC_COLUMN_RANGE, L"&Column (1):"); break;
+            }
             auto line = d.Send(SCI_LINEFROMPOSITION, d.Send(SCI_GETCURRENTPOS));
             SetDlgItemInt(window, IDC_LINENUM, static_cast<UINT>(line + 1), FALSE);
             SetDlgItemInt(window, IDC_COLNUM, static_cast<UINT>(d.Send(SCI_GETCOLUMN, d.Send(SCI_GETCURRENTPOS)) + 1), FALSE);
@@ -61,6 +66,10 @@ INT_PTR CALLBACK EditorProcedure(HWND window, UINT message, WPARAM w, LPARAM l) 
     case IDD_LINENUM: {
         long long column = 0;
         if (!Number(window, IDC_LINENUM, value, true) || !Number(window, IDC_COLNUM, column, true)) return TRUE;
+        if (d.FastView()) {
+            if (value <= 0 || column > 1) { MessageBeep(MB_ICONWARNING); return TRUE; }
+            d.fastView->StartGoToLine(static_cast<large::Position>(value - 1)); break;
+        }
         LRESULT position = 0;
         if (value == 0 && column > 0 && column <= d.Send(SCI_GETLENGTH) + 1) {
             position = d.Send(SCI_POSITIONBEFORE, column);

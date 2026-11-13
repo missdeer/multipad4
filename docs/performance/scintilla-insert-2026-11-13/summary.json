@@ -1,0 +1,288 @@
+{
+  "input": {
+    "file": "tmp/random-text-5GiB.txt",
+    "bytes": 5368709120,
+    "encoding": "ASCII / UTF-8 without BOM",
+    "sha256": "5ac1ca64feb2c139decf370968c91cfd6122b25256645e8e3e2cb7821f941e27",
+    "ascii_only_verified": true,
+    "verified_bytes": 5368709120
+  },
+  "results": {
+    "combined-profile": {
+      "reference": {
+        "total": {
+          "median": 4011.017,
+          "min": 3952.89,
+          "max": 4091.724
+        },
+        "read": {
+          "median": 1938.822,
+          "min": 1864.98,
+          "max": 1962.716
+        },
+        "eol": {
+          "median": 388.513,
+          "min": 380.025,
+          "max": 392.715
+        },
+        "insert": {
+          "median": 1696.361,
+          "min": 1683.632,
+          "max": 1740.292
+        },
+        "internal_copy": {
+          "median": 1038.338,
+          "min": 1025.54,
+          "max": 1059.095
+        },
+        "internal_index": {
+          "median": 294.366,
+          "min": 279.968,
+          "max": 309.938
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 3789.341,
+          "min": 3718.668,
+          "max": 3835.106
+        },
+        "read": {
+          "median": 1925.143,
+          "min": 1870.095,
+          "max": 1944.837
+        },
+        "eol": {
+          "median": 383.657,
+          "min": 376.237,
+          "max": 389.105
+        },
+        "insert": {
+          "median": 1467.789,
+          "min": 1452.588,
+          "max": 1503.071
+        },
+        "internal_copy": {
+          "median": 1042.736,
+          "min": 1030.678,
+          "max": 1070.202
+        },
+        "internal_index": {
+          "median": 64.994,
+          "min": 62.302,
+          "max": 66.736
+        }
+      },
+      "total_speedup": 1.058499881641689,
+      "total_time_reduction_percent": 5.526678146714414,
+      "insert_time_reduction_percent": 13.474254595572532
+    },
+    "reserve-profile": {
+      "reference": {
+        "total": {
+          "median": 4091.73,
+          "min": 3891.327,
+          "max": 4148.049
+        },
+        "read": {
+          "median": 1998.339,
+          "min": 1844.805,
+          "max": 2060.954
+        },
+        "eol": {
+          "median": 383.678,
+          "min": 381.41,
+          "max": 384.379
+        },
+        "insert": {
+          "median": 1690.531,
+          "min": 1652.737,
+          "max": 1721.635
+        },
+        "internal_copy": {
+          "median": 1026.381,
+          "min": 1008.309,
+          "max": 1050.366
+        },
+        "internal_index": {
+          "median": 293.563,
+          "min": 272.436,
+          "max": 299.662
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 3853.577,
+          "min": 3809.675,
+          "max": 3964.722
+        },
+        "read": {
+          "median": 2024.427,
+          "min": 1929.795,
+          "max": 2065.383
+        },
+        "eol": {
+          "median": 377.102,
+          "min": 373.584,
+          "max": 416.458
+        },
+        "insert": {
+          "median": 1445.875,
+          "min": 1437.395,
+          "max": 1610.032
+        },
+        "internal_copy": {
+          "median": 1019.254,
+          "min": 1012.585,
+          "max": 1131.429
+        },
+        "internal_index": {
+          "median": 63.845,
+          "min": 62.877,
+          "max": 69.145
+        }
+      },
+      "total_speedup": 1.061800503791672,
+      "total_time_reduction_percent": 5.820349827579041,
+      "insert_time_reduction_percent": 14.47213922726055
+    },
+    "loader-profile": {
+      "reference": {
+        "total": {
+          "median": 3798.839,
+          "min": 3786.469,
+          "max": 3877.981
+        },
+        "read": {
+          "median": 1938.006,
+          "min": 1916.611,
+          "max": 1996.191
+        },
+        "eol": {
+          "median": 384.058,
+          "min": 375.302,
+          "max": 385.018
+        },
+        "insert": {
+          "median": 1487.958,
+          "min": 1467.509,
+          "max": 1494.655
+        },
+        "internal_copy": {
+          "median": 1053.997,
+          "min": 1031.662,
+          "max": 1060.389
+        },
+        "internal_index": {
+          "median": 65.312,
+          "min": 64.128,
+          "max": 66.457
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 3807.67,
+          "min": 3756.499,
+          "max": 3894.633
+        },
+        "read": {
+          "median": 1947.21,
+          "min": 1911.907,
+          "max": 2010.693
+        },
+        "eol": {
+          "median": 383.486,
+          "min": 378.675,
+          "max": 395.572
+        },
+        "insert": {
+          "median": 1471.715,
+          "min": 1447.663,
+          "max": 1510.599
+        },
+        "internal_copy": {
+          "median": 1040.929,
+          "min": 1026.862,
+          "max": 1062.26
+        },
+        "internal_index": {
+          "median": 65.147,
+          "min": 64.562,
+          "max": 65.604
+        }
+      },
+      "total_speedup": 0.9976807338871277,
+      "total_time_reduction_percent": -0.23246576124968943,
+      "insert_time_reduction_percent": 1.0916302745104467
+    },
+    "final-uninstrumented": {
+      "reference": {
+        "total": {
+          "median": 4058.744,
+          "min": 4031.943,
+          "max": 4118.519
+        },
+        "read": {
+          "median": 1959.139,
+          "min": 1930.378,
+          "max": 1997.151
+        },
+        "eol": {
+          "median": 387.877,
+          "min": 382.482,
+          "max": 393.532
+        },
+        "insert": {
+          "median": 1713.431,
+          "min": 1694.176,
+          "max": 1724.124
+        },
+        "internal_copy": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "internal_index": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 3818.705,
+          "min": 3781.121,
+          "max": 3887.723
+        },
+        "read": {
+          "median": 1947.745,
+          "min": 1920.498,
+          "max": 1981.136
+        },
+        "eol": {
+          "median": 383.755,
+          "min": 381.627,
+          "max": 390.67
+        },
+        "insert": {
+          "median": 1477.36,
+          "min": 1469.14,
+          "max": 1506.697
+        },
+        "internal_copy": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "internal_index": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "total_speedup": 1.0628587439982926,
+      "total_time_reduction_percent": 5.914120230297848,
+      "insert_time_reduction_percent": 13.77767765378356
+    }
+  }
+}

@@ -1,3 +1,4 @@
+#include <mutex>
 #include "FileIO.h"
 #include "SimdText.h"
 #include <windows.h>
@@ -272,17 +273,27 @@ class MappedInput {
     size_t mapped = 0;
     std::string readBuffer;
     DWORD granularity = 65536;
+    std::shared_ptr<std::mutex> fallbackMutex = std::make_shared<std::mutex>();
 public:
     unsigned long long size = 0;
-    explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped) : stats(trace) {
+    explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped, bool shareDelete = false) : stats(trace) {
         ReadTimer timer(stats ? &stats->mappingMs : nullptr);
-        file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | (shareDelete ? FILE_SHARE_DELETE : 0), nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
         if (file == INVALID_HANDLE_VALUE) Fail("Cannot open file.");
         LARGE_INTEGER length{};
         if (!GetFileSizeEx(file, &length) || length.QuadPart < 0) { CloseHandle(file); Fail("Cannot read file size."); }
         size = static_cast<unsigned long long>(length.QuadPart);
         if (size && backend == ReadBackend::Mapped) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
         SYSTEM_INFO info{}; GetSystemInfo(&info); granularity = info.dwAllocationGranularity;
+    }
+    // Duplicate existing handles, never reopen the path: saved/replaced paths
+    // must not redirect a snapshot to a different file. Mapping state is private.
+    MappedInput(const MappedInput& source, int) : stats(nullptr), granularity(source.granularity), fallbackMutex(source.fallbackMutex), size(source.size) {
+        const auto process = GetCurrentProcess();
+        if (!DuplicateHandle(process, source.file, process, &file, 0, FALSE, DUPLICATE_SAME_ACCESS)) Fail("Cannot duplicate source file handle.");
+        if (source.mapping && !DuplicateHandle(process, source.mapping, process, &mapping, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+            CloseHandle(file); file = INVALID_HANDLE_VALUE; Fail("Cannot duplicate source mapping handle.");
+        }
     }
     ~MappedInput() { if (view) UnmapViewOfFile(view); if (mapping) CloseHandle(mapping); if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
     MappedInput(const MappedInput&) = delete;
@@ -311,6 +322,7 @@ public:
         }
         // Mapping failure degrades to bounded ordinary I/O.
         ReadTimer timer(stats ? &stats->copyOrReadMs : nullptr);
+        std::lock_guard guard(*fallbackMutex);
         LARGE_INTEGER position{}; position.QuadPart = offset;
         if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) Fail("Cannot seek file.");
         readBuffer.resize(count); DWORD read = 0;
@@ -356,15 +368,22 @@ size_t ChunkEnd(std::string_view bytes, Encoding encoding, bool last) {
 struct MappedFile::Impl {
     MappedInput input;
     unsigned long long bytesRead = 0;
-    explicit Impl(const std::filesystem::path& path, ReadStats* stats) : input(path, stats) {}
+    explicit Impl(const std::filesystem::path& path, ReadStats* stats, bool shareDelete) : input(path, stats, ReadBackend::Mapped, shareDelete) {}
+    explicit Impl(const Impl& source) : input(source.input, 0) {}
 };
-MappedFile::MappedFile(const std::filesystem::path& path, ReadStats* stats) : impl(std::make_unique<Impl>(path, stats)) {}
+MappedFile::MappedFile(const std::filesystem::path& path, ReadStats* stats, bool shareDelete) : impl(std::make_unique<Impl>(path, stats, shareDelete)) {}
 MappedFile::~MappedFile() = default;
+MappedFile::MappedFile(const MappedFile& source, int) : impl(std::make_unique<Impl>(*source.impl)) {}
+std::unique_ptr<MappedFile> MappedFile::NewReadSession() const { return std::unique_ptr<MappedFile>(new MappedFile(*this, 0)); }
 unsigned long long MappedFile::Size() const { return impl->input.size; }
 unsigned long long MappedFile::BytesRead() const { return impl->bytesRead; }
 std::string MappedFile::Read(unsigned long long offset, size_t count) {
     if (offset > Size()) Fail("File offset out of range.");
     auto bytes = impl->input.Read(offset, count); impl->bytesRead += bytes.size(); return bytes;
+}
+void MappedFile::Visit(unsigned long long offset, size_t count, const std::function<void(std::string_view)>& consume) {
+    if (offset > Size() || count > Size() - offset) Fail("Mapped range out of bounds.");
+    auto view = impl->input.View(offset, count); impl->bytesRead += view.size(); consume(view);
 }
 Text DetectSample(const std::string& bytes, const ReadOptions& options) { return DetectBytes(bytes, options); }
 Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume, const ReadOptions& options, std::optional<Encoding> forced, ReadStats* stats) {

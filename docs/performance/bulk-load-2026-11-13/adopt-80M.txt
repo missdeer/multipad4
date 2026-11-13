@@ -1,0 +1,24 @@
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992932,workingKiB=970696
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992812,workingKiB=970792
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992812,workingKiB=970800
+e2e,reference,0,total=729.539,read=78.029,eol=23.072,insert=619.990,allocate=0.030,configure=0.078,sourceRead=67.648,validate=9.332,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992812,workingKiB=970908
+e2e,optimized,0,total=721.856,read=110.179,eol=22.097,insert=580.304,allocate=0.005,configure=0.091,sourceRead=100.185,validate=9.505,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992812,workingKiB=970888
+e2e,optimized,1,total=736.218,read=116.611,eol=20.984,insert=589.016,allocate=0.006,configure=0.085,sourceRead=105.333,validate=10.784,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992812,workingKiB=970896
+e2e,reference,1,total=735.941,read=77.646,eol=21.816,insert=628.634,allocate=0.015,configure=0.075,sourceRead=67.286,validate=9.414,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992812,workingKiB=970844
+e2e,reference,2,total=742.212,read=78.010,eol=24.582,insert=630.296,allocate=0.017,configure=0.078,sourceRead=66.854,validate=10.097,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992812,workingKiB=970884
+e2e,optimized,2,total=734.218,read=112.831,eol=22.182,insert=590.537,allocate=0.005,configure=0.091,sourceRead=102.400,validate=9.932,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992812,workingKiB=970856
+e2e,optimized,3,total=714.470,read=120.745,eol=21.160,insert=562.281,allocate=0.006,configure=0.088,sourceRead=109.587,validate=10.672,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992812,workingKiB=970816
+e2e,reference,3,total=739.024,read=78.440,eol=22.882,insert=628.913,allocate=0.017,configure=0.071,sourceRead=67.367,validate=9.905,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,baseline,copied=320000000,committed=0,adopted=0,privateKiB=992820,workingKiB=970840
+e2e,reference,4,total=769.592,read=80.815,eol=23.798,insert=656.477,allocate=0.015,configure=0.077,sourceRead=70.183,validate=9.540,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+bulk-metrics,adopt,candidate,copied=0,committed=320000000,adopted=336777220,privateKiB=992820,workingKiB=970900
+e2e,optimized,4,total=742.022,read=111.943,eol=22.819,insert=598.984,allocate=0.007,configure=0.082,sourceRead=101.550,validate=9.935,delivered=320000000,validated=320000000,length=320000000,lines=80000001
+e2e summary,reference,median=739.024,min=729.539,max=769.592,read=78.440,eol=22.882,insert=628.913,length=320000000,lines=80000001
+e2e summary,optimized,median=734.218,min=714.470,max=742.022,read=112.831,eol=22.182,insert=590.537,length=320000000,lines=80000001

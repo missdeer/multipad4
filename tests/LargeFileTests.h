@@ -3,6 +3,8 @@
 #include "AutoSave.h"
 #include "QAArtifacts.h"
 #include "FileReadBenchmark.h"
+#include "MappedSearchTests.h"
+#include "ParallelSearchBenchmark.h"
 #include <fstream>
 #include <cstdio>
 #include <source_location>
@@ -74,10 +76,128 @@ inline void RunEndToEndReadBenchmark(MainFrame& frame, const std::filesystem::pa
             static_cast<long long>(median.length), static_cast<long long>(median.lines));
     }
 }
+inline void RunMappedEditingChecks(MainFrame& frame, EditorDocument& document, const std::filesystem::path& source, const std::filesystem::path& saved) {
+    auto check = [](bool value, std::source_location where = std::source_location::current()) { if (!value) throw std::runtime_error("Mapped editor check failed at line " + std::to_string(where.line())); };
+    check(document.FastView() && !document.Send(SCI_GETREADONLY));
+    auto& view = *document.fastView;
+    document.Send(SCI_SETREADONLY, TRUE);
+    document.Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("blocked")); check(!document.Modified());
+    document.Send(SCI_SETREADONLY, FALSE); check(!document.Send(SCI_GETREADONLY));
+    const auto originalSize = view.Size();
+    const auto initialRead = view.BytesRead();
+    for (auto offset : {large::Position(0), originalSize / 2, originalSize}) {
+        const auto before = view.Model().Statistics();
+        const auto start = std::chrono::steady_clock::now();
+        view.ShowSelection(offset, 0);
+        document.Send(SCI_REPLACESEL, 3, reinterpret_cast<LPARAM>("XYZ"));
+        check(document.Modified() && view.Size() == originalSize + 3);
+        check(view.Model().Read(offset, 3) == "XYZ");
+        check(view.Model().Statistics().addedBytes == before.addedBytes + 3);
+        document.Send(SCI_UNDO); check(!document.Modified() && view.Size() == originalSize);
+        document.Send(SCI_REDO); check(document.Modified() && view.Model().Read(offset, 3) == "XYZ");
+        document.Send(SCI_UNDO); check(!document.Modified());
+        const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        printf("mapped edit offset=%llu,seek+edit+undo+redo+undo=%.3f ms,readDelta=%llu,addedDelta=%llu\n", offset, elapsed, view.BytesRead() - before.sourceBytesRead, view.Model().Statistics().addedBytes - before.addedBytes);
+    }
+    check(view.BytesRead() - initialRead < 8 * 1024 * 1024);
+    view.ShowSelection(0, 0); document.Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("changed\r\n"));
+    check(document.Modified());
+    view.Seek(originalSize / 2); view.Seek(0);
+    check(document.Range(0, 9) == "changed\r\n");
+    check(frame.SaveTo(document, saved, true)); check(document.Modified());
+    {
+        files::MappedFile bytes(saved); check(bytes.Size() == originalSize + 9);
+        check(bytes.Read(0, 9) == "changed\r\n");
+        for (auto offset : {large::Position(9), originalSize / 2, originalSize - 128})
+            check(bytes.Read(offset, 128) == view.Model().Read(offset, 128));
+    }
+    auto pump = [&] {
+        const auto deadline = GetTickCount64() + 10000;
+        while (view.Busy() && GetTickCount64() < deadline) {
+            MSG message{}; while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+            if (view.Busy()) MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+        }
+        check(!view.Busy());
+    };
+    view.ShowSelection(0, 0); view.StartFind(L"last", false, true, false, false); pump();
+    check(document.Range(static_cast<size_t>(document.Send(SCI_GETSELECTIONSTART)), 4) == "last");
+    view.StartGoToLine(0); pump(); check(view.Caret() == 0);
+    view.StartFind(L"LAST", false, false, true, true); pump();
+    check(document.Range(static_cast<size_t>(document.Send(SCI_GETSELECTIONSTART)), 4) == "last");
+    view.StartFind(L"needle-that-does-not-exist", false, true, false, false);
+    document.Send(WM_KEYDOWN, VK_ESCAPE); check(!view.Busy());
+    // Save over the original after creating a separate fixture: backing mapping
+    // continues referencing the old version, including across undo after save.
+    check(frame.SaveTo(document, source)); check(!document.Modified());
+    document.Send(SCI_UNDO); check(document.Modified() && view.Size() == originalSize);
+    document.Send(SCI_REDO); check(!document.Modified());
+}
+inline void RunMappedPerformance(MainFrame& frame, const std::filesystem::path& source) {
+    auto check = [](bool value, std::source_location where = std::source_location::current()) { if (!value) throw std::runtime_error("Mapped performance check failed at line " + std::to_string(where.line())); };
+    frame.ShowWindow(SW_SHOWNORMAL); frame.UpdateWindow();
+    auto elapsed = [](auto start) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(); };
+    for (int run = -1; run < 5; ++run) {
+        auto start = std::chrono::steady_clock::now(); check(frame.Open(source));
+        frame.MDIMaximize(frame.tabs.GetPageHWND(frame.tabs.GetActivePage())); frame.UpdateLayout();
+        RedrawWindow(frame, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        auto opening = elapsed(start); auto* document = frame.Active(); check(document && document->FastView());
+        auto& view = *document->fastView; const auto size = view.Size();
+        auto opened = view.Model().Statistics(); check(opened.sourceBytesRead < 512 * 1024 && opened.indexedBlocks == 0);
+        PROCESS_MEMORY_COUNTERS_EX memory{}; memory.cb = sizeof(memory); GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory));
+        if (run >= 0) printf("mapped-open,%d,bytes=%llu,openPaint=%.3f,read=%llu,indexBlocks=%llu,privateKiB=%zu,workingKiB=%zu\n", run, size, opening, opened.sourceBytesRead, opened.indexedBlocks, memory.PrivateUsage / 1024, memory.WorkingSetSize / 1024);
+        for (auto position : {large::Position(0), size / 2, size}) {
+            auto before = view.Model().Statistics(); start = std::chrono::steady_clock::now(); view.ShowSelection(position, 0); auto seek = elapsed(start);
+            start = std::chrono::steady_clock::now(); document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("X")); auto edit = elapsed(start);
+            check(document->Modified() && view.Size() == size + 1 && view.Model().Read(position, 1) == "X");
+            start = std::chrono::steady_clock::now(); document->Send(SCI_UNDO); auto undo = elapsed(start);
+            check(!document->Modified() && view.Size() == size);
+            start = std::chrono::steady_clock::now(); document->Send(SCI_REDO); auto redo = elapsed(start);
+            check(document->Modified()); document->Send(SCI_UNDO); check(!document->Modified());
+            auto after = view.Model().Statistics(); check(after.addedBytes == before.addedBytes + 1 && after.sourceBytesRead - before.sourceBytesRead < 2 * 1024 * 1024 && after.indexedBlocks == before.indexedBlocks);
+            if (run >= 0) printf("mapped-edit,%d,offset=%llu,seek=%.3f,edit=%.3f,undo=%.3f,redo=%.3f,sourceRead=%llu,added=%llu,nodes=%llu\n", run, position, seek, edit, undo, redo, after.sourceBytesRead - before.sourceBytesRead, after.addedBytes - before.addedBytes, after.allocatedNodes - before.allocatedNodes);
+        }
+        if (run == 0) {
+            start = std::chrono::steady_clock::now(); auto lines = large::Document::LineCount(view.Model().Capture()); auto indexTime = elapsed(start); auto before = view.Model().Statistics();
+            view.ShowSelection(0, 0); document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("a"));
+            start = std::chrono::steady_clock::now(); auto editedLines = large::Document::LineCount(view.Model().Capture()); auto update = elapsed(start);
+            check(editedLines == lines); const auto after = view.Model().Statistics();
+            check(after.indexedBlocks - before.indexedBlocks <= 2);
+            printf("mapped-index,lines=%llu,explicitFullIndex=%.3f,afterEditQuery=%.3f,newBlocks=%llu,sourceReadAfterEdit=%llu\n", lines, indexTime, update, after.indexedBlocks - before.indexedBlocks, after.sourceBytesRead - before.sourceBytesRead);
+            document->Send(SCI_UNDO); check(!document->Modified());
+        }
+        if (run == 0) {
+            wchar_t destination[32768]{};
+            if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_SAVE_TO", destination, 32768)) {
+                view.ShowSelection(0, 0); document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("!"));
+                start = std::chrono::steady_clock::now(); check(frame.SaveTo(*document, destination, true)); auto save = elapsed(start);
+                check(document->Modified());
+                files::MappedFile output(destination);
+                check(output.Size() == size + 1);
+                for (large::Position offset = 0; offset < output.Size();) {
+                    auto bytes = output.Read(offset, static_cast<size_t>((std::min)(output.Size() - offset, 16ULL * 1024 * 1024)));
+                    check(view.Model().Read(offset, bytes.size()) == bytes); offset += bytes.size();
+                }
+                printf("mapped-save,bytes=%llu,saveCopy=%.3f,fullByteComparison=passed\n", output.Size(), save);
+                document->Send(SCI_UNDO); check(!document->Modified());
+            }
+        }
+        if (run == 1) {
+            wchar_t capture[32768]{};
+            if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_QA", capture, 32768)) { qaArtifactDirectory = capture; view.Seek(0); frame.Refresh(); CaptureQAWindow(frame, L"mapped-editor"); }
+        }
+        check(frame.Close(frame.tabs.GetActivePage())); fflush(stdout);
+    }
+}
 inline void RunLargeFileTests(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) { if (!ok) throw std::runtime_error("Large file integration check failed at line " + std::to_string(where.line())); };
     wchar_t benchmarkPath[32768]{};
     if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_SOURCE", benchmarkPath, 32768)) {
+        wchar_t parallelSearch[8]{};
+        if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_PARALLEL_SEARCH", parallelSearch, 8)) { RunParallelSearchBenchmark(frame, benchmarkPath); return; }
+        wchar_t searchBenchmark[8]{};
+        if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_SEARCH", searchBenchmark, 8)) { RunMappedSearchPerformance(frame, benchmarkPath); return; }
+        wchar_t mapped[8]{};
+        if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_MAPPED", mapped, 8)) { RunMappedPerformance(frame, benchmarkPath); return; }
         wchar_t paired[8]{};
         if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_E2E", paired, 8)) { RunEndToEndReadBenchmark(frame, benchmarkPath); return; }
         frame.ShowWindow(SW_SHOWNORMAL); frame.UpdateWindow();
@@ -120,6 +240,7 @@ inline void RunLargeFileTests(MainFrame& frame) {
     auto directory = std::filesystem::temp_directory_path() / (L"MultiPad4-large-" + std::to_wstring(GetCurrentProcessId()));
     std::filesystem::create_directories(directory);
     try {
+        RunMappedSearchTests(frame, directory);
         auto source = directory / L"large.cpp", copy = directory / L"copy.txt";
         size_t mib = 320;
         wchar_t configured[32]{};
@@ -134,10 +255,15 @@ inline void RunLargeFileTests(MainFrame& frame) {
         require(document && document->FastView());
         require(document->fastView->Size() == repeats * line.size() + 4);
         require(document->fastView->BytesRead() < 512 * 1024);
-        require(document->Send(SCI_GETREADONLY) && !document->Modified());
+        require(!document->Send(SCI_GETREADONLY) && !document->Modified());
         require(document->Send(SCI_STYLEGETFORE, 0) == document->Send(SCI_STYLEGETFORE, STYLE_DEFAULT));
-        require(!frame.State(ID_SAVE).enabled && !frame.State(ID_FIND).enabled && frame.State(ID_LOAD_FOR_EDITING).enabled);
-        document->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!")); require(!document->Modified());
+        require(frame.State(ID_SAVE).enabled && frame.State(ID_FIND).enabled && frame.State(ID_LOAD_FOR_EDITING).enabled);
+        document->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!")); require(document->Modified());
+        document->Send(SCI_UNDO); require(!document->Modified());
+        RunMappedEditingChecks(frame, *document, source, directory / L"edited-copy.txt");
+        document->Send(SCI_UNDO); // Restore original content after the save-point test.
+        require(document->Modified());
+        document->fastView->Save(source, false); require(!document->Modified());
         require(frame.SaveTo(*document, copy, true));
         require(std::filesystem::file_size(copy) == std::filesystem::file_size(source));
         {
@@ -200,6 +326,12 @@ inline void RunLargeFileTests(MainFrame& frame) {
             EditorDocument preview; preview.path = directory / L"unicode.txt"; require(preview.Create(frame.tabs));
             preview.OpenFastFile(preview.path, {}, encoding);
             require(preview.FastView() && preview.fastView->BytesRead() < 512 * 1024);
+            preview.fastView->ShowSelection(0, 0);
+            preview.Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("\xE4\xB8\xAD"));
+            require(preview.Modified());
+            preview.fastView->Save(directory / L"unicode-edited.txt", true);
+            require(files::Read(directory / L"unicode-edited.txt").utf8 == "\xE4\xB8\xAD" + expected);
+            preview.Send(SCI_UNDO); require(!preview.Modified());
             preview.fastView->Seek(preview.fastView->Size(), true);
             require(preview.Range(static_cast<size_t>(preview.Send(SCI_GETLENGTH)) - 3, 3) == "end");
             preview.fastView->LoadForEditing(); require(!preview.FastView() && preview.Text() == expected);
@@ -212,7 +344,7 @@ inline void RunLargeFileTests(MainFrame& frame) {
             preview.OpenFastFile(broken, {}, files::Encoding::Utf8);
             auto before = preview.Range(0, 64); bool rejected = false;
             try { preview.fastView->LoadForEditing(); } catch (const std::exception&) { rejected = true; }
-            require(rejected && preview.FastView() && preview.Send(SCI_GETREADONLY) && preview.Range(0, 64) == before);
+            require(rejected && preview.FastView() && !preview.Send(SCI_GETREADONLY) && preview.Range(0, 64) == before);
         }
         document->encodingDirty = false; document->Send(SCI_SETSAVEPOINT);
         while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1));

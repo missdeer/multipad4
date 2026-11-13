@@ -164,6 +164,9 @@ void SearchDialog::UpdateTransparency() {
         RedrawWindow(hwnd, nullptr, nullptr, RDW_ERASE | RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
     }
 }
+void SearchDialog::WatchMappedTask() {
+    pendingIdentity = document->searchIdentity; SetTimer(hwnd, 2, 50, nullptr);
+}
 void SearchDialog::Status(const std::wstring& text) { SetDlgItemTextW(hwnd, IDC_SEARCH_STATUS, text.c_str()); }
 void SearchDialog::SetPage(int value) {
     if (fileRunning) FinishFiles(true);
@@ -199,6 +202,9 @@ void SearchDialog::Execute(int command) {
     SyncDocument();
     if (!document) return;
     if (command == IDC_SEARCH_CLEAR_MARK) {
+        if (document->FastView()) {
+            document->fastView->StopWork(); document->fastView->SetMarks(document->fastView->Model().Capture(), std::vector<large::SearchHit>{}, false);
+        }
         document->Send(SCI_SETINDICATORCURRENT, 12); document->Send(SCI_INDICATORCLEARRANGE, 0, document->Send(SCI_GETLENGTH));
         if (IsDlgButtonChecked(hwnd, IDC_FINDALLBOOKMARK) == BST_CHECKED) document->Send(SCI_MARKERDELETEALL, 0);
         Status(L"Marks cleared."); return;
@@ -208,12 +214,38 @@ void SearchDialog::Execute(int command) {
     bool selection = IsDlgButtonChecked(hwnd, IDC_SEARCH_SELECTION) == BST_CHECKED;
     if (selection && RejectRectangularEdit(target)) return;
     if (command == IDC_SEARCH_FILES || command == IDC_SEARCH_REPLACE_FILES) { StartFiles(command == IDC_SEARCH_REPLACE_FILES); return; }
+    if (target.FastView() && (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_MARK)) {
+        auto* view = target.fastView.get(); auto* targetDocument = &target; auto* frame = owner;
+        const auto identity = target.searchIdentity; const auto dialog = hwnd; const bool mark = command == IDC_SEARCH_MARK;
+        const bool purge = IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED;
+        const bool bookmarks = target.search.bookmarkMatches;
+        if (command == IDC_FINDALL) owner->searchResults.Begin(target.search.findText);
+        const auto resultGeneration = frame->searchResults.generation;
+        view->StartEnumerate(target.MappedSearchOptions(), selection, [view, targetDocument, frame, identity, dialog, command, mark, purge, bookmarks, resultGeneration](const auto& snapshot, const auto& hits) {
+            if (!std::any_of(frame->documents.begin(), frame->documents.end(), [&](const auto& d) { return d.get() == targetDocument && d->searchIdentity == identity; })) return;
+            if (mark) view->SetMarks(snapshot, hits, bookmarks, purge);
+            if (command == IDC_FINDALL && frame->searchResults.generation == resultGeneration) { frame->searchResults.AddMapped(*targetDocument, snapshot, hits); frame->searchResults.Finish(hits->Count(), hits->Count() ? 1 : 0); }
+            if (frame->searchDialog.hwnd == dialog && frame->searchDialog.document == targetDocument && IsWindow(dialog)) SetDlgItemTextW(dialog, IDC_SEARCH_STATUS, (std::to_wstring(hits->Count()) + L" matches.").c_str());
+            frame->Refresh();
+        }, command != IDC_SEARCH_COUNT, command == IDC_FINDALL);
+        WatchMappedTask(); Status(L"Searching… Press Esc in the document to cancel."); return;
+    }
+    if (target.FastView() && command == IDC_REPLACEALL) {
+        target.fastView->StartReplaceEvery(target.MappedSearchOptions(), target.SearchReplacement(),
+            (target.search.regex || target.search.wildcard) && target.search.replaceText != L"^c", selection);
+        WatchMappedTask(); Status(L"Replacing… Press Esc in the document to cancel."); return;
+    }
     if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) {
         size_t count = 0, files = 0;
         if (command != IDC_SEARCH_COUNT) owner->searchResults.Begin(target.search.findText);
         auto collect = [&](EditorDocument& d, bool inSelection) {
-            auto matches = d.CollectMatches(inSelection); count += matches.size();
-            if (!matches.empty()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.Add(d, matches); }
+            if (d.FastView()) {
+                auto snapshot = d.fastView->Model().Capture(); auto hits = d.fastView->ArchiveMatches(d.MappedSearchOptions(), inSelection);
+                count += hits->Count(); if (hits->Count()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.AddMapped(d, snapshot, hits); }
+            } else {
+                auto matches = d.CollectMatches(inSelection); count += matches.size();
+                if (!matches.empty()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.Add(d, matches); }
+            }
         };
         if (command == IDC_SEARCH_ALL_OPEN) {
             for (int i = 0; i < owner->tabs.GetPageCount(); ++i) {
@@ -242,22 +274,25 @@ void SearchDialog::Execute(int command) {
         size_t count = 0;
         if (command == IDC_SEARCH_REPLACE_OPEN) {
             // Validate all patterns before modifying any document.
-            for (const auto& d : owner->documents) { UseSearch state(*d, target.search); d->CollectMatches(); }
+            for (const auto& d : owner->documents) { UseSearch state(*d, target.search); d->ValidateSearch(true); }
             for (const auto& d : owner->documents) { UseSearch state(*d, target.search); count += d->ReplaceAll(); }
         } else count = target.ReplaceAll(selection);
         Status(std::to_wstring(count) + L" occurrences replaced."); owner->Refresh(); return;
     }
     bool backwards = command == IDC_FINDPREV || (command == IDOK && IsDlgButtonChecked(hwnd, IDC_SEARCH_BACKWARDS) == BST_CHECKED);
     bool replaced = command == IDC_REPLACE && target.ReplaceOne();
-    bool found = target.FindNext(backwards);
-    Status(found ? (replaced ? L"Replaced. Next match found." : L"Match found.") : L"No further match found."); owner->Refresh();
+    bool found = false;
+    if (target.FastView() && selection) { target.fastView->StartSearch(target.MappedSearchOptions(), backwards, target.search.wrap, true); found = true; }
+    else found = target.FindNext(backwards);
+    if (target.FastView() && found) WatchMappedTask();
+    Status(target.FastView() && found ? L"Searching… Press Esc in the document to cancel." : found ? (replaced ? L"Replaced. Next match found." : L"Match found.") : L"No further match found."); owner->Refresh();
 }
 void SearchDialog::StartFiles(bool replace) {
     auto path = std::filesystem::path(Field(hwnd, IDC_SEARCH_DIRECTORY));
     std::error_code error;
     if (!std::filesystem::is_directory(path, error)) { Status(L"Select an existing directory."); return; }
     if (replace && MessageBoxW(hwnd, L"Replace matching text in files on disk using the replacement shown here? This cannot be undone. Open files are changed only in their editor buffers.", L"Replace in Files", MB_OKCANCEL | MB_ICONWARNING) != IDOK) return;
-    document->CollectMatches(); // Validate regex before starting.
+    document->ValidateSearch(replace); // Validate without collecting the active file.
     fileSearch = document->search; replaceFiles = replace;
     fileFilter = Field(hwnd, IDC_SEARCH_FILTER); if (fileFilter.empty()) fileFilter = L"*.*";
     recursive = IsDlgButtonChecked(hwnd, IDC_SEARCH_RECURSIVE) == BST_CHECKED;
@@ -368,6 +403,15 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
         if (!dialog) return FALSE;
         if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
         if (message == WM_NCDESTROY) { dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == WM_TIMER && w == 2) {
+            auto found = std::find_if(dialog->owner->documents.begin(), dialog->owner->documents.end(), [&](const auto& d) { return d->searchIdentity == dialog->pendingIdentity; });
+            if (found == dialog->owner->documents.end() || !(*found)->FastView()) { KillTimer(window, 2); return TRUE; }
+            if (!(*found)->fastView->Busy()) {
+                KillTimer(window, 2);
+                if (dialog->document == found->get()) dialog->Status(files::FromUtf8((*found)->fastView->Status()));
+            }
+            return TRUE;
+        }
         if (message == WM_TIMER && w == 1) { dialog->FileStep(); return TRUE; }
         if (message == WM_ACTIVATE) {
             dialog->active = LOWORD(w) != WA_INACTIVE;

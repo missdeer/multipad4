@@ -1,0 +1,24 @@
+insert-internal,window16M,copy=1019.828,index=297.599,bytes=5368709120,lines=41942720
+insert-internal,loader64M,copy=1035.745,index=64.009,bytes=5368709120,lines=41942720
+insert-internal,window16M,copy=1059.095,index=297.521,bytes=5368709120,lines=41942720
+e2e,reference,0,total=4091.724,read=1958.503,eol=388.513,insert=1736.324,allocate=0.033,configure=0.089,sourceRead=1804.222,validate=151.191,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,loader64M,copy=1042.736,index=64.994,bytes=5368709120,lines=41942720
+e2e,optimized,0,total=3789.341,read=1925.143,eol=383.657,insert=1471.136,allocate=0.038,configure=0.084,sourceRead=1770.130,validate=152.731,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,loader64M,copy=1030.678,index=64.184,bytes=5368709120,lines=41942720
+e2e,optimized,1,total=3718.668,read=1880.406,eol=376.237,insert=1452.588,allocate=0.036,configure=0.083,sourceRead=1729.352,validate=148.681,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,window16M,copy=1049.018,index=309.938,bytes=5368709120,lines=41942720
+e2e,reference,1,total=4010.494,read=1868.538,eol=392.628,insert=1740.292,allocate=0.039,configure=0.082,sourceRead=1711.155,validate=154.202,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,window16M,copy=1030.157,index=279.968,bytes=5368709120,lines=41942720
+e2e,reference,2,total=3952.890,read=1864.980,eol=392.715,insert=1685.562,allocate=0.038,configure=0.087,sourceRead=1705.038,validate=156.750,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,loader64M,copy=1035.198,index=62.302,bytes=5368709120,lines=41942720
+e2e,optimized,2,total=3734.524,read=1870.095,eol=387.524,insert=1467.789,allocate=0.035,configure=0.131,sourceRead=1712.795,validate=154.994,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,loader64M,copy=1070.202,index=66.736,bytes=5368709120,lines=41942720
+e2e,optimized,3,total=3835.106,read=1934.032,eol=389.105,insert=1503.071,allocate=0.038,configure=0.080,sourceRead=1778.250,validate=153.525,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,window16M,copy=1025.540,index=294.366,bytes=5368709120,lines=41942720
+e2e,reference,3,total=4051.013,read=1962.716,eol=382.800,insert=1696.361,allocate=0.045,configure=0.085,sourceRead=1802.970,validate=156.700,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,window16M,copy=1038.338,index=282.160,bytes=5368709120,lines=41942720
+e2e,reference,4,total=4011.017,read=1938.822,eol=380.025,insert=1683.632,allocate=0.037,configure=0.084,sourceRead=1783.937,validate=151.848,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+insert-internal,loader64M,copy=1045.930,index=65.206,bytes=5368709120,lines=41942720
+e2e,optimized,4,total=3799.786,read=1944.837,eol=379.676,insert=1466.688,allocate=0.034,configure=0.080,sourceRead=1794.320,validate=148.215,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e summary,reference,median=4011.017,min=3952.890,max=4091.724,read=1938.822,eol=380.025,insert=1683.632,length=5368709120,lines=41943041
+e2e summary,optimized,median=3789.341,min=3718.668,max=3835.106,read=1925.143,eol=383.657,insert=1471.136,length=5368709120,lines=41943041

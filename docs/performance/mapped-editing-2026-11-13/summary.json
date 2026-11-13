@@ -1,0 +1,319 @@
+{
+  "method": "One warmup, five real-window runs. Open includes maximized visible MDI child and synchronous painting. Edit/undo/redo measure synchronous command handling, not the next displayed frame. Cache not cleared. Full index explicitly requested once, not required for editing. Save copy measured once with full byte comparison.",
+  "input5GiB": {
+    "file": "tmp/random-text-5GiB.txt",
+    "bytes": 5368709120,
+    "encoding": "ASCII / UTF-8 without BOM",
+    "sha256": "5ac1ca64feb2c139decf370968c91cfd6122b25256645e8e3e2cb7821f941e27",
+    "ascii_only_verified": true,
+    "verified_bytes": 5368709120
+  },
+  "results": {
+    "5GiB": {
+      "opens": {
+        "openPaint": {
+          "median": 9.655,
+          "min": 8.776,
+          "max": 16.529
+        },
+        "read": {
+          "median": 167944,
+          "min": 167944,
+          "max": 167944
+        },
+        "privateKiB": {
+          "median": 10064,
+          "min": 7032,
+          "max": 10172
+        },
+        "workingKiB": {
+          "median": 37152,
+          "min": 33676,
+          "max": 37280
+        }
+      },
+      "edits": {
+        "0": {
+          "seek": {
+            "median": 1.803,
+            "min": 1.722,
+            "max": 3.231
+          },
+          "edit": {
+            "median": 1.073,
+            "min": 0.92,
+            "max": 1.463
+          },
+          "undo": {
+            "median": 1.926,
+            "min": 1.726,
+            "max": 4.079
+          },
+          "redo": {
+            "median": 1.931,
+            "min": 1.699,
+            "max": 2.45
+          },
+          "sourceRead": {
+            "median": 655391,
+            "min": 655391,
+            "max": 655391
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 4,
+            "min": 4,
+            "max": 4
+          }
+        },
+        "2684354560": {
+          "seek": {
+            "median": 1.978,
+            "min": 1.78,
+            "max": 2.389
+          },
+          "edit": {
+            "median": 0.189,
+            "min": 0.148,
+            "max": 0.194
+          },
+          "undo": {
+            "median": 1.763,
+            "min": 1.627,
+            "max": 2.153
+          },
+          "redo": {
+            "median": 1.77,
+            "min": 1.683,
+            "max": 2.763
+          },
+          "sourceRead": {
+            "median": 655391,
+            "min": 655391,
+            "max": 655391
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 6,
+            "min": 6,
+            "max": 6
+          }
+        },
+        "5368709120": {
+          "seek": {
+            "median": 1.679,
+            "min": 1.503,
+            "max": 1.842
+          },
+          "edit": {
+            "median": 0.109,
+            "min": 0.074,
+            "max": 0.131
+          },
+          "undo": {
+            "median": 1.433,
+            "min": 1.401,
+            "max": 2.442
+          },
+          "redo": {
+            "median": 1.526,
+            "min": 1.413,
+            "max": 2.824
+          },
+          "sourceRead": {
+            "median": 393215,
+            "min": 393215,
+            "max": 393215
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 3,
+            "min": 3,
+            "max": 3
+          }
+        }
+      },
+      "index": [
+        {
+          "kind": "mapped-index",
+          "run": 0,
+          "lines": 41943041,
+          "explicitFullIndex": 3734.873,
+          "afterEditQuery": 0.028,
+          "newBlocks": 1,
+          "sourceReadAfterEdit": 163848
+        }
+      ],
+      "save": [
+        {
+          "kind": "mapped-save",
+          "run": 0,
+          "bytes": 5368709121,
+          "saveCopy": 5481.224,
+          "fullByteComparison": "passed"
+        }
+      ]
+    },
+    "80M": {
+      "opens": {
+        "openPaint": {
+          "median": 8.831,
+          "min": 8.761,
+          "max": 10.352
+        },
+        "read": {
+          "median": 167944,
+          "min": 167944,
+          "max": 167944
+        },
+        "privateKiB": {
+          "median": 9416,
+          "min": 7272,
+          "max": 9416
+        },
+        "workingKiB": {
+          "median": 36496,
+          "min": 33888,
+          "max": 36496
+        }
+      },
+      "edits": {
+        "0": {
+          "seek": {
+            "median": 1.972,
+            "min": 1.722,
+            "max": 2.683
+          },
+          "edit": {
+            "median": 1.029,
+            "min": 0.942,
+            "max": 1.178
+          },
+          "undo": {
+            "median": 1.828,
+            "min": 1.674,
+            "max": 2.054
+          },
+          "redo": {
+            "median": 1.804,
+            "min": 1.715,
+            "max": 2.105
+          },
+          "sourceRead": {
+            "median": 655391,
+            "min": 655391,
+            "max": 655391
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 4,
+            "min": 4,
+            "max": 4
+          }
+        },
+        "160000000": {
+          "seek": {
+            "median": 1.951,
+            "min": 1.811,
+            "max": 2.227
+          },
+          "edit": {
+            "median": 0.163,
+            "min": 0.147,
+            "max": 0.283
+          },
+          "undo": {
+            "median": 1.798,
+            "min": 1.691,
+            "max": 2.039
+          },
+          "redo": {
+            "median": 1.926,
+            "min": 1.857,
+            "max": 2.333
+          },
+          "sourceRead": {
+            "median": 655391,
+            "min": 655391,
+            "max": 655391
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 6,
+            "min": 6,
+            "max": 6
+          }
+        },
+        "320000000": {
+          "seek": {
+            "median": 1.875,
+            "min": 1.696,
+            "max": 2.738
+          },
+          "edit": {
+            "median": 0.113,
+            "min": 0.106,
+            "max": 0.122
+          },
+          "undo": {
+            "median": 1.646,
+            "min": 1.546,
+            "max": 1.684
+          },
+          "redo": {
+            "median": 1.607,
+            "min": 1.58,
+            "max": 2.007
+          },
+          "sourceRead": {
+            "median": 393215,
+            "min": 393215,
+            "max": 393215
+          },
+          "added": {
+            "median": 1,
+            "min": 1,
+            "max": 1
+          },
+          "nodes": {
+            "median": 3,
+            "min": 3,
+            "max": 3
+          }
+        }
+      },
+      "index": [
+        {
+          "kind": "mapped-index",
+          "run": 0,
+          "lines": 80000001,
+          "explicitFullIndex": 597.372,
+          "afterEditQuery": 0.018,
+          "newBlocks": 1,
+          "sourceReadAfterEdit": 163848
+        }
+      ],
+      "save": []
+    }
+  }
+}

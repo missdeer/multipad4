@@ -110,10 +110,14 @@ void ApplyCommandLine(MainFrame& frame,const ParsedCommandLine& options){
     }
     auto applyDocument=[&](EditorDocument* d){
         // Commands requiring the complete document explicitly opt into loading it.
-        if (d->FastView() && (options.targetEncoding || options.eol >= 0 || options.jump || options.line || !options.match.empty() || options.print || !options.scheme.empty())) { d->fastView->LoadForEditing(); frame.plugins.Notify(NPPN_FILEOPENED, frame.plugins.Buffer(d)); }
+        if (d->FastView() && (options.targetEncoding || options.eol >= 0 || options.print || !options.scheme.empty())) { d->fastView->LoadForEditing(); frame.plugins.Notify(NPPN_FILEOPENED, frame.plugins.Buffer(d)); }
         if(options.targetEncoding)d->SetEncoding(*options.targetEncoding);if(options.eol>=0){d->Send(SCI_CONVERTEOLS,options.eol);d->Send(SCI_SETEOLMODE,options.eol);}
         if(!options.scheme.empty()&&!SelectDocumentScheme(*d,options.scheme))throw std::runtime_error("Unknown syntax scheme.");
-        if(options.jump||options.line){
+        if ((options.jump || options.line) && d->FastView()) {
+            if (options.column > 1) { d->fastView->LoadForEditing(); }
+            else { if (options.line < 0) d->fastView->Seek(d->fastView->Size(), true); else d->fastView->StartGoToLine(static_cast<large::Position>((std::max)(0LL, options.line - 1))); }
+        }
+        if((options.jump||options.line) && !d->FastView()){
             LRESULT position=0;
             if(options.line<0||options.line>d->Send(SCI_GETLINECOUNT))position=d->Send(SCI_GETLENGTH);
             else{

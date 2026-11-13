@@ -1,0 +1,25 @@
+cache-control: readonly source view retained and validated before timing; common to both variants.
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615012,workingKiB=10846948
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615016,workingKiB=10847040,sampledValid=64,sampledShared=64
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615016,workingKiB=10847060
+e2e,reference,0,total=2838.285,read=806.027,eol=369.740,insert=1653.757,allocate=0.035,configure=0.104,sourceRead=647.385,validate=155.855,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615024,workingKiB=10847104,sampledValid=64,sampledShared=64
+e2e,optimized,0,total=1725.117,read=630.702,eol=466.289,insert=618.631,allocate=0.007,configure=0.085,sourceRead=0.000,validate=627.453,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615024,workingKiB=10847088,sampledValid=64,sampledShared=64
+e2e,optimized,1,total=1552.847,read=578.653,eol=403.888,insert=559.377,allocate=0.009,configure=0.083,sourceRead=0.000,validate=575.605,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615020,workingKiB=10847152
+e2e,reference,1,total=2478.459,read=772.180,eol=350.937,insert=1345.226,allocate=0.035,configure=0.081,sourceRead=626.077,validate=143.206,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615024,workingKiB=10847240
+e2e,reference,2,total=2401.251,read=723.944,eol=327.261,insert=1340.447,allocate=0.032,configure=0.081,sourceRead=574.693,validate=146.791,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615028,workingKiB=10847196,sampledValid=64,sampledShared=64
+e2e,optimized,2,total=1476.831,read=563.509,eol=383.324,insert=520.809,allocate=0.005,configure=0.087,sourceRead=0.000,validate=560.755,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615028,workingKiB=10847200,sampledValid=64,sampledShared=64
+e2e,optimized,3,total=1519.496,read=578.750,eol=387.447,insert=542.574,allocate=0.005,configure=0.103,sourceRead=0.000,validate=575.861,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615024,workingKiB=10847256
+e2e,reference,3,total=2456.771,read=762.286,eol=338.820,insert=1347.292,allocate=0.034,configure=0.094,sourceRead=602.056,validate=157.933,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615024,workingKiB=10847240
+e2e,reference,4,total=2507.257,read=765.310,eol=320.762,insert=1412.232,allocate=0.038,configure=0.104,sourceRead=603.467,validate=159.149,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615028,workingKiB=10847204,sampledValid=64,sampledShared=64
+e2e,optimized,4,total=1699.544,read=633.413,eol=446.165,insert=610.849,allocate=0.005,configure=0.072,sourceRead=0.000,validate=629.998,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e summary,reference,median=2478.459,min=2401.251,max=2838.285,read=772.180,eol=350.937,insert=1345.226,length=5368709120,lines=41943041
+e2e summary,optimized,median=1552.847,min=1476.831,max=1725.117,read=578.653,eol=403.888,insert=559.377,length=5368709120,lines=41943041

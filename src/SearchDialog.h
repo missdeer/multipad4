@@ -27,6 +27,8 @@ public:
     void Status(const std::wstring& text);
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
 private:
+    unsigned long long pendingIdentity = 0;
+    void WatchMappedTask();
     bool fileRunning = false, replaceFiles = false;
     bool expanded = true, active = true, transparentAlways = false;
     int opacity = 180;

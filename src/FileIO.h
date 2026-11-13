@@ -20,12 +20,17 @@ struct ReadStats;
 class MappedFile {
     struct Impl;
     std::unique_ptr<Impl> impl;
+    explicit MappedFile(const MappedFile& source, int);
 public:
-    explicit MappedFile(const std::filesystem::path& path, ReadStats* stats = nullptr);
+    explicit MappedFile(const std::filesystem::path& path, ReadStats* stats = nullptr, bool shareDelete = false);
     ~MappedFile();
+    // Independent window over the same open file version, including after save.
+    std::unique_ptr<MappedFile> NewReadSession() const;
     unsigned long long Size() const;
     unsigned long long BytesRead() const;
     std::string Read(unsigned long long offset, size_t count);
+    // Borrowed mapped view; the callback must finish before another access.
+    void Visit(unsigned long long offset, size_t count, const std::function<void(std::string_view)>& consume);
 };
 Text DetectSample(const std::string& bytes, const ReadOptions& options = {});
 using ChunkConsumer = std::function<void(std::string_view)>;

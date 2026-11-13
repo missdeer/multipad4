@@ -1,0 +1,233 @@
+{
+  "input": {
+    "file": "tmp/random-text-5GiB.txt",
+    "bytes": 5368709120,
+    "encoding": "ASCII / UTF-8 without BOM",
+    "sha256": "5ac1ca64feb2c139decf370968c91cfd6122b25256645e8e3e2cb7821f941e27",
+    "ascii_only_verified": true,
+    "verified_bytes": 5368709120
+  },
+  "method": "Same file; one warmup then 5 interleaved trials per variant, alternate order; generated diagnostic copy of Scintilla; original 16M line reserve. Per-operation timers and GetProcessMemoryInfo counts.",
+  "results": {
+    "normal": {
+      "parent_median_row": {
+        "variant": "normal",
+        "run": 2,
+        "total": 4346.88,
+        "insert": 1748.3185,
+        "parent": 1069.7233,
+        "bounds": 0.012,
+        "room": 0.079,
+        "gap": 0.0466,
+        "prefault": 0.0,
+        "memcpy": 1067.5206,
+        "update": 0.0679,
+        "overhead": 1.9972,
+        "calls": 320,
+        "growths": 0,
+        "gapMoves": 0,
+        "gapMovedBytes": 0,
+        "bytes": 5368709120,
+        "memcpyFaults": 1313290,
+        "prefaultFaults": 0
+      },
+      "per_metric": {
+        "total": {
+          "median": 4308.0393,
+          "min": 4209.5401,
+          "max": 4346.88
+        },
+        "insert": {
+          "median": 1748.3185,
+          "min": 1691.4446,
+          "max": 1778.816
+        },
+        "parent": {
+          "median": 1069.7233,
+          "min": 1033.0822,
+          "max": 1092.663
+        },
+        "bounds": {
+          "median": 0.0102,
+          "min": 0.0094,
+          "max": 0.012
+        },
+        "room": {
+          "median": 0.0909,
+          "min": 0.079,
+          "max": 0.1349
+        },
+        "gap": {
+          "median": 0.0478,
+          "min": 0.044,
+          "max": 0.0506
+        },
+        "prefault": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "memcpy": {
+          "median": 1067.5206,
+          "min": 1030.7906,
+          "max": 1090.4172
+        },
+        "update": {
+          "median": 0.0681,
+          "min": 0.0571,
+          "max": 0.0759
+        },
+        "overhead": {
+          "median": 2.0278,
+          "min": 1.9527,
+          "max": 2.074
+        },
+        "calls": {
+          "median": 320,
+          "min": 320,
+          "max": 320
+        },
+        "growths": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "gapMoves": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "gapMovedBytes": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "bytes": {
+          "median": 5368709120,
+          "min": 5368709120,
+          "max": 5368709120
+        },
+        "memcpyFaults": {
+          "median": 1313291,
+          "min": 1313290,
+          "max": 1313298
+        },
+        "prefaultFaults": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    "pretouch": {
+      "parent_median_row": {
+        "variant": "pretouch",
+        "run": 1,
+        "total": 4302.2132,
+        "insert": 1778.1502,
+        "parent": 1111.7816,
+        "bounds": 0.0109,
+        "room": 0.0864,
+        "gap": 0.0501,
+        "prefault": 848.9371,
+        "memcpy": 260.1013,
+        "update": 0.0645,
+        "overhead": 2.5313,
+        "calls": 320,
+        "growths": 0,
+        "gapMoves": 0,
+        "gapMovedBytes": 0,
+        "bytes": 5368709120,
+        "memcpyFaults": 0,
+        "prefaultFaults": 1313299
+      },
+      "per_metric": {
+        "total": {
+          "median": 4302.2132,
+          "min": 4270.4699,
+          "max": 4404.7886
+        },
+        "insert": {
+          "median": 1778.5878,
+          "min": 1735.5624,
+          "max": 1825.8491
+        },
+        "parent": {
+          "median": 1111.7816,
+          "min": 1070.6716,
+          "max": 1153.9848
+        },
+        "bounds": {
+          "median": 0.0109,
+          "min": 0.0095,
+          "max": 0.0118
+        },
+        "room": {
+          "median": 0.0863,
+          "min": 0.0849,
+          "max": 0.0867
+        },
+        "gap": {
+          "median": 0.0501,
+          "min": 0.0445,
+          "max": 0.1715
+        },
+        "prefault": {
+          "median": 848.9371,
+          "min": 789.5283,
+          "max": 893.2459
+        },
+        "memcpy": {
+          "median": 260.1013,
+          "min": 257.9833,
+          "max": 278.3715
+        },
+        "update": {
+          "median": 0.0752,
+          "min": 0.0621,
+          "max": 0.0795
+        },
+        "overhead": {
+          "median": 2.5313,
+          "min": 2.4805,
+          "max": 2.5546
+        },
+        "calls": {
+          "median": 320,
+          "min": 320,
+          "max": 320
+        },
+        "growths": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "gapMoves": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "gapMovedBytes": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "bytes": {
+          "median": 5368709120,
+          "min": 5368709120,
+          "max": 5368709120
+        },
+        "memcpyFaults": {
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "prefaultFaults": {
+          "median": 1313298,
+          "min": 1313288,
+          "max": 1313299
+        }
+      }
+    }
+  }
+}

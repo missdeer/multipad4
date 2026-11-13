@@ -107,7 +107,7 @@ void MainFrame::CreateUpstreamUI() {
     ResetToolbar(toolbar);
     HMENU file = GetSubMenu(GetMenu(), 0);
     InsertMenuW(file, 4, MF_BYPOSITION | MF_STRING, ID_SAVEALL, L"Save All\tCtrl+Alt+S");
-    InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_LOAD_FOR_EDITING, L"Load for editing...");
+    InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_LOAD_FOR_EDITING, L"Open in full editor...");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSE, L"Close Document\tCtrl+W");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSEALL, L"Close All Documents");
     windowMenu = CreatePopupMenu();
@@ -138,14 +138,16 @@ CommandState MainFrame::QueryState(UINT input) {
     auto* d = Active();
     if (id == ID_LOAD_FOR_EDITING) return {true, d && d->FastView(), false};
     if (d && d->FastView()) {
-        if (id == IDM_FILE_READONLY_MODE) return {true, false, true};
+        if (id == ID_SEARCH_MARK) return {true, true, false};
+        if (id == IDM_FILE_READONLY_MODE) return {true, true, d->fastView->ReadOnly()};
+        if (id == IDM_EDIT_UNDO) return {true, !d->fastView->ReadOnly() && d->fastView->CanUndo(), false};
+        if (id == IDM_EDIT_REDO) return {true, !d->fastView->ReadOnly() && d->fastView->CanRedo(), false};
         if (EditorCommandState(d, id).supported || StyleCommandState(d, id).supported) {
-            if (id != IDM_EDIT_COPY && id != IDM_VIEW_ZOOMIN && id != IDM_VIEW_ZOOMOUT && id != IDM_VIEW_RESETZOOM)
+            if (id != ID_FIND && id != ID_FINDNEXT && id != IDM_EDIT_FINDPREV && id != IDM_EDIT_REPLACE && id != IDM_EDIT_COPY && id != IDM_EDIT_CUT && id != IDM_EDIT_PASTE && id != IDM_EDIT_DELETE &&
+                id != IDM_VIEW_ZOOMIN && id != IDM_VIEW_ZOOMOUT && id != IDM_VIEW_RESETZOOM && id != IDM_EDIT_GOTOLINE)
                 return {true, false, false};
         }
         switch (id) {
-        case ID_SAVE: case ID_SAVEAS: case ID_FIND: case ID_FINDNEXT: case IDM_EDIT_FINDPREV:
-        case IDM_EDIT_REPLACE: case IDM_EDIT_GOTOLINE: case ID_SEARCH_MARK:
         case IDM_FILE_PRINT: case IDM_FILE_SAVEBACKUP: case IDM_FILE_LARGE_FILE_MODE: case IDM_FILE_LARGE_FILE_MODE_RELOAD:
             return {true, false, false};
         }
@@ -247,7 +249,7 @@ void MainFrame::UpdateStatus() {
             auto& view = *d->fastView;
             for (size_t i = 0; i < 6; ++i) text[i].clear();
             text[0] = L"Bytes " + std::to_wstring(view.Begin()) + L"–" + std::to_wstring(view.End());
-            text[7] = L"Fast View"; text[10] = L"Read only";
+            text[7] = L"Mapped document"; text[10] = d->fastView->ReadOnly() ? L"Read only" : L"Editable";
             text[12] = std::to_wstring(view.Size() / (1024 * 1024)) + L" MiB";
         }
     }

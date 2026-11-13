@@ -1,0 +1,142 @@
+{
+  "shared-view-1": {
+    "exact": {
+      "medianMs": 6014.75,
+      "minMs": 5943.694,
+      "maxMs": 6300.234,
+      "medianCpuMs": 5890.625,
+      "sourceBytes": [
+        5368908761
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 6976.071,
+      "minMs": 6744.993,
+      "maxMs": 7574.731,
+      "medianCpuMs": 6781.25,
+      "sourceBytes": [
+        5368908761
+      ]
+    }
+  },
+  "shared-view-2": {
+    "exact": {
+      "medianMs": 4524.212,
+      "minMs": 4275.517,
+      "maxMs": 4600.016,
+      "medianCpuMs": 6843.75,
+      "sourceBytes": [
+        5368908753
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 4467.451,
+      "minMs": 4350.582,
+      "maxMs": 4502.615,
+      "medianCpuMs": 7812.5,
+      "sourceBytes": [
+        5368908753
+      ]
+    }
+  },
+  "shared-view-4": {
+    "exact": {
+      "medianMs": 4560.164,
+      "minMs": 4467.891,
+      "maxMs": 4766.804,
+      "medianCpuMs": 7218.75,
+      "sourceBytes": [
+        5368908737
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 4377.785,
+      "minMs": 4329.641,
+      "maxMs": 4607.77,
+      "medianCpuMs": 7750.0,
+      "sourceBytes": [
+        5368908737
+      ]
+    }
+  },
+  "shared-view-8": {
+    "exact": {
+      "medianMs": 4371.868,
+      "minMs": 4233.477,
+      "maxMs": 4688.855,
+      "medianCpuMs": 6515.625,
+      "sourceBytes": [
+        5368908705
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 4454.615,
+      "minMs": 4258.604,
+      "maxMs": 4568.426,
+      "medianCpuMs": 8140.625,
+      "sourceBytes": [
+        5368908705
+      ]
+    }
+  },
+  "independent-views-2": {
+    "exact": {
+      "medianMs": 3802.541,
+      "minMs": 3797.663,
+      "maxMs": 4240.639,
+      "medianCpuMs": 7453.125,
+      "sourceBytes": [
+        5368908753
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 4214.896,
+      "minMs": 4181.783,
+      "maxMs": 4802.539,
+      "medianCpuMs": 8234.375,
+      "sourceBytes": [
+        5368908753
+      ]
+    }
+  },
+  "independent-views-4": {
+    "exact": {
+      "medianMs": 2534.958,
+      "minMs": 2408.367,
+      "maxMs": 2537.578,
+      "medianCpuMs": 9875.0,
+      "sourceBytes": [
+        5368908737
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 2719.615,
+      "minMs": 2671.163,
+      "maxMs": 3073.666,
+      "medianCpuMs": 10546.875,
+      "sourceBytes": [
+        5368908737
+      ]
+    }
+  },
+  "independent-views-8": {
+    "exact": {
+      "medianMs": 1625.421,
+      "minMs": 1622.448,
+      "maxMs": 1760.686,
+      "medianCpuMs": 12718.75,
+      "sourceBytes": [
+        5368908705
+      ]
+    },
+    "ignore-case": {
+      "medianMs": 1935.709,
+      "minMs": 1863.998,
+      "maxMs": 1949.639,
+      "medianCpuMs": 15031.25,
+      "sourceBytes": [
+        5368908705
+      ]
+    }
+  }
+}

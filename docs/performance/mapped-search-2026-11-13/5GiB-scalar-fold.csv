@@ -1,0 +1,10 @@
+sourceBytes=5368709120; warmup=1; measured=3; cached filesystem; inserted unique tail marker; columns=run,operation,ms,sourceReadBytes,addedBytes,privateKiB,peakWorkingKiB
+mapped-search,0,find-exact-to-tail,6182.466,5368941528,0,6760,102016
+mapped-search,0,count-ignore-case,33305.728,5368908761,0,6656,102136
+mapped-search,0,replace-all-exact,6246.784,5369007055,8,6784,102136
+mapped-search,1,find-exact-to-tail,6111.887,5368941528,0,6668,102136
+mapped-search,1,count-ignore-case,33341.262,5368908761,0,6564,102136
+mapped-search,1,replace-all-exact,5843.010,5369007055,8,6692,102136
+mapped-search,2,find-exact-to-tail,5853.591,5368941528,0,6612,102136
+mapped-search,2,count-ignore-case,31773.800,5368908761,0,6560,102136
+mapped-search,2,replace-all-exact,5911.618,5369007055,8,6696,102136

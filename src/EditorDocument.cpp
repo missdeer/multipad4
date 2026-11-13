@@ -130,11 +130,11 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     style.occurrencePending = false; style.occurrenceRevision = style.revision;
 }
 void EditorDocument::SetEncoding(files::Encoding value) {
-    if (FastView()) throw std::runtime_error("Load the file for editing before changing its encoding.");
+    if (FastView()) { if (encoding == value) return; throw std::runtime_error("Use the full editor to convert the file encoding."); }
     if (encoding != value) { encoding = value; encodingDirty = true; }
 }
 std::string EditorDocument::Text() const {
-    if (FastView()) throw std::runtime_error("Load the file for editing before running a whole-document command.");
+    if (FastView()) throw std::runtime_error("Use the full editor for this whole-document command.");
     auto n = static_cast<size_t>(Send(SCI_GETLENGTH));
     std::string text(n + 1, '\0');
     Send(SCI_GETTEXT, n + 1, reinterpret_cast<LPARAM>(text.data()));

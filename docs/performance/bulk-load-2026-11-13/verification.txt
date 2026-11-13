@@ -1,0 +1,1 @@
+Bulk prototypes: direct/adopt/COW, Unicode boundaries, edit/undo/save, reallocation, invalid input and EOF checks passed.

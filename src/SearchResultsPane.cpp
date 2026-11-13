@@ -22,8 +22,9 @@ LRESULT SearchResultsPane::OnSize(UINT, WPARAM, LPARAM, BOOL& handled) {
 LRESULT SearchResultsPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { Hide(); visible = false; return 0; }
 void SearchResultsPane::Reveal() { Show(); visible = true; }
 void SearchResultsPane::Clear() {
+    ++generation;
     SendMessageW(editor, SCI_SETREADONLY, FALSE, 0); SendMessageW(editor, SCI_CLEARALL, 0, 0);
-    SendMessageW(editor, SCI_SETREADONLY, TRUE, 0); targets.clear(); lines.clear();
+    SendMessageW(editor, SCI_SETREADONLY, TRUE, 0); targets.clear(); lines.clear(); archives.clear();
 }
 void SearchResultsPane::Append(const std::string& text, SearchResultLexer::Line style, Target target) {
     SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
@@ -33,6 +34,7 @@ void SearchResultsPane::Append(const std::string& text, SearchResultLexer::Line 
     lines.push_back(std::move(style)); targets.push_back(std::move(target));
 }
 void SearchResultsPane::Begin(const std::wstring& query) {
+    ++generation;
     header = lines.size();
     auto text = files::ToUtf8(query); std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
     Append("Search \"" + text + "\"", {SearchResultLexer::SearchHeader}, {}); Reveal();
@@ -43,8 +45,8 @@ void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMa
     Append("  " + files::ToUtf8(document.path.empty() ? document.Title() : document.path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, target);
     for (size_t i = 0; i < matches.size();) {
         const auto& match = matches[i]; target.match = match; target.matches.clear();
-        auto lineEnd = document.Send(SCI_GETLINEENDPOSITION, match.line);
-        auto lineText = match.source->substr(match.lineStart, lineEnd - match.lineStart);
+        auto lineText = match.mappedSource ? match.preview : match.source->substr(match.lineStart,
+            document.Send(SCI_GETLINEENDPOSITION, match.line) - match.lineStart);
         auto number = std::to_string(match.line + 1);
         std::string prefix = "\tLine " + number + ": ";
         SearchResultLexer::Line style; style.numberStart = 6; style.numberEnd = 6 + number.size();
@@ -52,9 +54,27 @@ void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMa
             const auto& m = matches[i++]; target.matches.push_back(m);
             style.segments.emplace_back(prefix.size() + m.start - m.lineStart,
                 prefix.size() + min<LRESULT>(m.end - m.lineStart, lineText.size()));
-        } while (i < matches.size() && matches[i].line == match.line);
+        } while (!match.mappedSource && i < matches.size() && matches[i].line == match.line);
         Append(prefix + lineText, std::move(style), target);
     }
+}
+void SearchResultsPane::AddMapped(EditorDocument& document, large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> hits) {
+    archives.push_back({document.searchIdentity, document.path, std::move(snapshot), std::move(hits), 0});
+    LoadMore(archives.size() - 1);
+}
+bool SearchResultsPane::LoadMore(size_t archive) {
+    if (archive >= archives.size()) return false;
+    auto& page = archives[archive]; if (page.next >= page.hits->Count()) return false;
+    EditorDocument* document = nullptr;
+    for (const auto& candidate : owner->documents) if (candidate->searchIdentity == page.identity) document = candidate.get();
+    if (!document || !document->FastView() || document->fastView->Model().Capture().root != page.snapshot.root) return false;
+    auto hits = page.hits->Page(page.next, (std::min)(size_t(1000), page.hits->Count() - page.next));
+    Add(*document, document->MappedMatches(page.snapshot, hits)); page.next += hits.size();
+    if (page.next < page.hits->Count()) {
+        Target target; target.identity = page.identity; target.path = page.path; target.archive = archive;
+        Append("  Load next results page (" + std::to_string(page.next) + " / " + std::to_string(page.hits->Count()) + " displayed)", {SearchResultLexer::Default}, std::move(target));
+    }
+    SearchResultLexer::Colourise(editor, lines); return true;
 }
 void SearchResultsPane::Finish(size_t hits, size_t files) {
     auto start = SendMessageW(editor, SCI_POSITIONFROMLINE, header, 0);
@@ -69,6 +89,7 @@ void SearchResultsPane::Finish(size_t hits, size_t files) {
 bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
     if (line >= targets.size() || lines[line].style != SearchResultLexer::Default) return false;
     auto target = targets[line];
+    if (target.archive != static_cast<size_t>(-1)) return LoadMore(target.archive);
     if (matchIndex < target.matches.size()) target.match = target.matches[matchIndex];
     EditorDocument* document = nullptr;
     for (const auto& d : owner->documents) if (d->searchIdentity == target.identity) document = d.get();
@@ -77,6 +98,14 @@ bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
         document = owner->Active();
     }
     if (!document) return false;
+    if (target.match.mappedSource) {
+        if (!document->FastView() || target.match.mappedSource->root != document->fastView->Model().Capture().root) {
+            ::MessageBoxW(m_hWnd, L"This result has changed. Run the search again.", L"Search results", MB_OK | MB_ICONINFORMATION); return false;
+        }
+        for (int i = 0; i < owner->tabs.GetPageCount(); ++i) if (owner->tabs.GetPageData(i) == document) owner->tabs.SetActivePage(i);
+        document->fastView->ShowSelection(target.match.nativeStart, target.match.nativeEnd - target.match.nativeStart);
+        ::SetFocus(document->hwnd); owner->Refresh(); return true;
+    }
     // Snapshots must not silently select unrelated text after editing or reload.
     auto lineStart = document->Send(SCI_POSITIONFROMLINE, target.match.line);
     auto lineEnd = document->Send(SCI_GETLINEENDPOSITION, target.match.line);
@@ -119,11 +148,13 @@ LRESULT SearchResultsPane::OnContext(UINT, WPARAM, LPARAM l, BOOL&) {
     HMENU menu = CreatePopupMenu();
     AppendMenuW(menu, MF_STRING, 1, L"Copy"); AppendMenuW(menu, MF_STRING, 2, L"Select all");
     AppendMenuW(menu, MF_STRING, 3, L"Collapse all"); AppendMenuW(menu, MF_STRING, 4, L"Expand all");
+    if (!archives.empty()) AppendMenuW(menu, MF_STRING, 7, L"Load next results page");
     AppendMenuW(menu, MF_STRING, 5, L"Clear all"); AppendMenuW(menu, MF_STRING, 6, L"Hide");
     POINT point{GET_X_LPARAM(l), GET_Y_LPARAM(l)}; if (point.x == -1) { point = {20,20}; ClientToScreen(&point); }
     int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, 0, m_hWnd, nullptr); DestroyMenu(menu);
     if (command == 1) SendMessageW(editor, SCI_COPY, 0, 0);
     if (command == 2) SendMessageW(editor, SCI_SELECTALL, 0, 0);
     if (command == 3 || command == 4) SendMessageW(editor, SCI_FOLDALL, command == 3 ? SC_FOLDACTION_CONTRACT : SC_FOLDACTION_EXPAND, 0);
+    if (command == 7 && !archives.empty()) LoadMore(archives.size() - 1);
     if (command == 5) Clear(); if (command == 6) { Hide(); visible = false; } return 0;
 }

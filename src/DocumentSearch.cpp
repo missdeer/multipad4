@@ -114,8 +114,69 @@ UINT ReplaceMessage(const EditorDocument &d) {
 }
 
 } // namespace
+large::SearchOptions EditorDocument::MappedSearchOptions() const {
+    auto& self = const_cast<EditorDocument&>(*this);
+    auto needle = Needle(self);
+    return {files::FromUtf8(needle), search.regex || search.wildcard, (search.flags & SCFIND_MATCHCASE) != 0,
+        (search.flags & SCFIND_WHOLEWORD) != 0, (search.flags & SCFIND_WORDSTART) != 0, search.dotMatchesNewline};
+}
+std::string EditorDocument::SearchReplacement() { return Replacement(*this); }
+void EditorDocument::ValidateSearch(bool replacing) {
+    if (FastView()) {
+        large::Search pattern(fastView->Model().Capture(), encoding, MappedSearchOptions());
+        if (replacing) pattern.Native(Replacement(*this));
+    } else {
+        const auto flags = Send(SCI_GETSEARCHFLAGS), start = Send(SCI_GETTARGETSTART), end = Send(SCI_GETTARGETEND);
+        struct Restore { EditorDocument& d; LRESULT flags, start, end; ~Restore() { d.Send(SCI_SETSEARCHFLAGS, flags); d.Send(SCI_SETTARGETRANGE, start, end); } } restore{*this, flags, start, end};
+        Search(*this, Needle(*this), 0, Send(SCI_GETLENGTH)); if (replacing) Replacement(*this);
+    }
+}
+std::vector<SearchMatch> EditorDocument::MappedMatches(const large::Document::Snapshot& snapshot, const std::vector<large::SearchHit>& hits) {
+    std::vector<SearchMatch> matches;
+    auto shared = std::make_shared<const large::Document::Snapshot>(snapshot);
+    large::Search reader(snapshot, encoding, {L"", false, true});
+    for (const auto& hit : hits) {
+        const auto line = large::Document::LineFromPosition(snapshot, hit.start);
+        const auto lineStart = large::Document::PositionFromLine(snapshot, line);
+        const auto unit = encoding == files::Encoding::Utf16LE || encoding == files::Encoding::Utf16LEPlain || encoding == files::Encoding::Utf16BE || encoding == files::Encoding::Utf16BEPlain ? 2u : 1u;
+        auto previewStart = (std::max)(lineStart, hit.start > 256 ? hit.start - 256 : 0); previewStart -= previewStart % unit;
+        const bool unicode8 = encoding == files::Encoding::Utf8 || encoding == files::Encoding::Utf8Bom;
+        if (unit == 1 && !unicode8) previewStart = hit.start;
+        auto rawPreview = large::Document::Read(snapshot, previewStart, 2048);
+        if (unit == 1 && (encoding == files::Encoding::Utf8 || encoding == files::Encoding::Utf8Bom)) {
+            size_t skip = 0; while (skip < rawPreview.size() && (static_cast<unsigned char>(rawPreview[skip]) & 0xC0) == 0x80) ++skip;
+            previewStart += skip; rawPreview.erase(0, skip);
+            if (previewStart + rawPreview.size() < large::Document::Size(snapshot)) { size_t count = rawPreview.size() > 4 ? rawPreview.size() - 4 : 0; while (count && (static_cast<unsigned char>(rawPreview[count]) & 0xC0) == 0x80) --count; rawPreview.resize(count); }
+        } else if (unit == 2) {
+            rawPreview.resize(rawPreview.size() & ~size_t(1));
+            auto value = [&](size_t at) { auto a = static_cast<unsigned char>(rawPreview[at]), b = static_cast<unsigned char>(rawPreview[at + 1]); return encoding == files::Encoding::Utf16LE || encoding == files::Encoding::Utf16LEPlain ? a | (b << 8) : (a << 8) | b; };
+            if (rawPreview.size() >= 2 && value(0) >= 0xDC00 && value(0) <= 0xDFFF) { previewStart += 2; rawPreview.erase(0, 2); }
+            if (rawPreview.size() >= 2) { auto c = value(rawPreview.size() - 2); if (c >= 0xD800 && c <= 0xDBFF) rawPreview.resize(rawPreview.size() - 2); }
+        }
+        if (unit == 1 && !unicode8 && previewStart + rawPreview.size() < large::Document::Size(snapshot)) {
+            const auto page = files::CodePage(encoding); size_t at = 0;
+            while (at < rawPreview.size()) {
+                auto c = static_cast<unsigned char>(rawPreview[at]); size_t width = IsDBCSLeadByteEx(page, c) ? 2 : 1;
+                if (page == 54936 && c >= 0x81 && c <= 0xFE && at + 1 < rawPreview.size()) { auto n = static_cast<unsigned char>(rawPreview[at + 1]); width = n >= 0x30 && n <= 0x39 ? 4 : 2; }
+                if (at + width > rawPreview.size()) { rawPreview.resize(at); break; } at += width;
+            }
+        }
+        auto text = files::Decode(rawPreview, encoding, false).utf8;
+        auto newline = text.find_first_of("\r\n"); if (newline != std::string::npos) text.resize(newline);
+        auto prefix = reader.Utf8(previewStart, hit.start - previewStart).size();
+        auto length = hit.end <= previewStart + rawPreview.size() ? reader.Utf8(hit.start, hit.end - hit.start).size() : text.size();
+        SearchMatch match; match.start = static_cast<LRESULT>(prefix); match.end = static_cast<LRESULT>(prefix + length);
+        match.line = static_cast<LRESULT>(line); match.lineStart = 0; match.mappedSource = shared;
+        match.nativeStart = hit.start; match.nativeEnd = hit.end; match.nativeLineStart = lineStart;
+        match.preview = std::move(text); matches.push_back(std::move(match));
+    }
+    return matches;
+}
 bool EditorDocument::FindNext(bool backwards, const std::function<bool(bool)> &confirmWrap) {
-    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
+    if (FastView()) {
+        if (search.findText.empty()) return false;
+        fastView->StartSearch(MappedSearchOptions(), backwards, search.wrap); return true;
+    }
     if (search.findText.empty())
         return false;
     auto needle = Needle(*this);
@@ -157,7 +218,8 @@ bool EditorDocument::FindNext(bool backwards, const std::function<bool(bool)> &c
     return true;
 }
 bool EditorDocument::ReplaceOne() {
-    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
+    if (FastView()) return fastView->ReplaceMatch(MappedSearchOptions(), Replacement(*this),
+        (search.regex || search.wildcard) && search.replaceText != L"^c");
     if (Send(SCI_GETREADONLY) || search.findText.empty())
         return false;
     auto needle = Needle(*this);
@@ -177,7 +239,7 @@ bool EditorDocument::ReplaceOne() {
     return true;
 }
 size_t EditorDocument::ReplaceAll(bool selectionOnly) {
-    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
+    if (FastView()) return fastView->ReplaceEvery(MappedSearchOptions(), Replacement(*this), (search.regex || search.wildcard) && search.replaceText != L"^c", selectionOnly);
     if (selectionOnly && RejectRectangularEdit(*this))
         return 0;
     if (Send(SCI_GETREADONLY) || search.findText.empty())
@@ -216,7 +278,12 @@ size_t EditorDocument::ReplaceAll(bool selectionOnly) {
     return count;
 }
 size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
-    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
+    if (FastView()) {
+        if (selectAll) throw std::runtime_error("Global multiple selections require the full editor; use Find All results to navigate mapped matches.");
+        auto snapshot = fastView->Model().Capture(); auto hits = fastView->ArchiveMatches(MappedSearchOptions(), false);
+        fastView->SetMarks(snapshot, hits, bookmark); search.matches = hits->Count();
+        return hits->Count();
+    }
     struct RestoreState {
         EditorDocument &document;
         LRESULT indicator, flags, start, end;
@@ -274,6 +341,7 @@ size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
 
 // Shared enumeration for Count, Mark and Finder. Positions are UTF-8 byte offsets.
 std::vector<SearchMatch> EditorDocument::CollectMatches(bool selectionOnly) {
+    if (FastView()) { auto snapshot = fastView->Model().Capture(); auto hits = fastView->Matches(MappedSearchOptions(), selectionOnly); return MappedMatches(snapshot, hits); }
     const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);
     struct Restore { EditorDocument& d; LRESULT flags, from, to;
         ~Restore() { d.Send(SCI_SETSEARCHFLAGS, flags); d.Send(SCI_SETTARGETRANGE, from, to); }

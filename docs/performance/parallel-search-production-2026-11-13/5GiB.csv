@@ -1,0 +1,22 @@
+sourceBytes=5368709120; warmup=1; measured=3; cached filesystem; inserted unique tail marker; columns=run,operation,ms,sourceReadBytes,addedBytes,privateKiB,peakWorkingKiB
+mapped-search,0,find-exact-to-tail-serial,5579.965,5368941528,0,7344,564372
+mapped-search,0,count-ignore-case-serial,6317.152,5368908761,0,7148,564372
+mapped-search,0,replace-all-exact-serial,5594.869,5369007055,8,7424,564372
+mapped-search,0,find-exact-to-tail-parallel,1554.405,5374785824,0,7284,564372
+mapped-search,0,count-ignore-case-parallel,1783.210,5374687377,0,7868,566012
+mapped-search,0,replace-all-exact-parallel,1634.369,5374785671,8,7556,566012
+mapped-search,1,find-exact-to-tail-parallel,1580.510,5374785824,0,7704,566012
+mapped-search,1,count-ignore-case-parallel,1854.961,5374687377,0,8036,567188
+mapped-search,1,replace-all-exact-parallel,1642.928,5374785671,8,7812,567188
+mapped-search,1,find-exact-to-tail-serial,5833.828,5368941528,0,7640,567188
+mapped-search,1,count-ignore-case-serial,6457.034,5368908761,0,8244,567188
+mapped-search,1,replace-all-exact-serial,5726.717,5369007055,8,7576,567188
+mapped-search,2,find-exact-to-tail-serial,5658.169,5368941528,0,7492,567188
+mapped-search,2,count-ignore-case-serial,6478.663,5368908761,0,7744,567188
+mapped-search,2,replace-all-exact-serial,5688.345,5369007055,8,7600,567188
+mapped-search,2,find-exact-to-tail-parallel,1578.073,5374785824,0,7656,567188
+mapped-search,2,count-ignore-case-parallel,1849.832,5374687377,0,7820,571720
+mapped-search,2,replace-all-exact-parallel,1726.544,5374785671,8,7732,571720
+mapped-search,0,find-near-head-parallel,15.399,491604,0,7880,571720
+mapped-search,1,find-near-head-parallel,9.575,491604,0,8012,571720
+mapped-search,2,find-near-head-parallel,9.123,491604,0,8012,571720

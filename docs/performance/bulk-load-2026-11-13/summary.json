@@ -1,0 +1,535 @@
+{
+  "inputs": {
+    "5GiB": {
+      "file": "tmp/random-text-5GiB.txt",
+      "bytes": 5368709120,
+      "encoding": "ASCII / UTF-8 without BOM",
+      "sha256": "5ac1ca64feb2c139decf370968c91cfd6122b25256645e8e3e2cb7821f941e27",
+      "ascii_only_verified": true,
+      "verified_bytes": 5368709120
+    },
+    "80M": {
+      "file": "tmp/bulk-80M-lines.txt",
+      "bytes": 320000000,
+      "lines": 80000001,
+      "content": "abc LF repeated 80000000 times",
+      "sha256": "e364430e15f59be39fe4582ff3d92ba6997b8779e1ccdec5226f25b39ff7e8e8"
+    }
+  },
+  "results": {
+    "direct-5GiB": {
+      "reference": {
+        "total": {
+          "median": 4203.124,
+          "min": 4185.694,
+          "max": 4240.125
+        },
+        "read": {
+          "median": 2143.951,
+          "min": 2129.497,
+          "max": 2150.179
+        },
+        "eol": {
+          "median": 371.057,
+          "min": 370.739,
+          "max": 375.209
+        },
+        "insert": {
+          "median": 1688.008,
+          "min": 1672.206,
+          "max": 1715.763
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 4092.147,
+          "min": 4051.988,
+          "max": 4106.041
+        },
+        "read": {
+          "median": 3047.467,
+          "min": 3013.518,
+          "max": 3065.494
+        },
+        "eol": {
+          "median": 390.849,
+          "min": 388.161,
+          "max": 394.544
+        },
+        "insert": {
+          "median": 646.718,
+          "min": 626.749,
+          "max": 650.747
+        }
+      },
+      "time_reduction_percent": 2.6403456095989486
+    },
+    "adopt-5GiB": {
+      "reference": {
+        "total": {
+          "median": 4225.42,
+          "min": 4188.406,
+          "max": 4231.485
+        },
+        "read": {
+          "median": 2146.592,
+          "min": 2125.688,
+          "max": 2150.483
+        },
+        "eol": {
+          "median": 369.283,
+          "min": 364.508,
+          "max": 374.667
+        },
+        "insert": {
+          "median": 1696.565,
+          "min": 1689.04,
+          "max": 1708.121
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 4167.72,
+          "min": 4152.695,
+          "max": 4175.243
+        },
+        "read": {
+          "median": 3054.849,
+          "min": 3024.426,
+          "max": 3060.42
+        },
+        "eol": {
+          "median": 397.526,
+          "min": 389.219,
+          "max": 410.881
+        },
+        "insert": {
+          "median": 707.594,
+          "min": 699.169,
+          "max": 730.184
+        }
+      },
+      "time_reduction_percent": 1.3655447269147136
+    },
+    "cow-5GiB-initial": {
+      "reference": {
+        "total": {
+          "median": 3211.207,
+          "min": 3110.826,
+          "max": 4256.774
+        },
+        "read": {
+          "median": 1153.744,
+          "min": 1096.426,
+          "max": 2160.99
+        },
+        "eol": {
+          "median": 371.056,
+          "min": 365.075,
+          "max": 377.453
+        },
+        "insert": {
+          "median": 1680.886,
+          "min": 1638.401,
+          "max": 1715.536
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 4218.437,
+          "min": 1833.403,
+          "max": 4371.33
+        },
+        "read": {
+          "median": 3177.116,
+          "min": 750.272,
+          "max": 3317.98
+        },
+        "eol": {
+          "median": 405.524,
+          "min": 399.052,
+          "max": 461.252
+        },
+        "insert": {
+          "median": 629.387,
+          "min": 622.483,
+          "max": 651.957
+        }
+      },
+      "time_reduction_percent": -31.36608758015289
+    },
+    "cow-5GiB-shared": {
+      "reference": {
+        "total": {
+          "median": 3267.849,
+          "min": 2998.014,
+          "max": 4180.708
+        },
+        "read": {
+          "median": 1155.251,
+          "min": 1045.622,
+          "max": 2115.865
+        },
+        "eol": {
+          "median": 371.217,
+          "min": 342.019,
+          "max": 389.891
+        },
+        "insert": {
+          "median": 1683.748,
+          "min": 1599.69,
+          "max": 1713.625
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 4840.315,
+          "min": 1697.815,
+          "max": 4896.531
+        },
+        "read": {
+          "median": 3802.957,
+          "min": 691.522,
+          "max": 3907.711
+        },
+        "eol": {
+          "median": 390.13,
+          "min": 388.167,
+          "max": 428.394
+        },
+        "insert": {
+          "median": 591.051,
+          "min": 577.676,
+          "max": 638.706
+        }
+      },
+      "time_reduction_percent": -48.11929804590112
+    },
+    "cow-5GiB-retained": {
+      "reference": {
+        "total": {
+          "median": 2478.459,
+          "min": 2401.251,
+          "max": 2838.285
+        },
+        "read": {
+          "median": 765.31,
+          "min": 723.944,
+          "max": 806.027
+        },
+        "eol": {
+          "median": 338.82,
+          "min": 320.762,
+          "max": 369.74
+        },
+        "insert": {
+          "median": 1347.292,
+          "min": 1340.447,
+          "max": 1653.757
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 1552.847,
+          "min": 1476.831,
+          "max": 1725.117
+        },
+        "read": {
+          "median": 578.75,
+          "min": 563.509,
+          "max": 633.413
+        },
+        "eol": {
+          "median": 403.888,
+          "min": 383.324,
+          "max": 466.289
+        },
+        "insert": {
+          "median": 559.377,
+          "min": 520.809,
+          "max": 618.631
+        }
+      },
+      "time_reduction_percent": 37.34627040431171
+    },
+    "cow-5GiB-edit": {
+      "reference": {
+        "total": {
+          "median": 2434.529,
+          "min": 2404.716,
+          "max": 2667.194
+        },
+        "read": {
+          "median": 738.582,
+          "min": 731.366,
+          "max": 821.344
+        },
+        "eol": {
+          "median": 333.772,
+          "min": 325.99,
+          "max": 390.068
+        },
+        "insert": {
+          "median": 1360.744,
+          "min": 1330.208,
+          "max": 1444.81
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 1520.658,
+          "min": 1462.994,
+          "max": 1597.189
+        },
+        "read": {
+          "median": 583.258,
+          "min": 560.96,
+          "max": 612.383
+        },
+        "eol": {
+          "median": 397.531,
+          "min": 380.416,
+          "max": 423.464
+        },
+        "insert": {
+          "median": 530.672,
+          "min": 510.433,
+          "max": 556.943
+        }
+      },
+      "time_reduction_percent": 37.5378974742137,
+      "first_insert_ms": {
+        "median": 2168.566,
+        "min": 2167.936,
+        "max": 2182.017,
+        "all_including_warmup": [
+          2155.849,
+          2167.936,
+          2182.017,
+          2168.102,
+          2168.566,
+          2181.972
+        ]
+      }
+    },
+    "direct-80M": {
+      "reference": {
+        "total": {
+          "median": 742.483,
+          "min": 735.651,
+          "max": 754.788
+        },
+        "read": {
+          "median": 78.298,
+          "min": 77.152,
+          "max": 79.854
+        },
+        "eol": {
+          "median": 22.844,
+          "min": 21.43,
+          "max": 23.643
+        },
+        "insert": {
+          "median": 633.137,
+          "min": 628.758,
+          "max": 642.943
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 741.924,
+          "min": 726.667,
+          "max": 745.19
+        },
+        "read": {
+          "median": 118.95,
+          "min": 115.336,
+          "max": 120.507
+        },
+        "eol": {
+          "median": 23.091,
+          "min": 22.535,
+          "max": 24.408
+        },
+        "insert": {
+          "median": 591.002,
+          "min": 578.937,
+          "max": 592.912
+        }
+      },
+      "time_reduction_percent": 0.07528791904999332
+    },
+    "adopt-80M": {
+      "reference": {
+        "total": {
+          "median": 739.024,
+          "min": 729.539,
+          "max": 769.592
+        },
+        "read": {
+          "median": 78.029,
+          "min": 77.646,
+          "max": 80.815
+        },
+        "eol": {
+          "median": 23.072,
+          "min": 21.816,
+          "max": 24.582
+        },
+        "insert": {
+          "median": 628.913,
+          "min": 619.99,
+          "max": 656.477
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 734.218,
+          "min": 714.47,
+          "max": 742.022
+        },
+        "read": {
+          "median": 112.831,
+          "min": 110.179,
+          "max": 120.745
+        },
+        "eol": {
+          "median": 22.097,
+          "min": 20.984,
+          "max": 22.819
+        },
+        "insert": {
+          "median": 589.016,
+          "min": 562.281,
+          "max": 598.984
+        }
+      },
+      "time_reduction_percent": 0.6503171750849801
+    },
+    "cow-80M": {
+      "reference": {
+        "total": {
+          "median": 744.279,
+          "min": 738.004,
+          "max": 768.413
+        },
+        "read": {
+          "median": 82.41,
+          "min": 79.737,
+          "max": 85.31
+        },
+        "eol": {
+          "median": 22.977,
+          "min": 21.145,
+          "max": 24.852
+        },
+        "insert": {
+          "median": 626.841,
+          "min": 624.847,
+          "max": 654.654
+        }
+      },
+      "optimized": {
+        "total": {
+          "median": 665.538,
+          "min": 652.164,
+          "max": 669.91
+        },
+        "read": {
+          "median": 41.885,
+          "min": 41.322,
+          "max": 42.372
+        },
+        "eol": {
+          "median": 23.921,
+          "min": 23.024,
+          "max": 25.662
+        },
+        "insert": {
+          "median": 590.593,
+          "min": 574.599,
+          "max": 596.026
+        }
+      },
+      "time_reduction_percent": 10.579500429274502
+    },
+    "pieces-5GiB": {
+      "owned-blocks": {
+        "load": {
+          "median": 2793.168,
+          "min": 2697.557,
+          "max": 3785.972
+        },
+        "edits": {
+          "median": 0.128,
+          "min": 0.1,
+          "max": 0.186
+        }
+      },
+      "mapped": {
+        "load": {
+          "median": 3861.977,
+          "min": 1418.831,
+          "max": 3983.973
+        },
+        "edits": {
+          "median": 0.131,
+          "min": 0.066,
+          "max": 0.181
+        }
+      }
+    },
+    "pieces-5GiB-retained": {
+      "owned-blocks": {
+        "load": {
+          "median": 2146.172,
+          "min": 2086.615,
+          "max": 2203.048
+        },
+        "edits": {
+          "median": 0.064,
+          "min": 0.061,
+          "max": 0.073
+        }
+      },
+      "mapped": {
+        "load": {
+          "median": 1183.03,
+          "min": 1147.401,
+          "max": 1276.857
+        },
+        "edits": {
+          "median": 0.075,
+          "min": 0.068,
+          "max": 0.117
+        }
+      }
+    },
+    "pieces-80M": {
+      "owned-blocks": {
+        "load": {
+          "median": 581.771,
+          "min": 563.884,
+          "max": 597.638
+        },
+        "edits": {
+          "median": 0.013,
+          "min": 0.012,
+          "max": 0.018
+        }
+      },
+      "mapped": {
+        "load": {
+          "median": 509.965,
+          "min": 492.05,
+          "max": 528.748
+        },
+        "edits": {
+          "median": 0.014,
+          "min": 0.013,
+          "max": 0.015
+        }
+      }
+    }
+  }
+}

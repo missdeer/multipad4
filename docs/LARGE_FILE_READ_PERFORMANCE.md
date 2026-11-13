@@ -165,3 +165,5 @@ Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_PROFILE
 ctest --test-dir cmake-msvc-build --output-on-failure
 ```
+
+后续针对 Scintilla 插入区间的内部细分和未采用的预留实验见 [Scintilla 插入性能报告](SCINTILLA_INSERT_PERFORMANCE.md)。

@@ -1,0 +1,12 @@
+Piece storage prototype Unicode/index/edit/save checks passed.
+cache-control: readonly source view retained and validated before piece timing.
+piece,owned-blocks,0,load=2146.172,read=1326.666,validate=174.702,indexCallback=638.755,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.067
+piece,mapped,0,load=1276.857,read=0.000,validate=610.093,indexCallback=664.845,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.075
+piece,mapped,1,load=1147.401,read=0.000,validate=562.196,indexCallback=583.535,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.076
+piece,owned-blocks,1,load=2086.615,read=1300.689,validate=177.724,indexCallback=602.156,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.061
+piece,owned-blocks,2,load=2168.047,read=1365.748,validate=176.254,indexCallback=620.113,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.063
+piece,mapped,2,load=1183.030,read=0.000,validate=567.822,indexCallback=613.140,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.068
+piece,mapped,3,load=1162.891,read=0.000,validate=560.481,indexCallback=600.489,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.073
+piece,owned-blocks,3,load=2115.396,read=1323.182,validate=172.542,indexCallback=613.613,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.064
+piece,owned-blocks,4,load=2203.048,read=1387.869,validate=169.765,indexCallback=639.078,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.073
+piece,mapped,4,load=1266.074,read=0.000,validate=615.132,indexCallback=649.009,bytes=5368709120,lines=41943041,pieces=320,initialCopied=0,editedCopied=3,edits=0.117

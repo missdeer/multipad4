@@ -1,0 +1,100 @@
+{
+  "find-exact-to-tail-serial": {
+    "runs": 3,
+    "medianMs": 5658.169,
+    "minMs": 5579.965,
+    "maxMs": 5833.828,
+    "sourceReadBytes": [
+      5368941528
+    ],
+    "addedBytes": [
+      0
+    ],
+    "maxPrivateKiB": 7640,
+    "maxPeakWorkingKiB": 567188
+  },
+  "count-ignore-case-serial": {
+    "runs": 3,
+    "medianMs": 6457.034,
+    "minMs": 6317.152,
+    "maxMs": 6478.663,
+    "sourceReadBytes": [
+      5368908761
+    ],
+    "addedBytes": [
+      0
+    ],
+    "maxPrivateKiB": 8244,
+    "maxPeakWorkingKiB": 567188
+  },
+  "replace-all-exact-serial": {
+    "runs": 3,
+    "medianMs": 5688.345,
+    "minMs": 5594.869,
+    "maxMs": 5726.717,
+    "sourceReadBytes": [
+      5369007055
+    ],
+    "addedBytes": [
+      8
+    ],
+    "maxPrivateKiB": 7600,
+    "maxPeakWorkingKiB": 567188
+  },
+  "find-exact-to-tail-parallel": {
+    "runs": 3,
+    "medianMs": 1578.073,
+    "minMs": 1554.405,
+    "maxMs": 1580.51,
+    "sourceReadBytes": [
+      5374785824
+    ],
+    "addedBytes": [
+      0
+    ],
+    "maxPrivateKiB": 7704,
+    "maxPeakWorkingKiB": 567188
+  },
+  "count-ignore-case-parallel": {
+    "runs": 3,
+    "medianMs": 1849.832,
+    "minMs": 1783.21,
+    "maxMs": 1854.961,
+    "sourceReadBytes": [
+      5374687377
+    ],
+    "addedBytes": [
+      0
+    ],
+    "maxPrivateKiB": 8036,
+    "maxPeakWorkingKiB": 571720
+  },
+  "replace-all-exact-parallel": {
+    "runs": 3,
+    "medianMs": 1642.928,
+    "minMs": 1634.369,
+    "maxMs": 1726.544,
+    "sourceReadBytes": [
+      5374785671
+    ],
+    "addedBytes": [
+      8
+    ],
+    "maxPrivateKiB": 7812,
+    "maxPeakWorkingKiB": 571720
+  },
+  "find-near-head-parallel": {
+    "runs": 3,
+    "medianMs": 9.575,
+    "minMs": 9.123,
+    "maxMs": 15.399,
+    "sourceReadBytes": [
+      491604
+    ],
+    "addedBytes": [
+      0
+    ],
+    "maxPrivateKiB": 8012,
+    "maxPeakWorkingKiB": 571720
+  }
+}

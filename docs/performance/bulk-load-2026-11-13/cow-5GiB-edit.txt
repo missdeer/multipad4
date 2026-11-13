@@ -1,0 +1,31 @@
+cache-control: readonly source view retained and validated before timing; common to both variants.
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5615052,workingKiB=10846980
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5614864,workingKiB=10847072,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2155.849,sharedAfterUndo=0
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5614860,workingKiB=10847152
+e2e,reference,0,total=2404.716,read=734.571,eol=331.453,insert=1330.208,allocate=0.038,configure=0.094,sourceRead=585.218,validate=146.815,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5614664,workingKiB=10847048,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2167.936,sharedAfterUndo=0
+e2e,optimized,0,total=1462.994,read=563.035,eol=380.416,insert=510.433,allocate=0.005,configure=0.077,sourceRead=0.000,validate=560.240,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5614680,workingKiB=10847060,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2182.017,sharedAfterUndo=0
+e2e,optimized,1,total=1467.698,read=560.960,eol=381.571,insert=516.294,allocate=0.006,configure=0.078,sourceRead=0.000,validate=558.101,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5614684,workingKiB=10847084
+e2e,reference,1,total=2469.773,read=743.955,eol=342.858,insert=1373.576,allocate=0.034,configure=0.114,sourceRead=591.948,validate=149.536,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5614860,workingKiB=10847252
+e2e,reference,2,total=2667.194,read=821.344,eol=390.068,insert=1444.810,allocate=0.038,configure=0.095,sourceRead=665.823,validate=152.458,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5614864,workingKiB=10847208,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2168.102,sharedAfterUndo=0
+e2e,optimized,2,total=1597.189,read=607.254,eol=423.464,insert=556.943,allocate=0.006,configure=0.083,sourceRead=0.000,validate=604.226,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5614672,workingKiB=10847064,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2168.566,sharedAfterUndo=0
+e2e,optimized,3,total=1520.658,read=583.258,eol=397.531,insert=530.672,allocate=0.005,configure=0.076,sourceRead=0.000,validate=580.380,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5614852,workingKiB=10847240
+e2e,reference,3,total=2421.928,read=738.582,eol=325.990,insert=1348.460,allocate=0.036,configure=0.076,sourceRead=588.087,validate=148.189,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,baseline,copied=5368709120,committed=0,adopted=0,privateKiB=5614852,workingKiB=10847264
+e2e,reference,4,total=2434.529,read=731.366,eol=333.772,insert=1360.744,allocate=0.036,configure=0.083,sourceRead=583.930,validate=144.952,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+bulk-metrics,cow,candidate,copied=0,committed=5368709120,adopted=5385486340,privateKiB=5615056,workingKiB=10847352,sampledValid=64,sampledShared=64
+bulk-editprobe,firstInsertMs=2181.972,sharedAfterUndo=0
+e2e,optimized,4,total=1582.146,read=612.383,eol=403.278,insert=556.629,allocate=0.005,configure=0.091,sourceRead=0.000,validate=609.180,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e summary,reference,median=2434.529,min=2404.716,max=2667.194,read=731.366,eol=333.772,insert=1360.744,length=5368709120,lines=41943041
+e2e summary,optimized,median=1520.658,min=1462.994,max=1597.189,read=583.258,eol=397.531,insert=530.672,length=5368709120,lines=41943041

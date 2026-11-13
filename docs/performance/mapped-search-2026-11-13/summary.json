@@ -1,0 +1,72 @@
+{
+  "5GiB.csv": {
+    "find-exact-to-tail": {
+      "runs": 3,
+      "medianMs": 6486.391,
+      "minMs": 6139.529,
+      "maxMs": 6495.776,
+      "maxPrivateKiB": 6936,
+      "maxPeakWorkingKiB": 101868,
+      "addedBytes": [
+        0
+      ]
+    },
+    "count-ignore-case": {
+      "runs": 3,
+      "medianMs": 7101.898,
+      "minMs": 6764.264,
+      "maxMs": 7510.279,
+      "maxPrivateKiB": 6780,
+      "maxPeakWorkingKiB": 101868,
+      "addedBytes": [
+        0
+      ]
+    },
+    "replace-all-exact": {
+      "runs": 3,
+      "medianMs": 6116.293,
+      "minMs": 6013.263,
+      "maxMs": 6562.41,
+      "maxPrivateKiB": 6904,
+      "maxPeakWorkingKiB": 101868,
+      "addedBytes": [
+        8
+      ]
+    }
+  },
+  "5GiB-scalar-fold.csv": {
+    "find-exact-to-tail": {
+      "runs": 3,
+      "medianMs": 6111.887,
+      "minMs": 5853.591,
+      "maxMs": 6182.466,
+      "maxPrivateKiB": 6760,
+      "maxPeakWorkingKiB": 102136,
+      "addedBytes": [
+        0
+      ]
+    },
+    "count-ignore-case": {
+      "runs": 3,
+      "medianMs": 33305.728,
+      "minMs": 31773.8,
+      "maxMs": 33341.262,
+      "maxPrivateKiB": 6656,
+      "maxPeakWorkingKiB": 102136,
+      "addedBytes": [
+        0
+      ]
+    },
+    "replace-all-exact": {
+      "runs": 3,
+      "medianMs": 5911.618,
+      "minMs": 5843.01,
+      "maxMs": 6246.784,
+      "maxPrivateKiB": 6784,
+      "maxPeakWorkingKiB": 102136,
+      "addedBytes": [
+        8
+      ]
+    }
+  }
+}
