@@ -74,7 +74,7 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 也可使用 `CMakePresets.json` 中的 `msvc-x64` configure/build/test presets。CMake 会自动创建构建目录；正式构建不依赖 `tmp` 或在线下载。
 
-GitHub Actions 的 [MSVC Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 / VS 2022 分别编译 SSE4.2、AVX2、AVX512 三档 x64 Release。每档使用对应的 `MULTIPAD4_SIMD` 参数，并分别上传 `multipad4-msvc-x64-SSE4.2`、`multipad4-msvc-x64-AVX2`、`multipad4-msvc-x64-AVX512` artifacts，包含 `multipad4.exe` 和配套的 `MultiPad4 DarkTheme.ini`；该工作流只构建程序，不运行测试。一档失败不取消其它档位的构建。
+GitHub Actions 的 [Windows Build](.github/workflows/msvc-build.yml) 在 push、PR 或手动触发时，使用 Windows 2022 编译 8 套工具链：MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64。每套均编译 SSE4.2、AVX2、AVX512 三档 x64 Release，使用对应的 `MULTIPAD4_SIMD` 参数，共 24 个构建任务。产物按 `multipad4-<toolchain>-x64-<SIMD>` 命名，包含 `multipad4.exe` 和配套的 `MultiPad4 DarkTheme.ini`，MinGW 和 oneAPI 产物还包含各自的工具链运行库 DLL。该工作流只构建程序，不运行测试；一档失败不取消其它档位的构建。
 
 ### MinGW-w64 / OpenATL
 

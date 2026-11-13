@@ -74,7 +74,7 @@ ctest --test-dir cmake-msvc-build --output-on-failure
 
 The `msvc-x64` configure/build/test presets in `CMakePresets.json` are also available. CMake creates the build directory automatically. Production builds do not depend on `tmp` or online downloads.
 
-The GitHub Actions [MSVC Build](.github/workflows/msvc-build.yml) workflow runs on pushes, pull requests, and manual dispatch. It builds three x64 Release variants on Windows 2022 / VS 2022: SSE4.2, AVX2, and AVX512. Each uses its corresponding `MULTIPAD4_SIMD` value and uploads a `multipad4-msvc-x64-SSE4.2`, `multipad4-msvc-x64-AVX2`, or `multipad4-msvc-x64-AVX512` artifact containing `multipad4.exe` and `MultiPad4 DarkTheme.ini`. This workflow only builds the application; it does not run tests. A failure in one variant does not cancel the others.
+The GitHub Actions [Windows Build](.github/workflows/msvc-build.yml) workflow runs on pushes, pull requests, and manual dispatch. It builds x64 Release variants on Windows 2022 with eight toolchains: MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64. Each toolchain builds SSE4.2, AVX2, and AVX512 using the corresponding `MULTIPAD4_SIMD` value, for 24 build jobs. Artifacts are named `multipad4-<toolchain>-x64-<SIMD>` and contain `multipad4.exe` and `MultiPad4 DarkTheme.ini`; MinGW and oneAPI artifacts also include their toolchain runtime DLLs. This workflow only builds the application; it does not run tests. A failure in one variant does not cancel the others.
 
 ### MinGW-w64 / OpenATL
 
