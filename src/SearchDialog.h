@@ -1,7 +1,7 @@
 #pragma once
 #include "EditorDocument.h"
 #include "SearchResources.h"
-#include <deque>
+#include "FileSearch.h"
 class MainFrame;
 class SearchDialog {
 public:
@@ -39,8 +39,10 @@ private:
     SearchState fileSearch;
     std::wstring fileFilter;
     bool recursive = true, hidden = false;
-    std::deque<std::filesystem::path> directories;
-    std::filesystem::directory_iterator iterator, endIterator;
+    std::unique_ptr<files::FileSearch> fileTask;
+    std::unique_ptr<files::SearchWalker> replaceWalker;
+    unsigned long long fileGeneration = 0;
+    void ReplaceFileStep();
     void StartFiles(bool replace);
     void FileStep();
     void FinishFiles(bool cancelled);

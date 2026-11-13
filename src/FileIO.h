@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <atomic>
 #include <string>
 #include <string_view>
 #include <functional>
@@ -13,6 +14,7 @@ struct ReadOptions {
     bool unicodeDetection = true, fileVariables = true;
     Encoding fallback = Encoding::Ansi;
     ReadBackend backend = ReadBackend::Buffered;
+    const std::atomic<bool>* cancel = nullptr; // Checked between validation and decode chunks.
     unsigned validationWorkers = 0; // 0: up to four workers for >=300 MiB, otherwise serial.
 };
 inline constexpr unsigned long long LargeFileThreshold = 300ULL * 1024 * 1024;

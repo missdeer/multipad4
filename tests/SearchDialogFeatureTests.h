@@ -2,6 +2,17 @@
 #include "../src/MainFrame.h"
 #include "QAArtifacts.h"
 #include <source_location>
+inline void WaitForFileSearch(SearchDialog& dialog) {
+    const auto deadline = GetTickCount64() + 10000;
+    while (GetTickCount64() < deadline) {
+        SendMessageW(dialog.hwnd, WM_TIMER, 1, 0);
+        wchar_t status[512]{};
+        GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, status, 512);
+        if (std::wstring_view(status).starts_with(L"Completed.")) return;
+        Sleep(1);
+    }
+    throw std::runtime_error("File search did not complete.");
+}
 inline void RunSearchAvailabilityTests(MainFrame& frame) {
     auto require = [](bool condition) {
         if (!condition) throw std::runtime_error("Search must remain available without document text.");
@@ -46,7 +57,7 @@ inline void RunSearchResultTargetTests(MainFrame& frame) {
     SetDlgItemTextW(window, IDC_SEARCH_FILTER, L"*.txt");
     auto& results = frame.searchResults; results.Clear();
     SendMessageW(GetDlgItem(window, IDC_SEARCH_FILES), BM_CLICK, 0, 0);
-    for (int i = 0; i < 10; ++i) SendMessageW(window, WM_TIMER, 1, 0);
+    WaitForFileSearch(dialog);
     require(results.lines.size() == 3 && results.lines[2].segments.size() == 2);
     SCNotification click{};
     click.nmhdr.hwndFrom = results.editor; click.nmhdr.code = SCN_DOUBLECLICK;
@@ -83,6 +94,14 @@ inline void RunSearchResultTargetTests(MainFrame& frame) {
     require(opened->Text() == "fixed / needle\n");
     require(source->Text() == "No matching content in the source document.");
     opened->Send(SCI_UNDO); require(opened->Text() == "needle / needle\n");
+    // Disk has two matches; the unsaved editor buffer is authoritative.
+    opened->Load({"needle needle needle"});
+    dialog.SetPage(2); results.Clear();
+    dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(results.lines.size() == 3 && results.lines[2].segments.size() == 3);
+    require(opened->Text() == "needle needle needle");
+    require(files::Read(directory / L"result.txt").utf8 == "needle / needle\n");
+    opened->Send(SCI_SETSAVEPOINT);
     dialog.Close(); require(frame.Close(frame.tabs.GetActivePage()));
     require(frame.Active() == source); require(frame.Close(frame.tabs.GetActivePage()));
     std::filesystem::remove_all(directory);
@@ -146,7 +165,7 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     files::WriteAtomic(directory / L"ignored.bin", {"one"});
     SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_DIRECTORY, directory.c_str()); SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"*.txt");
     results.Clear(); dialog.Execute(IDC_SEARCH_FILES);
-    for (int i = 0; i < 20; ++i) SendMessageW(dialog.hwnd, WM_TIMER, 1, 0);
+    WaitForFileSearch(dialog);
     require(results.lines.size() == 5);
     require(files::Read(directory / L"first.txt").encoding == files::Encoding::Utf16LE);
     CaptureQAWindow(dialog.hwnd, L"Search-Files");
@@ -207,7 +226,7 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
         }, 0);
     });
     require(timer != 0); dialog.Execute(IDC_SEARCH_REPLACE_FILES); KillTimer(nullptr, timer);
-    for (int i = 0; i < 20; ++i) SendMessageW(dialog.hwnd, WM_TIMER, 1, 0);
+    WaitForFileSearch(dialog);
     auto replaced = files::Read(directory / L"first.txt");
     require(replaced.utf8 == "changed changed" && replaced.encoding == files::Encoding::Utf16LE);
     require(files::Read(directory / L"sub" / L"second.txt").encoding == files::Encoding::Utf8Bom);

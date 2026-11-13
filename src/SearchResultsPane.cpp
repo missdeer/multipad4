@@ -41,12 +41,17 @@ void SearchResultsPane::Begin(const std::wstring& query) {
 }
 void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMatch>& matches) {
     if (matches.empty()) return;
-    Target target{document.searchIdentity, document.path, {}};
-    Append("  " + files::ToUtf8(document.path.empty() ? document.Title() : document.path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, target);
+    Add(document.path, document.searchIdentity, matches, document.Title());
+}
+void SearchResultsPane::Add(const std::filesystem::path& path, unsigned long long identity, const std::vector<SearchMatch>& matches, const std::wstring& title) {
+    if (matches.empty()) return;
+    Target target{identity, path, {}};
+    Append("  " + files::ToUtf8(path.empty() ? title : path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, target);
     for (size_t i = 0; i < matches.size();) {
         const auto& match = matches[i]; target.match = match; target.matches.clear();
         auto lineText = match.mappedSource ? match.preview : match.source->substr(match.lineStart,
-            document.Send(SCI_GETLINEENDPOSITION, match.line) - match.lineStart);
+            match.source->find_first_of("\r\n", match.lineStart) == std::string::npos ? std::string::npos :
+            match.source->find_first_of("\r\n", match.lineStart) - match.lineStart);
         auto number = std::to_string(match.line + 1);
         std::string prefix = "\tLine " + number + ": ";
         SearchResultLexer::Line style; style.numberStart = 6; style.numberEnd = 6 + number.size();

@@ -25,6 +25,7 @@ public:
     struct Metrics { Position sourceBytesRead = 0, addedBytes = 0, indexedBlocks = 0, allocatedNodes = 0; };
     Document(std::shared_ptr<files::MappedFile> file, files::Encoding encoding, std::string signature = {});
     ~Document();
+    static std::shared_ptr<Document> FromUtf8(std::shared_ptr<const std::string> text);
     Document(const Document&) = delete;
     Document& operator=(const Document&) = delete;
     Snapshot Capture() const;

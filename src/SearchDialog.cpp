@@ -292,43 +292,75 @@ void SearchDialog::StartFiles(bool replace) {
     std::error_code error;
     if (!std::filesystem::is_directory(path, error)) { Status(L"Select an existing directory."); return; }
     if (replace && MessageBoxW(hwnd, L"Replace matching text in files on disk using the replacement shown here? This cannot be undone. Open files are changed only in their editor buffers.", L"Replace in Files", MB_OKCANCEL | MB_ICONWARNING) != IDOK) return;
-    document->ValidateSearch(replace); // Validate without collecting the active file.
+    if (replace) document->ValidateSearch(true);
+    // Read-only queries are compiled against an empty snapshot by FileSearch.
     fileSearch = document->search; replaceFiles = replace;
     fileFilter = Field(hwnd, IDC_SEARCH_FILTER); if (fileFilter.empty()) fileFilter = L"*.*";
     recursive = IsDlgButtonChecked(hwnd, IDC_SEARCH_RECURSIVE) == BST_CHECKED;
     hidden = IsDlgButtonChecked(hwnd, IDC_SEARCH_HIDDEN) == BST_CHECKED;
-    fileHits = foundFiles = fileErrors = 0; directories.clear(); directories.push_back(std::filesystem::absolute(path)); iterator = {};
-    fileRunning = true; owner->searchResults.Begin(fileSearch.findText);
+    fileHits = foundFiles = fileErrors = 0;
+    files::DirectorySearchOptions options{std::filesystem::absolute(path), fileFilter, recursive, hidden};
+    if (replace) replaceWalker = std::make_unique<files::SearchWalker>(options);
+    else {
+        std::vector<std::filesystem::path> openPaths;
+        for (const auto& d : owner->documents) if (!d->path.empty()) openPaths.push_back(d->path);
+        fileTask = std::make_unique<files::FileSearch>(options, document->MappedSearchOptions(), std::move(openPaths));
+    }
+    fileRunning = true; owner->searchResults.Begin(fileSearch.findText); fileGeneration = owner->searchResults.generation;
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"停止 / 关闭" : L"Stop / Close"); SetTimer(hwnd, 1, 10, nullptr);
     Status(L"Searching files...");
 }
 void SearchDialog::FinishFiles(bool cancelled) {
-    KillTimer(hwnd, 1); fileRunning = false; directories.clear(); iterator = {};
-    owner->searchResults.Finish(fileHits, foundFiles);
+    KillTimer(hwnd, 1); fileRunning = false;
+    if (fileTask) { fileTask->Stop(); fileErrors += fileTask->Errors(); fileTask.reset(); }
+    replaceWalker.reset();
+    if (owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
     Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
 }
 void SearchDialog::FileStep() {
-    // Process one directory entry per timer tick so the modeless UI can cancel.
     if (!fileRunning) return;
+    if (owner->searchResults.generation != fileGeneration) { FinishFiles(true); return; }
+    if (replaceFiles) { ReplaceFileStep(); return; }
+    const auto deadline = GetTickCount64() + 12;
+    files::FileSearchResult result;
+    while (fileTask->Poll(result)) {
+        EditorDocument* open = nullptr;
+        for (const auto& d : owner->documents) {
+            std::error_code error;
+            if (!d->path.empty() && std::filesystem::equivalent(d->path, result.path, error)) { open = d.get(); break; }
+        }
+        if (open) {
+            UseSearch state(*open, fileSearch);
+            if (open->FastView()) {
+                auto snapshot = open->fastView->Model().Capture();
+                auto hits = open->fastView->ArchiveMatches(open->MappedSearchOptions(), false);
+                if (hits->Count()) { owner->searchResults.AddMapped(*open, snapshot, hits); fileHits += hits->Count(); ++foundFiles; }
+            } else {
+                auto matches = open->CollectMatches();
+                if (!matches.empty()) { owner->searchResults.Add(*open, matches); fileHits += matches.size(); ++foundFiles; }
+            }
+        } else if (!result.openDocument) {
+            std::vector<SearchMatch> matches;
+            for (const auto& hit : result.matches)
+                matches.push_back({static_cast<LRESULT>(hit.start), static_cast<LRESULT>(hit.end),
+                    static_cast<LRESULT>(hit.line), static_cast<LRESULT>(hit.lineStart), result.text});
+            if (!matches.empty()) {
+                owner->searchResults.Add(result.path, 0, matches);
+                ++foundFiles; fileHits += matches.size();
+            }
+        }
+        Status(L"Searching: " + result.path.wstring());
+        if (GetTickCount64() >= deadline) break;
+    }
+    if (fileTask->Done()) FinishFiles(false);
+}
+void SearchDialog::ReplaceFileStep() {
+    std::atomic<bool> cancel{false};
+    auto path = replaceWalker->Next(cancel, fileErrors);
+    if (!path) { FinishFiles(false); return; }
+    std::filesystem::directory_entry entry(*path);
     std::error_code error;
-    if (iterator == endIterator) {
-        if (directories.empty()) { FinishFiles(false); return; }
-        auto directory = directories.front(); directories.pop_front();
-        iterator = std::filesystem::directory_iterator(directory, error);
-        if (error) ++fileErrors;
-        return;
-    }
-    const auto entry = *iterator; iterator.increment(error); if (error) { ++fileErrors; iterator = {}; }
-    const auto attributes = GetFileAttributesW(entry.path().c_str());
-    if (attributes == INVALID_FILE_ATTRIBUTES || (!hidden && (attributes & FILE_ATTRIBUTE_HIDDEN))) return;
-    // Never recurse through junctions/symlinks: prevents cycles and escaping the root.
-    if (entry.is_directory(error)) {
-        if (recursive && !(attributes & FILE_ATTRIBUTE_REPARSE_POINT)) directories.push_back(entry.path()); return;
-    }
-    if (!entry.is_regular_file(error)) return;
-    auto filters = fileFilter; std::replace(filters.begin(), filters.end(), L' ', L';');
-    if (!PathMatchSpecW(entry.path().filename().c_str(), filters.c_str())) return;
     try {
         EditorDocument* open = nullptr;
         for (const auto& d : owner->documents) if (!d->path.empty() && std::filesystem::equivalent(d->path, entry.path(), error)) { open = d.get(); break; }

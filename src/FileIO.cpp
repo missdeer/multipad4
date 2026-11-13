@@ -443,6 +443,7 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
     if (!forced && !declared && encoding == Encoding::Utf8) {
         validatedUtf8 = true;
         for (unsigned long long offset = 0; offset < input.size;) {
+            if (options.cancel && options.cancel->load(std::memory_order_relaxed)) Fail("File read cancelled.");
             auto bytes = input.View(offset, ConversionChunk + 8);
             auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
             if (!validUtf8(std::string_view(bytes.data(), count))) { validatedUtf8 = false; encoding = options.fallback; break; }
@@ -450,6 +451,7 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
         }
     }
     for (unsigned long long offset = 0; offset < input.size;) {
+        if (options.cancel && options.cancel->load(std::memory_order_relaxed)) Fail("File read cancelled.");
         auto bytes = input.View(offset, ConversionChunk + 8);
         auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
         bytes = bytes.substr(0, count);

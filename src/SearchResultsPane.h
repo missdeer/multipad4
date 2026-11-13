@@ -19,6 +19,7 @@ public:
     void Clear();
     void Begin(const std::wstring& query);
     void Add(EditorDocument& document, const std::vector<SearchMatch>& matches);
+    void Add(const std::filesystem::path& path, unsigned long long identity, const std::vector<SearchMatch>& matches, const std::wstring& title = {});
     void AddMapped(EditorDocument& document, large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> hits);
     bool LoadMore(size_t archive);
     void Finish(size_t hits, size_t files);

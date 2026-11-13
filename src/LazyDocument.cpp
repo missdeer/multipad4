@@ -74,6 +74,7 @@ class Source {
     struct Index { std::optional<Summary> summary; std::unique_ptr<Index> left, right; std::unique_ptr<Block> block; };
     std::shared_ptr<files::MappedFile> file;
     std::shared_ptr<Journal> journal;
+    std::shared_ptr<const std::string> memory;
     Position journalBegin = 0;
     std::shared_ptr<Counters> counters;
     std::mutex readMutex, indexMutex;
@@ -145,8 +146,11 @@ public:
         file(std::move(original)), counters(std::move(values)), blockCount((file->Size() + IndexBlockBytes - 1) / IndexBlockBytes), width(unitWidth), little(isLittle), size(file->Size()) {}
     Source(std::shared_ptr<Journal> changes, Position begin, Position length, unsigned unitWidth, bool isLittle, std::shared_ptr<Counters> values) :
         journal(std::move(changes)), journalBegin(begin), counters(std::move(values)), blockCount((length + IndexBlockBytes - 1) / IndexBlockBytes), width(unitWidth), little(isLittle), size(length) {}
+    Source(std::shared_ptr<const std::string> text, std::shared_ptr<Counters> values) :
+        memory(std::move(text)), counters(std::move(values)), blockCount((memory->size() + IndexBlockBytes - 1) / IndexBlockBytes), width(1), little(true), size(memory->size()) {}
     std::string Read(Position offset, size_t count, ReadSessions* sessions = nullptr) {
         if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
+        if (memory) return memory->substr(static_cast<size_t>(offset), count);
         if (file) {
             if (sessions) {
                 auto& session = (*sessions)[this]; if (!session) session = file->NewReadSession();
@@ -160,6 +164,7 @@ public:
         while (length) {
             CheckCancel(); const auto count = static_cast<size_t>((std::min)(length, Position(16 * 1024 * 1024)));
             if (file) { std::lock_guard guard(readMutex); file->Visit(offset, count, consume); counters->read += count; }
+            else if (memory) consume(std::string_view(*memory).substr(static_cast<size_t>(offset), count));
             else { auto bytes = journal->Read(journalBegin + offset, count); consume(bytes); }
             offset += count; length -= count;
         }
@@ -255,6 +260,15 @@ Document::Document(std::shared_ptr<files::MappedFile> file, files::Encoding enco
     impl->saved = impl->root;
 }
 Document::Document() : impl(std::make_unique<Impl>()) {}
+std::shared_ptr<Document> Document::FromUtf8(std::shared_ptr<const std::string> text) {
+    auto document = std::shared_ptr<Document>(new Document);
+    if (!text) throw std::invalid_argument("Missing UTF-8 text.");
+    document->impl->width = 1; document->impl->little = true;
+    auto source = std::make_shared<Source>(std::move(text), document->impl->counters);
+    if (source->size) document->impl->root = document->impl->Make({source, 0, source->size});
+    document->MarkSaved();
+    return document;
+}
 std::shared_ptr<Document> Document::Branch(const Snapshot& snapshot) const {
     auto branch = std::shared_ptr<Document>(new Document);
     branch->impl->root = snapshot.root; branch->impl->saved = snapshot.root; branch->impl->counters = impl->counters;
