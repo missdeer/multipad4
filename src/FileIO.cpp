@@ -1,6 +1,10 @@
 #include "FileIO.h"
 #include "SimdText.h"
 #include <windows.h>
+#include <psapi.h>
+#include <atomic>
+#include <barrier>
+#include <thread>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -12,6 +16,75 @@
 #include "FileVariables.h"
 namespace files {
 namespace {
+long long ReadClock() { LARGE_INTEGER tick{}; QueryPerformanceCounter(&tick); return tick.QuadPart; }
+double ReadElapsed(long long start) {
+    static const double scale = [] { LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency); return 1000.0 / frequency.QuadPart; }();
+    return (ReadClock() - start) * scale;
+}
+struct ReadFaults {
+    ReadStats* stats;
+    DWORD start = 0;
+    explicit ReadFaults(ReadStats* trace) : stats(trace) {
+        PROCESS_MEMORY_COUNTERS memory{sizeof(memory)};
+        if (stats && GetProcessMemoryInfo(GetCurrentProcess(), &memory, sizeof(memory))) start = memory.PageFaultCount;
+    }
+    ~ReadFaults() {
+        PROCESS_MEMORY_COUNTERS memory{sizeof(memory)};
+        if (stats && GetProcessMemoryInfo(GetCurrentProcess(), &memory, sizeof(memory))) stats->pageFaults = memory.PageFaultCount - start;
+    }
+};
+struct ReadTimer {
+    double* output;
+    long long start;
+    explicit ReadTimer(double* target) : output(target), start(target ? ReadClock() : 0) {}
+    ~ReadTimer() { if (output) *output += ReadElapsed(start); }
+};
+// The caller participates as worker 0. Both barriers keep the borrowed file
+// view alive until every worker has finished, including on invalid input.
+class Utf8Validator {
+    unsigned workers;
+    std::barrier<> start, finish;
+    std::vector<std::thread> threads;
+    std::string_view input;
+    std::atomic<bool> valid{true};
+    bool stopping = false;
+    void Check(unsigned index) noexcept {
+        size_t begin = input.size() * index / workers, end = input.size() * (index + 1) / workers;
+        while (begin && begin < input.size() && (static_cast<unsigned char>(input[begin]) & 0xC0) == 0x80) ++begin;
+        while (end < input.size() && (static_cast<unsigned char>(input[end]) & 0xC0) == 0x80) ++end;
+        if (!simd::IsValidUtf8(input.substr(begin, end - begin))) valid.store(false, std::memory_order_relaxed);
+    }
+public:
+    explicit Utf8Validator(unsigned count) : workers((std::clamp)(count, 1u, 8u)), start(workers), finish(workers) {
+        try {
+            for (unsigned index = 1; index < workers; ++index) threads.emplace_back([&, index] {
+                for (;;) {
+                    start.arrive_and_wait();
+                    if (stopping) return;
+                    Check(index); finish.arrive_and_wait();
+                }
+            });
+        } catch (...) {
+            stopping = true;
+            for (size_t missing = threads.size() + 1; missing < workers; ++missing) start.arrive_and_drop();
+            start.arrive_and_wait();
+            for (auto& thread : threads) thread.join();
+            throw;
+        }
+    }
+    ~Utf8Validator() {
+        if (!threads.empty()) {
+            stopping = true; start.arrive_and_wait();
+            for (auto& thread : threads) thread.join();
+        }
+    }
+    bool Validate(std::string_view text) {
+        if (workers == 1 || text.size() < 1024 * 1024) return simd::IsValidUtf8(text);
+        input = text; valid.store(true, std::memory_order_relaxed);
+        start.arrive_and_wait(); Check(0); finish.arrive_and_wait();
+        return valid.load(std::memory_order_relaxed);
+    }
+};
 constexpr size_t ConversionChunk = 16 * 1024 * 1024;
 [[noreturn]] void Fail(const char* message) { throw std::runtime_error(message); }
 size_t Utf8End(const std::string& text,size_t start) {
@@ -19,7 +92,7 @@ size_t Utf8End(const std::string& text,size_t start) {
     if(end<text.size())while(end>start && (static_cast<unsigned char>(text[end])&0xC0)==0x80)--end;
     return end;
 }
-void Validate(const std::string& text) {
+void Validate(std::string_view text) {
     if (!simd::IsValidUtf8(text)) Fail("Invalid UTF-8.");
 }
 }
@@ -91,14 +164,13 @@ bool ParseEncodingName(const std::wstring& value, Encoding& encoding) {
     }
     return false;
 }
-Text Decode(const std::string& input, Encoding encoding, bool stripBom) {
-    std::string bytes = input;
+Text Decode(std::string_view bytes, Encoding encoding, bool stripBom) {
     Text result{{}, encoding};
     bool utf16 = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16BE
         || encoding == Encoding::Utf16LEPlain || encoding == Encoding::Utf16BEPlain;
     if (utf16) {
         bool le = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16LEPlain;
-        if (stripBom && ((le && bytes.starts_with("\xFF\xFE")) || (!le && bytes.starts_with("\xFE\xFF")))) bytes.erase(0, 2);
+        if (stripBom && ((le && bytes.starts_with("\xFF\xFE")) || (!le && bytes.starts_with("\xFE\xFF")))) bytes.remove_prefix(2);
         if (bytes.size() % 2) Fail("Truncated UTF-16 file.");
         std::wstring wide(bytes.size()/2, L'\0');
         for (size_t i = 0; i < wide.size(); ++i) {
@@ -107,8 +179,8 @@ Text Decode(const std::string& input, Encoding encoding, bool stripBom) {
         }
         result.utf8 = ToUtf8(wide);
     } else if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
-        if (stripBom && bytes.starts_with("\xEF\xBB\xBF")) bytes.erase(0, 3);
-        Validate(bytes); result.utf8 = std::move(bytes);
+        if (stripBom && bytes.starts_with("\xEF\xBB\xBF")) bytes.remove_prefix(3);
+        Validate(bytes); result.utf8.assign(bytes);
     } else if (!bytes.empty()) {
         auto page=CodePage(encoding);CPINFOEXW info{};if(!GetCPInfoExW(page,0,&info))Fail("Encoding is not installed.");
         for(size_t start=0;start<bytes.size();) {
@@ -193,30 +265,37 @@ static Text DetectBytes(const std::string& bytes, const ReadOptions& options) {
 Text Read(const std::filesystem::path& path, const ReadOptions& options) { return DetectBytes(ReadBytes(path), options); }
 namespace {
 class MappedInput {
+    ReadStats* stats;
     HANDLE file = INVALID_HANDLE_VALUE, mapping = nullptr;
     const char* view = nullptr;
     unsigned long long begin = 0;
     size_t mapped = 0;
+    std::string readBuffer;
     DWORD granularity = 65536;
 public:
     unsigned long long size = 0;
-    explicit MappedInput(const std::filesystem::path& path) {
+    explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped) : stats(trace) {
+        ReadTimer timer(stats ? &stats->mappingMs : nullptr);
         file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
         if (file == INVALID_HANDLE_VALUE) Fail("Cannot open file.");
         LARGE_INTEGER length{};
         if (!GetFileSizeEx(file, &length) || length.QuadPart < 0) { CloseHandle(file); Fail("Cannot read file size."); }
         size = static_cast<unsigned long long>(length.QuadPart);
-        if (size) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
+        if (size && backend == ReadBackend::Mapped) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
         SYSTEM_INFO info{}; GetSystemInfo(&info); granularity = info.dwAllocationGranularity;
     }
     ~MappedInput() { if (view) UnmapViewOfFile(view); if (mapping) CloseHandle(mapping); if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
     MappedInput(const MappedInput&) = delete;
     MappedInput& operator=(const MappedInput&) = delete;
-    std::string Read(unsigned long long offset, size_t count) {
+    // The view expires on the next call. Consumers must finish synchronously.
+    std::string_view View(unsigned long long offset, size_t count) {
         count = static_cast<size_t>((std::min)(size - offset, static_cast<unsigned long long>(count)));
         if (!count) return {};
+        if (stats) stats->sourceBytes += count;
         if (mapping) {
             if (!view || offset < begin || offset + count > begin + mapped) {
+                ReadTimer timer(stats ? &stats->mappingMs : nullptr);
+                if (stats) ++stats->mappings;
                 if (view) UnmapViewOfFile(view);
                 view = nullptr; begin = offset / granularity * granularity;
                 size_t wanted = static_cast<size_t>((std::min)(size - begin, 64ULL * 1024 * 1024));
@@ -228,17 +307,23 @@ public:
                     wanted = (std::max)(required, wanted / 2);
                 }
             }
-            if (view) return std::string(view + static_cast<size_t>(offset - begin), count);
+            if (view) return std::string_view(view + static_cast<size_t>(offset - begin), count);
         }
         // Mapping failure degrades to bounded ordinary I/O.
+        ReadTimer timer(stats ? &stats->copyOrReadMs : nullptr);
         LARGE_INTEGER position{}; position.QuadPart = offset;
         if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) Fail("Cannot seek file.");
-        std::string bytes(count, '\0'); DWORD read = 0;
-        if (!ReadFile(file, bytes.data(), static_cast<DWORD>(count), &read, nullptr) || read != count) Fail("Cannot read complete file.");
-        return bytes;
+        readBuffer.resize(count); DWORD read = 0;
+        if (!ReadFile(file, readBuffer.data(), static_cast<DWORD>(count), &read, nullptr) || read != count) Fail("Cannot read complete file.");
+        return readBuffer;
+    }
+    std::string Read(unsigned long long offset, size_t count) {
+        auto bytes = View(offset, count);
+        ReadTimer timer(stats ? &stats->copyOrReadMs : nullptr);
+        return std::string(bytes);
     }
 };
-size_t ChunkEnd(const std::string& bytes, Encoding encoding, bool last) {
+size_t ChunkEnd(std::string_view bytes, Encoding encoding, bool last) {
     if (last) return bytes.size();
     size_t end = bytes.size() - 8;
     if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
@@ -271,9 +356,9 @@ size_t ChunkEnd(const std::string& bytes, Encoding encoding, bool last) {
 struct MappedFile::Impl {
     MappedInput input;
     unsigned long long bytesRead = 0;
-    explicit Impl(const std::filesystem::path& path) : input(path) {}
+    explicit Impl(const std::filesystem::path& path, ReadStats* stats) : input(path, stats) {}
 };
-MappedFile::MappedFile(const std::filesystem::path& path) : impl(std::make_unique<Impl>(path)) {}
+MappedFile::MappedFile(const std::filesystem::path& path, ReadStats* stats) : impl(std::make_unique<Impl>(path, stats)) {}
 MappedFile::~MappedFile() = default;
 unsigned long long MappedFile::Size() const { return impl->input.size; }
 unsigned long long MappedFile::BytesRead() const { return impl->bytesRead; }
@@ -282,8 +367,12 @@ std::string MappedFile::Read(unsigned long long offset, size_t count) {
     auto bytes = impl->input.Read(offset, count); impl->bytesRead += bytes.size(); return bytes;
 }
 Text DetectSample(const std::string& bytes, const ReadOptions& options) { return DetectBytes(bytes, options); }
-Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume, const ReadOptions& options, std::optional<Encoding> forced) {
-    MappedInput input(path);
+Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume, const ReadOptions& options, std::optional<Encoding> forced, ReadStats* stats) {
+    if (stats) *stats = {};
+    ReadFaults faults(stats);
+    ReadTimer total(stats ? &stats->totalMs : nullptr);
+    const auto probeStart = stats ? ReadClock() : 0;
+    MappedInput input(path, stats, options.backend);
     auto sample = input.Read(0, 1024 * 1024 + 8);
     if (sample.size() > 1024 * 1024) {
         const int unicode = simd::DetectUtf16(sample);
@@ -314,28 +403,49 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
             if (!declared) { auto detection = options; detection.fileVariables = false; encoding = DetectBytes(sample, detection).encoding; }
         }
     }
+    unsigned workers = options.validationWorkers;
+    if (!workers) workers = input.size >= LargeFileThreshold ? (std::min)(4u, (std::max)(1u, std::thread::hardware_concurrency())) : 1;
+    if (encoding != Encoding::Utf8 && encoding != Encoding::Utf8Bom) workers = 1;
+    Utf8Validator validator(workers);
+    if (stats) stats->probeMs = ReadElapsed(probeStart) - stats->mappingMs - stats->copyOrReadMs;
+    auto validUtf8 = [&](std::string_view text) {
+        ReadTimer timer(stats ? &stats->validationMs : nullptr);
+        if (stats) stats->validationBytes += text.size();
+        return validator.Validate(text);
+    };
+    auto deliver = [&](std::string_view text) {
+        ReadTimer timer(stats ? &stats->callbackMs : nullptr);
+        if (stats) stats->deliveredBytes += text.size();
+        consume(text);
+    };
     // A sample cannot prove UTF-8 validity. Validate the entire byte stream
     // before delivering data so late legacy bytes cannot leave a mixed buffer.
+    bool validatedUtf8 = false;
     if (!forced && !declared && encoding == Encoding::Utf8) {
+        validatedUtf8 = true;
         for (unsigned long long offset = 0; offset < input.size;) {
-            auto bytes = input.Read(offset, ConversionChunk + 8);
+            auto bytes = input.View(offset, ConversionChunk + 8);
             auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
-            if (!simd::IsValidUtf8(std::string_view(bytes.data(), count))) { encoding = options.fallback; break; }
+            if (!validUtf8(std::string_view(bytes.data(), count))) { validatedUtf8 = false; encoding = options.fallback; break; }
             offset += count;
         }
     }
     for (unsigned long long offset = 0; offset < input.size;) {
-        auto bytes = input.Read(offset, ConversionChunk + 8);
+        auto bytes = input.View(offset, ConversionChunk + 8);
         auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
-        bytes.resize(count);
+        bytes = bytes.substr(0, count);
         if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
             std::string_view text(bytes);
             if (!offset && text.starts_with("\xEF\xBB\xBF")) text.remove_prefix(3);
-            if (!simd::IsValidUtf8(text)) Fail("Invalid UTF-8.");
-            consume(text);
+            if (!validatedUtf8 && !validUtf8(text)) Fail("Invalid UTF-8.");
+            deliver(text);
         } else {
-            auto decoded = Decode(bytes, encoding, offset == 0);
-            consume(decoded.utf8);
+            Text decoded;
+            { ReadTimer timer(stats ? &stats->decodeMs : nullptr);
+                if (stats) stats->decodedBytes += bytes.size();
+                decoded = Decode(bytes, encoding, offset == 0);
+            }
+            deliver(decoded.utf8);
         }
         offset += count;
     }

@@ -1,0 +1,12 @@
+paired,reference,0,total=4125.162,map=502.518,read/copy=3024.123,validate=352.943,decode=0.000,callback=0.000,faults=2627456,source=5369760256,validated=5368709120,delivered=5368709120
+paired,optimized,0,total=1047.958,map=0.047,read/copy=903.903,validate=142.432,decode=0.000,callback=0.084,faults=4636,source=5369760256,validated=5368709120,delivered=5368709120
+paired,optimized,1,total=1257.800,map=0.054,read/copy=1115.273,validate=140.768,decode=0.000,callback=0.101,faults=4636,source=5369760256,validated=5368709120,delivered=5368709120
+paired,reference,1,total=4673.951,map=505.124,read/copy=3586.372,validate=343.313,decode=0.000,callback=0.000,faults=2627475,source=5369760256,validated=5368709120,delivered=5368709120
+paired,reference,2,total=3742.152,map=506.383,read/copy=2606.502,validate=350.765,decode=0.000,callback=0.000,faults=2627471,source=5369760256,validated=5368709120,delivered=5368709120
+paired,optimized,2,total=1078.210,map=0.044,read/copy=922.269,validate=154.119,decode=0.000,callback=0.082,faults=4636,source=5369760256,validated=5368709120,delivered=5368709120
+paired,optimized,3,total=1087.699,map=0.051,read/copy=933.891,validate=152.121,decode=0.000,callback=0.079,faults=4636,source=5369760256,validated=5368709120,delivered=5368709120
+paired,reference,3,total=3463.203,map=525.956,read/copy=2403.272,validate=349.017,decode=0.000,callback=0.000,faults=2627456,source=5369760256,validated=5368709120,delivered=5368709120
+paired,reference,4,total=3394.237,map=524.976,read/copy=2352.823,validate=347.105,decode=0.000,callback=0.000,faults=2627456,source=5369760256,validated=5368709120,delivered=5368709120
+paired,optimized,4,total=1098.531,map=0.049,read/copy=944.578,validate=152.831,decode=0.000,callback=0.098,faults=4637,source=5369760256,validated=5368709120,delivered=5368709120
+paired summary,reference,median=3742.152,min=3394.237,max=4673.951,map=506.383,read/copy=2606.502,validate=350.765,faults=2627471
+paired summary,optimized,median=1087.699,min=1047.958,max=1257.800,map=0.051,read/copy=933.891,validate=152.121,faults=4636

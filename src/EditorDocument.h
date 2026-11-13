@@ -23,7 +23,7 @@ struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
     const unsigned long long searchIdentity = ++nextSearchIdentity;
     ~EditorDocument() { fastView.reset(); if (hwnd && ::IsWindow(hwnd)) ::DestroyWindow(hwnd); }
-    struct LoadMetrics { unsigned long long allocation = 0, readDecode = 0, lineScan = 0, insertion = 0, configure = 0; } loadMetrics;
+    struct LoadMetrics { files::ReadStats fileRead; double allocation = 0, readDecode = 0, lineScan = 0, insertion = 0, configure = 0; } loadMetrics;
     std::unique_ptr<FastFileView> fastView;
     bool FastView() const { return fastView && fastView->Active(); }
     HWND ViewWindow() const { return fastView ? fastView->Window() : hwnd; }

@@ -1,0 +1,6 @@
+forced UTF8: file=5368709120, runs=5, total median=3315.525 min=3276.512 max=3350.151 ms; map=529.959 copy/read=2281.125 probe=0.002 validate=334.521 decode=0.000 callback=0.101 ms; source=5369760256 validateBytes=5368709120 decodeBytes=0 delivered=5368709120 maps=107
+auto: file=5368709120, runs=5, total median=6618.125 min=6608.831 max=6642.483 ms; map=1057.393 copy/read=4566.224 probe=0.293 validate=676.301 decode=0.000 callback=0.100 ms; source=10738472952 validateBytes=10737418240 decodeBytes=0 delivered=5368709120 maps=216
+resident SIMD validation, workers=1, bytes=2147483648: median=133.728 min=129.785 max=139.339 ms
+resident SIMD validation, workers=2, bytes=2147483648: median=69.067 min=66.841 max=77.813 ms
+resident SIMD validation, workers=4, bytes=2147483648: median=42.905 min=42.264 max=43.744 ms
+resident SIMD validation, workers=8, bytes=2147483648: median=34.744 min=33.659 max=36.763 ms

@@ -2,18 +2,88 @@
 #include "MainFrame.h"
 #include "AutoSave.h"
 #include "QAArtifacts.h"
+#include "FileReadBenchmark.h"
 #include <fstream>
 #include <cstdio>
 #include <source_location>
 #include <psapi.h>
+#include <chrono>
+inline void RunEndToEndReadBenchmark(MainFrame& frame, const std::filesystem::path& path) {
+    struct Result { double totalMs; EditorDocument::LoadMetrics stages; LRESULT length, lines; };
+    auto require = [](bool value) { if (!value) throw std::runtime_error("End-to-end read benchmark verification failed."); };
+    const auto size = std::filesystem::file_size(path);
+    require(size >= files::LargeFileThreshold && size <= static_cast<unsigned long long>(PTRDIFF_MAX));
+    LRESULT expectedLines = -1;
+    auto execute = [&](bool optimized) {
+        // Each trial owns a fresh real MDI document. The previous multi-gigabyte
+        // document has been closed before this timer starts.
+        const auto start = std::chrono::steady_clock::now();
+        auto* document = frame.NewDocument(); require(document != nullptr);
+        document->path = path;
+        if (optimized) document->LoadFile(path, {}, files::Encoding::Utf8);
+        else document->LoadStream(static_cast<size_t>(size), SC_DOCUMENTOPTION_TEXT_LARGE | SC_DOCUMENTOPTION_STYLES_NONE,
+            [&](const files::ChunkConsumer& consume) {
+                document->loadMetrics.fileRead = ReferenceCopiedRead(path, consume);
+                return files::Encoding::Utf8;
+            });
+        document->Send(SCI_SETREADONLY, FALSE);
+        frame.Refresh();
+        RedrawWindow(frame, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        Result result{std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(),
+            document->loadMetrics, document->Send(SCI_GETLENGTH), document->Send(SCI_GETLINECOUNT)};
+        // Correctness checks and destruction are deliberately outside the timer.
+        require(!document->FastView() && !document->Send(SCI_GETREADONLY) && !document->Modified());
+        require(result.length == static_cast<LRESULT>(size));
+        require(result.stages.fileRead.deliveredBytes == size && result.stages.fileRead.validationBytes == size);
+        if (expectedLines < 0) expectedLines = result.lines;
+        require(result.lines == expectedLines);
+        require(document->Send(SCI_GETLINEENDPOSITION, result.lines - 1) == result.length);
+        {
+            files::MappedFile source(path);
+            for (auto offset : {0ULL, size / 2, size - 128}) require(document->Range(static_cast<size_t>(offset), 128) == source.Read(offset, 128));
+        }
+        document->Send(SCI_GOTOPOS, result.length);
+        require(document->Send(SCI_GETCURRENTPOS) == result.length);
+        document->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
+        require(document->Modified() && document->Send(SCI_GETLENGTH) == result.length + 1);
+        document->Send(SCI_UNDO); require(!document->Modified() && document->Send(SCI_GETLENGTH) == result.length);
+        require(frame.Close(frame.tabs.GetActivePage()));
+        return result;
+    };
+    frame.ShowWindow(SW_SHOWNORMAL); frame.UpdateWindow();
+    std::vector<Result> runs[2];
+    for (int run = -1; run < 5; ++run) for (int item = 0; item < 2; ++item) {
+        const int variant = run >= 0 && run % 2 ? 1 - item : item;
+        const auto result = execute(variant != 0);
+        if (run >= 0) {
+            runs[variant].push_back(result);
+            const auto& timing = result.stages; const auto& file = timing.fileRead;
+            printf("e2e,%s,%d,total=%.3f,read=%.3f,eol=%.3f,insert=%.3f,allocate=%.3f,configure=%.3f,sourceRead=%.3f,validate=%.3f,delivered=%llu,validated=%llu,length=%lld,lines=%lld\n",
+                variant ? "optimized" : "reference", run, result.totalMs, timing.readDecode, timing.lineScan, timing.insertion,
+                timing.allocation, timing.configure, file.copyOrReadMs, file.validationMs, file.deliveredBytes, file.validationBytes,
+                static_cast<long long>(result.length), static_cast<long long>(result.lines));
+            fflush(stdout);
+        }
+    }
+    for (int variant = 0; variant < 2; ++variant) {
+        auto values = runs[variant]; std::sort(values.begin(), values.end(), [](const auto& a, const auto& b) { return a.totalMs < b.totalMs; });
+        const auto& median = values[2];
+        printf("e2e summary,%s,median=%.3f,min=%.3f,max=%.3f,read=%.3f,eol=%.3f,insert=%.3f,length=%lld,lines=%lld\n",
+            variant ? "optimized" : "reference", median.totalMs, values.front().totalMs, values.back().totalMs,
+            median.stages.readDecode, median.stages.lineScan, median.stages.insertion,
+            static_cast<long long>(median.length), static_cast<long long>(median.lines));
+    }
+}
 inline void RunLargeFileTests(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) { if (!ok) throw std::runtime_error("Large file integration check failed at line " + std::to_string(where.line())); };
     wchar_t benchmarkPath[32768]{};
     if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_SOURCE", benchmarkPath, 32768)) {
+        wchar_t paired[8]{};
+        if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_E2E", paired, 8)) { RunEndToEndReadBenchmark(frame, benchmarkPath); return; }
         frame.ShowWindow(SW_SHOWNORMAL); frame.UpdateWindow();
-        auto start = GetTickCount64(); require(frame.Open(benchmarkPath));
+        auto start = std::chrono::steady_clock::now(); require(frame.Open(benchmarkPath));
         RedrawWindow(frame, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-        auto elapsed = GetTickCount64() - start;
+        auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
         auto* document = frame.Active();
         require(document && document->FastView());
         auto& view = *document->fastView;
@@ -21,7 +91,7 @@ inline void RunLargeFileTests(MainFrame& frame) {
         require(readAtOpen < 512 * 1024 && document->Send(SCI_GETLENGTH) <= 512 * 1024);
         require(view.Size() == std::filesystem::file_size(benchmarkPath));
         PROCESS_MEMORY_COUNTERS memory{sizeof(memory)}; GetProcessMemoryInfo(GetCurrentProcess(), &memory, sizeof(memory));
-        fprintf(stdout, "%llu bytes: Open plus first paint %llu ms; source bytes requested %llu; peak working set %zu MiB.\n", view.Size(), elapsed, readAtOpen, memory.PeakWorkingSetSize / (1024 * 1024));
+        fprintf(stdout, "%llu bytes: Open plus first paint %.3f ms; source bytes requested %llu; peak working set %zu MiB.\n", view.Size(), elapsed, readAtOpen, memory.PeakWorkingSetSize / (1024 * 1024));
         for (auto offset : {view.Size() / 4, view.Size() / 2, view.Size() - 1, view.Size()}) {
             view.Seek(offset, offset == view.Size());
             require(view.Begin() <= offset && view.End() <= view.Size() && view.End() > view.Begin());
@@ -41,7 +111,9 @@ inline void RunLargeFileTests(MainFrame& frame) {
         if (GetEnvironmentVariableW(L"MULTIPAD4_LARGE_TEST_PROFILE", profile, 8)) {
             view.LoadForEditing();
             const auto& timing = document->loadMetrics;
-            fprintf(stdout, "Full load: allocation %llu ms, read/validate/decode %llu ms, EOL/line reserve %llu ms, Scintilla insertion %llu ms, configure %llu ms.\n", timing.allocation, timing.readDecode, timing.lineScan, timing.insertion, timing.configure);
+            const auto& detail = timing.fileRead;
+            fprintf(stdout, "File detail: total %.3f ms, mapping %.3f ms, read/copy %.3f ms, validation %.3f ms, decode %.3f ms, callbacks %.3f ms, page faults %lu, source %llu, validated %llu, decoded %llu.\n", detail.totalMs, detail.mappingMs, detail.copyOrReadMs, detail.validationMs, detail.decodeMs, detail.callbackMs, detail.pageFaults, detail.sourceBytes, detail.validationBytes, detail.decodedBytes);
+            fprintf(stdout, "Full load: allocation %.3f ms, read/validate/decode %.3f ms, EOL/line reserve %.3f ms, Scintilla insertion %.3f ms, configure %.3f ms.\n", timing.allocation, timing.readDecode, timing.lineScan, timing.insertion, timing.configure);
         }
         require(frame.Close(frame.tabs.GetActivePage())); return;
     }

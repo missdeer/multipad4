@@ -1,0 +1,12 @@
+e2e,reference,0,total=6105.209,read=4170.686,eol=393.314,insert=1530.465,allocate=0.034,configure=0.087,sourceRead=2842.348,validate=392.528,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,optimized,0,total=3554.294,read=1416.262,eol=393.763,insert=1734.316,allocate=0.059,configure=0.089,sourceRead=1241.538,validate=171.642,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,optimized,1,total=3743.760,read=1500.536,eol=401.201,insert=1831.677,allocate=0.034,configure=0.081,sourceRead=1324.101,validate=173.429,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,reference,1,total=6129.949,read=4218.989,eol=393.942,insert=1507.017,allocate=0.036,configure=0.075,sourceRead=2885.247,validate=400.368,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,reference,2,total=6185.532,read=4204.297,eol=397.255,insert=1574.545,allocate=0.032,configure=0.114,sourceRead=2832.704,validate=408.298,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,optimized,2,total=3309.017,read=1374.582,eol=385.352,insert=1536.432,allocate=0.059,configure=0.162,sourceRead=1206.885,validate=164.708,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,optimized,3,total=3800.971,read=1630.001,eol=391.825,insert=1768.393,allocate=0.040,configure=0.080,sourceRead=1457.461,validate=169.878,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,reference,3,total=6534.458,read=4362.987,eol=423.837,insert=1736.112,allocate=0.043,configure=0.169,sourceRead=2993.401,validate=418.992,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,reference,4,total=6123.727,read=4134.101,eol=398.312,insert=1582.169,allocate=0.083,configure=0.081,sourceRead=2784.130,validate=408.364,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e,optimized,4,total=3579.671,read=1398.493,eol=383.027,insert=1787.910,allocate=0.032,configure=0.090,sourceRead=1223.506,validate=171.766,delivered=5368709120,validated=5368709120,length=5368709120,lines=41943041
+e2e summary,reference,median=6129.949,min=6105.209,max=6534.458,read=4218.989,eol=393.942,insert=1507.017,length=5368709120,lines=41943041
+e2e summary,optimized,median=3579.671,min=3309.017,max=3800.971,read=1398.493,eol=383.027,insert=1787.910,length=5368709120,lines=41943041

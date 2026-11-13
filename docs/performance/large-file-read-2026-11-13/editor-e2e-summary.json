@@ -1,0 +1,221 @@
+{
+  "method": "Same-process interleaved old-reader reference and optimized reader feeding the same real Scintilla LoadStream. One warm-up per variant, five recorded runs per variant. Timer includes fresh MDI document creation, full load, editable state, Refresh and synchronous first paint. Verification and document destruction excluded.",
+  "input": {
+    "file": "tmp/random-text-5GiB.txt",
+    "bytes": 5368709120,
+    "encoding": "ASCII / UTF-8 without BOM",
+    "sha256": "5ac1ca64feb2c139decf370968c91cfd6122b25256645e8e3e2cb7821f941e27",
+    "ascii_only_verified": true,
+    "verified_bytes": 5368709120
+  },
+  "runs": [
+    {
+      "variant": "reference",
+      "run": 0,
+      "total": 6105.209,
+      "read": 4170.686,
+      "eol": 393.314,
+      "insert": 1530.465,
+      "allocate": 0.034,
+      "configure": 0.087,
+      "sourceRead": 2842.348,
+      "validate": 392.528,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "optimized",
+      "run": 0,
+      "total": 3554.294,
+      "read": 1416.262,
+      "eol": 393.763,
+      "insert": 1734.316,
+      "allocate": 0.059,
+      "configure": 0.089,
+      "sourceRead": 1241.538,
+      "validate": 171.642,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "optimized",
+      "run": 1,
+      "total": 3743.76,
+      "read": 1500.536,
+      "eol": 401.201,
+      "insert": 1831.677,
+      "allocate": 0.034,
+      "configure": 0.081,
+      "sourceRead": 1324.101,
+      "validate": 173.429,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "reference",
+      "run": 1,
+      "total": 6129.949,
+      "read": 4218.989,
+      "eol": 393.942,
+      "insert": 1507.017,
+      "allocate": 0.036,
+      "configure": 0.075,
+      "sourceRead": 2885.247,
+      "validate": 400.368,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "reference",
+      "run": 2,
+      "total": 6185.532,
+      "read": 4204.297,
+      "eol": 397.255,
+      "insert": 1574.545,
+      "allocate": 0.032,
+      "configure": 0.114,
+      "sourceRead": 2832.704,
+      "validate": 408.298,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "optimized",
+      "run": 2,
+      "total": 3309.017,
+      "read": 1374.582,
+      "eol": 385.352,
+      "insert": 1536.432,
+      "allocate": 0.059,
+      "configure": 0.162,
+      "sourceRead": 1206.885,
+      "validate": 164.708,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "optimized",
+      "run": 3,
+      "total": 3800.971,
+      "read": 1630.001,
+      "eol": 391.825,
+      "insert": 1768.393,
+      "allocate": 0.04,
+      "configure": 0.08,
+      "sourceRead": 1457.461,
+      "validate": 169.878,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "reference",
+      "run": 3,
+      "total": 6534.458,
+      "read": 4362.987,
+      "eol": 423.837,
+      "insert": 1736.112,
+      "allocate": 0.043,
+      "configure": 0.169,
+      "sourceRead": 2993.401,
+      "validate": 418.992,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "reference",
+      "run": 4,
+      "total": 6123.727,
+      "read": 4134.101,
+      "eol": 398.312,
+      "insert": 1582.169,
+      "allocate": 0.083,
+      "configure": 0.081,
+      "sourceRead": 2784.13,
+      "validate": 408.364,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    },
+    {
+      "variant": "optimized",
+      "run": 4,
+      "total": 3579.671,
+      "read": 1398.493,
+      "eol": 383.027,
+      "insert": 1787.91,
+      "allocate": 0.032,
+      "configure": 0.09,
+      "sourceRead": 1223.506,
+      "validate": 171.766,
+      "delivered": 5368709120,
+      "validated": 5368709120,
+      "length": 5368709120,
+      "lines": 41943041
+    }
+  ],
+  "summary": {
+    "reference": {
+      "total": {
+        "median": 6129.949,
+        "min": 6105.209,
+        "max": 6534.458
+      },
+      "read": {
+        "median": 4204.297,
+        "min": 4134.101,
+        "max": 4362.987
+      },
+      "eol": {
+        "median": 397.255,
+        "min": 393.314,
+        "max": 423.837
+      },
+      "insert": {
+        "median": 1574.545,
+        "min": 1507.017,
+        "max": 1736.112
+      }
+    },
+    "optimized": {
+      "total": {
+        "median": 3579.671,
+        "min": 3309.017,
+        "max": 3800.971
+      },
+      "read": {
+        "median": 1416.262,
+        "min": 1374.582,
+        "max": 1630.001
+      },
+      "eol": {
+        "median": 391.825,
+        "min": 383.027,
+        "max": 401.201
+      },
+      "insert": {
+        "median": 1768.393,
+        "min": 1536.432,
+        "max": 1831.677
+      }
+    },
+    "speedup_ratio": 1.7124336286770487,
+    "time_reduction_percent": 41.603576147207754
+  }
+}

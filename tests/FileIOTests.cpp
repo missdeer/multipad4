@@ -1,10 +1,17 @@
 #include "FileIO.h"
+#include "FileReadBenchmark.h"
 #include <windows.h>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 void Require(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
-int main() {
+int wmain(int argc, wchar_t** argv) {
+    if (argc == 3) {
+        try {
+            if (wcscmp(argv[1], L"--benchmark-read") == 0) return RunFileReadBenchmark(argv[2]);
+            if (wcscmp(argv[1], L"--benchmark-read-paired") == 0) return RunPairedFileReadBenchmark(argv[2]);
+        } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+    }
     auto dir = std::filesystem::temp_directory_path() / (L"MultiPad4-tests-" + std::to_wstring(GetCurrentProcessId()));
     try {
         std::filesystem::create_directories(dir);
@@ -13,6 +20,38 @@ int main() {
         const std::wstring surrogateBoundary = std::wstring(16 * 1024 * 1024 - 1, L'a') + L"😀";
         Require(files::FromUtf8(files::ToUtf8(surrogateBoundary)) == surrogateBoundary, "Chunk boundary split a surrogate pair");
         auto path = dir / L"中文测试.txt";
+        // Exercise UTF-8 characters across both worker partitions and I/O blocks.
+        auto parallelText = std::string(16 * 1024 * 1024 + 37, 'a');
+        for (size_t boundary : {size_t(4 * 1024 * 1024), size_t(8 * 1024 * 1024), size_t(12 * 1024 * 1024), size_t(16 * 1024 * 1024)})
+            parallelText.replace(boundary - 1, 4, "\xF0\x9F\x98\x80");
+        files::WriteAtomic(path, {parallelText});
+        for (auto backend : {files::ReadBackend::Mapped, files::ReadBackend::Buffered}) {
+            for (unsigned workers : {1u, 2u, 4u, 8u}) {
+                files::ReadOptions options; options.backend = backend; options.validationWorkers = workers;
+                for (bool automatic : {false, true}) {
+                    std::string actual; files::ReadStats stats;
+                    files::ReadChunks(path, [&](std::string_view bytes) { actual += bytes; }, options,
+                        automatic ? std::optional<files::Encoding>{} : files::Encoding::Utf8, &stats);
+                    Require(actual == parallelText, "Parallel UTF-8 streaming changed text at a boundary");
+                    Require(stats.validationBytes == parallelText.size() && stats.decodedBytes == 0, "UTF-8 validation was repeated or transcoded");
+                }
+            }
+        }
+        {
+            auto invalid = parallelText;
+            invalid.replace(4 * 1024 * 1024 - 1, 4, "\xED\xA0\x80\x80");
+            { std::ofstream out(path, std::ios::binary); out.write(invalid.data(), invalid.size()); }
+            files::ReadOptions options; options.validationWorkers = 4;
+            bool rejected = false; size_t delivered = 0;
+            try { files::ReadChunks(path, [&](std::string_view bytes) { delivered += bytes.size(); }, options, files::Encoding::Utf8); }
+            catch (const std::runtime_error&) { rejected = true; }
+            Require(rejected && delivered == 0, "Parallel validator accepted an invalid UTF-8 surrogate at a worker boundary");
+            files::WriteAtomic(path, {parallelText});
+            bool consumerFailed = false;
+            try { files::ReadChunks(path, [](std::string_view) { throw std::runtime_error("consumer failure"); }, options, files::Encoding::Utf8); }
+            catch (const std::runtime_error&) { consumerFailed = true; }
+            Require(consumerFailed, "Parallel reader failed to propagate a consumer exception");
+        }
         if (IsValidCodePage(932)) {
             const auto shiftJis = files::FromCodePage(932);
             const std::string text = std::string(16 * 1024 * 1024 - 1, 'a') + "日本語";

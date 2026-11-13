@@ -1,0 +1,52 @@
+backend=mapped
+raw,forced,0,total=2667.330,map=686.888,copy/read=0.573,probe=0.002,validate=1972.826,decode=0.000,callback=0.103,other=6.938
+raw,pageFaults=1313645,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,1,total=3094.697,map=820.913,copy/read=0.667,probe=0.003,validate=2266.762,decode=0.000,callback=0.133,other=6.220
+raw,pageFaults=1313645,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,2,total=3163.936,map=830.708,copy/read=0.603,probe=0.003,validate=2324.292,decode=0.000,callback=0.139,other=8.191
+raw,pageFaults=1313645,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,3,total=2422.122,map=610.778,copy/read=0.702,probe=0.004,validate=1805.737,decode=0.000,callback=0.102,other=4.799
+raw,pageFaults=1313645,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,4,total=2261.233,map=562.316,copy/read=0.634,probe=0.002,validate=1693.111,decode=0.000,callback=0.081,other=5.088
+raw,pageFaults=1313645,sourceBytes=5369760256,validateBytes=5368709120
+forced UTF8: file=5368709120, runs=5, total median=2667.330 min=2261.233 max=3163.936 ms; map=686.888 copy/read=0.634 probe=0.003 validate=1972.826 decode=0.000 callback=0.103 ms; source=5369760256 validateBytes=5368709120 decodeBytes=0 delivered=5368709120 maps=107
+backend=mapped
+raw,auto,0,total=2267.511,map=570.312,copy/read=0.597,probe=0.377,validate=1694.225,decode=0.000,callback=0.007,other=1.992
+raw,pageFaults=1314801,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,1,total=2246.504,map=568.280,copy/read=0.841,probe=0.555,validate=1674.827,decode=0.000,callback=0.007,other=1.994
+raw,pageFaults=1314801,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,2,total=2225.021,map=561.512,copy/read=0.606,probe=0.338,validate=1660.594,decode=0.000,callback=0.008,other=1.964
+raw,pageFaults=1314801,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,3,total=2223.595,map=561.571,copy/read=0.644,probe=0.378,validate=1659.066,decode=0.000,callback=0.010,other=1.926
+raw,pageFaults=1314801,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,4,total=2217.246,map=559.809,copy/read=0.569,probe=0.347,validate=1654.528,decode=0.000,callback=0.010,other=1.982
+raw,pageFaults=1314801,sourceBytes=10738472952,validateBytes=5368709120
+auto: file=5368709120, runs=5, total median=2225.021 min=2217.246 max=2267.511 ms; map=561.571 copy/read=0.606 probe=0.377 validate=1660.594 decode=0.000 callback=0.008 ms; source=10738472952 validateBytes=5368709120 decodeBytes=0 delivered=5368709120 maps=216
+backend=buffered ReadFile
+raw,forced,0,total=1306.352,map=0.084,copy/read=978.719,probe=0.002,validate=326.725,decode=0.000,callback=0.108,other=0.712
+raw,pageFaults=4620,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,1,total=1312.844,map=0.078,copy/read=986.088,probe=0.002,validate=325.465,decode=0.000,callback=0.101,other=1.111
+raw,pageFaults=4620,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,2,total=1302.969,map=0.155,copy/read=975.891,probe=0.002,validate=325.999,decode=0.000,callback=0.122,other=0.800
+raw,pageFaults=4620,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,3,total=1301.795,map=0.095,copy/read=974.896,probe=0.002,validate=325.823,decode=0.000,callback=0.113,other=0.866
+raw,pageFaults=4620,sourceBytes=5369760256,validateBytes=5368709120
+raw,forced,4,total=1302.123,map=0.122,copy/read=976.990,probe=0.002,validate=324.171,decode=0.000,callback=0.121,other=0.717
+raw,pageFaults=4620,sourceBytes=5369760256,validateBytes=5368709120
+forced UTF8: file=5368709120, runs=5, total median=1302.969 min=1301.795 max=1312.844 ms; map=0.095 copy/read=976.990 probe=0.002 validate=325.823 decode=0.000 callback=0.113 ms; source=5369760256 validateBytes=5368709120 decodeBytes=0 delivered=5368709120 maps=0
+backend=buffered ReadFile
+raw,auto,0,total=2249.266,map=0.081,copy/read=1920.980,probe=0.311,validate=327.014,decode=0.000,callback=0.089,other=0.792
+raw,pageFaults=4878,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,1,total=2228.517,map=0.094,copy/read=1905.260,probe=0.333,validate=321.925,decode=0.000,callback=0.083,other=0.823
+raw,pageFaults=4878,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,2,total=2276.159,map=0.089,copy/read=1945.267,probe=0.345,validate=329.546,decode=0.000,callback=0.093,other=0.820
+raw,pageFaults=4878,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,3,total=2246.890,map=0.096,copy/read=1924.983,probe=0.343,validate=320.485,decode=0.000,callback=0.093,other=0.890
+raw,pageFaults=4878,sourceBytes=10738472952,validateBytes=5368709120
+raw,auto,4,total=2271.187,map=0.098,copy/read=1939.525,probe=0.320,validate=330.333,decode=0.000,callback=0.092,other=0.819
+raw,pageFaults=4878,sourceBytes=10738472952,validateBytes=5368709120
+auto: file=5368709120, runs=5, total median=2249.266 min=2228.517 max=2276.159 ms; map=0.094 copy/read=1924.983 probe=0.333 validate=327.014 decode=0.000 callback=0.092 ms; source=10738472952 validateBytes=5368709120 decodeBytes=0 delivered=5368709120 maps=0
+resident SIMD validation, workers=1, bytes=2147483648: median=131.023 min=130.218 max=138.900 ms
+resident SIMD validation, workers=2, bytes=2147483648: median=70.752 min=70.072 max=73.908 ms
+resident SIMD validation, workers=4, bytes=2147483648: median=42.566 min=39.992 max=45.277 ms
+resident SIMD validation, workers=8, bytes=2147483648: median=32.503 min=31.183 max=35.319 ms

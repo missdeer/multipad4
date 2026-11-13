@@ -3,6 +3,11 @@
 #include "StyleManager.h"
 #include <cwctype>
 #include <stdexcept>
+#include <chrono>
+namespace {
+using LoadClock = std::chrono::steady_clock;
+double LoadElapsed(LoadClock::time_point start) { return std::chrono::duration<double, std::milli>(LoadClock::now() - start).count(); }
+}
 std::wstring EditorDocument::Title() const {
     return (Modified() ? L"* " : L"") + (path.empty() ? untitled : path.filename().wstring());
 }
@@ -43,7 +48,7 @@ void EditorDocument::LoadFile(const std::filesystem::path& source, const files::
     const auto size = std::filesystem::file_size(source);
     if (size > static_cast<unsigned long long>(PTRDIFF_MAX)) throw std::runtime_error("File exceeds available address space.");
     LoadStream(static_cast<size_t>(size), SC_DOCUMENTOPTION_TEXT_LARGE | SC_DOCUMENTOPTION_STYLES_NONE,
-        [&](const files::ChunkConsumer& consume) { return files::ReadChunks(source, consume, options, forced); });
+        [&](const files::ChunkConsumer& consume) { return files::ReadChunks(source, consume, options, forced, &loadMetrics.fileRead); });
 }
 void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, const std::function<files::Encoding(const files::ChunkConsumer&)>& produce) {
     // Populate a separate Scintilla document before replacing the live buffer.
@@ -60,9 +65,9 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     if ((options & SC_DOCUMENTOPTION_TEXT_LARGE) && reserve >= files::LargeFileThreshold && reserve <= static_cast<size_t>(PTRDIFF_MAX) - 16 * 1024 * 1024)
         reserve += 16 * 1024 * 1024;
     loadMetrics = {};
-    auto tick = GetTickCount64();
+    auto tick = LoadClock::now();
     auto stagedDocument = stage(SCI_CREATEDOCUMENT, reserve, options);
-    loadMetrics.allocation = GetTickCount64() - tick;
+    loadMetrics.allocation = LoadElapsed(tick);
     if (!stagedDocument) throw std::runtime_error("Cannot allocate the document; the current document was retained.");
     stage(SCI_SETDOCPOINTER, 0, stagedDocument); stage(SCI_RELEASEDOCUMENT, 0, stagedDocument);
     stage(SCI_SETCODEPAGE, SC_CP_UTF8);
@@ -71,9 +76,9 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     simd::LineEndings endings{};
     size_t loaded = 0;
     bool previousCR = false;
-    tick = GetTickCount64();
+    tick = LoadClock::now();
     const auto loadedEncoding = produce([&](std::string_view chunk) {
-        auto scanStart = GetTickCount64();
+        auto scanStart = LoadClock::now();
         auto part = simd::AnalyzeLineEndings(chunk);
         for (int i = 0; i < 3; ++i) endings.linesCount[i] += part.linesCount[i];
         if (previousCR && !chunk.empty() && chunk.front() == '\n') {
@@ -85,16 +90,16 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
             const auto estimate = static_cast<size_t>((static_cast<long double>(reserve) / chunk.size()) * (part.totalLineCount - 1)) + 1;
             stage(SCI_ALLOCATELINES, (std::min)(estimate, size_t(16 * 1024 * 1024)));
         }
-        loadMetrics.lineScan += GetTickCount64() - scanStart;
-        auto insertStart = GetTickCount64();
+        loadMetrics.lineScan += LoadElapsed(scanStart);
+        auto insertStart = LoadClock::now();
         stage(SCI_APPENDTEXT, chunk.size(), reinterpret_cast<LPARAM>(chunk.data()));
-        loadMetrics.insertion += GetTickCount64() - insertStart;
+        loadMetrics.insertion += LoadElapsed(insertStart);
         loaded += chunk.size();
         auto status = stage(SCI_GETSTATUS);
         if ((status != SC_STATUS_OK && status < SC_STATUS_WARN_START) || stage(SCI_GETLENGTH) != static_cast<LRESULT>(loaded))
             throw std::runtime_error("The complete document could not be loaded; the current document was retained.");
     });
-    loadMetrics.readDecode = GetTickCount64() - tick - loadMetrics.lineScan - loadMetrics.insertion;
+    loadMetrics.readDecode = LoadElapsed(tick) - loadMetrics.lineScan - loadMetrics.insertion;
     endings.iEOLMode = static_cast<int>(Send(SCI_GETEOLMODE));
     for (int i = 0; i < 3; ++i) if (endings.linesCount[i] > endings.linesCount[endings.iEOLMode]) endings.iEOLMode = i;
     stage(SCI_SETMODEVENTMASK, SC_MODEVENTMASKALL);
@@ -106,10 +111,10 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     Send(SCI_ADDREFDOCUMENT, 0, oldDocument);
     struct DocumentReference { const EditorDocument& editor; LRESULT value; ~DocumentReference() { editor.Send(SCI_RELEASEDOCUMENT, 0, value); } } retained{*this, oldDocument};
     Send(SCI_SETDOCPOINTER, 0, stagedDocument);
-    tick = GetTickCount64();
+    tick = LoadClock::now();
     try {
         ConfigureLexer();
-        loadMetrics.configure = GetTickCount64() - tick;
+        loadMetrics.configure = LoadElapsed(tick);
     } catch (...) {
         Send(SCI_SETDOCPOINTER, 0, oldDocument); Send(SCI_SETSEL, oldAnchor, oldPosition); throw;
     }

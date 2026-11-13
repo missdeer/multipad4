@@ -1,0 +1,4 @@
+5368709120 bytes: Open plus first paint 13.096 ms; source bytes requested 167944; peak working set 32 MiB.
+Quarter/middle/end navigation passed; total bytes read 626713.
+File detail: total 3646.732 ms, mapping 0.070 ms, read/copy 1521.976 ms, validation 161.060 ms, decode 0.000 ms, callbacks 1962.401 ms, page faults 1588816, source 5369760256, validated 5368709120, decoded 0.
+Full load: allocation 0.033 ms, read/validate/decode 1685.996 ms, EOL/line reserve 388.382 ms, Scintilla insertion 1572.361 ms, configure 0.215 ms.
