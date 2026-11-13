@@ -91,14 +91,14 @@ bool ParseEncodingName(const std::wstring& value, Encoding& encoding) {
     }
     return false;
 }
-Text Decode(const std::string& input, Encoding encoding) {
+Text Decode(const std::string& input, Encoding encoding, bool stripBom) {
     std::string bytes = input;
     Text result{{}, encoding};
     bool utf16 = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16BE
         || encoding == Encoding::Utf16LEPlain || encoding == Encoding::Utf16BEPlain;
     if (utf16) {
         bool le = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16LEPlain;
-        if ((le && bytes.starts_with("\xFF\xFE")) || (!le && bytes.starts_with("\xFE\xFF"))) bytes.erase(0, 2);
+        if (stripBom && ((le && bytes.starts_with("\xFF\xFE")) || (!le && bytes.starts_with("\xFE\xFF")))) bytes.erase(0, 2);
         if (bytes.size() % 2) Fail("Truncated UTF-16 file.");
         std::wstring wide(bytes.size()/2, L'\0');
         for (size_t i = 0; i < wide.size(); ++i) {
@@ -107,7 +107,7 @@ Text Decode(const std::string& input, Encoding encoding) {
         }
         result.utf8 = ToUtf8(wide);
     } else if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
-        if (bytes.starts_with("\xEF\xBB\xBF")) bytes.erase(0, 3);
+        if (stripBom && bytes.starts_with("\xEF\xBB\xBF")) bytes.erase(0, 3);
         Validate(bytes); result.utf8 = std::move(bytes);
     } else if (!bytes.empty()) {
         auto page=CodePage(encoding);CPINFOEXW info{};if(!GetCPInfoExW(page,0,&info))Fail("Encoding is not installed.");
@@ -153,8 +153,7 @@ std::string ReadBytes(const std::filesystem::path& path) {
 }
 Text ReadWithEncoding(const std::filesystem::path& path, Encoding encoding) { return Decode(ReadBytes(path), encoding); }
 Text Read(const std::filesystem::path& path) { return Read(path, {}); }
-Text Read(const std::filesystem::path& path, const ReadOptions& options) {
-    auto bytes = ReadBytes(path);
+static Text DetectBytes(const std::string& bytes, const ReadOptions& options) {
     if (bytes.starts_with("\xEF\xBB\xBF")) return Decode(bytes, Encoding::Utf8Bom);
     if (bytes.starts_with("\xFF\xFE")) return Decode(bytes, Encoding::Utf16LE);
     if (bytes.starts_with("\xFE\xFF")) return Decode(bytes, Encoding::Utf16BE);
@@ -190,6 +189,157 @@ Text Read(const std::filesystem::path& path, const ReadOptions& options) {
     }
     try { return Decode(bytes, Encoding::Utf8); } catch(const std::runtime_error&) {}
     return Decode(bytes, options.fallback);
+}
+Text Read(const std::filesystem::path& path, const ReadOptions& options) { return DetectBytes(ReadBytes(path), options); }
+namespace {
+class MappedInput {
+    HANDLE file = INVALID_HANDLE_VALUE, mapping = nullptr;
+    const char* view = nullptr;
+    unsigned long long begin = 0;
+    size_t mapped = 0;
+    DWORD granularity = 65536;
+public:
+    unsigned long long size = 0;
+    explicit MappedInput(const std::filesystem::path& path) {
+        file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        if (file == INVALID_HANDLE_VALUE) Fail("Cannot open file.");
+        LARGE_INTEGER length{};
+        if (!GetFileSizeEx(file, &length) || length.QuadPart < 0) { CloseHandle(file); Fail("Cannot read file size."); }
+        size = static_cast<unsigned long long>(length.QuadPart);
+        if (size) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
+        SYSTEM_INFO info{}; GetSystemInfo(&info); granularity = info.dwAllocationGranularity;
+    }
+    ~MappedInput() { if (view) UnmapViewOfFile(view); if (mapping) CloseHandle(mapping); if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
+    MappedInput(const MappedInput&) = delete;
+    MappedInput& operator=(const MappedInput&) = delete;
+    std::string Read(unsigned long long offset, size_t count) {
+        count = static_cast<size_t>((std::min)(size - offset, static_cast<unsigned long long>(count)));
+        if (!count) return {};
+        if (mapping) {
+            if (!view || offset < begin || offset + count > begin + mapped) {
+                if (view) UnmapViewOfFile(view);
+                view = nullptr; begin = offset / granularity * granularity;
+                size_t wanted = static_cast<size_t>((std::min)(size - begin, 64ULL * 1024 * 1024));
+                const size_t required = static_cast<size_t>(offset - begin) + count;
+                while (wanted >= required) {
+                    view = static_cast<const char*>(MapViewOfFile(mapping, FILE_MAP_READ, static_cast<DWORD>(begin >> 32), static_cast<DWORD>(begin), wanted));
+                    if (view) { mapped = wanted; break; }
+                    if (wanted == required) break;
+                    wanted = (std::max)(required, wanted / 2);
+                }
+            }
+            if (view) return std::string(view + static_cast<size_t>(offset - begin), count);
+        }
+        // Mapping failure degrades to bounded ordinary I/O.
+        LARGE_INTEGER position{}; position.QuadPart = offset;
+        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) Fail("Cannot seek file.");
+        std::string bytes(count, '\0'); DWORD read = 0;
+        if (!ReadFile(file, bytes.data(), static_cast<DWORD>(count), &read, nullptr) || read != count) Fail("Cannot read complete file.");
+        return bytes;
+    }
+};
+size_t ChunkEnd(const std::string& bytes, Encoding encoding, bool last) {
+    if (last) return bytes.size();
+    size_t end = bytes.size() - 8;
+    if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
+        while (end && (static_cast<unsigned char>(bytes[end]) & 0xC0) == 0x80) --end;
+    } else if (encoding == Encoding::Utf16LE || encoding == Encoding::Utf16BE || encoding == Encoding::Utf16LEPlain || encoding == Encoding::Utf16BEPlain) {
+        end &= ~size_t(1);
+        bool le = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16LEPlain;
+        auto a = static_cast<unsigned char>(bytes[end-2]), b = static_cast<unsigned char>(bytes[end-1]);
+        unsigned c = le ? a | (b << 8) : (a << 8) | b;
+        if (c >= 0xD800 && c <= 0xDBFF) end -= 2;
+    } else {
+        auto page = CodePage(encoding); CPINFOEXW info{};
+        if (!GetCPInfoExW(page, 0, &info)) Fail("Encoding is not installed.");
+        if (page == CP_UTF7 || page == 50220 || page == 50221 || page == 50222)
+            Fail("Streaming load does not support stateful encodings. Use a smaller UTF-8 copy.");
+        if (info.MaxCharSize > 1) {
+            size_t pos = 0;
+            while (pos < end) {
+                auto c = static_cast<BYTE>(bytes[pos]); size_t length = 1;
+                if (page == 54936 && c >= 0x81 && c <= 0xFE) { auto next = static_cast<BYTE>(bytes[pos+1]); length = next >= 0x30 && next <= 0x39 ? 4 : 2; }
+                else if (IsDBCSLeadByteEx(page, c)) length = 2;
+                if (pos + length > end) { end = pos; break; }
+                pos += length;
+            }
+        }
+    }
+    return end;
+}
+}
+struct MappedFile::Impl {
+    MappedInput input;
+    unsigned long long bytesRead = 0;
+    explicit Impl(const std::filesystem::path& path) : input(path) {}
+};
+MappedFile::MappedFile(const std::filesystem::path& path) : impl(std::make_unique<Impl>(path)) {}
+MappedFile::~MappedFile() = default;
+unsigned long long MappedFile::Size() const { return impl->input.size; }
+unsigned long long MappedFile::BytesRead() const { return impl->bytesRead; }
+std::string MappedFile::Read(unsigned long long offset, size_t count) {
+    if (offset > Size()) Fail("File offset out of range.");
+    auto bytes = impl->input.Read(offset, count); impl->bytesRead += bytes.size(); return bytes;
+}
+Text DetectSample(const std::string& bytes, const ReadOptions& options) { return DetectBytes(bytes, options); }
+Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume, const ReadOptions& options, std::optional<Encoding> forced) {
+    MappedInput input(path);
+    auto sample = input.Read(0, 1024 * 1024 + 8);
+    if (sample.size() > 1024 * 1024) {
+        const int unicode = simd::DetectUtf16(sample);
+        sample.resize(ChunkEnd(sample, unicode == 1 ? Encoding::Utf16LEPlain : unicode == 2 ? Encoding::Utf16BEPlain : Encoding::Utf8, false));
+    }
+    Encoding encoding = forced.value_or(Encoding::Utf8);
+    bool declared = false;
+    if (!forced) {
+        if (sample.starts_with("\xFF\xFE")) encoding = Encoding::Utf16LE;
+        else if (sample.starts_with("\xFE\xFF")) encoding = Encoding::Utf16BE;
+        else if (sample.starts_with("\xEF\xBB\xBF")) encoding = Encoding::Utf8Bom;
+        else {
+            if (options.fileVariables) {
+                auto firstAndLast = input.Read(0, 512);
+                if (input.size > 512) firstAndLast += input.Read((std::max)(512ULL, input.size - (std::min)(input.size, 512ULL)), 512);
+                const auto region = filevars::Region(firstAndLast);
+                int enabled = 1;
+                if (!filevars::Integer(region, "enable-local-variables", enabled) || enabled) {
+                    for (auto key : {"encoding", "charset", "coding", "fileencoding", "/*!40101 SET NAMES "}) {
+                        const auto name = filevars::String(region, key);
+                        if (!name.empty() && ParseEncodingName(FromUtf8(name), encoding)) {
+                            declared = encoding != Encoding::Utf16LE && encoding != Encoding::Utf16BE && encoding != Encoding::Utf16LEPlain && encoding != Encoding::Utf16BEPlain;
+                            if (declared) break;
+                        }
+                    }
+                }
+            }
+            if (!declared) { auto detection = options; detection.fileVariables = false; encoding = DetectBytes(sample, detection).encoding; }
+        }
+    }
+    // A sample cannot prove UTF-8 validity. Validate the entire byte stream
+    // before delivering data so late legacy bytes cannot leave a mixed buffer.
+    if (!forced && !declared && encoding == Encoding::Utf8) {
+        for (unsigned long long offset = 0; offset < input.size;) {
+            auto bytes = input.Read(offset, ConversionChunk + 8);
+            auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
+            if (!simd::IsValidUtf8(std::string_view(bytes.data(), count))) { encoding = options.fallback; break; }
+            offset += count;
+        }
+    }
+    for (unsigned long long offset = 0; offset < input.size;) {
+        auto bytes = input.Read(offset, ConversionChunk + 8);
+        auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
+        bytes.resize(count);
+        if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
+            std::string_view text(bytes);
+            if (!offset && text.starts_with("\xEF\xBB\xBF")) text.remove_prefix(3);
+            if (!simd::IsValidUtf8(text)) Fail("Invalid UTF-8.");
+            consume(text);
+        } else {
+            auto decoded = Decode(bytes, encoding, offset == 0);
+            consume(decoded.utf8);
+        }
+        offset += count;
+    }
+    return encoding;
 }
 Text ReadForReload(const std::filesystem::path& path,Encoding current,const ReadOptions& options) {
     auto bytes=ReadBytes(path);
@@ -254,7 +404,7 @@ void WriteNew(const std::filesystem::path& path,const Text& text) {
     if(!ok){DeleteFileW(path.c_str());Fail("Cannot write complete backup file.");}
 }
 namespace {
-bool WriteLinkedFile(const std::filesystem::path& path,const std::string& bytes) {
+bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(const ChunkConsumer&)>& produce) {
     const auto stream=path.native().find(L':',path.root_path().native().size());
     HANDLE probe=CreateFileW(path.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,0,nullptr);
     if(probe==INVALID_HANDLE_VALUE)Fail("Cannot inspect destination file identity; original retained.");
@@ -281,7 +431,11 @@ bool WriteLinkedFile(const std::filesystem::path& path,const std::string& bytes)
         };
         if(!copy(original,rollback))Fail("Cannot complete hard-link rollback copy; original retained.");
         bool saved=SetFilePointerEx(original,zero,nullptr,FILE_BEGIN)!=FALSE;
-        for(size_t offset=0;saved&&offset<bytes.size();){DWORD written=0,count=static_cast<DWORD>((std::min)(ConversionChunk,bytes.size()-offset));saved=WriteFile(original,bytes.data()+offset,count,&written,nullptr)&&written==count;offset+=written;}
+        try {
+            produce([&](std::string_view bytes) {
+                for(size_t offset=0;saved&&offset<bytes.size();){DWORD written=0,count=static_cast<DWORD>((std::min)(ConversionChunk,bytes.size()-offset));saved=WriteFile(original,bytes.data()+offset,count,&written,nullptr)&&written==count;offset+=written;}
+            });
+        } catch (...) { saved = false; }
         if(saved)saved=SetEndOfFile(original)&&FlushFileBuffers(original);
         if(!saved){
             bool restored=copy(rollback,original);
@@ -302,32 +456,40 @@ bool WriteLinkedFile(const std::filesystem::path& path,const std::string& bytes)
 }
 void WriteAtomic(const std::filesystem::path& path, const Text& text) {
     const auto bytes = Encode(text);
+    WriteAtomicChunks(path, [&](const ChunkConsumer& consume) { consume(bytes); });
+}
+void WriteAtomicChunks(const std::filesystem::path& path, const std::function<void(const ChunkConsumer&)>& produce) {
     auto absolute = std::filesystem::absolute(path);
     const DWORD originalAttributes = GetFileAttributesW(absolute.c_str());
     const bool stream=absolute.native().find(L':',absolute.root_path().native().size())!=std::wstring::npos;
     if(originalAttributes != INVALID_FILE_ATTRIBUTES && (originalAttributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY)))
         Fail("Destination is read-only or is a directory; original retained.");
-    if(originalAttributes != INVALID_FILE_ATTRIBUTES && WriteLinkedFile(absolute,bytes))return;
-    if(stream){WriteNew(absolute,text);return;}
+    if(originalAttributes != INVALID_FILE_ATTRIBUTES && WriteLinkedFile(absolute,produce))return;
+
     // CREATE_NEW prevents collisions; the temporary file stays on the same volume.
     std::filesystem::path temporary;
     HANDLE file = INVALID_HANDLE_VALUE;
     for (unsigned i = 0; i < 100 && file == INVALID_HANDLE_VALUE; ++i) {
         temporary = absolute;
-        temporary += L".multipad4-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(i) + L".tmp";
+        if (!stream) temporary += L".multipad4-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(i) + L".tmp";
         file = CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (file == INVALID_HANDLE_VALUE && GetLastError() != ERROR_FILE_EXISTS) Fail("Cannot create temporary save file.");
     }
     if (file == INVALID_HANDLE_VALUE) Fail("Cannot allocate temporary save file.");
     bool ok=true;
-    for(size_t offset=0;offset<bytes.size();) {
-        DWORD written=0;DWORD count=static_cast<DWORD>((std::min)(ConversionChunk,bytes.size()-offset));
-        if(!WriteFile(file,bytes.data()+offset,count,&written,nullptr) || written!=count){ok=false;break;}
-        offset+=written;
-    }
+    try {
+        produce([&](std::string_view bytes) {
+            for(size_t offset=0;offset<bytes.size();) {
+                DWORD written=0,count=static_cast<DWORD>((std::min)(ConversionChunk,bytes.size()-offset));
+                if(!WriteFile(file,bytes.data()+offset,count,&written,nullptr)||written!=count)Fail("Cannot write complete file; original retained.");
+                offset+=written;
+            }
+        });
+    } catch (...) { CloseHandle(file); DeleteFileW(temporary.c_str()); throw; }
     if(ok)ok=FlushFileBuffers(file)!=FALSE;
     CloseHandle(file);
     if (!ok) { DeleteFileW(temporary.c_str()); Fail("Cannot write complete file; original retained."); }
+    if (stream) return; // A newly created ADS has no previous contents to replace.
     bool exists = GetFileAttributesW(absolute.c_str()) != INVALID_FILE_ATTRIBUTES;
     ok = exists ? ReplaceFileW(absolute.c_str(), temporary.c_str(), nullptr, 0, nullptr, nullptr) != FALSE
                 : MoveFileExW(temporary.c_str(), absolute.c_str(), MOVEFILE_WRITE_THROUGH) != FALSE;

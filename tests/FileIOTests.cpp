@@ -19,6 +19,24 @@ int main() {
             const auto bytes = files::Encode({text, shiftJis});
             Require(files::Decode(bytes, shiftJis).utf8 == text, "DBCS character split at conversion boundary");
         }
+        for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE, files::Encoding::Utf16BE, files::FromCodePage(1252)}) {
+            const auto content = std::string(16 * 1024 * 1024 - 1, 'x') + "café\r\n" + "\xEF\xBB\xBF" + "tail";
+            // The legacy page cannot represent the embedded U+FEFF.
+            auto expected = encoding == files::FromCodePage(1252) ? std::string(16 * 1024 * 1024 - 1, 'x') + "café" : content;
+            files::WriteAtomic(path, {expected, encoding});
+            std::string actual;
+            auto detected = files::ReadChunks(path, [&](std::string_view bytes) { Require(bytes.size() <= 64 * 1024 * 1024, "Unbounded chunk"); actual += bytes; }, {}, encoding);
+            Require(actual == expected && detected == encoding, "Mapped streaming conversion changed text");
+        }
+        {
+            std::string actual;
+            auto detected = files::ReadChunks(path, [&](std::string_view bytes) { actual += bytes; }, {true, true, files::FromCodePage(1252)});
+            Require(detected == files::FromCodePage(1252) && actual.ends_with("café"), "Late non-UTF8 bytes lost during detection");
+        }
+        files::WriteAtomic(path, {"retained"});
+        bool producerFailed = false;
+        try { files::WriteAtomicChunks(path, [](const files::ChunkConsumer& consume) { consume("partial"); throw std::runtime_error("injected"); }); } catch (...) { producerFailed = true; }
+        Require(producerFailed && files::Read(path).utf8 == "retained", "Streaming failure damaged destination");
         const std::string sample = "hello\r\n中文 😀\nlast\r";
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE, files::Encoding::Utf16BE}) {
             files::WriteAtomic(path, {sample, encoding});

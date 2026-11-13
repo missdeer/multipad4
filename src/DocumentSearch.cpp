@@ -115,6 +115,7 @@ UINT ReplaceMessage(const EditorDocument &d) {
 
 } // namespace
 bool EditorDocument::FindNext(bool backwards, const std::function<bool(bool)> &confirmWrap) {
+    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
     if (search.findText.empty())
         return false;
     auto needle = Needle(*this);
@@ -156,6 +157,7 @@ bool EditorDocument::FindNext(bool backwards, const std::function<bool(bool)> &c
     return true;
 }
 bool EditorDocument::ReplaceOne() {
+    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
     if (Send(SCI_GETREADONLY) || search.findText.empty())
         return false;
     auto needle = Needle(*this);
@@ -175,6 +177,7 @@ bool EditorDocument::ReplaceOne() {
     return true;
 }
 size_t EditorDocument::ReplaceAll(bool selectionOnly) {
+    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
     if (selectionOnly && RejectRectangularEdit(*this))
         return 0;
     if (Send(SCI_GETREADONLY) || search.findText.empty())
@@ -213,6 +216,7 @@ size_t EditorDocument::ReplaceAll(bool selectionOnly) {
     return count;
 }
 size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
+    if (FastView()) throw std::runtime_error("Load the file for editing before searching the entire document.");
     struct RestoreState {
         EditorDocument &document;
         LRESULT indicator, flags, start, end;

@@ -133,14 +133,14 @@ void PluginHost::Notify(UINT code, UINT_PTR buffer) {
 }
 void PluginHost::ScintillaNotification(const SCNotification& source) {
     if (!ready || stopped) return;
-    auto* d = frame->Active(); if (!d || source.nmhdr.hwndFrom != d->hwnd) return;
+    auto* d = frame->Active(); if (!d || d->FastView() || source.nmhdr.hwndFrom != d->hwnd) return;
     auto notification = source; notification.nmhdr.hwndFrom = proxy; notification.nmhdr.idFrom = 0;
     for (auto& p : plugins) p.notify(&notification);
 }
 void PluginHost::Ready() { if (ready) return; ready = true; Notify(NPPN_TBMODIFICATION); Notify(NPPN_READY); Activated(); }
 void PluginHost::Activated() {
     if (!ready || stopped) return;
-    auto id = Buffer(frame->Active()); if (id == activeBuffer) return; activeBuffer = id;
+    auto* document = frame->Active(); auto id = document && !document->FastView() ? Buffer(document) : 0; if (id == activeBuffer) return; activeBuffer = id;
     if (id) Notify(NPPN_BUFFERACTIVATED, id);
 }
 void PluginHost::Shutdown() {
@@ -159,6 +159,7 @@ void PluginHost::Shutdown() {
     if (::IsWindow(proxy)) ::DestroyWindow(proxy); if (::IsWindow(secondProxy)) ::DestroyWindow(secondProxy);
 }
 bool PluginHost::Execute(UINT id) {
+    if (auto* document = frame->Active(); document && document->FastView()) return false;
     for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc) { p.items[i]._pFunc(); frame->Refresh(); return true; }
     return false;
 }

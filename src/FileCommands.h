@@ -5,6 +5,7 @@ CommandState FileCommandState(MainFrame& frame, UINT id);
 bool ExecuteFileCommand(MainFrame& frame, UINT id);
 void ApplyFileVariables(EditorDocument& document);
 void RestoreFileVariables(EditorDocument& document);
+bool LoadLargeFileForFrame(MainFrame& frame, EditorDocument& document, const std::filesystem::path& path, std::optional<files::Encoding> forced = {}, bool encodingTags = true);
 files::Text ReadFileForFrame(MainFrame& frame, const std::filesystem::path& path);
 files::Text ReadFileForReload(MainFrame& frame, const EditorDocument& document);
 bool SelectDocumentEncoding(MainFrame& frame, EditorDocument& document, files::Encoding encoding);

@@ -1,5 +1,6 @@
 #include "MainFrame.h"
 #include "SmokeTest.h"
+#include "../tests/LargeFileTests.h"
 #include "../tests/PluginFeatureTests.h"
 #include <shellapi.h>
 #include <cstdio>
@@ -22,6 +23,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (!Scintilla_RegisterClasses(instance)) { _Module.Term(); OleUninitialize(); return 2; }
     int count = 0; LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
+    bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool smoke = count == 2 && wcscmp(args[1], L"--smoke-test") == 0;
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
@@ -30,14 +32,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     {
         CMessageLoop loop; _Module.AddMessageLoop(&loop);
         MainFrame frame;
-        frame.plugins.enabled = !(smoke || report || render);
-        frame.settings.Initialize(smoke || report || render || pluginTest);
-        SetThreadUILanguage(smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
+        frame.plugins.enabled = !(largeTest || smoke || report || render);
+        frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
+        SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         if (frame.settings.persistent) LoadStylePreferences(frame.settings.path.c_str());
         if (frame.settings.persistent) LoadEditPreferences(frame.settings.path);
         ParsedCommandLine options;
         bool reused = false;
-        if (!smoke && !report && !render && !pluginTest) {
+        if (!largeTest && !smoke && !report && !render && !pluginTest) {
             try {
                 options = ParseCommandLine(GetCommandLineW());
                 if (!options.appId.empty()) SetCurrentProcessExplicitAppUserModelID(options.appId.c_str());
@@ -77,11 +79,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
         else if (!frame.CreateEx(nullptr, rect)) result = 3;
-        else if (smoke || report || render || pluginTest) {
+        else if (largeTest || smoke || report || render || pluginTest) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
             try {
-                if (pluginTest) {
+                if (largeTest) { RunLargeFileTests(frame); }
+                else if (pluginTest) {
                     RunPluginFeatureTests(frame);
                 } else if (smoke || render) { if (render) frame.ShowWindow(SW_SHOWNORMAL); RunSmokeTest(frame); }
                 else {

@@ -107,6 +107,7 @@ void MainFrame::CreateUpstreamUI() {
     ResetToolbar(toolbar);
     HMENU file = GetSubMenu(GetMenu(), 0);
     InsertMenuW(file, 4, MF_BYPOSITION | MF_STRING, ID_SAVEALL, L"Save All\tCtrl+Alt+S");
+    InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_LOAD_FOR_EDITING, L"Load for editing...");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSE, L"Close Document\tCtrl+W");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSEALL, L"Close All Documents");
     windowMenu = CreatePopupMenu();
@@ -135,6 +136,20 @@ CommandState MainFrame::State(UINT input) {
 CommandState MainFrame::QueryState(UINT input) {
     const UINT id = NormalizeCommand(input);
     auto* d = Active();
+    if (id == ID_LOAD_FOR_EDITING) return {true, d && d->FastView(), false};
+    if (d && d->FastView()) {
+        if (id == IDM_FILE_READONLY_MODE) return {true, false, true};
+        if (EditorCommandState(d, id).supported || StyleCommandState(d, id).supported) {
+            if (id != IDM_EDIT_COPY && id != IDM_VIEW_ZOOMIN && id != IDM_VIEW_ZOOMOUT && id != IDM_VIEW_RESETZOOM)
+                return {true, false, false};
+        }
+        switch (id) {
+        case ID_SAVE: case ID_SAVEAS: case ID_FIND: case ID_FINDNEXT: case IDM_EDIT_FINDPREV:
+        case IDM_EDIT_REPLACE: case IDM_EDIT_GOTOLINE: case ID_SEARCH_MARK:
+        case IDM_FILE_PRINT: case IDM_FILE_SAVEBACKUP: case IDM_FILE_LARGE_FILE_MODE: case IDM_FILE_LARGE_FILE_MODE_RELOAD:
+            return {true, false, false};
+        }
+    }
     const auto file = FileCommandState(*this, id);
     if (file.supported) return file;
     const auto frame = FrameCommandState(*this, id);
@@ -221,13 +236,20 @@ void MainFrame::UpdateStatus() {
                 if (!end) break; start = end + 1;
             }
         }
-        text[7] = d->language; text[8] = files::EncodingName(d->encoding);
+        text[7] = d->LargeFile() ? L"Large file (AutoSave off)" : d->language; text[8] = files::EncodingName(d->encoding);
         auto eol = d->Send(SCI_GETEOLMODE); text[9] = eol == SC_EOL_CRLF ? L"CR+LF" : eol == SC_EOL_LF ? L"LF" : L"CR";
         text[10] = d->Send(SCI_GETOVERTYPE) ? L"OVR" : L"INS";
         text[11] = std::to_wstring(d->Send(SCI_GETZOOM)) + L"%";
         wchar_t size[64]{};
         StrFormatByteSizeW(d->Send(SCI_GETLENGTH), size, _countof(size));
         text[12] = size;
+        if (d->FastView()) {
+            auto& view = *d->fastView;
+            for (size_t i = 0; i < 6; ++i) text[i].clear();
+            text[0] = L"Bytes " + std::to_wstring(view.Begin()) + L"–" + std::to_wstring(view.End());
+            text[7] = L"Fast View"; text[10] = L"Read only";
+            text[12] = std::to_wstring(view.Size() / (1024 * 1024)) + L" MiB";
+        }
     }
     RECT client{}; GetClientRect(&client);
     std::array<int, 13> widths{}, edges{};

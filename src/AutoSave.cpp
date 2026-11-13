@@ -55,6 +55,7 @@ std::filesystem::path AutoSaveDirectory(const MainFrame& frame) {
     return std::filesystem::path(executable).parent_path() / L"AutoSave";
 }
 bool SaveDocumentRecovery(MainFrame& frame,EditorDocument& document,bool force){
+    if (document.LargeFile()) return false;
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth) return false;
     auto& state=document.runtime;const bool manual=(frame.settings.Get(IDM_SET_FILE_AUTOSAVE,6)&8)!=0;
     const size_t count=force?ForcedCount:NormalCount;

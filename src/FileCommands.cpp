@@ -15,9 +15,11 @@ namespace {
 bool ReloadAs(MainFrame& frame, EditorDocument& document, files::Encoding encoding, bool autoDetect=false, bool variables=true){
     if(document.path.empty())return false;
     if(document.Modified() && frame.MessageBox(L"Discard changes and reload this document?",document.Title().c_str(),MB_OKCANCEL|MB_ICONWARNING)!=IDOK)return false;
-    auto text=autoDetect?files::Read(document.path,{true,variables,encoding}):files::ReadWithEncoding(document.path,encoding);
+
     auto position=document.Send(SCI_GETCURRENTPOS), anchor=document.Send(SCI_GETANCHOR);
-    document.Load(text);RestoreFileVariables(document);
+    if (!LoadLargeFileForFrame(frame, document, document.path, autoDetect ? std::optional<files::Encoding>{} : encoding, variables))
+        document.Load(autoDetect ? files::Read(document.path,{true,variables,encoding}) : files::ReadWithEncoding(document.path,encoding));
+    RestoreFileVariables(document);
     document.ConfigureLexer();DetectDocumentIndentation(document);
     document.Send(SCI_SETSEL,(std::min)(anchor,document.Send(SCI_GETLENGTH)),(std::min)(position,document.Send(SCI_GETLENGTH)));if(variables)ApplyFileVariables(document);SnapshotDocument(document);frame.Refresh();return true;
 }
@@ -100,9 +102,13 @@ bool ExecuteFileCommand(MainFrame& frame,UINT id){auto state=FileCommandState(fr
 
         case IDM_FILE_LARGE_FILE_MODE:case IDM_FILE_LARGE_FILE_MODE_RELOAD:{
             if(id==IDM_FILE_LARGE_FILE_MODE_RELOAD && !frame.Reload(*d))break;
-            const auto text=d->Text();
+            if (d->LargeFile()) break;
             const auto position=d->Send(SCI_GETCURRENTPOS),anchor=d->Send(SCI_GETANCHOR),eol=d->Send(SCI_GETEOLMODE);const bool modified=d->Modified();
-            d->Load({text,d->encoding},SC_DOCUMENTOPTION_TEXT_LARGE);
+            const auto length = static_cast<size_t>(d->Send(SCI_GETLENGTH));
+            d->LoadStream(length, SC_DOCUMENTOPTION_TEXT_LARGE | SC_DOCUMENTOPTION_STYLES_NONE, [&](const files::ChunkConsumer& consume) {
+                for (size_t offset = 0; offset < length; offset += 16 * 1024 * 1024) consume(d->Range(offset, 16 * 1024 * 1024));
+                return d->encoding;
+            });
             d->encodingDirty=modified;d->Send(SCI_SETEOLMODE,eol);d->Send(SCI_SETSEL,anchor,position);break;
         }
         case IDM_ENCODING_ANSI:SelectDocumentEncoding(frame,*d,files::Encoding::Ansi);break;
@@ -156,10 +162,15 @@ void RestoreFileVariables(EditorDocument& document){
     document.Send(SCI_SETUSETABS,!document.style.tabsAsSpaces);
     document.Send(SCI_SETTABINDENTS,document.style.tabIndents);
     ApplyDocumentWrapSettings(document);
+    if (document.LargeFile()) document.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);
 }
 void ApplyFileVariables(EditorDocument& document){
+    if (document.FastView()) return;
     RestoreFileVariables(document);
-    auto region=filevars::Region(document.Text());int value=0;
+    auto sample = document.Range(0, 4096);
+    auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
+    if (length > 4096) sample += document.Range((std::max)(size_t(4096), length - (std::min)(length, size_t(4096))), 4096);
+    auto region=filevars::Region(sample);int value=0;
     if(filevars::Integer(region,"enable-local-variables",value)&&!value)return;
     auto& baseline=document.fileVariables;baseline.baseline=document.style;baseline.baselineWrap=static_cast<int>(document.Send(SCI_GETWRAPMODE));baseline.baselineEdge=static_cast<int>(document.Send(SCI_GETEDGECOLUMN));
     auto mode=filevars::String(region,"mode");if(!mode.empty())SelectDocumentScheme(document,files::FromUtf8(mode));
@@ -173,9 +184,27 @@ void ApplyFileVariables(EditorDocument& document){
     if(filevars::Integer(region,"truncate-lines",value))document.Send(SCI_SETWRAPMODE,value?SC_WRAP_NONE:document.style.wrapMode);
     if(filevars::Integer(region,"fill-column",value))document.Send(SCI_SETEDGECOLUMN,(std::clamp)(value,0,1000000));
     ApplyDocumentWrapSettings(document);
+    if (document.LargeFile()) document.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);
     baseline.applied=document.style;baseline.appliedWrap=static_cast<int>(document.Send(SCI_GETWRAPMODE));baseline.appliedEdge=static_cast<int>(document.Send(SCI_GETEDGECOLUMN));baseline.active=filevars::Recognized(region);
 }
 
+bool LoadLargeFileForFrame(MainFrame& frame, EditorDocument& document, const std::filesystem::path& path, std::optional<files::Encoding> forced, bool encodingTags) {
+    if (std::filesystem::file_size(path) < files::LargeFileThreshold) return false;
+    files::ReadOptions options;
+    options.unicodeDetection = frame.settings.ReadString(L"File Settings", L"SkipUnicodeDetection", L"0") != L"1";
+    options.fileVariables = encodingTags && frame.settings.ReadString(L"File Settings", L"IgnoreEncodingTags", L"0") != L"1";
+    auto fallback = static_cast<files::Encoding>(frame.settings.Get(IDM_ENCODING_SETDEFAULT, static_cast<int>(files::Encoding::Ansi)));
+    if (fallback == files::Encoding::Ansi || fallback == files::Encoding::Oem || static_cast<unsigned>(fallback) >= static_cast<unsigned>(files::Encoding::CodePageBase)) options.fallback = fallback;
+    document.OpenFastFile(path, options, forced);
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) {
+        if (frame.tabs.GetPageData(i) == &document) {
+            auto* child = frame.tabs.Child(i);
+            SetParent(document.ViewWindow(), child->m_hWnd);
+            child->m_hWndClient = document.ViewWindow(); ShowWindow(document.ViewWindow(), SW_SHOW); child->UpdateLayout(); break;
+        }
+    }
+    return true;
+}
 files::Text ReadFileForFrame(MainFrame& frame,const std::filesystem::path& path){
     auto option=[&](const wchar_t* key,const wchar_t* fallback=L"0"){return frame.settings.ReadString(L"File Settings",key,fallback)==L"1";};
     auto fallback=static_cast<files::Encoding>(frame.settings.Get(IDM_ENCODING_SETDEFAULT,static_cast<int>(files::Encoding::Ansi)));
@@ -226,8 +255,10 @@ INT_PTR CALLBACK EolProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
 }
 }
 void InitializeFileDocument(MainFrame& frame,EditorDocument& document){
+    if (document.FastView()) return;
     DetectDocumentIndentation(document);
     if(frame.settings.ReadString(L"File Settings",L"IgnoreFileVariables",L"0")!=L"1")ApplyFileVariables(document);
+    if(document.LargeFile()){document.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);return;}
     if(frame.settings.ReadString(L"File Settings",L"WarnInconsistentEOL",L"0")!=L"1")return;
     EolWarning warning{document};
     auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
@@ -272,6 +303,7 @@ std::wstring EncodingMessage(UINT resource){wchar_t text[4096]{};LoadStringW(_Mo
 bool SelectDocumentEncoding(MainFrame& frame,EditorDocument& document,files::Encoding encoding){
     if(document.encoding==encoding)return true;if(document.Send(SCI_GETREADONLY))return false;
     const bool ansiChange=document.encoding==files::Encoding::Ansi||encoding==files::Encoding::Ansi;
+    if (!ansiChange) { document.SetEncoding(encoding); return true; }
     const auto original=document.Text();
     if(ansiChange && (!original.empty()||document.Send(SCI_GETUNDOACTIONS))){
         auto key=original.empty()?L"MsgConv2":L"MsgConv1";

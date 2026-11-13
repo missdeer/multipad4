@@ -109,6 +109,8 @@ void ApplyCommandLine(MainFrame& frame,const ParsedCommandLine& options){
         frame.SetWindowPos(nullptr,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);
     }
     auto applyDocument=[&](EditorDocument* d){
+        // Commands requiring the complete document explicitly opt into loading it.
+        if (d->FastView() && (options.targetEncoding || options.eol >= 0 || options.jump || options.line || !options.match.empty() || options.print || !options.scheme.empty())) { d->fastView->LoadForEditing(); frame.plugins.Notify(NPPN_FILEOPENED, frame.plugins.Buffer(d)); }
         if(options.targetEncoding)d->SetEncoding(*options.targetEncoding);if(options.eol>=0){d->Send(SCI_CONVERTEOLS,options.eol);d->Send(SCI_SETEOLMODE,options.eol);}
         if(!options.scheme.empty()&&!SelectDocumentScheme(*d,options.scheme))throw std::runtime_error("Unknown syntax scheme.");
         if(options.jump||options.line){

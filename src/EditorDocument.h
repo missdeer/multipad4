@@ -4,6 +4,7 @@
 #include "StyleState.h"
 #include "AppRuntime.h"
 #include "FileVariables.h"
+#include "FastFileView.h"
 #include <functional>
 struct SearchState {
     std::wstring findText, replaceText;
@@ -21,7 +22,12 @@ struct SearchMatch { LRESULT start = 0, end = 0, line = 0, lineStart = 0; std::s
 struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
     const unsigned long long searchIdentity = ++nextSearchIdentity;
-    ~EditorDocument() { if (hwnd && ::IsWindow(hwnd)) ::DestroyWindow(hwnd); }
+    ~EditorDocument() { fastView.reset(); if (hwnd && ::IsWindow(hwnd)) ::DestroyWindow(hwnd); }
+    struct LoadMetrics { unsigned long long allocation = 0, readDecode = 0, lineScan = 0, insertion = 0, configure = 0; } loadMetrics;
+    std::unique_ptr<FastFileView> fastView;
+    bool FastView() const { return fastView && fastView->Active(); }
+    HWND ViewWindow() const { return fastView ? fastView->Window() : hwnd; }
+    void OpenFastFile(const std::filesystem::path& source, const files::ReadOptions& options, std::optional<files::Encoding> forced = {});
     HWND hwnd = nullptr;
     std::filesystem::path path;
     std::wstring untitled;
@@ -36,6 +42,11 @@ struct EditorDocument {
     LRESULT Send(UINT msg, WPARAM w = 0, LPARAM l = 0) const {
         // This fork accepts an optional line hint for GETCOLUMN. Its default
         // must be -1; zero means "use line 0" and corrupts later-line columns.
+        if (FastView()) {
+            if (msg == SCI_SETREADONLY && !w) return 0;
+            if (msg == SCI_SETWRAPMODE) w = SC_WRAP_NONE;
+            if (msg == SCI_SETMARGINWIDTHN && !w) l = 0;
+        }
         if (msg == SCI_GETCOLUMN && l == 0) l = -1;
         return ::SendMessageW(hwnd, msg, w, l);
     }
@@ -43,6 +54,11 @@ struct EditorDocument {
     std::wstring Title() const;
     bool Create(HWND parent);
     void Load(const files::Text& text, int additionalDocumentOptions = 0);
+    void LoadFile(const std::filesystem::path& source, const files::ReadOptions& options = {}, std::optional<files::Encoding> forced = {});
+    void LoadStream(size_t reserve, int options, const std::function<files::Encoding(const files::ChunkConsumer&)>& produce);
+    bool LargeFile() const { return (Send(SCI_GETDOCUMENTOPTIONS) & SC_DOCUMENTOPTION_TEXT_LARGE) != 0; }
+    void SaveStreaming(const std::filesystem::path& destination) const;
+    std::string Range(size_t start, size_t length) const;
     std::string Text() const;
     void ConfigureLexer();
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});

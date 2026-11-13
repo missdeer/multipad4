@@ -437,7 +437,7 @@ int FoldDepth(EditorDocument& d,LRESULT line){
     int depth=0;while((line=d.Send(SCI_GETFOLDPARENT,line))>=0)++depth;return depth;
 }
 void ToggleFoldLevels(EditorDocument& d,int wanted,bool defaults){
-    d.Send(SCI_COLOURISE,0,-1);const auto* lexer=GetDocumentLexer(d);
+    if (!d.LargeFile()) d.Send(SCI_COLOURISE,0,-1);const auto* lexer=GetDocumentLexer(d);
     bool sniff=true,expand=false;int maxLevel=0;for(int i=0;i<8;++i)if(lexer->defaultFoldLevelMask&(1u<<i))maxLevel=i;
     for(LRESULT line=0;line<d.Send(SCI_GETLINECOUNT);++line){
         auto flags=d.Send(SCI_GETFOLDLEVEL,line);if(!(flags&SC_FOLDLEVELHEADERFLAG))continue;int depth=FoldDepth(d,line);
@@ -558,7 +558,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.style.lineHighlight=std::clamp(d.style.lineHighlight,0,2);d.style.wrapMode=std::clamp(d.style.wrapMode,1,4);d.style.wrapIndent=std::clamp(d.style.wrapIndent,0,7);int symbols=std::clamp(d.style.wrapSymbols,0,32);d.style.wrapSymbols=std::clamp(symbols%10,0,2)+10*std::clamp(symbols/10,0,3);
     d.style.fontSize=std::clamp(d.style.fontSize,2,512);d.style.codeFontSize=std::clamp(d.style.codeFontSize,2,512);d.style.textFontSize=std::clamp(d.style.textFontSize,2,512);
     bool initializeAppearance=d.style.appliedTabScheme<0;
-    const auto selected=ResolveScheme(d);d.style.resolvedScheme=selected;
+    const auto selected=d.LargeFile() ? 1 : ResolveScheme(d);d.style.resolvedScheme=selected;
     auto& lexer=*lexerCatalog[selected];
     ApplyStyleTabSettings(d,selected,lexer.defaultTabWidth,lexer.defaultIndentWidth,(lexer.lexerAttr&LexerAttr_TabAsSpaces)!=0,!(lexer.lexerAttr&LexerAttr_NoGlobalTabSettings));
     d.language=lexer.pszName;
@@ -569,7 +569,8 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.language=LocalizedLabel(lexer.rid,d.language.c_str());
     if(initializeAppearance){d.edgeMode=std::clamp(d.style.longLineMode,EDGE_LINE,EDGE_BACKGROUND);d.Send(SCI_SETEDGECOLUMN,std::clamp(d.style.longLineColumn,0,1000000));d.Send(SCI_SETEDGEMODE,d.style.longLineEnabled?d.edgeMode:EDGE_NONE);}
     ApplyDocumentWrapSettings(d);
-    d.Send(SCI_SETLEXER,lexer.iLexer);
+    if (d.LargeFile()) d.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);
+    d.Send(SCI_SETLEXER,d.LargeFile() ? SCLEX_NULL : lexer.iLexer);
     if(lexer.rid==NP2LEX_CSV && !d.style.csvConfigured){auto ext=SchemeFilename(d).extension().wstring();int delimiter=_wcsicmp(ext.c_str(),L".tsv")==0?'\t':DetectDocumentCSVDelimiter(d);d.style.csvOptions=(static_cast<int>('"')<<8)|(delimiter?delimiter:',');}
     int effective=0;unsigned dialect=static_cast<unsigned>(Dialect(d,lexer,&effective));d.style.resolvedDialect=effective;
     // This fork stores HTML/CSV options as a little-endian four-byte property;
@@ -632,7 +633,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     unsigned bookmark=property(18,L"back:",RGB(0,255,0))|(std::min(property(18,L"alpha:",255),255u)<<24);
     d.Send(SCI_MARKERSETBACKTRANSLUCENT,0,bookmark);
     d.Send(SCI_SETMARGINSENSITIVEN,1,TRUE);
-    d.Send(SCI_SETMARGINWIDTHN,2,d.style.folding?MulDiv(16,GetDpiForWindow(d.hwnd),96):0);
+    d.Send(SCI_SETMARGINWIDTHN,2,(d.style.folding && !d.LargeFile())?MulDiv(16,GetDpiForWindow(d.hwnd),96):0);
     d.Send(SCI_SETMARGINTYPEN,2,SC_MARGIN_SYMBOL);d.Send(SCI_SETMARGINMASKN,2,SC_MASK_FOLDERS);
     d.Send(SCI_SETMARGINSENSITIVEN,2,TRUE);
     const int folderShapes[]={SC_MARK_BOXPLUSCONNECTED,SC_MARK_BOXMINUSCONNECTED,SC_MARK_TCORNER,SC_MARK_LCORNER,SC_MARK_VLINE,SC_MARK_BOXPLUS,SC_MARK_BOXMINUS};
@@ -651,7 +652,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.Send(SCI_AUTOCSETFILLUPS,0,reinterpret_cast<LPARAM>(fillups.c_str()));
     HighlightCurrentLine(d);
     d.Send(SCI_SETMOUSEDWELLTIME,500);
-    d.Send(SCI_COLOURISE,0,-1);
+    if (!d.LargeFile()) d.Send(SCI_COLOURISE,0,-1);
 }
 namespace {
 struct SchemeDialogContext {
@@ -893,7 +894,7 @@ bool ExecuteStyleCommand(HWND owner,EditorDocument& d,UINT id) {
     case IDM_VIEW_LONGLINEMARKER:d.style.longLineEnabled=!d.Send(SCI_GETEDGEMODE);d.Send(SCI_SETEDGEMODE,d.style.longLineEnabled?d.edgeMode:EDGE_NONE);break;
     case IDM_VIEW_WORDWRAP:d.Send(SCI_SETWRAPMODE,d.Send(SCI_GETWRAPMODE)?SC_WRAP_NONE:d.style.wrapMode);break;
     case IDM_VIEW_WORDWRAPSYMBOLS:d.style.wrapSymbolsShown=!d.Send(SCI_GETWRAPVISUALFLAGS);ApplyDocumentWrapSettings(d);break;
-    case IDM_VIEW_SHOW_FOLDING:d.style.folding=!d.style.folding;d.Send(SCI_SETMARGINWIDTHN,2,d.style.folding?MulDiv(16,GetDpiForWindow(d.hwnd),96):0);break;
+    case IDM_VIEW_SHOW_FOLDING:d.style.folding=!d.style.folding;d.Send(SCI_SETMARGINWIDTHN,2,(d.style.folding && !d.LargeFile())?MulDiv(16,GetDpiForWindow(d.hwnd),96):0);break;
     case IDM_VIEW_FOLD_ALL:d.Send(SCI_FOLDALL,SC_FOLDACTION_TOGGLE|SC_FOLDACTION_CONTRACT_EVERY_LEVEL);break;
     case IDM_VIEW_FOLD_DEFAULT:ToggleFoldLevels(d,0,true);break;
     case IDM_VIEW_FOLD_CURRENT_LEVEL:case IDM_VIEW_FOLD_CURRENT_BLOCK:{
@@ -928,6 +929,7 @@ void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
         ++d.style.revision;
         return;
     }
+    if (d.LargeFile()) return;
     if(n.nmhdr.code==SCN_AUTOCCHARDELETED){d.Send(SCI_AUTOCCANCEL);if(d.style.completion)Complete(d);return;}
     if(n.nmhdr.code==SCN_AUTOCSELECTION || n.nmhdr.code==SCN_USERLISTSELECTION){
         if((n.listCompletionMethod==SC_AC_NEWLINE&&!CompletionOption(d,IDC_AUTOC_FILLUP_ENTER)) || (n.listCompletionMethod==SC_AC_TAB&&!CompletionOption(d,IDC_AUTOC_FILLUP_TAB))){
@@ -1083,8 +1085,8 @@ void SaveStylePreferences(const std::filesystem::path& path){
 void DetectDocumentIndentation(EditorDocument& d){
     if(!d.style.detectIndentation)return;
     auto length = (std::min)(static_cast<size_t>(d.Send(SCI_GETLENGTH)), size_t(1024 * 1024));
-    auto data = reinterpret_cast<const char*>(d.Send(SCI_GETCHARACTERPOINTER));
-    const int width = simd::DetectIndentation(std::string_view(data, length));
+    auto sample = d.Range(0, length);
+    const int width = simd::DetectIndentation(sample);
     if (!width) return;
     const bool spaces = width <= 8;
     d.Send(SCI_SETUSETABS, !spaces); d.style.tabsAsSpaces = spaces;
@@ -1095,6 +1097,7 @@ void DetectDocumentIndentation(EditorDocument& d){
 }
 
 void ProcessStyleBackground(EditorDocument& d){
+    if (d.LargeFile()) return;
     static thread_local bool processing=false;if(processing || !d.style.occurrencePending)return;processing=true;struct ResetProcessing{bool& value;~ResetProcessing(){value=false;}}resetProcessing{processing};
     if(d.style.revision!=d.style.occurrenceRevision){d.style.occurrencePending=false;return;}
     const auto originalIndicator=d.Send(SCI_GETINDICATORCURRENT),originalStart=d.Send(SCI_GETTARGETSTART),originalEnd=d.Send(SCI_GETTARGETEND),originalFlags=d.Send(SCI_GETSEARCHFLAGS);

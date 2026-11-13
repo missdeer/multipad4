@@ -70,7 +70,7 @@ EditorDocument* MainFrame::NewDocument() {
     ApplyDocumentPreferences(*this, *document);
     document->encoding = static_cast<files::Encoding>(settings.Get(IDM_ENCODING_SETDEFAULT, static_cast<int>(files::Encoding::Ansi)));
     auto* raw = document.get();
-    if (!tabs.AddPage(raw->hwnd, raw->Title().c_str(), -1, raw)) { ::DestroyWindow(raw->hwnd); return nullptr; }
+    if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw)) { ::DestroyWindow(raw->hwnd); return nullptr; }
     documents.push_back(std::move(document)); Refresh();
     return raw;
     } catch (const std::exception& error) { Error(error); return nullptr; }
@@ -84,18 +84,19 @@ bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::En
             if (!d->path.empty() && (CompareStringOrdinal(d->path.c_str(), -1, path.c_str(), -1, TRUE) == CSTR_EQUAL
                 || std::filesystem::equivalent(d->path, path, ec))) { tabs.SetActivePage(i); return true; }
         }
-        auto text = forcedEncoding ? files::ReadWithEncoding(path, *forcedEncoding) : ReadFileForFrame(*this, path);
+
         auto document = std::make_unique<EditorDocument>(); document->path = path;
         if (!document->Create(tabs)) throw std::runtime_error("Cannot create Scintilla editor.");
         ApplyDocumentPreferences(*this, *document);
-        document->Load(text);
+        if (!LoadLargeFileForFrame(*this, *document, path, forcedEncoding))
+            document->Load(forcedEncoding ? files::ReadWithEncoding(path, *forcedEncoding) : ReadFileForFrame(*this, path));
         InitializeFileDocument(*this, *document);
         SnapshotDocument(*document);
         auto* raw = document.get();
-        if (!tabs.AddPage(raw->hwnd, raw->Title().c_str(), -1, raw)) {
+        if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw)) {
             ::DestroyWindow(raw->hwnd); throw std::runtime_error("Cannot add document tab.");
         }
-        documents.push_back(std::move(document)); RecordOpenedFile(*this, path); plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(raw)); Refresh(); return true;
+        documents.push_back(std::move(document)); RecordOpenedFile(*this, path); if (!raw->FastView()) plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(raw)); Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }
 }
 bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
@@ -119,10 +120,14 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
                 throw std::runtime_error("This file is already open in another tab.");
         }
         if (!copy) plugins.Notify(NPPN_FILEBEFORESAVE, plugins.Buffer(&document));
+        if (document.FastView() && !copy) throw std::runtime_error("Fast View is read only. Use Load for editing before saving changes.");
         PrepareFileSave(*this, document);
-        files::Text output;
-        if (!PrepareEncodingSave(*this, document, output, copy)) return false;
-        files::WriteAtomic(path, output);
+        if (document.LargeFile()) document.SaveStreaming(path);
+        else {
+            files::Text output;
+            if (!PrepareEncodingSave(*this, document, output, copy)) return false;
+            files::WriteAtomic(path, output);
+        }
         if (copy) return true; // A copy must retain path, lexer, encoding and dirty state.
         document.path = path; document.ConfigureLexer(); document.Send(SCI_SETSAVEPOINT); document.encodingDirty = false;
         SnapshotDocument(document); RemoveDocumentRecovery(*this, document, keepBackup); RecordOpenedFile(*this, path); plugins.Notify(NPPN_FILESAVED, plugins.Buffer(&document)); Refresh(); return true;
@@ -133,9 +138,10 @@ bool MainFrame::Reload(EditorDocument& document) {
     if (document.Modified() && MessageBox(L"Discard changes and reload this document?", document.Title().c_str(),
         MB_OKCANCEL | MB_ICONWARNING) != IDOK) return false;
     try {
-        auto text = ReadFileForReload(*this, document); // A failed read must leave the editor intact.
+
         auto position = document.Send(SCI_GETCURRENTPOS);
-        document.Load(text);
+        if (!LoadLargeFileForFrame(*this, document, document.path))
+            document.Load(ReadFileForReload(*this, document));
         RestoreFileVariables(document);
         document.ConfigureLexer(); InitializeFileDocument(*this, document);
         RemoveDocumentRecovery(*this, document);
@@ -177,10 +183,11 @@ bool MainFrame::Close(int i) {
     if (runtime.pasteBoard == d->hwnd) runtime.pasteBoard = nullptr;
     RemoveDocumentRecovery(*this, *d, true); ForgetDocumentStyle(*d);
     const auto buffer = plugins.Buffer(d);
-    plugins.Notify(NPPN_FILEBEFORECLOSE, buffer);
+    const bool notifyPlugins = !d->FastView();
+    if (notifyPlugins) plugins.Notify(NPPN_FILEBEFORECLOSE, buffer);
     tabs.RemovePage(i);
     std::erase_if(documents, [d](const auto& p) { return p.get() == d; });
-    plugins.Notify(NPPN_FILECLOSED, buffer);
+    if (notifyPlugins) plugins.Notify(NPPN_FILECLOSED, buffer);
     Refresh(); return true;
 }
 bool MainFrame::ConfirmClose(EditorDocument& document, bool keepBackup) {
@@ -327,6 +334,7 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
         }
         break;
     }
+    case ID_LOAD_FOR_EDITING: if (d && d->FastView()) { d->fastView->LoadForEditing(); plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(d)); Refresh(); } break;
     case ID_SAVE: if (d) Save(*d); break;
     case ID_SAVEAS: if (d) Save(*d, SaveMode::As); break;
     case IDM_FILE_SAVECOPY: if (d) Save(*d, SaveMode::Copy); break;

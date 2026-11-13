@@ -85,6 +85,7 @@ void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bo
         write(L"Encoding", d->encodingDirty && !d->path.empty() ? -1 : static_cast<int>(d->encoding));
         SaveStyle(profile, section, d->style);
         write(L"Eol", d->Modified() ? -1 : d->Send(SCI_GETEOLMODE));
+        write(L"FastViewOffset", d->FastView() ? static_cast<long long>(d->fastView->Begin()) : 0);
         write(L"Caret", d->Send(SCI_GETCURRENTPOS)); write(L"Anchor", d->Send(SCI_GETANCHOR));
         write(L"XOffset", d->Send(SCI_GETXOFFSET));
         write(L"ViewWhitespace", d->Send(SCI_GETVIEWWS)); write(L"ViewEol", d->Send(SCI_GETVIEWEOL));
@@ -217,6 +218,7 @@ void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path)
         }
         std::wistringstream bookmarks(profile.ReadString(section.c_str(), L"Bookmarks")); LRESULT line = 0;
         while (bookmarks >> line) if (line >= 0 && line < d->Send(SCI_GETLINECOUNT)) d->Send(SCI_MARKERADD, line, 0);
+        if (d->FastView()) d->fastView->Seek(static_cast<unsigned long long>((std::max)(0LL, read(L"FastViewOffset", 0))));
         auto length = d->Send(SCI_GETLENGTH);
         d->Send(SCI_SETSEL, std::clamp<LRESULT>(read(L"Anchor", 0), 0, length), std::clamp<LRESULT>(read(L"Caret", 0), 0, length));
         d->Send(SCI_SETVIEWWS, std::clamp(read(L"ViewWhitespace", 0), 0LL, 3LL)); d->Send(SCI_SETVIEWEOL, read(L"ViewEol", 0) != 0);

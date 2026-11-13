@@ -31,6 +31,7 @@ void BackupDocuments(MainFrame& frame, bool force) {
         auto found = std::find_if(frame.documents.begin(), frame.documents.end(), [&](const auto& d) { return d->hwnd == window; });
         if (found == frame.documents.end()) continue;
         auto& d = **found;
+        if (d.LargeFile()) continue;
         if (!d.Modified() || d.Send(SCI_GETLENGTH) == 0 || (!force && (now - d.runtime.lastAutoSave < period))) continue;
         d.runtime.lastAutoSave = now;
         if (!force && (options & 16) && !d.path.empty()) {
