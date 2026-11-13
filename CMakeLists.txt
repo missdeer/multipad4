@@ -72,6 +72,8 @@ if(BUILD_TESTING)
   set_tests_properties(large_file_integration PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   add_test(NAME fileio_roundtrip COMMAND fileio_tests)
   add_test(NAME editor_integration COMMAND multipad4 --smoke-test)
+  add_test(NAME single_instance_integration COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/SingleInstanceTests.ps1" -Executable "$<TARGET_FILE:multipad4>")
+  set_tests_properties(single_instance_integration PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
   add_test(NAME plugin_admin_worker COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/PluginAdminWorkerTests.ps1")
   set_tests_properties(editor_integration PROPERTIES TIMEOUT 30)
   # Real binary compatibility checks are available when the supplied plugins exist.
