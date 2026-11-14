@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Converted to MultiPad4 theme schema v1 from Notepad++ revision 61e17dde113e01f097939b111cac38427879864c. -->
+<!--//
+
+Twilight
+Copyright (c) 2008 Fabio Zendhi Nagao <http://zend.lojcomm.com.br/>
+              2011-2014 Renato Silva <br.renatosilva@gmail.com>
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+Requirements:
+    * This style is based on DejaVu fonts <http://dejavu.sourceforge.net/wiki/index.php/Main_Page>.
+    * Notepad++, of course.
+
+Installation:
+    Copy this file to C:\Documents and Settings\%%USERNAME%%\Application Data\Notepad++\
+
+About:
+    This styler has been built by Textmate theme to Notepad++ styler <http://framework.lojcomm.com.br/tmTheme2nppStyler/>
+
+Credits:
+    Thanks for the original Textmate theme author.
+    Thanks for Fabio Zendhi Nagao for the tmTheme2nppStyler.
+    Thanks for the user for the tmTheme source.
+
+					 2023-09-30: update Perl support.
+//-->
+<theme version="1" name="Twilight">
+  <style id="actionscript.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="actionscript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="actionscript.doccomment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="actionscript.doccommenttag" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="actionscript.function" fg="DAD085" bg="141414" decorations="0"/>
+  <style id="actionscript.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="actionscript.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="actionscript.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="actionscript.regex" fg="E9C062" bg="141414" decorations="0"/>
+  <style id="actionscript.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="actionscript.typekeyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="asm.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="asm.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="asm.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="asm.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="asm.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="bash.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="bash.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="bash.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="bash.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="bash.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="bash.parsingerror" fg="FF6464" bg="141414" decorations="0"/>
+  <style id="batch.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="batch.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="batch.label" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="batch.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="cmake.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cmake.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="cmake.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="coffeescript.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="coffeescript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="coffeescript.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="coffeescript.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="coffeescript.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="coffeescript.regex" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="coffeescript.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="cpp.class" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="cpp.comment.block" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cpp.comment.line" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cpp.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="cpp.doccomment.documentation" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cpp.doccomment.documentation.line" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cpp.doccommenttag" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="cpp.function" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="cpp.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="cpp.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="cpp.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="cpp.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="cpp.rawstring" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="cpp.string.character" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="cpp.string.quoted" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="cpp.typekeyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="csharp.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="csharp.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="csharp.doccomment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="csharp.doccommenttag" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="csharp.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="csharp.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="csharp.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="csharp.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="csharp.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="csharp.typekeyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="csharp.verbatimstring" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="css.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="css.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="css.htmltag" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="css.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="css.value" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="d.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="d.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="d.doccomment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="d.doccommenttag" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="d.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="d.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="d.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="d.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="diff.comment" fg="5F5A60" bg="141414" decorations="2"/>
+  <style id="diff.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="editor.caret" fg="A7A7A7"/>
+  <style id="editor.caret.additional" fg="A7A7A7"/>
+  <style id="editor.default" fg="F8F8F8" bg="141414" font="Consolas" size="10" decorations="0"/>
+  <style id="editor.fold.margin" fg="555753" bg="2E3436"/>
+  <style id="editor.selection" fg="000000" bg="3E3E3E"/>
+  <style id="editor.selection.additional" bg="3E3E3E"/>
+  <style id="erlang.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="erlang.preprocessor" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="erlang.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="fortran.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="fortran.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="fortran.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="fortran.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="fortran.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="fortran.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="fortran.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="global.bookmark" bg="2E3436"/>
+  <style id="global.currentline" bg="292929"/>
+  <style id="global.foldingmarker" fg="2E3436" bg="EEEEEC"/>
+  <style id="global.indentationguide" fg="888A85" bg="141414" decorations="0"/>
+  <style id="global.link" fg="FFFFFF"/>
+  <style id="global.longlinemarker" fg="EEEEEC"/>
+  <style id="global.marginlinenumber" fg="EEEEEC" bg="2E3436" decorations="0"/>
+  <style id="global.matchingbrace" fg="FCE94F" bg="141414" decorations="1"/>
+  <style id="global.matchingbraceerror" fg="EF2929" bg="141414" decorations="0"/>
+  <style id="global.whitespace" fg="FCAF3E"/>
+  <style id="go.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="go.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="go.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="go.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="go.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="go.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="go.typekeyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="haskell.class" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="haskell.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="haskell.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="haskell.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="haskell.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="haskell.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="haskell.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="html.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="html.htmlentity" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="html.htmltag" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="html.xmlcdata" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="ini.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="ini.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="java.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="java.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="java.doccomment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="java.doccommenttag" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="java.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="java.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="java.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="java.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="java.typekeyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="javascript.class" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="javascript.comment.commentblock" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="javascript.comment.line" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="javascript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="javascript.doccomment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="javascript.doccommenttag" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="javascript.function" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="javascript.identifier" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="javascript.keyword" fg="CDA869" bg="141414" decorations="1"/>
+  <style id="javascript.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="javascript.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="javascript.regex" fg="E9C062" bg="141414" decorations="1"/>
+  <style id="javascript.reservedword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="javascript.string.string_dq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="javascript.string.string_sq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="javascript.templateliteral" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="json.comment" fg="008000" bg="141414" decorations="0"/>
+  <style id="json.default" fg="C3BE98" bg="141414" decorations="0"/>
+  <style id="json.keyword" fg="18AF8A" bg="141414" decorations="1"/>
+  <style id="json.number" fg="FF8000" bg="141414" decorations="0"/>
+  <style id="json.operator" fg="E3CEAB" bg="141414" decorations="0"/>
+  <style id="json.string" fg="808080" bg="141414" decorations="0"/>
+  <style id="latex.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="lisp.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="lisp.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="lisp.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="lisp.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="lisp.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="lua.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="lua.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="lua.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="lua.label" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="lua.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="lua.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="lua.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="makefile.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="makefile.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="makefile.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="makefile.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="matlab.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="matlab.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="matlab.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="matlab.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="matlab.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="matlab.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="nim.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="nim.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="nim.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="nim.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="nsis.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="nsis.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="nsis.label" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="nsis.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="nsis.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="pascal.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="pascal.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="pascal.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="pascal.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="pascal.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="pascal.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="pascal.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="perl.comment" fg="5F5A60" bg="141414" decorations="2"/>
+  <style id="perl.default" fg="F8F8F8" bg="141414" decorations="2"/>
+  <style id="perl.keyword" fg="F9EE98" bg="141414" decorations="2"/>
+  <style id="perl.number" fg="CF6A4C" bg="141414" decorations="2"/>
+  <style id="perl.operator" fg="CDA869" bg="141414" decorations="2"/>
+  <style id="perl.parsingerror" fg="F8F8F8" bg="141414" decorations="2"/>
+  <style id="php.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="php.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="php.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="php.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="php.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="php.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="powershell.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="powershell.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="powershell.doccommenttag" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="powershell.function" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="powershell.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="powershell.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="powershell.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="powershell.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="python.attribute" fg="F8F8F8" bg="141414" decorations="2"/>
+  <style id="python.builtinfunction" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="python.class" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="python.comment.commentblock" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="python.comment.line" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="python.decorator" fg="F8F8F8" bg="141414" decorations="2"/>
+  <style id="python.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="python.formattedstring" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.functiondefinition" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="python.identifier" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="python.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="python.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="python.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="python.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.string.string_dq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.string.string_sq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.triplequotedfstring" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.triplequotedstring.triple_string_dq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="python.triplequotedstring.triple_string_sq" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="r.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="r.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="r.keyword" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="r.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="r.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="r.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rebol.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rebol.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rebol.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="resourcescript.comment.block" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="resourcescript.comment.line" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="resourcescript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="resourcescript.keyword" fg="F9EE98" bg="141414" decorations="0"/>
+  <style id="resourcescript.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="resourcescript.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="resourcescript.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="resourcescript.string.character" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="resourcescript.string.quoted" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="ruby.class" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="ruby.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="ruby.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="ruby.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="ruby.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="ruby.regex" fg="E9C062" bg="141414" decorations="0"/>
+  <style id="rust.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rust.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rust.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="rust.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="rust.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="sas.comment" fg="5F5A60" bg="141414"/>
+  <style id="sas.default" fg="F8F8F8" bg="141414"/>
+  <style id="sas.number" fg="CF6A4C" bg="141414"/>
+  <style id="sas.operator" fg="CDA869" bg="141414"/>
+  <style id="sas.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="sql.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="sql.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="sql.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="sql.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="sql.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="swift.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="swift.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="swift.doccomment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="swift.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="swift.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="swift.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="swift.regex" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="swift.string" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="tcl.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="tcl.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="tcl.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="tcl.operator" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="toml.comment" fg="69B45C" bg="141414" decorations="2"/>
+  <style id="toml.default" fg="FF0000" bg="141414" decorations="0"/>
+  <style id="toml.keyword" fg="B76FFF" bg="141414" decorations="1"/>
+  <style id="toml.number" fg="FF8000" bg="141414" decorations="0"/>
+  <style id="toml.operator" fg="C0C0C0" bg="141414" decorations="1"/>
+  <style id="typescript.class" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="typescript.comment.commentblock" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.comment.line" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.doccomment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.doccommenttag" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.function" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.identifier" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="typescript.number" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.operator" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="typescript.regex" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="typescript.string.string_dq" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.string.string_sq" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="typescript.templateliteral" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="vbscript.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="vbscript.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="vbscript.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="vbscript.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="vbscript.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="vbscript.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="verilog.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="verilog.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="verilog.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="verilog.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="verilog.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="verilog.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="vhdl.attribute" fg="9B703F" bg="141414" decorations="0"/>
+  <style id="vhdl.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="vhdl.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="vhdl.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="vhdl.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="vhdl.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="visualbasic.comment" fg="5F5A60" bg="141414" decorations="0"/>
+  <style id="visualbasic.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="visualbasic.keyword" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="visualbasic.number" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="visualbasic.operator" fg="CDA869" bg="141414" decorations="0"/>
+  <style id="visualbasic.preprocessor" fg="8996A8" bg="141414" decorations="0"/>
+  <style id="visualbasic.string" fg="8F9D6A" bg="141414" decorations="0"/>
+  <style id="xml.default" fg="CCCCCC" bg="141414" decorations="0"/>
+  <style id="xml.xmlcdata" fg="CF6A4C" bg="141414" decorations="0"/>
+  <style id="yaml.comment" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="yaml.default" fg="F8F8F8" bg="141414" decorations="0"/>
+  <style id="yaml.keyword" fg="F8F8F8" bg="141414" decorations="1"/>
+  <style id="yaml.number" fg="F8F8F8" bg="141414" decorations="0"/>
+</theme>

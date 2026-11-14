@@ -1,5 +1,8 @@
 # MultiPad4 语言配置外置与主题兼容计划
 
+> 后续范围调整：Notepad++ XML 兼容层及映射表已删除，22 个预设已一次性转换为
+> MultiPad4 原生格式随程序分发。以下原始方案中的运行时兼容设计仅作为历史记录。
+
 状态：P0～P3 工程实现已完成；P4 已完成 Release 基准、按证据优化和后续条件评估。
 实现与 schema 见 `docs/LANGUAGE_CONFIGURATION.md`，数据基线见 `docs/LEXER_BASELINE.md`，
 测量、兼容报告及验收边界见 `docs/performance/LANGUAGE_CONFIGURATION.md`。

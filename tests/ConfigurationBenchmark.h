@@ -58,16 +58,15 @@ inline void RunConfigurationBenchmark(MainFrame& frame,const std::filesystem::pa
     report<<"theme-configuration,load,current,0,"<<elapsed(begin)<<",0,0,0,0,0,0,0,0,0\n";
     report.close();if(!report)throw std::runtime_error("Cannot write benchmark report");
 }
-inline void RunThemeCompatibilityReport(MainFrame& frame,const std::filesystem::path& directory,const std::filesystem::path& output) {
-    std::ofstream report(output);report<<"theme\texact\tapproximate\tfallback\tunsupported\n";
+inline void RunThemeValidationReport(MainFrame& frame,const std::filesystem::path& directory,const std::filesystem::path& output) {
+    std::ofstream report(output);report<<"theme\tstyles\tkeywords\tdiagnostics\n";
     size_t count=0;
     struct Probe { EditorDocument* document; unsigned numberStyle; const char* language; };
     std::vector<Probe> probes;
     for(const auto& item:{std::pair{L"theme.cpp",SCE_C_NUMBER},std::pair{L"theme.py",SCE_PY_NUMBER},std::pair{L"theme.js",SCE_JS_NUMBER}}){auto document=frame.NewDocument();if(!document)throw std::runtime_error("Cannot create theme probe");document->path=item.first;document->Load({"value = 42;\n"});ConfigureDocumentStyle(*document);probes.push_back({document,static_cast<unsigned>(item.second),item.second==SCE_C_NUMBER?"cpp":item.second==SCE_PY_NUMBER?"python":"javascript"});}
 
     for(const auto& entry:std::filesystem::directory_iterator(directory))if(entry.path().extension()==L".xml"){
-        auto theme=LoadTheme(entry.path());std::map<std::string,unsigned> counts;
-        for(const auto& diagnostic:theme->diagnostics)++counts[diagnostic.status];
+        auto theme=LoadTheme(entry.path());
         for(auto& probe:probes){auto& document=*probe.document;document.style.theme=theme;ConfigureDocumentStyle(document);
             if(document.Send(SCI_GETSTYLEINDEXAT,8)!=probe.numberStyle)throw std::runtime_error("Theme probe changed numeric lexical class");
             auto number=theme->styles.find(std::string(probe.language)+".number");
@@ -79,7 +78,7 @@ inline void RunThemeCompatibilityReport(MainFrame& frame,const std::filesystem::
             document.Send(SCI_SETSAVEPOINT);
         }
 
-        report<<ConfigurationUtf8(entry.path().filename().wstring())<<'\t'<<counts["exact"]<<'\t'<<counts["approximate"]<<'\t'<<counts["fallback"]<<'\t'<<counts["unsupported"]<<'\n';++count;
+        report<<ConfigurationUtf8(entry.path().filename().wstring())<<'\t'<<theme->styles.size()<<'\t'<<theme->keywords.size()<<'\t'<<theme->diagnostics.size()<<'\n';++count;
     }
-    if(!count)throw std::runtime_error("No themes found");report.close();if(!report)throw std::runtime_error("Cannot write compatibility report");
+    if(!count)throw std::runtime_error("No themes found");report.close();if(!report)throw std::runtime_error("Cannot write theme validation report");
 }

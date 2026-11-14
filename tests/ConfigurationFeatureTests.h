@@ -14,6 +14,11 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
     auto rejects=[&](const std::string& data){auto path=write(L"invalid.xml",data);try{LoadTheme(path);return false;}catch(const std::exception&){return true;}};
     require(rejects("<!DOCTYPE theme SYSTEM 'file:///nonexistent'><theme version='1'/>"));
     require(rejects("<theme version='99'/>"));
+    require(rejects("<NotepadPlus><LexerStyles/><GlobalStyles/></NotepadPlus>"));
+    require(rejects("<theme version='1'><LexerStyles/></theme>"));
+    require(rejects("<theme version='1'><style id='cpp.number' fgColor='112233'/></theme>"));
+    require(rejects("<theme version='1'><style id='cpp.number' fontStyle='1'/></theme>"));
+
     require(rejects("<theme version='1'><style id='cpp.keyword' fg='zz0000'/></theme>"));
     require(rejects("<theme version='1'><style id='cpp.keyword' foreground='112233'/></theme>"));
     require(rejects("<theme version='1'><style id='cpp.keyword' size='-1'/></theme>"));
@@ -29,13 +34,11 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
     std::string utf16="\xff\xfe";utf16.append(reinterpret_cast<const char*>(wide.data()),wide.size()*sizeof(wchar_t));
     require(LoadTheme(write(L"utf16.xml",utf16))->name==L"中文");
     auto theme=LoadTheme(fixture);require(theme->styles.at("cpp.keyword").foreground==0x123456);
-    auto noClass=LoadTheme(write(L"no-keyword-class.xml","<NotepadPlus><LexerStyles><LexerType name='cpp'><WordsStyle name='INSTRUCTION WORD' styleID='5'>arbitrary_body</WordsStyle></LexerType></LexerStyles><GlobalStyles/></NotepadPlus>"));require(noClass->keywords.empty());
     require(theme->styles.at("cpp.comment.line").foreground==0x993399);
     require(theme->keywords.at({"cpp",0}).find("multipad_keyword")!=std::string::npos);
     bool unsupported=false;for(const auto& diagnostic:theme->diagnostics)unsupported|=diagnostic.status=="unsupported";require(unsupported);
     auto base=CurrentConfiguration();auto changed=ConfigurationWithTheme(base,*theme);
     require(changed->languages[3]->rulesVersion!=base->languages[3]->rulesVersion);
-    require(std::string(changed->languages[3]->pszKeyWords[0]).find("not_a_keyword")==std::string::npos);
     auto oldOwner=GetCompletionCache(*base->languages[3]).owner;
     auto newOwner=GetCompletionCache(*changed->languages[3]).owner;require(oldOwner!=newOwner&&oldOwner==base->languages[3]);
     auto first=frame.NewDocument();auto second=frame.NewDocument();require(first&&second);

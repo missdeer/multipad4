@@ -31,7 +31,12 @@
 
 ## 兼容与发布验证
 
-`notepad-theme-compatibility.tsv` 使用参考目录的全部 22 个主题，通过同一原生导入器生成。每个主题都实际应用到 C++、Python、JavaScript 文档，核对数字类别颜色及字体装饰（含 0 重置），其余缺失类别执行内部回退。列出 exact、approximate、fallback、unsupported 的逐主题数量；逐项报告可在应用主题对话框查询，保存后的原生主题保留近似/回退/未支持诊断。参考主题文件及其色彩内容未纳入仓库。
+`notepad-theme-compatibility.tsv` 是最初读取参考主题的历史测量，
+`bundled-notepadplusplus-themes.tsv` 是 22 个发行主题的一次性转换统计，均不代表当前运行时能力。
+当前已删除 Notepad++ XML 兼容层，只分发 MultiPad4 原生格式预设。
+`bundled-native-themes.tsv` 由原生加载器生成：每个预设都实际应用到 C++、Python、JavaScript
+文档，核对数字类别颜色及字体装饰（含 0 重置）。原始版权和许可注释保留在转换后的 XML 中。
+
 
 已验证将 EXE 单独复制到新目录、从不同工作目录运行、缺失全部外部 XML 和损坏语言 XML 时，P0 行为基线仍通过内嵌同源资源恢复。正式链接规则不含任何 stl 配置对象。锁定目标主题文件时保存失败，原文件保持有效。
 

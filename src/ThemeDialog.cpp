@@ -330,9 +330,9 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         if(context->changing)return FALSE;
         if(id==IDC_THEME_ALL){context->scopeChanged=true;EnableWindow(GetDlgItem(window,IDOK),TRUE);return TRUE;}
         if(id==IDC_THEME_ADVANCED){ShowAdvanced(window,*context);return TRUE;}
-        if(id==IDC_THEME_REPORT_BUTTON){auto report=Field(window,IDC_THEME_REPORT);if(report.empty())report=Text(L"No import warnings.",L"没有导入警告。");DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_THEME_REPORT),window,ReportProcedure,reinterpret_cast<LPARAM>(report.c_str()));return TRUE;}
+        if(id==IDC_THEME_REPORT_BUTTON){auto report=Field(window,IDC_THEME_REPORT);if(report.empty())report=Text(L"No theme warnings.",L"没有主题警告。");DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_THEME_REPORT),window,ReportProcedure,reinterpret_cast<LPARAM>(report.c_str()));return TRUE;}
         if(id==IDC_THEME_ACTIONS){
-            auto menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,IDC_THEME_RELOAD,Text(L"Reload theme",L"重新加载主题"));AppendMenuW(menu,MF_STRING,IDC_THEME_RESET,Text(L"Reset theme",L"恢复默认主题"));AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,IDC_THEME_REPORT_BUTTON,Text(L"Import report...",L"主题导入报告..."));
+            auto menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,IDC_THEME_RELOAD,Text(L"Reload theme",L"重新加载主题"));AppendMenuW(menu,MF_STRING,IDC_THEME_RESET,Text(L"Reset theme",L"恢复默认主题"));AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,IDC_THEME_REPORT_BUTTON,Text(L"Theme report...",L"主题报告..."));
             RECT r{};GetWindowRect(GetDlgItem(window,id),&r);auto command=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTALIGN,r.right,r.bottom,0,window,nullptr);DestroyMenu(menu);if(command)SendMessageW(window,WM_COMMAND,command,0);return TRUE;
         }
         if(id==IDC_THEME_DETAILS){
@@ -392,7 +392,7 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
             context->source=source;context->candidate=candidate;ShowFields(window,*context);ApplyPreview(window,*context);return TRUE;
         }
         if(id==IDC_THEME_IMPORT){
-            CFileDialog file(TRUE,L"xml",nullptr,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,L"Theme XML (*.xml)\0*.xml\0\0",window);
+            CFileDialog file(TRUE,L"xml",nullptr,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,L"MultiPad4 theme XML (*.xml)\0*.xml\0\0",window);
             if(file.DoModal()==IDOK){
                 auto candidate=LoadTheme(file.m_szFileName);ReadFields(window,*context);context->drafts[context->source]=context->candidate;
                 context->source=file.m_szFileName;context->candidate=candidate;context->files.push_back(context->source);

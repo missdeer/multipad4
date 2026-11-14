@@ -176,10 +176,16 @@ Unicode detection is disabled. Vendored sources remain unchanged.
 `config/languages/default.xml` and the native light/dark palettes contain data
 exported from the pinned notepad4 revision above; its BSD/component notices apply.
 The same XML is embedded without a second handwritten C++ defaults table.
-`src/NotepadThemeBindings.h` records factual language/style-name mappings checked
-against the user's local Notepad++ theme collection; no third-party theme colors,
-fonts or theme file content are redistributed. The repository regression theme
-in `tests/fixtures/theme-mapping.xml` was written for this project.
+`config/themes` bundles native MultiPad4 conversions of all 22 XML presets from
+`PowerEditor/installer/themes` at Notepad++ revision
+`61e17dde113e01f097939b111cac38427879864c`. Conversion was performed once; product
+code only reads the native schema and includes no Notepad++ XML compatibility
+layer or style binding table. Each converted file retains its original author
+credits and license comments (including individual MIT notices where present).
+The Notepad++ GPL-3.0-or-later license is shipped as
+`config/NOTEPADPLUSPLUS-LICENSE.txt`; `config/themes/README.md` lists the presets.
+The native regression theme in `tests/fixtures/theme-native.xml` was written for
+this project.
 Windows XmlLite is an operating-system component, not a bundled parser library.
 `cmake/ScintillaInstrumentation.cmake` generates optional instrumentation copies
 under the build directory and preserves the upstream Scintilla source originals.

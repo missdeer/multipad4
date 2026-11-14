@@ -107,7 +107,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             frame.plugins.Ready();
             try {
                 if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
-                else if(themeReport){RunThemeCompatibilityReport(frame,args[2],args[3]);}
+                else if(themeReport){RunThemeValidationReport(frame,args[2],args[3]);}
                 else if(benchmark){RunConfigurationBenchmark(frame,args[2]);}
                 else if (lexerBaseline) { RunLexerBaseline(frame, args[2], wcscmp(args[1], L"--check-lexer-baseline") == 0); }
                 else if (largeTest) { RunLargeFileTests(frame); }

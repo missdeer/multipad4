@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Original MultiPad4 regression fixture. -->
+<theme version="1" name="Native regression">
+  <style id="cpp.comment.block" fg="339933" decorations="0"/>
+  <style id="cpp.comment.line" fg="993399" decorations="2"/>
+  <style id="cpp.keyword" fg="123456" decorations="1"/>
+  <style id="cpp.number" fg="654321" decorations="0"/>
+  <style id="editor.caret" fg="FFAA00"/>
+  <style id="editor.default" fg="C0C0C0" bg="202020" font="Courier New" size="12" decorations="0"/>
+  <style id="editor.fold.margin" bg="303030"/>
+  <style id="editor.selection" fg="FFFFFF" bg="446688"/>
+  <style id="global.marginlinenumber" fg="AABBCC" bg="202020"/>
+  <style id="global.matchingbrace" fg="112233" bg="44AA66" decorations="0"/>
+  <style id="global.whitespace" fg="445566"/>
+  <style id="javascript.number" fg="FEDCBA" decorations="0"/>
+  <style id="javascript.templateliteral" fg="22AA44" decorations="0"/>
+  <style id="python.identifier" fg="778899" decorations="0"/>
+  <style id="python.number" fg="ABCDEF" decorations="0"/>
+  <style id="resourcescript.comment.block" fg="339933" decorations="0"/>
+  <style id="resourcescript.comment.line" fg="993399" decorations="2"/>
+  <style id="resourcescript.keyword" fg="123456" decorations="1"/>
+  <style id="resourcescript.number" fg="654321" decorations="0"/>
+  <style id="typescript.number" fg="FEDCBA" decorations="0"/>
+  <style id="typescript.templateliteral" fg="22AA44" decorations="0"/>
+  <keywords language="cpp" slot="0" mode="append">multipad_keyword</keywords>
+  <keywords language="resourcescript" slot="0" mode="append">multipad_keyword</keywords>
+  <x-optional/>
+</theme>

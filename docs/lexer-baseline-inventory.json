@@ -5524,25 +5524,19 @@
       "path": "src/ThemeConfiguration.cpp",
       "references": [
         {
-          "line": 50,
+          "line": 42,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
-          "line": 131,
-          "symbols": [
-            "LanguageCatalog"
-          ]
-        },
-        {
-          "line": 170,
+          "line": 120,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 171,
+          "line": 121,
           "symbols": [
             "LanguageDefinition"
           ]

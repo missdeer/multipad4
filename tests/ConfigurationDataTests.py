@@ -45,3 +45,13 @@ assert commands == set(range(40700, 40739))
 for tag in ["dialectCompletion"]:
     assert [value(node) for node in baseline.findall(tag)] == [value(node) for node in product.findall(tag)]
 print("90 languages: all fields, keyword/null slots, grouped styles and completion extras match P0")
+
+# All shipped presets use the product schema, with no runtime format conversion.
+themes = list((root / "config/themes").glob("*.xml"))
+assert len(themes) == 24  # Two native defaults and 22 converted presets.
+for file in themes:
+    theme = ET.parse(file).getroot()
+    assert theme.tag == "theme" and theme.get("version") == "1", file
+    for style in theme.findall("style"):
+        assert set(style.attrib) <= {"id", "fg", "bg", "font", "size", "decorations", "clear", "legacy", "inherit"}, file
+print("24 shipped themes use native schema v1")
