@@ -37,6 +37,8 @@ Open the independent docking pane through Window → Matepath File Browser. It s
 
 The upstream directory API still has a `MAX_PATH` limit. Refresh is manual, and loading icons in large directories can pause navigation. See [Matepath integration](docs/MATEPATH_MIGRATION.md).
 
+OpenDocuments and Matepath save pane visibility, docking side and position, dock size, and floating window coordinates on exit in `plugins/Config/OpenDocuments.ini` and `plugins/Config/Matepath.ini`. The next launch restores this layout, including the dock position of hidden panes.
+
 ### Notepad++ plugins and plugin management
 
 Unicode x64 plugins are loaded from `plugins/<name>/<name>.dll` under the executable directory. The host provides plugin menus, shortcuts, notifications, message routing to the active document, and docking panes. Integration checks use real JsonTools, XMLTools, mimeTools, NppConverter, and NppExport DLLs.

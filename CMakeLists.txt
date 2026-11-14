@@ -142,3 +142,7 @@ option(MULTIPAD4_BUILD_OPEN_DOCUMENTS "Build the optional open-documents pane pl
 if(MULTIPAD4_BUILD_OPEN_DOCUMENTS)
   add_subdirectory(plugins/OpenDocuments)
 endif()
+if(BUILD_TESTING AND MULTIPAD4_BUILD_MATEPATH AND MULTIPAD4_BUILD_OPEN_DOCUMENTS)
+  add_test(NAME bundled_pane_restart COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/BundledPaneRestartTests.ps1" -Executable "$<TARGET_FILE:multipad4>")
+  set_tests_properties(bundled_pane_restart PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
+endif()

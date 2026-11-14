@@ -37,6 +37,8 @@
 
 当前仍受上游目录 API 的 `MAX_PATH` 限制，刷新为手动触发，大目录加载图标可能暂停导航。详见 [Matepath 集成](docs/MATEPATH_MIGRATION.md)。
 
+OpenDocuments 和 Matepath 插件退出时分别在 `plugins/Config/OpenDocuments.ini` 和 `plugins/Config/Matepath.ini` 保存面板显隐、停靠方向和位置、停靠尺寸及浮动窗口坐标，下次启动自动恢复。隐藏的面板保留隐藏前的停靠位置。
+
 ### Notepad++ 插件与插件管理
 
 从可执行文件目录的 `plugins/<名称>/<名称>.dll` 加载 Unicode x64 插件，提供插件菜单、快捷键、通知、活动文档消息路由及停靠面板。已有使用 JsonTools、XMLTools、mimeTools、NppConverter、NppExport 真实 DLL 的集成检查。

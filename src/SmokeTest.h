@@ -31,6 +31,7 @@
 #include "../tests/FrameworkCompatibilityTests.h"
 #include "../tests/MatepathPaneTests.h"
 #include "../tests/OpenDocumentsPaneTests.h"
+#include "../tests/PluginPaneStateTests.h"
 // Runs against actual WTL and Scintilla windows on the application's UI thread.
 inline void RunSmokeTest(MainFrame& frame) {
     RunFrameworkCompatibilityTests();
@@ -40,6 +41,7 @@ inline void RunSmokeTest(MainFrame& frame) {
     auto dir = std::filesystem::temp_directory_path() / (L"MultiPad4-smoke-" + std::to_wstring(GetCurrentProcessId()));
     std::filesystem::create_directories(dir);
     try {
+        RunPluginPaneStateTests(frame, dir);
         RunSearchAvailabilityTests(frame);
         wchar_t className[32]{}; GetClassNameW(frame.m_hWndMDIClient, className, 32);
         require(wcscmp(className, L"MDIClient") == 0);

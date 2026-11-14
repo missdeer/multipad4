@@ -1,4 +1,5 @@
 #include "MatepathPane.h"
+#include "../DockPaneState.h"
 #include <memory>
 #include <DockImpl.cpp>
 
@@ -28,13 +29,8 @@ void Write(const wchar_t* key, const std::wstring& value) {
 }
 void Start() {
     if (pane || !initialized) return;
-    wchar_t directory[32768]{};
-    if (!SendMessageW(host._nppHandle, NPPM_GETPLUGINSCONFIGDIR, _countof(directory), reinterpret_cast<LPARAM>(directory))) return;
-    configPath = (std::filesystem::path(directory) / L"Matepath.ini").wstring();
-    wchar_t commandLine[32768]{};
-    SendMessageW(host._nppHandle, NPPM_GETCURRENTCMDLINE, _countof(commandLine), reinterpret_cast<LPARAM>(commandLine));
-    testMode = wcsstr(commandLine, L"--smoke-test") || wcsstr(commandLine, L"--qa-render") || wcsstr(commandLine, L"--plugin-test");
-    if (testMode) configPath.clear();
+    configPath = pluginLayout::ConfigPath(host._nppHandle, L"Matepath.ini").wstring();
+    testMode = configPath.empty();
     pane = std::make_unique<MatepathPane>();
     pane->CreatePane(host._nppHandle);
     if (!pane->IsWindow()) { pane.reset(); return; }
@@ -47,13 +43,23 @@ void Start() {
     if (sort.size() == 1 && sort[0] >= L'0' && sort[0] <= L'3') pane->sort = sort[0] - L'0';
     const auto folder = Read(L"Directory");
     if (folder.empty() || !pane->Navigate(folder)) pane->RefreshItems();
-    const auto side = Read(L"Side", L"1");
-    if (side.size() == 1 && side[0] >= L'0' && side[0] <= L'3') pane->SetSide(static_cast<DockSide>(side[0] - L'0'));
-    if (Read(L"Visible", L"1") == L"0") pane->Toggle();
+    if (!pluginLayout::Restore(configPath, L"Matepath", *pane, host._nppHandle, pane->visible)) {
+        const auto side = Read(L"Side", L"1");
+        if (side.size() == 1 && side[0] >= L'0' && side[0] <= L'3') pane->SetSide(static_cast<DockSide>(side[0] - L'0'));
+        if (Read(L"Visible", L"1") == L"0") pane->Toggle();
+    } else {
+        // CurrentSide() uses the cached side while hidden.
+        dockwins::DFDOCKPOSEX state{}; pane->GetDockingWindowPlacement(&state);
+        pane->side = state.dockPos.hdr.hBar == HNONDOCKBAR ? DockSide::Floating
+            : (state.dockPos.dwDockSide & 3) == dockwins::CDockingSide::sLeft ? DockSide::Left
+            : (state.dockPos.dwDockSide & 3) == dockwins::CDockingSide::sRight ? DockSide::Right : DockSide::Bottom;
+        pane->Layout();
+    }
 }
 void Stop() {
     if (pane) {
         if (!testMode) {
+            pluginLayout::Save(configPath, L"Matepath", *pane, pane->visible);
             Write(L"Directory", pane->directory.wstring());
             Write(L"Filter", pane->fileSpec);
             Write(L"Hidden", pane->showHidden ? L"1" : L"0");
