@@ -44,7 +44,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     int count = 0; LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
-    bool smoke = count == 2 && wcscmp(args[1], L"--smoke-test") == 0;
+    bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
+    bool smoke = noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
@@ -54,7 +55,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(largeTest || smoke || report || render);
+        frame.plugins.enabled = !(largeTest || report);
+        if (smoke || render) frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"Matepath.dll";
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         if (frame.settings.persistent) LoadStylePreferences(frame.settings.path.c_str());
@@ -113,7 +115,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 }
             } catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); result = 4; }
             frame.plugins.Shutdown();
-            frame.matepath.DestroyPane();
+            if ((smoke || render) && (MatepathTestWindow() || GetModuleHandleW(L"Matepath.dll"))) {
+                fprintf(stderr, "Matepath plugin did not unload cleanly\n"); result = 4;
+            }
             if (frame.dock.pane.IsWindow()) { if (frame.dock.pane.IsDocking()) frame.dock.pane.Undock(); frame.dock.pane.DestroyWindow(); }
             frame.DestroyWindow();
         } else {

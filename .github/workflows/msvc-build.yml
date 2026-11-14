@@ -76,6 +76,13 @@ jobs:
           $compilerBin = 'C:/Program Files (x86)/Intel/oneAPI/compiler/latest/bin'
           Copy-Item "$compilerBin/libmmd.dll", "$compilerBin/svml_dispmd.dll" cmake-oneapi-build/ -ErrorAction Stop
 
+      - name: Verify Matepath plugin
+        run: |
+          $plugin = 'cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.dll'
+          if (!(Test-Path -LiteralPath $plugin -PathType Leaf)) {
+            throw "The Matepath plugin is missing: $plugin"
+          }
+
       - name: Upload executable
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -84,6 +91,9 @@ jobs:
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
             cmake-${{ matrix.toolchain.id }}-build/MultiPad4 DarkTheme.ini
             cmake-${{ matrix.toolchain.id }}-build/*.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/THIRD_PARTY.md
+            cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.License.txt
           if-no-files-found: error
 
   mingw:
@@ -135,10 +145,16 @@ jobs:
           set -euo pipefail
           build_dir="cmake-${{ matrix.toolchain.id }}-build"
           build_root="$(cygpath -u "$(cd "$build_dir" && pwd)")"
-          mkdir -p "$build_dir/package"
+          plugin="$build_dir/plugins/Matepath/Matepath.dll"
+          mkdir -p "$build_dir/package/plugins/Matepath"
           cp "$build_dir/multipad4.exe" "$build_dir/MultiPad4 DarkTheme.ini" "$build_dir/package/"
-          # Follow transitive imports from the toolchain or beside the executable.
-          ldd "$build_dir/multipad4.exe" > "$build_dir/runtime-dependencies.txt"
+          cp "$plugin" "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
+            "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
+          # Include imports of the dynamically loaded plugin as well as the EXE.
+          {
+            ldd "$build_dir/multipad4.exe"
+            ldd "$plugin"
+          } > "$build_dir/runtime-dependencies.txt"
           cat "$build_dir/runtime-dependencies.txt"
           if grep -q 'not found' "$build_dir/runtime-dependencies.txt"; then
             echo 'A runtime dependency could not be resolved' >&2

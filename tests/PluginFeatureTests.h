@@ -21,7 +21,7 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
             }
         throw std::runtime_error("Required plugin command missing");
     };
-    require(host.plugins.size() == 5 && host.errors.empty(), "load all five supplied plugins");
+    require(host.plugins.size() >= 5 && host.errors.empty(), "load all five supplied plugins");
     const auto savedCommand = host.nextCommand;
     host.nextCommand = IDM_SETTING_OPENPLUGINSDIR - 1;
     int allocatedCommand = 0;
@@ -36,7 +36,57 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
     require(TabCtrl_GetItemCount(admin.tab) == 5 && !admin.entries.empty(), "plugin admin loads catalogue and five tabs");
     require(!admin.visible.empty(), "available plugins shown");
     TabCtrl_SetCurSel(admin.tab, 2); admin.Populate();
-    require(admin.visible.size() == 5, "installed plugins reflect loaded host");
+    require(admin.visible.size() == host.plugins.size(), "installed plugins reflect loaded host");
+    auto matepath = std::find_if(admin.entries.begin(), admin.entries.end(), [](const auto& entry) { return entry.folder == L"Matepath" && !entry.disabled; });
+    if (matepath != admin.entries.end()) {
+        require(!matepath->installed.empty() && !matepath->description.empty() && !matepath->author.empty()
+            && !matepath->homepage.empty() && !matepath->copyright.empty() && !matepath->license.empty(), "local Matepath metadata comes from DLL resources");
+        const auto entryIndex = static_cast<size_t>(matepath - admin.entries.begin());
+        const auto visibleEntry = std::find(admin.visible.begin(), admin.visible.end(), entryIndex);
+        require(visibleEntry != admin.visible.end(), "Matepath appears in installed plugins");
+        ListView_SetItemState(admin.list, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_SetItemState(admin.list, static_cast<int>(visibleEntry - admin.visible.begin()), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        admin.Describe();
+        wchar_t details[4096]{}; GetDlgItemTextW(admin.hwnd, IDC_PLUGINADM_EDIT, details, _countof(details));
+        require(wcsstr(details, matepath->description.c_str()) && wcsstr(details, matepath->author.c_str())
+            && wcsstr(details, matepath->homepage.c_str()) && wcsstr(details, matepath->license.c_str()), "plugin details show local DLL metadata");
+        qaArtifactDirectory = host.config / L"MultiPad4-QA";
+        CaptureQAWindow(admin.hwnd, L"plugins-matepath-details");
+
+        // Read a disabled, renamed local plugin without loading its executable code.
+        const auto fixture = std::filesystem::temp_directory_path() / (L"MultiPad4-plugin-metadata-" + std::to_wstring(GetCurrentProcessId()));
+        const auto savedHome = host.home;
+        const auto savedConfig = host.config;
+        try {
+            const auto folder = fixture / L"disabled" / L"LocalBrowser";
+            std::filesystem::create_directories(folder);
+            std::filesystem::copy_file(savedHome / L"Matepath" / L"Matepath.dll", folder / L"LocalBrowser.dll", std::filesystem::copy_options::overwrite_existing);
+            host.home = fixture;
+            PluginAdmin offline; offline.frame = &frame; offline.Load();
+            host.home = savedHome;
+            const auto local = std::find_if(offline.entries.begin(), offline.entries.end(), [](const auto& entry) { return entry.folder == L"LocalBrowser"; });
+            require(local != offline.entries.end() && local->disabled && !local->loaded && local->name == L"Matepath"
+                && !local->description.empty() && !local->author.empty()
+                && !local->homepage.empty() && local->installed == matepath->installed, "disabled plugin metadata is read from disk");
+            const auto catalogFolder = fixture / L"CatalogBrowser";
+            std::filesystem::create_directories(catalogFolder);
+            std::filesystem::copy_file(savedHome / L"Matepath" / L"Matepath.dll", catalogFolder / L"CatalogBrowser.dll", std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::create_directories(fixture / L"Config");
+            std::ofstream(fixture / L"Config" / L"nppPluginList.json") << R"({"arch":"64","version":"test","npp-plugins":[{"folder-name":"CatalogBrowser","display-name":"Catalogue Browser","description":"Catalogue description","author":"Catalogue author","homepage":"https://example.com/catalogue"}]})";
+            host.home = fixture; host.config = fixture / L"Config";
+            offline.Load();
+            host.home = savedHome; host.config = savedConfig;
+            const auto catalogEntry = std::find_if(offline.entries.begin(), offline.entries.end(), [](const auto& entry) { return entry.folder == L"CatalogBrowser"; });
+            require(catalogEntry != offline.entries.end() && catalogEntry->name == L"Catalogue Browser"
+                && catalogEntry->description == L"Catalogue description" && catalogEntry->author == L"Catalogue author"
+                && catalogEntry->homepage == L"https://example.com/catalogue", "catalogue metadata takes precedence over DLL fallback");
+            std::filesystem::remove_all(fixture);
+        } catch (...) {
+            host.home = savedHome; host.config = savedConfig;
+            std::error_code cleanupError; std::filesystem::remove_all(fixture, cleanupError);
+            throw;
+        }
+    }
     SetDlgItemTextW(admin.hwnd, IDC_PLUGINADM_SEARCH_EDIT, L"JsonTools"); admin.Search();
     int row = ListView_GetNextItem(admin.list, -1, LVNI_SELECTED);
     require(row >= 0 && admin.entries[admin.visible[row]].folder == L"JsonTools", "plugin admin searches names");
@@ -48,40 +98,7 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
     frame.SendMessage(WM_COMMAND, IDM_SETTING_PLUGINADM);
     require(admin.hwnd == originalDialog && IsWindowVisible(admin.hwnd), "plugin admin reuses existing dialog");
     admin.Close();
-    auto checkFloatCleanup = [&]() {
-        frame.matepath.SetSide(DockSide::Right);
-        HWND oldBar = ::GetParent(frame.matepath);
-        for (int repeat = 0; repeat < 4; ++repeat) {
-            dockwins::DFDOCKRECT header{};
-            header.hdr.hWnd = frame.matepath; header.hdr.hBar = oldBar;
-            frame.matepath.GetWindowRect(&header.rect);
-            require(frame.matepath.DockMe(&header), "repeat Matepath dock registration");
-        }
-        VerifyPaneLayoutMembership(frame, frame.matepath, true);
-        frame.matepath.PostMessage(WM_KEYDOWN, VK_ESCAPE, 0);
-        frame.matepath.BeginMoving(POINT{20, 10});
-        require(frame.matepath.IsDocking(), "cancel drag retains Matepath docking");
-        VerifyPaneLayoutMembership(frame, frame.matepath, true);
-        POINT outside{-1000, -1000}; frame.matepath.ScreenToClient(&outside);
-        frame.matepath.PostMessage(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(outside.x, outside.y));
-        frame.matepath.PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(outside.x, outside.y));
-        require(frame.matepath.BeginMoving(POINT{20, 10}) && !frame.matepath.IsDocking(), "drag docked pane to floating");
-        VerifyPaneLayoutMembership(frame, frame.matepath, false);
-        require(!::IsWindowVisible(oldBar), "empty dock container hides before queued close");
-        frame.UpdateLayout(); frame.UpdateWindow();
-        qaArtifactDirectory = host.config / L"MultiPad4-QA";
-        CaptureQAWindow(frame, L"dock-empty-container-hidden");
-        CaptureQAWindow(frame.matepath, L"dock-pane-floating");
-        MSG message{};
-        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
-            bool filtered = frame.PreTranslateMessage(&message) != FALSE;
-            if (!filtered) { TranslateMessage(&message); DispatchMessageW(&message); }
-        }
-        require(!::IsWindow(oldBar), "floating last pane destroys old dock container");
-        frame.matepath.SetSide(DockSide::Right);
-    };
     RunMatepathInputRegression(frame);
-    checkFloatCleanup();
     auto* first = frame.Active(); auto* second = frame.NewDocument();
     first->Send(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("isolated"));
     auto text = [&](const char* value) { second->Send(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(value)); second->Send(SCI_SELECTALL); };
@@ -130,7 +147,7 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
     require(::IsWindowVisible(panel->client), "restore plugin panel");
     panel->SendMessage(WM_CLOSE);
     require(!::IsWindowVisible(panel->client), "close plugin panel");
-    checkFloatCleanup();
+    RunRepeatedDockRegistrationTests(frame);
     for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == first) frame.tabs.SetActivePage(i);
     frame.Refresh(); first->Send(SCI_SELECTALL); command(L"mimeTools.dll", L"Base64 Encode with padding");
     require(first->Text() == "aXNvbGF0ZWQ=", "cached Scintilla handle follows active MDI tab");

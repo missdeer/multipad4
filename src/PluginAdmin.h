@@ -12,6 +12,7 @@ class PluginAdmin {
 public:
     struct Entry {
         std::wstring folder, name, version, installed, description, author, homepage, url, hash;
+        std::wstring copyright, license;
         bool present = false, loaded = false, disabled = false, compatible = true;
     };
     HWND hwnd = nullptr, list = nullptr, tab = nullptr;

@@ -12,7 +12,6 @@
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
     if (pluginAdmin.hwnd && ::IsWindowVisible(pluginAdmin.hwnd) && ::IsDialogMessageW(pluginAdmin.hwnd, msg)) return TRUE;
     if (plugins.PreTranslate(msg)) return TRUE;
-    if (matepath.IsWindow() && matepath.PreTranslateMessage(msg)) return TRUE;
     if (searchResults.PreTranslateMessage(msg)) return TRUE;
     if (searchDialog.PreTranslateMessage(msg)) return TRUE;
     if (mdiAccelerators && ::TranslateAcceleratorW(m_hWnd, mdiAccelerators, msg)) return TRUE;
@@ -40,19 +39,6 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();
     dock.Create(m_hWnd);
     searchResults.CreatePane(*this);
-    matepath.CreatePane(m_hWnd);
-    auto folder = settings.ReadString(L"Matepath", L"Directory");
-    matepath.fileSpec = settings.ReadString(L"Matepath", L"Filter", L"*.*");
-    if (matepath.fileSpec.size() > 126) matepath.fileSpec = L"*.*";
-    matepath.pattern.SetWindowTextW(matepath.fileSpec.c_str());
-    matepath.showHidden = settings.ReadString(L"Matepath", L"Hidden") == L"1";
-    matepath.reverse = settings.ReadString(L"Matepath", L"Reverse") == L"1";
-    const auto sort = settings.ReadString(L"Matepath", L"Sort", L"0");
-    if (sort.size() == 1 && sort[0] >= L'0' && sort[0] <= L'3') matepath.sort = sort[0] - L'0';
-    if (folder.empty() || !matepath.Navigate(folder)) matepath.RefreshItems();
-    const auto side = settings.ReadString(L"Matepath", L"Side", L"1");
-    if (side.size() == 1 && side[0] >= L'0' && side[0] <= L'3') matepath.SetSide(static_cast<DockSide>(side[0] - L'0'));
-    if (settings.ReadString(L"Matepath", L"Visible", L"1") == L"0") matepath.Toggle();
     InitializeFramePreferences(*this);
     UpdateLayout();
     DragAcceptFiles(TRUE);
@@ -352,8 +338,6 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     case ID_CLOSEALL: while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) break; break;
     case ID_EXIT: PostMessage(WM_CLOSE); break;
     case ID_DOCUMENTS: dock.Toggle(); break;
-    case ID_MATEPATH: matepath.Toggle(); break;
-    case ID_MATEPATH_FOLLOW: { BOOL handled = TRUE; OnMatepath(0, 10, 0, handled); break; }
     case ID_DOCKLEFT: dock.SetSide(DockSide::Left); break;
     case ID_DOCKRIGHT: dock.SetSide(DockSide::Right); break;
     case ID_DOCKBOTTOM: dock.SetSide(DockSide::Bottom); break;
@@ -395,20 +379,12 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
     while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
-        settings.WriteString(L"Matepath", L"Directory", matepath.directory.wstring());
-        settings.WriteString(L"Matepath", L"Filter", matepath.fileSpec);
-        settings.WriteString(L"Matepath", L"Hidden", matepath.showHidden ? L"1" : L"0");
-        settings.WriteString(L"Matepath", L"Reverse", matepath.reverse ? L"1" : L"0");
-        settings.WriteString(L"Matepath", L"Sort", std::to_wstring(matepath.sort));
-        settings.WriteString(L"Matepath", L"Side", std::to_wstring(static_cast<int>(matepath.CurrentSide())));
-        settings.WriteString(L"Matepath", L"Visible", matepath.visible ? L"1" : L"0");
         settings.Save();
     }
     else settings.SaveOption(IDM_VIEW_SAVESETTINGS);
     pluginAdmin.Close();
     plugins.Shutdown();
     searchDialog.Close();
-    matepath.DestroyPane();
     if (dock.pane.IsWindow()) { if (dock.pane.IsDocking()) dock.pane.Undock(); dock.pane.DestroyWindow(); }
     DestroyWindow(); return 0;
 }
@@ -456,32 +432,10 @@ LRESULT MainFrame::OnPane(UINT, WPARAM action, LPARAM index, BOOL&) {
 LRESULT MainFrame::OnMenu(UINT, WPARAM, LPARAM, BOOL&) {
     UpdateCommandUI(); return 0;
 }
-LRESULT MainFrame::OnMatepathOpen(UINT, WPARAM, LPARAM path, BOOL&) {
-    if (!runtime.operationDepth && !runtime.inBackgroundWork && IsWindowEnabled() && path)
-        Open(std::filesystem::path(reinterpret_cast<const wchar_t*>(path)));
-    return 0;
-}
-LRESULT MainFrame::OnMatepath(UINT, WPARAM action, LPARAM, BOOL&) {
-    switch (action) {
-    case 0: matepath.Toggle(); break;
-    case 1: matepath.SetSide(DockSide::Left); break;
-    case 2: matepath.SetSide(DockSide::Right); break;
-    case 3: matepath.SetSide(DockSide::Bottom); break;
-    case 4: matepath.SetSide(matepath.IsDocking() ? DockSide::Floating : DockSide::Right); break;
-    case 10:
-        if (auto* document = Active(); document && !document->path.empty()) {
-            if (!matepath.visible) matepath.Toggle();
-            matepath.Reveal(document->path);
-        }
-        break;
-    }
-    UpdateCommandUI(); return 0;
-}
 LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     auto* r = reinterpret_cast<RECT*>(l);
     SetWindowPos(nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
     for (auto& d : documents) if (d->Send(SCI_GETMARGINWIDTHN, 0)) d->Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(m_hWnd), 96));
     UpdateToolbarImages(*this);
-    matepath.Layout();
     dock.Layout(); return 0;
 }

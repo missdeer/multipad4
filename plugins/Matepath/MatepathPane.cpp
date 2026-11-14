@@ -189,7 +189,7 @@ void MatepathPane::ActivateSelection() {
         if (!Navigate(item.szFileName)) MessageBeep(MB_ICONWARNING);
     } else if (item.ntype == DLE_FILE) {
         // Synchronous notification: the frame consumes the path before return.
-        ::SendMessageW(owner, WM_MATEPATH_OPEN, 0, reinterpret_cast<LPARAM>(item.szFileName));
+        ::SendMessageW(owner, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(item.szFileName));
     }
 }
 void MatepathPane::Reveal(const std::filesystem::path& path) {
@@ -240,7 +240,7 @@ LRESULT MatepathPane::OnCommand(WORD, WORD id, HWND, BOOL&) {
     case Properties: DirList_PropertyDlg(list, -1); break;
     case SortName: case SortSize: case SortType: case SortDate: sort = id - SortName; RefreshItems(); break;
     case Reverse: reverse = !reverse; RefreshItems(); break;
-    case Follow: ::SendMessageW(owner, WM_MATEPATH_ACTION, 10, 0); break;
+    case Follow: SendMessage(WM_MATEPATH_ACTION, 10, 0); break;
     }
     return 0;
 }
@@ -275,7 +275,7 @@ LRESULT MatepathPane::OnContext(UINT, WPARAM source, LPARAM l, BOOL&) {
     if (p.x == -1 && p.y == -1) { p = {10, 10}; ClientToScreen(&p); }
     const int id = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, p.x, p.y, 0, m_hWnd, nullptr);
     DestroyMenu(menu);
-    if (id >= 1000) ::PostMessageW(owner, WM_MATEPATH_ACTION, id - 1000, 0);
+    if (id >= 1000) PostMessage(WM_MATEPATH_ACTION, id - 1000, 0);
     else if (id) SendMessage(WM_COMMAND, id);
     return 0;
 }
@@ -284,8 +284,27 @@ LRESULT MatepathPane::OnDpi(UINT message, WPARAM, LPARAM l, BOOL& handled) {
     if (message == WM_DPICHANGED && !IsDocking()) { auto* r = reinterpret_cast<RECT*>(l); SetWindowPos(nullptr, r, SWP_NOZORDER | SWP_NOACTIVATE); }
     Layout(); handled = FALSE; return 0;
 }
-LRESULT MatepathPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { ::PostMessageW(owner, WM_MATEPATH_ACTION, 0, 0); return 0; }
+LRESULT MatepathPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { PostMessage(WM_MATEPATH_ACTION, 0, 0); return 0; }
 LRESULT MatepathPane::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
     if (tooltips.IsWindow()) tooltips.DestroyWindow();
     list.DeleteAllItems(); DirList_Destroy(list); handled = FALSE; return 0;
+}
+
+void MatepathPane::FollowActive() {
+    wchar_t path[32768]{};
+    if (::SendMessageW(owner, NPPM_GETFULLCURRENTPATH, _countof(path), reinterpret_cast<LPARAM>(path)) && *path) {
+        if (!visible) Toggle();
+        Reveal(path);
+    }
+}
+LRESULT MatepathPane::OnAction(UINT, WPARAM action, LPARAM, BOOL&) {
+    switch (action) {
+    case 0: Toggle(); break;
+    case 1: SetSide(DockSide::Left); break;
+    case 2: SetSide(DockSide::Right); break;
+    case 3: SetSide(DockSide::Bottom); break;
+    case 4: SetSide(IsDocking() ? DockSide::Floating : DockSide::Right); break;
+    case 10: FollowActive(); break;
+    }
+    return 0;
 }

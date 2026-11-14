@@ -28,8 +28,6 @@
 #define ID_NEXTTAB 45008
 #define ID_PREVTAB 45009
 #define IDR_MDIACCEL 45010
-#define ID_MATEPATH 45011
-#define ID_MATEPATH_FOLLOW 45012
 #define ID_LOAD_FOR_EDITING 45020
 
 #include "SearchResources.h"

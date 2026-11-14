@@ -29,6 +29,9 @@ public:
         int count = 0;
         PBENOTIFIED notify = nullptr;
         PMESSAGEPROC message = nullptr;
+        // Optional MultiPad4 extensions; absent exports preserve N++ behavior.
+        BOOL (__cdecl* preTranslate)(MSG*) = nullptr;
+        bool supportsFastView = false;
     };
     MainFrame* frame = nullptr;
     HWND proxy = nullptr, secondProxy = nullptr;
@@ -42,6 +45,7 @@ public:
     UINT nextCommand = 46000;
     int nextMarker = 20, nextIndicator = 20;
     UINT_PTR activeBuffer = 0;
+    std::wstring onlyModule;
     bool enabled = true, ready = false, stopped = false;
     void Initialize(MainFrame& owner);
     void Ready();

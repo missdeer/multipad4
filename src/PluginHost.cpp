@@ -89,6 +89,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!entry.is_directory()) continue;
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
+        if (!onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }
     std::sort(candidates.begin(), candidates.end()); std::vector<ACCEL> keys;
@@ -105,6 +106,9 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!unicode || !unicode() || !info || !name || !funcs || !plugin.notify || !plugin.message) {
             errors.push_back(plugin.module + L": invalid Unicode plugin exports"); FreeLibrary(plugin.library); continue;
         }
+        plugin.preTranslate = reinterpret_cast<BOOL(__cdecl*)(MSG*)>(GetProcAddress(plugin.library, "multipadPreTranslateMessage"));
+        auto supportsFastView = reinterpret_cast<BOOL(__cdecl*)()>(GetProcAddress(plugin.library, "multipadSupportsFastView"));
+        plugin.supportsFastView = supportsFastView && supportsFastView();
         plugin.name = name(); info({owner, proxy, secondProxy}); plugin.items = funcs(&plugin.count);
         if (!plugin.items || plugin.count <= 0 || plugin.count > 4096 || nextCommand + plugin.count + 2 >= 56000) {
             errors.push_back(plugin.module + L": invalid command table"); FreeLibrary(plugin.library); continue;
@@ -159,12 +163,13 @@ void PluginHost::Shutdown() {
     if (::IsWindow(proxy)) ::DestroyWindow(proxy); if (::IsWindow(secondProxy)) ::DestroyWindow(secondProxy);
 }
 bool PluginHost::Execute(UINT id) {
-    if (auto* document = frame->Active(); document && document->FastView()) return false;
-    for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc) { p.items[i]._pFunc(); frame->Refresh(); return true; }
+    const bool fastView = frame->Active() && frame->Active()->FastView();
+    for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc && (!fastView || p.supportsFastView)) { p.items[i]._pFunc(); frame->Refresh(); return true; }
     return false;
 }
 bool PluginHost::PreTranslate(MSG* msg) {
     if (accelerators && TranslateAcceleratorW(*frame, accelerators, msg)) return true;
+    for (auto& plugin : plugins) if (plugin.preTranslate && plugin.preTranslate(msg)) return true;
     for (HWND dialog : modeless) if (::IsWindow(dialog) && IsDialogMessageW(dialog, msg)) return true;
     return false;
 }
@@ -214,7 +219,7 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     }
     case NPPM_GETOPENFILENAMESSECOND_DEPRECATED: return 0;
     case NPPM_ACTIVATEDOC: if (w || l < 0 || l >= frame->tabs.GetPageCount()) return FALSE; frame->tabs.SetActivePage(static_cast<int>(l)); frame->Refresh(); return TRUE;
-    case NPPM_DOOPEN: case NPPM_SWITCHTOFILE: return l && frame->Open(reinterpret_cast<const wchar_t*>(l));
+    case NPPM_DOOPEN: case NPPM_SWITCHTOFILE: return l && !frame->runtime.operationDepth && !frame->runtime.inBackgroundWork && frame->IsWindowEnabled() && frame->Open(reinterpret_cast<const wchar_t*>(l));
     case NPPM_SAVECURRENTFILE: return d && frame->Save(*d);
     case NPPM_SAVECURRENTFILEAS: return d && l && frame->SaveTo(*d, reinterpret_cast<const wchar_t*>(l), w != 0);
     case NPPM_SAVEALLFILES: for (auto& doc : frame->documents) if (doc->Modified() && !frame->Save(*doc)) return FALSE; return TRUE;

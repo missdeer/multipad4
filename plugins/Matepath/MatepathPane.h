@@ -1,9 +1,9 @@
 #pragma once
-#include "DockHost.h"
+#include "PluginApp.h"
 #include <filesystem>
 
 constexpr UINT WM_MATEPATH_ACTION = WM_APP + 0x110;
-constexpr UINT WM_MATEPATH_OPEN = WM_APP + 0x111;
+enum class DockSide { Left, Right, Bottom, Floating };
 class MatepathPane : public dockwins::CTitleDockingWindowImpl<MatepathPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
 public:
     using Base = dockwins::CTitleDockingWindowImpl<MatepathPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits>;
@@ -34,7 +34,10 @@ public:
     void ActivateSelection();
     void Reveal(const std::filesystem::path& path);
     BOOL PreTranslateMessage(MSG* msg);
+    void FollowActive();
+    LRESULT OnAction(UINT, WPARAM, LPARAM, BOOL&);
     BEGIN_MSG_MAP(MatepathPane)
+        MESSAGE_HANDLER(WM_MATEPATH_ACTION, OnAction)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
         MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
         MESSAGE_HANDLER(WM_DRAWITEM, OnDrawButton)

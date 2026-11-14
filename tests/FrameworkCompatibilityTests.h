@@ -9,6 +9,18 @@
 class FloatingMoveProbe : public DockPane {
 public:
     ~FloatingMoveProbe() { if (IsWindow()) { if (IsDocking()) Undock(); DestroyWindow(); } }
+    void SetSide(DockSide side) {
+        if (side == DockSide::Floating) {
+            RECT rect{180, 160, 520, 620};
+            Float(&rect);
+        } else {
+            dockwins::DFDOCKPOS pos{};
+            pos.hdr.hWnd = m_hWnd; pos.hdr.hBar = owner;
+            pos.dwDockSide = dockwins::CDockingSide::sRight;
+            pos.nWidth = 220; pos.nHeight = 400;
+            SetDockingPosition(&pos);
+        }
+    }
     void Verify(HWND frame) {
         owner = frame;
         RECT position{140, 140, 460, 540};
@@ -119,9 +131,13 @@ inline void RunDragDockTests(MainFrame& frame) {
     position.dwDockSide = dockwins::CDockingSide::sRight;
     position.nWidth = 160; position.nHeight = 200;
     if (!extra.SetDockingPosition(&position)) throw std::runtime_error("Cannot dock additional bar");
+    FloatingMoveProbe browser;
+    browser.owner = frame;
+    if (!browser.Create(frame, initial, L"Drag docking probe")) throw std::runtime_error("Cannot create docking probe");
+    browser.SetSide(DockSide::Right);
     for (int round = 0; round < 6; ++round) {
-        frame.matepath.SetSide(DockSide::Floating);
-        VerifyPaneLayoutMembership(frame, frame.matepath, false);
+        browser.SetSide(DockSide::Floating);
+        VerifyPaneLayoutMembership(frame, browser, false);
         frame.UpdateLayout();
         RECT client{}; frame.GetClientRect(&client);
         std::vector<POINT> targets;
@@ -130,7 +146,7 @@ inline void RunDragDockTests(MainFrame& frame) {
             for (int x = 1; x < client.right; x += 10) {
                 POINT cursor{x, y}; frame.ClientToScreen(&cursor);
                 dockwins::DFDOCKRECT candidate{};
-                candidate.hdr.hWnd = frame.matepath;
+                candidate.hdr.hWnd = browser;
                 candidate.rect = {cursor.x, cursor.y, cursor.x + 300, cursor.y + 400};
                 docker.AdjustDragRect(&candidate);
                 if (docker.AcceptDock(&candidate) && candidate.hdr.hBar == frame.m_hWnd)
@@ -139,19 +155,19 @@ inline void RunDragDockTests(MainFrame& frame) {
         }
         if (targets.empty()) throw std::runtime_error("No drag/drop target found for a new frame bar");
         auto target = targets[(targets.size() - 1) * round / 5];
-        frame.matepath.ScreenToClient(&target);
+        browser.ScreenToClient(&target);
         // Drive BeginMoving's real capture/message loop through release. The
         // coordinates are relative to the popup before its first live move;
         // button-up commits the last candidate rather than moving it again.
-        frame.matepath.PostMessage(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(target.x, target.y));
-        frame.matepath.PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(target.x, target.y));
+        browser.PostMessage(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(target.x, target.y));
+        browser.PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(target.x, target.y));
         POINT grab{20, -10};
-        if (!frame.matepath.BeginMoving(grab) || !frame.matepath.IsDocking())
+        if (!browser.BeginMoving(grab) || !browser.IsDocking())
             throw std::runtime_error("Drag/drop could not dock a new frame bar");
-        VerifyPaneLayoutMembership(frame, frame.matepath, true);
+        VerifyPaneLayoutMembership(frame, browser, true);
         frame.UpdateLayout();
     }
-    frame.matepath.SetSide(DockSide::Right);
+    browser.SetSide(DockSide::Right);
 }
 
 // The WTL API returns a borrowed wrapper around a newly allocated brush.

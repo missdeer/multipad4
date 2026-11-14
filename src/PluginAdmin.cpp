@@ -37,12 +37,50 @@ bool ValidPluginFolder(const std::wstring& name) {
     for (auto ch : name) if (ch < 32) return false;
     return _wcsicmp(name.c_str(), L"Config") && _wcsicmp(name.c_str(), L"disabled") && _wcsicmp(name.c_str(), L"APIs");
 }
-std::wstring FileVersion(const std::filesystem::path& path) {
-    DWORD unused = 0; auto size = GetFileVersionInfoSizeW(path.c_str(), &unused);
-    if (!size) return {};
-    std::vector<BYTE> bytes(size); VS_FIXEDFILEINFO* info = nullptr; UINT length = 0;
-    if (!GetFileVersionInfoW(path.c_str(), 0, size, bytes.data()) || !VerQueryValueW(bytes.data(), L"\\", reinterpret_cast<void**>(&info), &length) || length < sizeof(*info)) return {};
-    return std::to_wstring(HIWORD(info->dwFileVersionMS)) + L"." + std::to_wstring(LOWORD(info->dwFileVersionMS)) + L"." + std::to_wstring(HIWORD(info->dwFileVersionLS)) + L"." + std::to_wstring(LOWORD(info->dwFileVersionLS));
+struct PluginFileInfo {
+    std::wstring version, name, description, author, homepage, copyright, license;
+};
+PluginFileInfo ReadPluginFileInfo(const std::filesystem::path& path) {
+    PluginFileInfo result;
+    DWORD unused = 0; const auto size = GetFileVersionInfoSizeW(path.c_str(), &unused);
+    if (!size) return result;
+    std::vector<BYTE> bytes(size);
+    if (!GetFileVersionInfoW(path.c_str(), 0, size, bytes.data())) return result;
+    VS_FIXEDFILEINFO* info = nullptr; UINT length = 0;
+    if (VerQueryValueW(bytes.data(), L"\\", reinterpret_cast<void**>(&info), &length)
+        && info && length >= sizeof(*info) && info->dwSignature == VS_FFI_SIGNATURE) {
+        result.version = std::to_wstring(HIWORD(info->dwFileVersionMS)) + L"." + std::to_wstring(LOWORD(info->dwFileVersionMS))
+            + L"." + std::to_wstring(HIWORD(info->dwFileVersionLS)) + L"." + std::to_wstring(LOWORD(info->dwFileVersionLS));
+    }
+    struct Translation { WORD language, codePage; };
+    Translation* translations = nullptr;
+    std::vector<Translation> candidates;
+    if (VerQueryValueW(bytes.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&translations), &length) && translations && length >= sizeof(Translation))
+        candidates.assign(translations, translations + length / sizeof(Translation));
+    // Some third-party DLLs omit the translation table.
+    candidates.push_back({0x0409, 1200}); candidates.push_back({0x0409, 1252});
+    auto read = [&](const wchar_t* key) -> std::wstring {
+        for (const auto& translation : candidates) {
+            wchar_t query[128]{};
+            swprintf_s(query, L"\\StringFileInfo\\%04x%04x\\%ls", translation.language, translation.codePage, key);
+            wchar_t* value = nullptr; UINT characters = 0;
+            if (VerQueryValueW(bytes.data(), query, reinterpret_cast<void**>(&value), &characters) && value && characters) {
+                std::wstring text(value, std::find(value, value + characters, L'\0'));
+                if (!text.empty()) return text;
+            }
+        }
+        return {};
+    };
+    result.name = read(L"PluginName");
+    if (result.name.empty()) result.name = read(L"ProductName");
+    result.description = read(L"Comments");
+    if (result.description.empty()) result.description = read(L"FileDescription");
+    result.author = read(L"Author");
+    if (result.author.empty()) result.author = read(L"CompanyName");
+    result.homepage = read(L"Homepage");
+    result.copyright = read(L"LegalCopyright");
+    result.license = read(L"License");
+    return result;
 }
 std::wstring Lower(std::wstring value) { for (auto& ch : value) ch = static_cast<wchar_t>(towlower(ch)); return value; }
 }
@@ -73,8 +111,16 @@ void PluginAdmin::Load() {
             auto dll = directory.path() / (folder + L".dll");
             if (!ValidPluginFolder(folder) || !std::filesystem::is_regular_file(dll)) continue;
             auto found = std::find_if(entries.begin(), entries.end(), [&](const auto& e) { return _wcsicmp(e.folder.c_str(), folder.c_str()) == 0 && (!e.present || e.disabled == disabled); });
-            if (found == entries.end()) { Entry e; e.folder = e.name = folder; entries.push_back(e); found = entries.end() - 1; }
-            found->present = true; found->disabled = disabled; found->installed = FileVersion(dll);
+            const auto metadata = ReadPluginFileInfo(dll);
+            if (found == entries.end()) {
+                Entry e; e.folder = folder; e.name = metadata.name.empty() ? folder : metadata.name;
+                entries.push_back(std::move(e)); found = entries.end() - 1;
+            }
+            found->present = true; found->disabled = disabled; found->installed = metadata.version;
+            if (found->description.empty()) found->description = metadata.description;
+            if (found->author.empty()) found->author = metadata.author;
+            if (found->homepage.empty()) found->homepage = metadata.homepage;
+            found->copyright = metadata.copyright; found->license = metadata.license;
             for (const auto& plugin : frame->plugins.plugins) if (_wcsicmp(plugin.module.c_str(), (folder + L".dll").c_str()) == 0 && !disabled) { found->loaded = true; found->name = plugin.name; }
         }
     };
@@ -120,7 +166,18 @@ void PluginAdmin::Describe() {
     int row = ListView_GetNextItem(list, -1, LVNI_SELECTED);
     if (row < 0 || static_cast<size_t>(row) >= visible.size()) return;
     const auto& e = entries[visible[row]];
-    auto text = e.description + L"\r\n\r\n" + e.author + L"\r\n" + e.homepage;
+    auto text = e.description;
+    auto append = [&](const wchar_t* label, const std::wstring& value) {
+        if (value.empty()) return;
+        if (!text.empty()) text += L"\r\n";
+        text += label; text += value;
+    };
+    append(L"名称：", e.name);
+    append(L"版本：", e.present ? e.installed : e.version);
+    append(L"作者：", e.author);
+    append(L"主页：", e.homepage);
+    append(L"版权：", e.copyright);
+    append(L"许可：", e.license);
     if (e.present && !e.loaded && !e.disabled) {
         text += L"\r\n未加载：";
         for (auto& error : frame->plugins.errors) if (error.starts_with(e.folder + L".dll:")) text += error;

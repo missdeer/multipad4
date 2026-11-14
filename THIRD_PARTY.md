@@ -90,7 +90,7 @@ build tree. It provides Windows SDK typed PIDL compatibility, releases filtered
 enumeration items, frees deleted list items through notification data, initializes
 Shell output data, and resolves icons on the owning STA instead of accessing
 Shell interfaces and controls from an un-marshaled worker thread. Host window,
-navigation history, settings and MDI dispatch are in `src/MatepathPane.*`.
+navigation history, settings and MDI dispatch are in `plugins/Matepath/MatepathPane.*`.
 
 ## Notepad++ search UI and result lexer
 

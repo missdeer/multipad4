@@ -1,0 +1,40 @@
+#include <windows.h>
+#include <winver.h>
+
+1 VERSIONINFO
+FILEVERSION @MATEPATH_VERSION_COMMAS@
+PRODUCTVERSION @MATEPATH_VERSION_COMMAS@
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+FILEFLAGS VS_FF_DEBUG
+#else
+FILEFLAGS 0
+#endif
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "MultiPad4 contributors"
+            VALUE "PluginName", "Matepath"
+            VALUE "FileDescription", "Matepath File Browser Plugin"
+            VALUE "Comments", "Dockable file browser for MultiPad4 with directory history, file filters, hidden files, sorting, and active-document navigation."
+            VALUE "Author", "MultiPad4 contributors; matepath/metapath contributors"
+            VALUE "Homepage", "https://github.com/missdeer/multipad4"
+            VALUE "LegalCopyright", "Matepath: (C) 2011-2026 Zufu Liu and contributors; metapath: (C) 1996-2012 Florian Balmer"
+            VALUE "License", "Third-party license notices: see bundled THIRD_PARTY.md and Matepath.License.txt"
+            VALUE "FileVersion", "@MATEPATH_VERSION@"
+            VALUE "InternalName", "Matepath"
+            VALUE "OriginalFilename", "Matepath.dll"
+            VALUE "ProductName", "MultiPad4 Matepath Plugin"
+            VALUE "ProductVersion", "@MATEPATH_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
