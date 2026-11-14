@@ -148,36 +148,52 @@ jobs:
       - name: Build multipad4
         run: cmake --build cmake-${{ matrix.toolchain.id }}-build --target multipad4 --parallel 2
 
+      - name: Set up mingwdeployqt
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'mingwdeployqt.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'mingwdeployqt'
+          curl.exe --fail --location --retry 5 --output $archive https://github.com/missdeer/mingwdeployqt/releases/download/v1.2/mingwdeployqt-clang64-clang.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne 'BF1A7F20B6B3BF630EFDA169C113DE11DEE21BE18452C676E115294A1DAC6838') {
+            throw 'mingwdeployqt archive checksum mismatch'
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
+          "MINGWDEPLOYQT=$destination/bin/mingwdeployqt.exe" >> $env:GITHUB_ENV
+
       - name: Package executable and runtime libraries
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           build_dir="cmake-${{ matrix.toolchain.id }}-build"
-          build_root="$(cygpath -u "$(cd "$build_dir" && pwd)")"
           plugin="$build_dir/plugins/Matepath/Matepath.dll"
           documents_plugin="$build_dir/plugins/OpenDocuments/OpenDocuments.dll"
           mkdir -p "$build_dir/package/plugins/OpenDocuments"
-          cp "$documents_plugin" "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
+          cp "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
           mkdir -p "$build_dir/package/plugins/Matepath"
           cp "$build_dir/multipad4.exe" "$build_dir/MultiPad4 DarkTheme.ini" "$build_dir/package/"
-          cp "$plugin" "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
+          cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
-          # Include imports of the dynamically loaded plugin as well as the EXE.
-          {
-            ldd "$build_dir/multipad4.exe"
-            ldd "$plugin"
-            ldd "$documents_plugin"
-          } > "$build_dir/runtime-dependencies.txt"
-          cat "$build_dir/runtime-dependencies.txt"
-          if grep -q 'not found' "$build_dir/runtime-dependencies.txt"; then
-            echo 'A runtime dependency could not be resolved' >&2
-            exit 1
-          fi
-          awk '/=>/ {print $3}' "$build_dir/runtime-dependencies.txt" |
-            while IFS= read -r dll; do
-              case "$dll" in
-                "$MINGW_PREFIX"/bin/*|"$build_root"/*) cp "$dll" "$build_dir/package/" ;;
-              esac
-            done
+          # Stage plugins beside the EXE so their runtime DLLs land in the same directory.
+          cp "$plugin" "$documents_plugin" "$build_dir/package/"
+          # Read PE imports without loading target code, including AVX512 builds.
+          # mingwdeployqt also scans DLLs beside the EXE, including both plugins.
+          "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
+            "$build_dir/package/multipad4.exe" 2>&1 | tee "$build_dir/runtime-dependencies.txt"
+          # mingwdeployqt can return success for missing imports or failed copies.
+          system_dir="$(cygpath -S)"
+          for binary in "$build_dir/package/multipad4.exe" "$build_dir/package/"*.dll; do
+            objdump -p "$binary" | awk '/DLL Name:/ {print $3}' |
+              while IFS= read -r dll; do
+                case "${dll,,}" in api-ms-win-*|ext-ms-win-*) continue ;; esac
+                if [[ ! -f "$build_dir/package/$dll" && ! -f "$system_dir/$dll" ]]; then
+                  echo "$binary: unresolved runtime dependency $dll" >&2
+                  exit 1
+                fi
+              done
+          done
+          mv "$build_dir/package/Matepath.dll" "$build_dir/package/plugins/Matepath/"
+          mv "$build_dir/package/OpenDocuments.dll" "$build_dir/package/plugins/OpenDocuments/"
 
       - name: Upload executable
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
