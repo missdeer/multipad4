@@ -2,6 +2,8 @@ name: Windows Build
 
 on:
   push:
+    branches: ['**']
+    tags: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -201,3 +203,59 @@ jobs:
           name: multipad4-${{ matrix.toolchain.id }}-x64-${{ matrix.simd }}
           path: cmake-${{ matrix.toolchain.id }}-build/package/
           if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [build, mingw]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      RUN_ID: ${{ github.run_id }}
+
+    steps:
+      - name: Check out source and tag history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Download and package build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$RUN_ID" --pattern 'multipad4-*' --dir artifacts
+          mkdir release-assets
+          for artifact in artifacts/multipad4-*; do
+            name=$(basename "$artifact")
+            (cd "$artifact" && zip -r "../../release-assets/$name.zip" .)
+          done
+
+      - name: Generate release notes from commit messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Exclude the current tag; the first release includes the entire history.
+          if previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null); then
+            revision_range="$previous_tag..HEAD"
+          else
+            revision_range=HEAD
+          fi
+          git log --reverse --format='- %s%n%w(0,2,2)%b%w(0,0,0)' \
+            --end-of-options "$revision_range" -- > release-notes.md
+
+      - name: Create or update GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --notes-file release-notes.md
+            gh release upload "$RELEASE_TAG" release-assets/*.zip --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/*.zip \
+              --verify-tag --title "$RELEASE_TAG" --notes-file release-notes.md
+          fi
