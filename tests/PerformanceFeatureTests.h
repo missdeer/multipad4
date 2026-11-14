@@ -4,6 +4,7 @@
 #include <chrono>
 #include <fstream>
 #include <source_location>
+#include <thread>
 inline void RunPerformanceFeatureTests(MainFrame& frame) {
     auto require = [](bool value, std::source_location where = std::source_location::current()) {
         if (!value) throw std::runtime_error("Performance regression at line " + std::to_string(where.line()));
