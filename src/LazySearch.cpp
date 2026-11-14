@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <map>
-#include <thread>
+#include "ThreadPool.h"
 #include <exception>
 #include <iterator>
 #include <stdexcept>
@@ -323,7 +323,7 @@ struct Search::Impl {
     static constexpr Position ParallelBlock = 64 * 1024 * 1024;
     unsigned Workers(Position length) const {
         if (options.regex || options.pattern.empty() || reader.dbcs || nativeNeedle.size() > 1024 * 1024 || length < ParallelBlock) return 1;
-        const auto available = (std::max)(1u, std::thread::hardware_concurrency());
+        const auto available = work::Concurrency();
         return (std::min)(options.workers ? options.workers : 8u, (std::min)(available, 8u));
     }
     Position Halo() const { return Position(options.pattern.size()) * 4 + 8; }
@@ -356,19 +356,16 @@ struct Search::Impl {
             }
         }
     }
-    std::vector<Job> Batch(Position first, Position last, Position globalLimit, unsigned workers, bool backwards, bool enumerate, bool retainOffsets) {
+    std::vector<Job> Batch(Position first, Position last, Position globalLimit, bool backwards, bool enumerate, bool retainOffsets) {
         reader.Check();
         std::vector<Job> jobs;
         for (auto at = first; at < last;) {
             const auto next = (std::min)(last, reader.Align((std::min)(last, at + ParallelBlock)));
             jobs.push_back({at, next, (std::min)(globalLimit, reader.Align(next + (std::min)(Halo(), globalLimit - next)))}); at = next;
         }
-        // jthread also joins workers if creating a later thread throws.
-        std::vector<std::jthread> threads; threads.reserve(workers);
-        for (size_t index = 0; index < jobs.size(); ++index) threads.emplace_back([&, index] {
+        work::ParallelFor(jobs.size(), [&](size_t index) {
             try { Scan(jobs[index], backwards, enumerate, retainOffsets); } catch (...) { jobs[index].error = std::current_exception(); }
         });
-        for (auto& thread : threads) thread.join();
         reader.Check(); return jobs;
     }
     std::optional<SearchHit> Forward(Position begin, Position end) {
@@ -431,7 +428,7 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
         while (first < last) {
             const auto batchFirst = backwards ? (last - first > impl->ParallelBlock * workers ? impl->reader.Align(last - impl->ParallelBlock * workers) : first) : first;
             const auto batchLast = backwards ? last : (std::min)(last, impl->reader.Align((std::min)(last, first + impl->ParallelBlock * workers)));
-            auto jobs = impl->Batch(batchFirst, batchLast, upper, workers, backwards, false, false);
+            auto jobs = impl->Batch(batchFirst, batchLast, upper, backwards, false, false);
             for (size_t index = 0; index < jobs.size(); ++index) {
                 auto& job = jobs[backwards ? jobs.size() - 1 - index : index];
                 if (job.error) std::rethrow_exception(job.error);
@@ -479,7 +476,7 @@ void Search::Enumerate(Position first, Position limit, HitArchive& hits) {
     auto previousEnd = first;
     while (first < limit) {
         const auto last = (std::min)(limit, impl->reader.Align((std::min)(limit, first + impl->ParallelBlock * workers)));
-        auto jobs = impl->Batch(first, last, limit, workers, false, true, hits.RetainsOffsets());
+        auto jobs = impl->Batch(first, last, limit, false, true, hits.RetainsOffsets());
         for (auto& job : jobs) {
             if (job.error) std::rethrow_exception(job.error);
             // Local non-overlapping matches can have a different phase when a

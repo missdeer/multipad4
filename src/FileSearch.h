@@ -3,7 +3,7 @@
 #include <deque>
 #include <mutex>
 #include <condition_variable>
-#include <thread>
+#include "ThreadPool.h"
 
 namespace files {
 struct DirectorySearchOptions {
@@ -33,7 +33,7 @@ struct FileSearchResult {
 };
 // Worker-only search over an immutable UTF-8 snapshot; offsets and line metadata are spooled.
 FileSearchResult SearchSnapshot(large::Document::Snapshot snapshot, large::SearchOptions pattern, const std::atomic<bool>& cancel);
-// Each thread owns its matcher. Workers never access editor windows or documents.
+// Each worker callback owns its matcher. Workers never access editor windows or documents.
 class FileSearch {
     SearchWalker walker;
     large::SearchOptions pattern;
@@ -43,7 +43,7 @@ class FileSearch {
     std::mutex walkMutex, resultMutex;
     std::condition_variable space;
     std::deque<FileSearchResult> results;
-    std::vector<std::thread> threads;
+    std::vector<work::Task<void>> tasks;
     void Run();
     void Publish(FileSearchResult result);
 public:

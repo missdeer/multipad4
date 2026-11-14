@@ -72,14 +72,15 @@ std::optional<std::filesystem::path> SearchWalker::Next(const std::atomic<bool>&
 FileSearch::FileSearch(DirectorySearchOptions options, large::SearchOptions search,
     std::vector<std::filesystem::path> openDocuments)
     : walker(options), pattern(std::move(search)), openPaths(std::move(openDocuments)) {
-    // Validate once on the caller before starting threads. No nested file parallelism.
+    // Validate once on the caller before submitting work. No nested file parallelism.
     pattern.workers = 1;
     large::Search validate({}, Encoding::Utf8, pattern);
-    const unsigned count = (std::min)(8u, options.workers ? options.workers : (std::max)(1u, std::thread::hardware_concurrency()));
+    const unsigned count = (std::min)(8u, options.workers ? options.workers : work::Concurrency());
     try {
+        tasks.reserve(count);
         for (unsigned i = 0; i < count; ++i) {
             ++running;
-            try { threads.emplace_back([this] { Run(); }); }
+            try { tasks.push_back(work::Submit([this] { Run(); })); }
             catch (...) { --running; throw; }
         }
     } catch (...) { Stop(); throw; }
@@ -87,7 +88,7 @@ FileSearch::FileSearch(DirectorySearchOptions options, large::SearchOptions sear
 FileSearch::~FileSearch() { Stop(); }
 void FileSearch::Stop() {
     cancel.store(true); space.notify_all();
-    for (auto& thread : threads) if (thread.joinable()) thread.join();
+    for (auto& task : tasks) task.Reset();
 }
 void FileSearch::Publish(FileSearchResult result) {
     std::unique_lock lock(resultMutex);

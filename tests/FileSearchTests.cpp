@@ -5,6 +5,7 @@
 #include <map>
 #include <source_location>
 #include <stdexcept>
+#include <thread>
 
 void Check(bool value, std::source_location where = std::source_location::current()) {
     if (!value) throw std::runtime_error("File search regression at line " + std::to_string(where.line()));

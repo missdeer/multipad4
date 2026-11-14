@@ -2,7 +2,7 @@
 #include "EditorDocument.h"
 #include "SearchResources.h"
 #include "FileSearch.h"
-#include <future>
+#include "ThreadPool.h"
 class MainFrame;
 class SearchDialog {
 public:
@@ -49,7 +49,7 @@ private:
         std::shared_ptr<std::string> text = std::make_shared<std::string>();
         size_t offset = 0, length = 0;
         std::atomic<bool> cancel{false};
-        std::future<files::FileSearchResult> future;
+        work::Task<files::FileSearchResult> search;
         bool mapped = false;
     };
     std::shared_ptr<OpenSearch> openSearch;

@@ -318,7 +318,7 @@ void SearchDialog::FinishFiles(bool cancelled) {
             auto found = owner->tabs.documentsById.find(openSearch->identity);
             if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
         }
-        if (openSearch->future.valid()) openSearch->future.wait();
+        if (openSearch->search.Valid()) openSearch->search.Wait();
         openSearch.reset();
     }
     if (fileTask) { fileTask->Stop(); fileErrors += fileTask->Errors(); fileTask.reset(); }
@@ -337,7 +337,7 @@ void SearchDialog::FileStep() {
         if (found == owner->tabs.documentsById.end() || found->second->style.revision != task->revision) {
             task->cancel.store(true);
             if (task->mapped && found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
-            if (task->future.valid()) task->future.wait();
+            if (task->search.Valid()) task->search.Wait();
             openSearch.reset(); ++fileErrors; return;
         }
         auto& target = *found->second;
@@ -345,7 +345,7 @@ void SearchDialog::FileStep() {
             if (!target.FastView() || !target.fastView->Busy()) { ++fileErrors; openSearch.reset(); }
             return;
         }
-        if (!task->future.valid()) {
+        if (!task->search.Valid()) {
             if (task->offset < task->length) {
                 auto bytes = target.Range(task->offset, (std::min)(size_t(256 * 1024), task->length - task->offset));
                 task->offset += bytes.size(); task->text->append(bytes);
@@ -353,12 +353,12 @@ void SearchDialog::FileStep() {
             }
             auto snapshot = large::Document::FromUtf8(task->text)->Capture();
             UseSearch state(target, fileSearch); auto options = target.MappedSearchOptions();
-            task->future = std::async(std::launch::async, [ptr = task.get(), snapshot, options] { return files::SearchSnapshot(snapshot, options, ptr->cancel); });
+            task->search = work::Submit([ptr = task.get(), snapshot, options] { return files::SearchSnapshot(snapshot, options, ptr->cancel); });
             return;
         }
-        if (task->future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        if (!task->search.Ready()) return;
         try {
-            auto result = task->future.get(); result.path = task->path;
+            auto result = task->search.Get(); result.path = task->path;
             if (result.archive->Count()) {
                 fileHits += result.archive->Count(); ++foundFiles;
                 owner->searchResults.AddFile(std::move(result), task->identity, task->revision);

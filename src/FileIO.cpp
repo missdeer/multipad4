@@ -4,8 +4,7 @@
 #include <windows.h>
 #include <psapi.h>
 #include <atomic>
-#include <barrier>
-#include <thread>
+#include "ThreadPool.h"
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -40,49 +39,22 @@ struct ReadTimer {
     explicit ReadTimer(double* target) : output(target), start(target ? ReadClock() : 0) {}
     ~ReadTimer() { if (output) *output += ReadElapsed(start); }
 };
-// The caller participates as worker 0. Both barriers keep the borrowed file
-// view alive until every worker has finished, including on invalid input.
+// Independent validation jobs share only the failure flag. ParallelFor drains
+// every callback before the borrowed mapped view can be released or reused.
 class Utf8Validator {
     unsigned workers;
-    std::barrier<> start, finish;
-    std::vector<std::thread> threads;
-    std::string_view input;
-    std::atomic<bool> valid{true};
-    bool stopping = false;
-    void Check(unsigned index) noexcept {
+    void Check(std::string_view input, size_t index, std::atomic<bool>& valid) const noexcept {
         size_t begin = input.size() * index / workers, end = input.size() * (index + 1) / workers;
         while (begin && begin < input.size() && (static_cast<unsigned char>(input[begin]) & 0xC0) == 0x80) ++begin;
         while (end < input.size() && (static_cast<unsigned char>(input[end]) & 0xC0) == 0x80) ++end;
         if (!simd::IsValidUtf8(input.substr(begin, end - begin))) valid.store(false, std::memory_order_relaxed);
     }
 public:
-    explicit Utf8Validator(unsigned count) : workers((std::clamp)(count, 1u, 8u)), start(workers), finish(workers) {
-        try {
-            for (unsigned index = 1; index < workers; ++index) threads.emplace_back([&, index] {
-                for (;;) {
-                    start.arrive_and_wait();
-                    if (stopping) return;
-                    Check(index); finish.arrive_and_wait();
-                }
-            });
-        } catch (...) {
-            stopping = true;
-            for (size_t missing = threads.size() + 1; missing < workers; ++missing) start.arrive_and_drop();
-            start.arrive_and_wait();
-            for (auto& thread : threads) thread.join();
-            throw;
-        }
-    }
-    ~Utf8Validator() {
-        if (!threads.empty()) {
-            stopping = true; start.arrive_and_wait();
-            for (auto& thread : threads) thread.join();
-        }
-    }
-    bool Validate(std::string_view text) {
+    explicit Utf8Validator(unsigned count) : workers((std::clamp)(count, 1u, 8u)) {}
+    bool Validate(std::string_view text) const {
         if (workers == 1 || text.size() < 1024 * 1024) return simd::IsValidUtf8(text);
-        input = text; valid.store(true, std::memory_order_relaxed);
-        start.arrive_and_wait(); Check(0); finish.arrive_and_wait();
+        std::atomic<bool> valid{true};
+        work::ParallelFor(workers, [&](size_t index) { Check(text, index, valid); });
         return valid.load(std::memory_order_relaxed);
     }
 };
@@ -423,7 +395,7 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
         }
     }
     unsigned workers = options.validationWorkers;
-    if (!workers) workers = input.size >= LargeFileThreshold ? (std::min)(4u, (std::max)(1u, std::thread::hardware_concurrency())) : 1;
+    if (!workers) workers = input.size >= LargeFileThreshold ? (std::min)(4u, work::Concurrency()) : 1;
     if (encoding != Encoding::Utf8 && encoding != Encoding::Utf8Bom) workers = 1;
     Utf8Validator validator(workers);
     if (stats) stats->probeMs = ReadElapsed(probeStart) - stats->mappingMs - stats->copyOrReadMs;

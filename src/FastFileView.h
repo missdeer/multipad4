@@ -5,7 +5,7 @@
 #include "LazySearch.h"
 #include <atomic>
 #include <mutex>
-#include <thread>
+#include "ThreadPool.h"
 struct EditorDocument;
 // The Scintilla window is a bounded rendering/editing viewport. Source text,
 // global positions, undo and the lazy line index belong to the piece tree.
@@ -21,7 +21,7 @@ class FastFileView {
     std::optional<large::Selection> extendedSelection;
     bool loading = false, readOnly = false;
     unsigned editDepth = 0;
-    std::thread worker;
+    work::Task<void> worker;
     std::atomic<bool> cancel{false};
     struct TaskResult { large::Document::Snapshot snapshot; std::optional<large::Document::Match> match; std::string error; bool completed = false; std::function<void()> apply; };
     std::mutex resultMutex;
@@ -92,7 +92,7 @@ public:
     bool CanRedo() const { return model && model->CanRedo(); }
     bool ReadOnly() const { return readOnly; }
     bool Loading() const { return loading; }
-    bool Busy() const { return worker.joinable(); }
+    bool Busy() const { return worker.Valid(); }
     HWND Window() const { return window; }
     large::Position Size() const { return model ? model->Size() : 0; }
     large::Position Begin() const { return begin; }

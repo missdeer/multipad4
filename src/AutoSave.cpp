@@ -4,7 +4,7 @@
 #include "FrameCommands.h"
 #include <atomic>
 #include <limits>
-#include <future>
+#include "ThreadPool.h"
 #include <shlobj.h>
 namespace {
 constexpr size_t NormalCount=6, ForcedCount=NormalCount+2;
@@ -116,7 +116,7 @@ struct AutoSaveTask {
     RecoveryRequest request;
     size_t length = 0, offset = 0;
     std::string text;
-    std::future<RecoveryOutcome> future;
+    work::Task<RecoveryOutcome> write;
 };
 bool SaveDocumentRecovery(MainFrame& frame,EditorDocument& document,bool force) {
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth || !NeedsRecovery(document)) return false;
@@ -128,8 +128,8 @@ bool SaveDocumentRecovery(MainFrame& frame,EditorDocument& document,bool force) 
 void CancelDocumentBackup(MainFrame& frame, const EditorDocument& document, bool keepBackup) {
     auto task = frame.runtime.autoSaveTask;
     if (!task || task->identity != document.searchIdentity) return;
-    if (task->future.valid()) {
-        try { auto outcome = task->future.get(); if (!outcome.overwritten && !keepBackup) DeleteSnapshot(outcome.path); } catch (const std::exception&) {}
+    if (task->write.Valid()) {
+        try { auto outcome = task->write.Get(); if (!outcome.overwritten && !keepBackup) DeleteSnapshot(outcome.path); } catch (const std::exception&) {}
     }
     frame.runtime.autoSaveTask.reset();
 }
@@ -153,10 +153,10 @@ void PumpDocumentBackup(MainFrame& frame) {
     auto found = frame.tabs.documentsById.find(task->identity);
     if (found == frame.tabs.documentsById.end()) { frame.runtime.autoSaveTask.reset(); return; }
     auto& d = *found->second;
-    if (task->future.valid()) {
-        if (task->future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    if (task->write.Valid()) {
+        if (!task->write.Ready()) return;
         try {
-            auto outcome = task->future.get();
+            auto outcome = task->write.Get();
             if (d.path == task->request.path) ApplyRecovery(frame, d, task->request, outcome, false);
             else if (!outcome.overwritten) DeleteSnapshot(outcome.path);
         } catch (const std::exception&) {}
@@ -169,7 +169,7 @@ void PumpDocumentBackup(MainFrame& frame) {
         auto bytes = d.Range(task->offset, (std::min)(size_t(256 * 1024), task->length - task->offset));
         task->offset += bytes.size(); task->text.append(bytes); return;
     }
-    task->future = std::async(std::launch::async, [request = task->request, text = std::move(task->text)] { return WriteRecovery(request, text); });
+    task->write = work::Submit([request = task->request, text = std::move(task->text)] { return WriteRecovery(request, text); });
 }
 void RemoveDocumentRecoveries(MainFrame& frame,EditorDocument& document,bool keepBackup){
     auto& state=document.runtime;

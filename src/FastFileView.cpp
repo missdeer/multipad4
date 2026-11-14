@@ -278,7 +278,7 @@ void FastFileView::Redo() {
 }
 void FastFileView::CancelTask() {
     cancel.store(true, std::memory_order_relaxed);
-    if (worker.joinable()) worker.join();
+    worker.Reset();
     { std::lock_guard guard(resultMutex); result = {}; }
     resultStatus = "Search cancelled.";
     if (label && IsWindow(label)) SetWindowTextW(label, readOnly ? L"Large file · Read only" : L"Large file · Editable on demand");
@@ -288,7 +288,7 @@ void FastFileView::Launch(const std::function<std::optional<large::Document::Mat
     { std::lock_guard guard(resultMutex); result = {}; }
     auto snapshot = model->Capture();
     if (label) SetWindowTextW(label, L"Working… Press Esc to cancel");
-    worker = std::thread([this, snapshot, action] {
+    worker = work::Submit([this, snapshot, action] {
         TaskResult completed; completed.snapshot = snapshot;
         try { completed.match = action(snapshot, cancel); } catch (const std::exception& error) { completed.error = error.what(); }
         completed.completed = true;
@@ -302,7 +302,7 @@ void FastFileView::CompleteTask() {
     if (!model) return;
     TaskResult completed;
     { std::lock_guard guard(resultMutex); if (!result.completed) return; completed = std::move(result); result = {}; }
-    if (worker.joinable()) worker.join();
+    worker.Reset();
     if (completed.snapshot.root != model->Capture().root) return;
     if (!completed.error.empty()) { resultStatus = completed.error; SetWindowTextW(label, files::FromUtf8(completed.error).c_str()); return; }
     if (completed.apply) { completed.apply(); return; }
