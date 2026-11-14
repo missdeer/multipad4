@@ -91,6 +91,10 @@ jobs:
             }
           }
 
+      - name: Verify runtime configuration
+        shell: pwsh
+        run: ./tools/VerifyRuntimeConfiguration.ps1 -Directory "cmake-${{ matrix.toolchain.id }}-build"
+
       - name: Upload executable
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -98,6 +102,7 @@ jobs:
           path: |
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
             cmake-${{ matrix.toolchain.id }}-build/MultiPad4 DarkTheme.ini
+            cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/OpenDocuments.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/THIRD_PARTY.md
@@ -174,6 +179,7 @@ jobs:
           cp "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
           mkdir -p "$build_dir/package/plugins/Matepath"
           cp "$build_dir/multipad4.exe" "$build_dir/MultiPad4 DarkTheme.ini" "$build_dir/package/"
+          cp -R "$build_dir/config" "$build_dir/package/"
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
           # Stage plugins beside the EXE so their runtime DLLs land in the same directory.
@@ -196,6 +202,10 @@ jobs:
           done
           mv "$build_dir/package/Matepath.dll" "$build_dir/package/plugins/Matepath/"
           mv "$build_dir/package/OpenDocuments.dll" "$build_dir/package/plugins/OpenDocuments/"
+
+      - name: Verify packaged runtime configuration
+        shell: pwsh
+        run: ./tools/VerifyRuntimeConfiguration.ps1 -Directory "cmake-${{ matrix.toolchain.id }}-build/package"
 
       - name: Upload executable
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-14",
+  "configuration": "Release",
+  "compiler": "MSVC 19.44",
+  "architecture": "x64 SSE4.2",
+  "characterTracingInFinalBuild": false,
+  "ctest": {
+    "passed": 17,
+    "failed": 0,
+    "seconds": 95.89
+  },
+  "languageDefinitions": 90,
+  "styleGroups": 1403,
+  "keywordSlots": 572,
+  "legacyVariantCommands": 39,
+  "referenceThemesApplied": 22,
+  "themeProbeLanguages": [
+    "cpp",
+    "python",
+    "javascript"
+  ],
+  "productStaticLexerConfigurationObjects": 0,
+  "packageChecks": [
+    "different working directory",
+    "relocated executable",
+    "missing external XML",
+    "corrupt external XML"
+  ],
+  "remainingManualChecks": [
+    "physical multi-monitor DPI and IME",
+    "manual Notepad++ side-by-side rendering comparison"
+  ]
+}

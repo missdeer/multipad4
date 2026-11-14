@@ -1,4 +1,6 @@
 #include "Session.h"
+#include "LanguageConfiguration.h"
+#include "ConfigurationXml.h"
 #include "MainFrame.h"
 #include "FrameCommands.h"
 #include <algorithm>
@@ -22,7 +24,7 @@ long long Number(const AppSettings& profile, const std::wstring& section, const 
     X(tabsOverride) X(tabIndents) X(backspaceUnindents) X(detectIndentation) X(backspaceMask) \
     X(wrapMode) X(wrapIndent) X(wrapSymbols) X(wrapSymbolsShown) X(lineHighlight) X(highlightSubline) \
     X(longLineColumn) X(longLineMode) X(longLineEnabled) X(markOccurrences) X(fontSize) X(codeFontSize) X(textFontSize)
-#define SESSION_STYLE_STRINGS(X) X(font) X(codeFont) X(textFont) X(completionFillups)
+#define SESSION_STYLE_STRINGS(X) X(font) X(codeFont) X(textFont) X(completionFillups) X(themePath)
 #define SESSION_WIDEN_IMPL(x) L##x
 #define SESSION_WIDEN(x) SESSION_WIDEN_IMPL(x)
 void SaveStyle(AppSettings& profile, const std::wstring& section, const DocumentStyleState& style) {
@@ -32,7 +34,15 @@ void SaveStyle(AppSettings& profile, const std::wstring& section, const Document
 #define WRITE_STRING(field) profile.WriteString(section.c_str(), L"Style." SESSION_WIDEN(#field), style.field);
     SESSION_STYLE_STRINGS(WRITE_STRING)
 #undef WRITE_STRING
+    if(!style.themePath.empty()){auto relative=std::filesystem::path(style.themePath).lexically_relative(profile.path.parent_path());if(!relative.empty()&&*relative.begin()!=L"..")profile.WriteString(section.c_str(),L"Style.themePath",relative.generic_wstring());}
     std::wstring keys;
+    profile.WriteString(section.c_str(),L"LanguageId",style.scheme>0&&style.scheme<90?ConfigurationWide(LanguageCatalog()[style.scheme]->id):L"auto");
+    std::wstring variantId;
+    for(auto language:LanguageCatalog())for(const auto& variant:language->variants)if(variant.command==style.dialect)variantId=ConfigurationWide(variant.id);
+    profile.WriteString(section.c_str(),L"VariantId",variantId);
+
+    for(const auto& [id,value]:style.semanticOverrides){keys+=ConfigurationWide(id)+L" ";profile.WriteString(section.c_str(),(L"Style.Semantic."+ConfigurationWide(id)).c_str(),value);}
+    profile.WriteString(section.c_str(),L"Style.SemanticKeys",keys);keys.clear();
     for (const auto& [key, value] : style.overrides) {
         keys += std::to_wstring(key) + L" ";
         profile.WriteString(section.c_str(), (L"Style.Override." + std::to_wstring(key)).c_str(), value);
@@ -51,9 +61,19 @@ void RestoreStyle(const AppSettings& profile, const std::wstring& section, Docum
 #undef READ_STRING
     style.overrides.clear(); style.completionOptions.clear();
     std::wistringstream overrides(profile.ReadString(section.c_str(), L"Style.OverrideKeys")); unsigned key;
-    while (overrides >> key) style.overrides[key] = profile.ReadString(section.c_str(), (L"Style.Override." + std::to_wstring(key)).c_str());
+    while (overrides >> key){auto value=profile.ReadString(section.c_str(), (L"Style.Override." + std::to_wstring(key)).c_str());try{ValidateLegacyStyle(value);style.overrides[key]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}
     std::wistringstream options(profile.ReadString(section.c_str(), L"Style.CompletionOptions")); int option, value;
     while (options >> option >> value) style.completionOptions[option] = value;
+    auto stable=profile.ReadString(section.c_str(),L"LanguageId");
+    if(!stable.empty())style.scheme=stable==L"auto"?0:LanguageIndex(ConfigurationUtf8(stable));
+    auto variantId=profile.ReadString(section.c_str(),L"VariantId");
+    if(!variantId.empty()){style.dialect=0;for(auto language:LanguageCatalog())for(const auto& variant:language->variants)if(ConfigurationWide(variant.id)==variantId)style.dialect=variant.command;}
+    style.semanticOverrides.clear();std::wistringstream semantic(profile.ReadString(section.c_str(),L"Style.SemanticKeys"));std::wstring id;
+    while(semantic>>id){auto value=profile.ReadString(section.c_str(),(L"Style.Semantic."+id).c_str());try{ValidateLegacyStyle(value);style.semanticOverrides[ConfigurationUtf8(id)]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}
+    for(const auto& [key,value]:style.overrides)for(auto language:LanguageCatalog())if(language->rid==(key>>8)){
+        unsigned index=key&255;if(index<language->iStyleCount)for(const auto& category:language->categories)if(category.group==ConfigurationUtf8(language->Styles[index].id))style.semanticOverrides.try_emplace(category.id,value);
+    }
+    if(!style.themePath.empty())try{if(std::filesystem::path(style.themePath).is_relative())style.themePath=(profile.path.parent_path()/style.themePath).lexically_normal().wstring();style.theme=LoadTheme(style.themePath);}catch(const std::exception&){style.theme.reset();}
     style.appliedTabScheme = -1;
 }
 #undef SESSION_STYLE_NUMBERS

@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
+<theme version="1" id="light" name="MultiPad4 Light">
+  <style id="editor.default" fg="20242A" bg="FFFFFF" />
+</theme>

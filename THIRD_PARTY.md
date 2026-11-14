@@ -73,9 +73,16 @@ Source: https://github.com/zufuliu/notepad4 at commit `3fcfb70fd0d3c8802100c85f7
 - Scintilla/Lexilla license: `3rdparty/notepad4-scintilla/scintilla/License.txt`.
 - Additional upstream notices: `3rdparty/notepad4-scintilla/Notepad4-License.txt`.
 
-Preserve these notices in source and binary distributions as required by each license. All eleven `locale/*/Notepad4.rc` files were added from the same pinned GitHub revision. The complete lexer configuration catalogue is compiled directly; adapted editor algorithms retain their upstream provenance. Scintilla host services include custom transliteration and the bundled standalone Boost.Regex headers. Migration and behavioral validation status is tracked in `docs/MIGRATION_STATUS.md`.
+Preserve these notices in source and binary distributions as required by each license. All eleven `locale/*/Notepad4.rc` files were added from the same pinned GitHub revision. The product loads the complete lexer configuration catalogue from reviewed XML; only the development baseline exporter compiles its original static objects; adapted editor algorithms retain their upstream provenance. Scintilla host services include custom transliteration and the bundled standalone Boost.Regex headers. Migration and behavioral validation status is tracked in `docs/MIGRATION_STATUS.md`.
 
 No license has been selected for the new MultiPad4 application code.
+
+The development baselines in `tests/baselines/lexer-catalog.xml` and
+`tests/baselines/lexer-behavior.txt` are derived from this same pinned notepad4
+revision and its Scintilla fork. The language defaults, styles, keywords and
+completion snippets retain the upstream license above. `tools/ExportLexerBaseline.cpp`
+exports the compiled objects without modifying upstream files; reproduction and
+coverage are documented in `docs/LEXER_BASELINE.md`.
 
 ## matepath
 
@@ -163,3 +170,16 @@ VectorISA.h are used directly from the pinned Scintilla fork. Adaptations
 bound input reads, pad short tails locally, handle arbitrary bitmap widths,
 and preserve MultiPad4's deterministic UTF-16 detection when statistical
 Unicode detection is disabled. Vendored sources remain unchanged.
+
+## External language and theme configuration
+
+`config/languages/default.xml` and the native light/dark palettes contain data
+exported from the pinned notepad4 revision above; its BSD/component notices apply.
+The same XML is embedded without a second handwritten C++ defaults table.
+`src/NotepadThemeBindings.h` records factual language/style-name mappings checked
+against the user's local Notepad++ theme collection; no third-party theme colors,
+fonts or theme file content are redistributed. The repository regression theme
+in `tests/fixtures/theme-mapping.xml` was written for this project.
+Windows XmlLite is an operating-system component, not a bundled parser library.
+`cmake/ScintillaInstrumentation.cmake` generates optional instrumentation copies
+under the build directory and preserves the upstream Scintilla source originals.

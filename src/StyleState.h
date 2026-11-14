@@ -2,9 +2,20 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <memory>
+struct ConfigurationSnapshot;
+struct ThemeDefinition;
 struct DocumentStyleState {
+    std::shared_ptr<const ConfigurationSnapshot> configuration;
+    std::shared_ptr<const ThemeDefinition> theme;
+    std::wstring themePath;
+    std::string languageId;
+    uint64_t appliedRules = 0;
+    unsigned appliedLexer = 0;
+    std::map<std::string,std::wstring> semanticOverrides;
     int scheme = 0, dialect = 0, resolvedScheme = 0, resolvedDialect = 0;
     bool dark = false, folding = true, matchBraces = true;
+    bool paletteDark = false;
     bool highlightBlock = true;
     bool completion = true, completionIgnoreCase = false, autoIndent = true;
     bool latex = false;

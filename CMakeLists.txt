@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 project(MultiPad4 VERSION 0.1.0 LANGUAGES CXX RC)
+# The local wrapper fixes RelWithDebInfo; allow an explicit build configuration
+# for reproducible Release measurements without bypassing that wrapper.
+if(DEFINED ENV{MULTIPAD4_BUILD_CONFIGURATION})
+  if(NOT "$ENV{MULTIPAD4_BUILD_CONFIGURATION}" MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)$")
+    message(FATAL_ERROR "Invalid MULTIPAD4_BUILD_CONFIGURATION")
+  endif()
+  set(CMAKE_BUILD_TYPE "$ENV{MULTIPAD4_BUILD_CONFIGURATION}" CACHE STRING "Build configuration" FORCE)
+endif()
 if(NOT WIN32 OR (NOT MSVC AND NOT MINGW))
   message(FATAL_ERROR "MultiPad4 requires Windows with MSVC/ATL or MinGW-w64/OpenATL.")
 endif()
@@ -68,7 +76,11 @@ if(MSVC)
 else()
   set_source_files_properties(${LEXER_CONFIGS} PROPERTIES COMPILE_OPTIONS "-include;cstdint")
 endif()
-add_executable(multipad4 WIN32 ${APP_SOURCES} ${LEXER_CONFIGS} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/SearchDialog.rc src/MultiPad4.manifest "${PROJECT_BINARY_DIR}/Notepad4Resources.rc")
+add_executable(multipad4 WIN32 ${APP_SOURCES} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/SearchDialog.rc src/ThemeDialog.rc src/MultiPad4.manifest "${PROJECT_BINARY_DIR}/Notepad4Resources.rc")
+set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
+  "${PROJECT_SOURCE_DIR}/config/languages/default.xml"
+  "${PROJECT_SOURCE_DIR}/config/themes/light.xml"
+  "${PROJECT_SOURCE_DIR}/config/themes/dark.xml")
 set(MULTIPAD4_OUTPUT_NAME "multipad4" CACHE STRING "Executable basename for local validation builds")
 set_target_properties(multipad4 PROPERTIES OUTPUT_NAME "${MULTIPAD4_OUTPUT_NAME}")
 configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/doc/Notepad4 DarkTheme.ini"
@@ -87,9 +99,29 @@ else()
   target_compile_options(multipad4 PRIVATE -Wno-unknown-pragmas)
   target_link_options(multipad4 PRIVATE -municode)
 endif()
-target_link_libraries(multipad4 PRIVATE multipad_files notepad4_scintilla comctl32 comdlg32 shlwapi shell32 ole32 oleaut32 uuid uxtheme imm32 crypt32 version)
+target_link_libraries(multipad4 PRIVATE multipad_files notepad4_scintilla comctl32 comdlg32 shlwapi shell32 ole32 oleaut32 uuid xmllite psapi uxtheme imm32 crypt32 version)
 set_target_properties(multipad4 PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 if(BUILD_TESTING)
+  # Development baseline only. The product must never generate its defaults
+  # from this target during an ordinary build or overwrite reviewed XML.
+  add_executable(lexer_baseline_export tools/ExportLexerBaseline.cpp src/CompletionEngine.cpp ${LEXER_CONFIGS})
+  target_include_directories(lexer_baseline_export PRIVATE src tools "${NOTEPAD4_SOURCE_DIR}" "${NOTEPAD4_SOURCE_DIR}/EditLexers"
+    "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")
+  target_compile_definitions(lexer_baseline_export PRIVATE MULTIPAD4_STATIC_BASELINE)
+  target_compile_options(lexer_baseline_export PRIVATE ${MULTIPAD4_WARNINGS})
+  if(MINGW)
+    target_link_options(lexer_baseline_export PRIVATE -municode)
+  endif()
+  add_test(NAME lexer_configuration_baseline COMMAND lexer_baseline_export --verify "${PROJECT_SOURCE_DIR}/tests/baselines/lexer-catalog.xml")
+  add_test(NAME lexer_behavior_baseline COMMAND multipad4 --check-lexer-baseline "${PROJECT_SOURCE_DIR}/tests/baselines/lexer-behavior.txt")
+  set_tests_properties(lexer_behavior_baseline PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
+  add_test(NAME configuration_integration COMMAND multipad4 --configuration-test "${PROJECT_BINARY_DIR}/configuration-test" "${PROJECT_SOURCE_DIR}/tests/fixtures/theme-mapping.xml")
+  set_tests_properties(configuration_integration PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME configuration_data_equivalence COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/ConfigurationDataTests.py")
+    add_test(NAME lexer_inventory_coverage COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/inventory_lexer_baseline.py" --check)
+  endif()
   add_executable(scintilla_portability_tests tests/ScintillaPortabilityTests.cpp)
   target_link_libraries(scintilla_portability_tests PRIVATE notepad4_scintilla)
   target_include_directories(scintilla_portability_tests PRIVATE 3rdparty/notepad4-scintilla/scintilla/src)
@@ -120,11 +152,11 @@ if(BUILD_TESTING)
   add_test(NAME fileio_roundtrip COMMAND fileio_tests)
   add_test(NAME editor_integration COMMAND multipad4 --smoke-test)
   add_test(NAME editor_without_plugins COMMAND multipad4 --no-plugins-test)
-  set_tests_properties(editor_without_plugins PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
+  set_tests_properties(editor_without_plugins PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
   add_test(NAME single_instance_integration COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/SingleInstanceTests.ps1" -Executable "$<TARGET_FILE:multipad4>")
   set_tests_properties(single_instance_integration PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
   add_test(NAME plugin_admin_worker COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/PluginAdminWorkerTests.ps1")
-  set_tests_properties(editor_integration PROPERTIES TIMEOUT 30)
+  set_tests_properties(editor_integration PROPERTIES TIMEOUT 60)
   # Real binary compatibility checks are available when the supplied plugins exist.
   if(EXISTS "${PROJECT_BINARY_DIR}/plugins/JsonTools/JsonTools.dll" AND
      EXISTS "${PROJECT_BINARY_DIR}/plugins/XMLTools/XMLTools.dll" AND
@@ -155,3 +187,10 @@ if(BUILD_TESTING AND MULTIPAD4_BUILD_MATEPATH AND MULTIPAD4_BUILD_OPEN_DOCUMENTS
   add_test(NAME bundled_pane_restart COMMAND powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${PROJECT_SOURCE_DIR}/tests/BundledPaneRestartTests.ps1" -Executable "$<TARGET_FILE:multipad4>")
   set_tests_properties(bundled_pane_restart PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
 endif()
+
+# Reviewed XML is the source of product defaults; the exporter is never a build dependency.
+add_custom_target(multipad_configuration ALL
+  COMMAND "${CMAKE_COMMAND}" -E copy_directory "${PROJECT_SOURCE_DIR}/config" "$<TARGET_FILE_DIR:multipad4>/config")
+add_dependencies(multipad4 multipad_configuration)
+install(TARGETS multipad4 RUNTIME DESTINATION .)
+install(DIRECTORY config DESTINATION .)

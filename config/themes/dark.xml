@@ -1,0 +1,351 @@
+<?xml version='1.0' encoding='utf-8'?>
+<theme version="1" id="dark" name="MultiPad4 Dark">
+  <style id="editor.default" fg="DCDCDC" bg="1E1E1E" />
+  <style id="global.defaultcodestyle" legacy="font:$(Code); fore:#D4D4D4; back:#1E1E1E" />
+  <style id="global.defaulttextstyle" legacy="font:$(Text); fore:#D4D4D4; back:#1E1E1E" />
+  <style id="global.marginlinenumber" legacy="size:-2; fore:#A0A0A0; back:#2A2A2E" />
+  <style id="global.matchingbrace" legacy="fore:#02EA0A; alpha:50; outline:150" />
+  <style id="global.indentationguide" legacy="fore:#605F63" />
+  <style id="global.currentline" legacy="size:2; fore:#C2C0C3; back:#FFFF00; alpha:25; outline:25" />
+  <style id="global.caret" legacy="fore:#FFFFFF; back:#00FF00" />
+  <style id="global.longlinemarker" legacy="fore:#605F63" />
+  <style id="global.codefolding" legacy="fore:#FF8000" />
+  <style id="global.foldingmarker" legacy="fore:#808080; back:#606060" />
+  <style id="global.foldellipsis" legacy="font:$(Code); size:-2; bold; fore:#606060" />
+  <style id="global.calltip" legacy="fore:#A0A0A0; back:#2A2A2E" />
+  <style id="cpp.keyword" legacy="fore:#00B050" />
+  <style id="cpp.typekeyword" legacy="fore:#00B050" />
+  <style id="cpp.directive" legacy="fore:#00B050" />
+  <style id="cpp.constant" legacy="fore:#A349A4" />
+  <style id="cpp.macro" legacy="fore:#A349A4" />
+  <style id="cpp.label" legacy="back:#404030" />
+  <style id="cpp.number" legacy="fore:#F84C4C" />
+  <style id="cpp.operator" legacy="fore:#A349A4" />
+  <style id="csharp.keyword" legacy="fore:#00B050" />
+  <style id="csharp.typekeyword" legacy="fore:#00B050" />
+  <style id="csharp.constant" legacy="fore:#A349A4" />
+  <style id="csharp.label" legacy="back:#404030" />
+  <style id="csharp.number" legacy="fore:#F84C4C" />
+  <style id="csharp.operator" legacy="fore:#A349A4" />
+  <style id="css.variable" legacy="italic; fore:#0080FF" />
+  <style id="css.operator" legacy="fore:#A349A4" />
+  <style id="java.keyword" legacy="fore:#00B050" />
+  <style id="java.typekeyword" legacy="fore:#00B050" />
+  <style id="java.constant" legacy="fore:#A349A4" />
+  <style id="java.label" legacy="back:#404030" />
+  <style id="java.number" legacy="fore:#F84C4C" />
+  <style id="java.operator" legacy="fore:#A349A4" />
+  <style id="javascript.keyword" legacy="fore:#00B050" />
+  <style id="javascript.constant" legacy="fore:#A349A4" />
+  <style id="javascript.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="javascript.label" legacy="back:#404030" />
+  <style id="javascript.number" legacy="fore:#F84C4C" />
+  <style id="javascript.operator" legacy="fore:#A349A4" />
+  <style id="json.keyword" legacy="fore:#00B050" />
+  <style id="json.number" legacy="fore:#F84C4C" />
+  <style id="json.operator" legacy="fore:#A349A4" />
+  <style id="python.number" legacy="fore:#F84C4C" />
+  <style id="python.operator" legacy="fore:#A349A4" />
+  <style id="sql.basicfunction" legacy="fore:#8E0D90" />
+  <style id="sql.number" legacy="fore:#F84C4C" />
+  <style id="sql.operator" legacy="fore:#A349A4" />
+  <style id="html.xmlcdata" legacy="back:#303030; eolfilled" />
+  <style id="html.vbsnumber" legacy="fore:#F84C4C" />
+  <style id="html.vbsoperator" legacy="fore:#A349A4" />
+  <style id="xml.xmltag" legacy="fore:#0070C0" />
+  <style id="xml.xmlattribute" legacy="fore:#F84C4C" />
+  <style id="abaqus.number" legacy="fore:#F84C4C" />
+  <style id="abaqus.operator" legacy="fore:#A349A4" />
+  <style id="actionscript.keyword" legacy="fore:#00B050" />
+  <style id="actionscript.typekeyword" legacy="fore:#00B050" />
+  <style id="actionscript.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="actionscript.label" legacy="back:#404030" />
+  <style id="actionscript.number" legacy="fore:#F84C4C" />
+  <style id="actionscript.operator" legacy="fore:#A349A4" />
+  <style id="smali.keyword" legacy="fore:#00B050" />
+  <style id="smali.label" legacy="back:#404030; eolfilled" />
+  <style id="smali.number" legacy="fore:#F84C4C" />
+  <style id="smali.operator" legacy="fore:#A349A4" />
+  <style id="apdl.number" legacy="fore:#F84C4C" />
+  <style id="apdl.operator" legacy="fore:#A349A4" />
+  <style id="asm.fpuinstruction" legacy="fore:#8E0D90" />
+  <style id="asm.directive" legacy="fore:#00B050" />
+  <style id="asm.directiveoperand" legacy="fore:#00B050" />
+  <style id="asm.label" legacy="back:#404030" />
+  <style id="asm.number" legacy="fore:#F84C4C" />
+  <style id="asm.operator" legacy="fore:#A349A4" />
+  <style id="asymptote.keyword" legacy="fore:#00B050" />
+  <style id="asymptote.number" legacy="fore:#F84C4C" />
+  <style id="asymptote.operator" legacy="fore:#A349A4" />
+  <style id="autohotkey.label" legacy="back:#404030" />
+  <style id="autohotkey.number" legacy="fore:#F84C4C" />
+  <style id="autohotkey.operator" legacy="fore:#A349A4" />
+  <style id="autoit3.keyword" legacy="fore:#00B050" />
+  <style id="autoit3.number" legacy="fore:#F84C4C" />
+  <style id="autoit3.operator" legacy="fore:#A349A4" />
+  <style id="avisynth.number" legacy="fore:#F84C4C" />
+  <style id="avisynth.operator" legacy="fore:#A349A4" />
+  <style id="awk.keyword" legacy="fore:#00B050" />
+  <style id="awk.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="awk.number" legacy="fore:#F84C4C" />
+  <style id="awk.operator" legacy="fore:#A349A4" />
+  <style id="batch.variable" legacy="fore:#00B050" />
+  <style id="batch.label" legacy="fore:#CEB966; back:#303030; eolfilled" />
+  <style id="batch.operator" legacy="fore:#A349A4" />
+  <style id="blockdiag.keyword" legacy="fore:#00B050" />
+  <style id="blockdiag.number" legacy="fore:#F84C4C" />
+  <style id="blockdiag.operator" legacy="fore:#A349A4" />
+  <style id="cangjie.keyword" legacy="fore:#00B050" />
+  <style id="cangjie.typekeyword" legacy="fore:#00B050" />
+  <style id="cangjie.number" legacy="fore:#F84C4C" />
+  <style id="cangjie.operator" legacy="fore:#A349A4" />
+  <style id="cil.keyword" legacy="fore:#00B050" />
+  <style id="cil.typekeyword" legacy="fore:#00B050" />
+  <style id="cil.label" legacy="back:#404030" />
+  <style id="cil.number" legacy="fore:#F84C4C" />
+  <style id="cil.operator" legacy="fore:#A349A4" />
+  <style id="cmake.keyword" legacy="fore:#00B050" />
+  <style id="cmake.number" legacy="fore:#F84C4C" />
+  <style id="cmake.operator" legacy="fore:#A349A4" />
+  <style id="coffeescript.keyword" legacy="fore:#00B050" />
+  <style id="coffeescript.backticks" legacy="fore:#8E0D90" />
+  <style id="coffeescript.regex" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="coffeescript.number" legacy="fore:#F84C4C" />
+  <style id="coffeescript.operator" legacy="fore:#A349A4" />
+  <style id="config.section" legacy="bold; back:#404030; eolfilled" />
+  <style id="config.directive" legacy="fore:#0080FF" />
+  <style id="config.number" legacy="fore:#F84C4C" />
+  <style id="config.operator" legacy="fore:#A349A4" />
+  <style id="d.keyword" legacy="fore:#00B050" />
+  <style id="d.typekeyword" legacy="fore:#00B050" />
+  <style id="d.constant" legacy="fore:#A349A4" />
+  <style id="d.label" legacy="back:#404030" />
+  <style id="d.number" legacy="fore:#F84C4C" />
+  <style id="d.operator" legacy="fore:#A349A4" />
+  <style id="dart.keyword" legacy="fore:#00B050" />
+  <style id="dart.typekeyword" legacy="fore:#00B050" />
+  <style id="dart.label" legacy="back:#404030" />
+  <style id="dart.number" legacy="fore:#F84C4C" />
+  <style id="dart.operator" legacy="fore:#A349A4" />
+  <style id="diff.command" legacy="bold; fore:#0070C0" />
+  <style id="diff.sourcedestination" legacy="fore:#FF7F27; back:#404040; eolfilled" />
+  <style id="diff.positionsetting" legacy="fore:#00B050" />
+  <style id="diff.lineaddition" legacy="back:#085820; eolfilled" />
+  <style id="diff.lineremoval" legacy="back:#A52A2A; eolfilled" />
+  <style id="diff.linechange" legacy="back:#0F405D; eolfilled" />
+  <style id="elixir.number" legacy="fore:#F84C4C" />
+  <style id="elixir.operator" legacy="fore:#A349A4" />
+  <style id="erlang.number" legacy="fore:#F84C4C" />
+  <style id="erlang.operator" legacy="fore:#A349A4" />
+  <style id="fsharp.codequotation" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="fsharp.number" legacy="fore:#F84C4C" />
+  <style id="fsharp.operator" legacy="fore:#A349A4" />
+  <style id="fortran.keyword" legacy="fore:#00B050" />
+  <style id="fortran.number" legacy="fore:#F84C4C" />
+  <style id="fortran.operator" legacy="fore:#A349A4" />
+  <style id="gn.keyword" legacy="fore:#00B050" />
+  <style id="gn.number" legacy="fore:#F84C4C" />
+  <style id="gn.operator" legacy="fore:#A349A4" />
+  <style id="go.keyword" legacy="fore:#00B050" />
+  <style id="go.typekeyword" legacy="fore:#00B050" />
+  <style id="go.constant" legacy="fore:#A349A4" />
+  <style id="go.label" legacy="back:#404030" />
+  <style id="go.number" legacy="fore:#F84C4C" />
+  <style id="go.operator" legacy="fore:#A349A4" />
+  <style id="gradle.keyword" legacy="fore:#00B050" />
+  <style id="gradle.typekeyword" legacy="fore:#00B050" />
+  <style id="gradle.constant" legacy="fore:#A349A4" />
+  <style id="gradle.regex" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="gradle.label" legacy="back:#404030" />
+  <style id="gradle.number" legacy="fore:#F84C4C" />
+  <style id="gradle.operator" legacy="fore:#A349A4" />
+  <style id="graphviz.keyword" legacy="fore:#00B050" />
+  <style id="graphviz.number" legacy="fore:#F84C4C" />
+  <style id="graphviz.operator" legacy="fore:#A349A4" />
+  <style id="groovy.keyword" legacy="fore:#00B050" />
+  <style id="groovy.typekeyword" legacy="fore:#00B050" />
+  <style id="groovy.constant" legacy="fore:#A349A4" />
+  <style id="groovy.regex" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="groovy.label" legacy="back:#404030" />
+  <style id="groovy.number" legacy="fore:#F84C4C" />
+  <style id="groovy.operator" legacy="fore:#A349A4" />
+  <style id="haskell.number" legacy="fore:#F84C4C" />
+  <style id="haskell.operator" legacy="fore:#A349A4" />
+  <style id="haxe.keyword" legacy="fore:#00B050" />
+  <style id="haxe.constant" legacy="fore:#A349A4" />
+  <style id="haxe.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="haxe.number" legacy="fore:#F84C4C" />
+  <style id="haxe.operator" legacy="fore:#A349A4" />
+  <style id="ini.section" legacy="bold; back:#404030; eolfilled" />
+  <style id="innosetup.section" legacy="bold; back:#404030; eolfilled" />
+  <style id="innosetup.parameter" legacy="fore:#00B050" />
+  <style id="innosetup.inlineexpansion" legacy="fore:#8E0D90" />
+  <style id="innosetup.constant" legacy="fore:#A349A4" />
+  <style id="innosetup.number" legacy="fore:#F84C4C" />
+  <style id="innosetup.operator" legacy="fore:#A349A4" />
+  <style id="jamfile.keyword" legacy="fore:#00B050" />
+  <style id="jamfile.constant" legacy="fore:#A349A4" />
+  <style id="jamfile.number" legacy="fore:#F84C4C" />
+  <style id="jamfile.operator" legacy="fore:#A349A4" />
+  <style id="julia.keyword" legacy="fore:#00B050" />
+  <style id="julia.backticks" legacy="fore:#8E0D90" />
+  <style id="julia.regex" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="julia.number" legacy="fore:#F84C4C" />
+  <style id="julia.operator" legacy="fore:#A349A4" />
+  <style id="kotlin.keyword" legacy="fore:#00B050" />
+  <style id="kotlin.number" legacy="fore:#F84C4C" />
+  <style id="kotlin.operator" legacy="fore:#A349A4" />
+  <style id="latex.command" legacy="fore:#00B050" />
+  <style id="latex.operator" legacy="fore:#A349A4" />
+  <style id="lisp.number" legacy="fore:#F84C4C" />
+  <style id="lisp.operator" legacy="fore:#A349A4" />
+  <style id="llvm.keyword" legacy="fore:#00B050" />
+  <style id="llvm.typekeyword" legacy="fore:#00B050" />
+  <style id="llvm.label" legacy="back:#404030" />
+  <style id="llvm.number" legacy="fore:#F84C4C" />
+  <style id="llvm.operator" legacy="fore:#A349A4" />
+  <style id="lua.keyword" legacy="fore:#00B050" />
+  <style id="lua.label" legacy="back:#404030" />
+  <style id="lua.number" legacy="fore:#F84C4C" />
+  <style id="lua.operator" legacy="fore:#A349A4" />
+  <style id="makefile.variable" legacy="fore:#0080FF" />
+  <style id="makefile.target" legacy="fore:#0080FF; back:#FFC000" />
+  <style id="makefile.operator" legacy="fore:#A349A4" />
+  <style id="markdown.horizontalrule" legacy="bold; back:#404030; eolfilled" />
+  <style id="markdown.blockquote" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="markdown.codeblock" legacy="back:#303030; eolfilled" />
+  <style id="markdown.inlinecode" legacy="back:#303030" />
+  <style id="markdown.displaymath" legacy="back:#303030; eolfilled" />
+  <style id="markdown.inlinemath" legacy="back:#303030" />
+  <style id="markdown.delimiterrow" legacy="bold; back:#404030; eolfilled" />
+  <style id="markdown.lineaddition" legacy="back:#085820" />
+  <style id="markdown.lineremoval" legacy="back:#A52A2A" />
+  <style id="mathematica.number" legacy="fore:#F84C4C" />
+  <style id="mathematica.operator" legacy="fore:#A349A4" />
+  <style id="matlab.keyword" legacy="fore:#00B050" />
+  <style id="matlab.basicfunction" legacy="fore:#8E0D90" />
+  <style id="matlab.callback" legacy="fore:#8E0D90" />
+  <style id="matlab.number" legacy="fore:#F84C4C" />
+  <style id="matlab.operator" legacy="fore:#A349A4" />
+  <style id="nim.number" legacy="fore:#F84C4C" />
+  <style id="nim.operator" legacy="fore:#A349A4" />
+  <style id="nsis.keyword" legacy="fore:#00B050" />
+  <style id="nsis.label" legacy="back:#404030" />
+  <style id="nsis.number" legacy="fore:#F84C4C" />
+  <style id="nsis.operator" legacy="fore:#A349A4" />
+  <style id="ocaml.number" legacy="fore:#F84C4C" />
+  <style id="ocaml.operator" legacy="fore:#A349A4" />
+  <style id="pascal.preprocessor" legacy="fore:#8E0D90" />
+  <style id="pascal.number" legacy="fore:#F84C4C" />
+  <style id="pascal.operator" legacy="fore:#A349A4" />
+  <style id="perl.scalarvar" legacy="fore:#00B050" />
+  <style id="perl.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="perl.substitution" legacy="fore:#006633; back:#0F405D" />
+  <style id="perl.backticks" legacy="fore:#E24000; back:#0F405D" />
+  <style id="perl.heredocbackticks" legacy="fore:#E24000; back:#0F405D" />
+  <style id="perl.stringarray" legacy="fore:#0080FF" />
+  <style id="perl.formatidentifier" legacy="bold; fore:#648000; back:#0F405D" />
+  <style id="perl.formatbody" legacy="fore:#648000; back:#0F405D" />
+  <style id="perl.podcommon" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="perl.podverbatim" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="perl.datasection" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="perl.number" legacy="fore:#F84C4C" />
+  <style id="perl.operator" legacy="fore:#A349A4" />
+  <style id="php.constant" legacy="fore:#A349A4" />
+  <style id="php.variable" legacy="italic; fore:#0080FF" />
+  <style id="php.label" legacy="back:#404030" />
+  <style id="php.number" legacy="fore:#F84C4C" />
+  <style id="php.operator" legacy="fore:#A349A4" />
+  <style id="powerbuilder.label" legacy="back:#404030" />
+  <style id="powerbuilder.number" legacy="fore:#F84C4C" />
+  <style id="powerbuilder.operator" legacy="fore:#A349A4" />
+  <style id="powershell.variable" legacy="fore:#0080FF" />
+  <style id="powershell.label" legacy="back:#404030" />
+  <style id="powershell.number" legacy="fore:#F84C4C" />
+  <style id="powershell.operator" legacy="fore:#A349A4" />
+  <style id="r.number" legacy="fore:#F84C4C" />
+  <style id="r.operator" legacy="fore:#A349A4" />
+  <style id="rebol.macro" legacy="fore:#A349A4" />
+  <style id="rebol.number" legacy="fore:#F84C4C" />
+  <style id="rebol.operator" legacy="fore:#A349A4" />
+  <style id="resourcescript.keyword" legacy="fore:#00B050" />
+  <style id="resourcescript.number" legacy="fore:#F84C4C" />
+  <style id="resourcescript.operator" legacy="fore:#A349A4" />
+  <style id="ruby.pod" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="ruby.backticks" legacy="fore:#E24000; back:#0F405D" />
+  <style id="ruby.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="ruby.variable" legacy="fore:#0080FF" />
+  <style id="ruby.heredocbackticks" legacy="fore:#E24000; back:#0F405D" />
+  <style id="ruby.stringarray" legacy="fore:#0080FF" />
+  <style id="ruby.number" legacy="fore:#F84C4C" />
+  <style id="ruby.operator" legacy="fore:#A349A4" />
+  <style id="rust.keyword" legacy="fore:#00B050" />
+  <style id="rust.constant" legacy="fore:#A349A4" />
+  <style id="rust.number" legacy="fore:#F84C4C" />
+  <style id="rust.operator" legacy="fore:#A349A4" />
+  <style id="sas.number" legacy="fore:#F84C4C" />
+  <style id="sas.operator" legacy="fore:#A349A4" />
+  <style id="scala.keyword" legacy="fore:#00B050" />
+  <style id="scala.number" legacy="fore:#F84C4C" />
+  <style id="scala.operator" legacy="fore:#A349A4" />
+  <style id="bash.backticks" legacy="fore:#8E0D90" />
+  <style id="bash.heredocdelimiter" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="bash.heredocsinglequoted" legacy="fore:#A46000; back:#424640; eolfilled" />
+  <style id="bash.number" legacy="fore:#F84C4C" />
+  <style id="bash.operator" legacy="fore:#A349A4" />
+  <style id="swift.keyword" legacy="fore:#00B050" />
+  <style id="swift.regex" legacy="fore:#006633; back:#0F405D; eolfilled" />
+  <style id="swift.label" legacy="back:#404030" />
+  <style id="swift.number" legacy="fore:#F84C4C" />
+  <style id="swift.operator" legacy="fore:#A349A4" />
+  <style id="tcl.modifier" legacy="fore:#8E0D90" />
+  <style id="tcl.number" legacy="fore:#F84C4C" />
+  <style id="tcl.operator" legacy="fore:#A349A4" />
+  <style id="texinfo.command" legacy="fore:#00B050" />
+  <style id="texinfo.operator" legacy="fore:#A349A4" />
+  <style id="toml.keyword" legacy="fore:#00B050" />
+  <style id="toml.table" legacy="bold; back:#404030; eolfilled" />
+  <style id="toml.number" legacy="fore:#F84C4C" />
+  <style id="toml.operator" legacy="fore:#A349A4" />
+  <style id="typescript.keyword" legacy="fore:#00B050" />
+  <style id="typescript.typekeyword" legacy="fore:#00B050" />
+  <style id="typescript.constant" legacy="fore:#A349A4" />
+  <style id="typescript.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="typescript.label" legacy="back:#404030" />
+  <style id="typescript.number" legacy="fore:#F84C4C" />
+  <style id="typescript.operator" legacy="fore:#A349A4" />
+  <style id="typst.inlinecode" legacy="back:#303030" />
+  <style id="typst.codeblock" legacy="back:#303030; eolfilled" />
+  <style id="typst.operator" legacy="fore:#A349A4" />
+  <style id="vbscript.keyword" legacy="fore:#00B050" />
+  <style id="vbscript.constant" legacy="fore:#A349A4" />
+  <style id="vbscript.label" legacy="back:#404030" />
+  <style id="vbscript.number" legacy="fore:#F84C4C" />
+  <style id="vbscript.operator" legacy="fore:#A349A4" />
+  <style id="verilog.macro" legacy="fore:#A349A4" />
+  <style id="verilog.label" legacy="back:#404030" />
+  <style id="verilog.number" legacy="fore:#F84C4C" />
+  <style id="verilog.operator" legacy="fore:#A349A4" />
+  <style id="vhdl.label" legacy="back:#404030" />
+  <style id="vhdl.number" legacy="fore:#F84C4C" />
+  <style id="vhdl.operator" legacy="fore:#A349A4" />
+  <style id="vim.regex" legacy="fore:#006633; back:#0F405D" />
+  <style id="vim.number" legacy="fore:#F84C4C" />
+  <style id="vim.operator" legacy="fore:#A349A4" />
+  <style id="visualbasic.keyword" legacy="fore:#00B050" />
+  <style id="visualbasic.typekeyword" legacy="fore:#00B050" />
+  <style id="visualbasic.constant" legacy="fore:#A349A4" />
+  <style id="visualbasic.label" legacy="back:#404030" />
+  <style id="visualbasic.number" legacy="fore:#F84C4C" />
+  <style id="visualbasic.operator" legacy="fore:#A349A4" />
+  <style id="wasm.number" legacy="fore:#F84C4C" />
+  <style id="wasm.operator" legacy="fore:#A349A4" />
+  <style id="winhex.number" legacy="fore:#F84C4C" />
+  <style id="winhex.operator" legacy="fore:#A349A4" />
+  <style id="yaml.keyword" legacy="fore:#00B050" />
+  <style id="yaml.document" legacy="bold; back:#404030; eolfilled" />
+  <style id="yaml.number" legacy="fore:#F84C4C" />
+  <style id="yaml.operator" legacy="fore:#A349A4" />
+  <style id="zig.number" legacy="fore:#F84C4C" />
+  <style id="zig.operator" legacy="fore:#A349A4" />
+</theme>

@@ -1,6 +1,9 @@
+#include "LanguageConfiguration.h"
 #include "SimdGraphics.h"
 #include "SimdText.h"
 #include "StyleManager.h"
+#include "ConfigurationXml.h"
+#include "ThemeDialog.h"
 #include <chrono>
 #include "DialogResizeGrip.h"
 #include "StyleState.h"
@@ -21,7 +24,7 @@ namespace {
 void EnsureUnicodeProfile(const std::filesystem::path&);
 void WriteStyleProfile(const wchar_t*,const wchar_t*,const wchar_t*,const wchar_t*);
 COLORREF customColors[16]{};
-constexpr size_t Count = sizeof(lexerCatalog) / sizeof(*lexerCatalog);
+constexpr size_t Count = sizeof(lexerCatalog) / sizeof(lexerCatalog[0]);
 std::map<std::pair<int,unsigned>, std::wstring> sharedOverrides;
 int defaultScheme = 1;
 bool autoSelectScheme = true;
@@ -29,6 +32,17 @@ std::vector<int> favoriteSchemes;
 bool FavoriteContains(int id){return std::find(favoriteSchemes.begin(),favoriteSchemes.end(),id)!=favoriteSchemes.end();}
 std::map<int,std::wstring> sharedExtensions;
 std::map<std::pair<int,unsigned>,std::wstring> darkOverrides;
+struct StylePreviewState {
+    const EditorDocument* document=nullptr;
+    const std::map<std::pair<int,unsigned>,std::wstring>* shared=nullptr;
+    const std::map<std::pair<int,unsigned>,std::wstring>* dark=nullptr;
+    const std::map<int,std::wstring>* extensions=nullptr;
+};
+StylePreviewState stylePreview;
+const auto& SharedFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.shared:sharedOverrides;}
+const auto& DarkFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.dark:darkOverrides;}
+const auto& ExtensionsFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.extensions:sharedExtensions;}
+
 
 std::wstring LocalizedLabel(UINT id,const wchar_t* fallback){
     auto instance=_Module.GetModuleInstance();auto resource=FindResourceExW(instance,RT_STRING,MAKEINTRESOURCEW((id>>4)+1),GetThreadUILanguage());
@@ -37,7 +51,7 @@ std::wstring LocalizedLabel(UINT id,const wchar_t* fallback){
     return *cursor?std::wstring(cursor+1,*cursor):std::wstring(fallback);
 }
 bool Starts(const char* value,const char* prefix){return strncmp(value,prefix,strlen(prefix))==0;}
-EDITLEXER* SniffShebang(char* pchText,int& dialect) {
+const LanguageDefinition* SniffShebang(char* pchText,int& dialect) {
 	if (pchText[0] == '#' && pchText[1] == '!') {
 		size_t len = 0;
 		char *pch = pchText + CSTRLEN("#!");
@@ -79,81 +93,81 @@ EDITLEXER* SniffShebang(char* pchText,int& dialect) {
 		if (len >= 4) {
 			if (len >= 5) {
 				if (Starts(name, "python")) {
-					return &lexPython;
+					return &Language("python");
 				}
 				if (Starts(name, "groovy")) {
-					return &lexGroovy;
+					return &Language("groovy");
 				}
 				if (Starts(name, "scala")) {
-					return &lexScala;
+					return &Language("scala");
 				}
 				if (Starts(name, "rscript")) {
-					return &lexRLang;
+					return &Language("r");
 				}
 				if (Starts(name, "escript")) {
-					return &lexErlang;
+					return &Language("erlang");
 				}
 			}
 
 			if (Starts(name, "bash") || Starts(name, "dash")) {
-				return &lexBash;
+				return &Language("bash");
 			}
 			if (Starts(name, "tcsh")) {
 				dialect = IDM_LEXER_CSHELL;
-				return &lexBash;
+				return &Language("bash");
 			}
 			if (Starts(name, "perl")) {
-				return &lexPerl;
+				return &Language("perl");
 			}
 			if (Starts(name, "ruby")) {
-				return &lexRuby;
+				return &Language("ruby");
 			}
 			//if (Starts(name, "rust")) {
-			//	return &lexRust;
+			//	return &Language("rust");
 			//}
 			if (Starts(name, "gawk") || Starts(name, "nawk")) {
-				return &lexAwk;
+				return &Language("awk");
 			}
 			if (Starts(name, "node")) {
-				return &lexJavaScript;
+				return &Language("javascript");
 			}
 			if (Starts(name, "wish")) {
-				return &lexTcl;
+				return &Language("tcl");
 			}
 			if (Starts(name, "wlua")) {
-				return &lexLua;
+				return &Language("lua");
 			}
 		}
 		if (len >= 3) {
 			if (Starts(name, "awk")) {
-				return &lexAwk;
+				return &Language("awk");
 			}
 			if (Starts(name, "lua")) {
-				return &lexLua;
+				return &Language("lua");
 			}
 			if (Starts(name, "php")) {
-				return &lexPHP;
+				return &Language("php");
 			}
 			if (Starts(name, "tcl")) {
-				return &lexTcl;
+				return &Language("tcl");
 			}
 			if (Starts(name, "ash") || Starts(name, "zsh") || Starts(name, "ksh")) {
-				return &lexBash;
+				return &Language("bash");
 			}
 			if (Starts(name, "csh")) {
 				dialect = IDM_LEXER_CSHELL;
-				return &lexBash;
+				return &Language("bash");
 			}
 			if (Starts(name, "ipy")) {
-				return &lexPython;
+				return &Language("python");
 			}
 		}
 		if (len >= 2) {
 			if (Starts(name, "sh")) {
-				return &lexBash;
+				return &Language("bash");
 			}
 			if (Starts(name, "py")) {
-				return &lexPython;
+				return &Language("python");
 			}
 		}
 	}
@@ -179,7 +193,7 @@ int ResolveScheme(const EditorDocument& d) {
     if(name.starts_with(L"jamfile"))extension=L"jam";
     if(name.starts_with(L"kconfig") || name.starts_with(L"doxyfile"))extension=L"conf";
     if(name.starts_with(L"readme"))extension=L"txt";
-    if(extension==L"m" && d.hwnd){int dialect=0;auto sniffed=DetectObjCAndMatlab(d,dialect);if(sniffed)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]==sniffed)return static_cast<int>(i);}
+    if(extension==L"m" && d.hwnd){int dialect=0;auto sniffed=DetectObjCAndMatlab(d,dialect);if(sniffed)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->rid==sniffed->rid)return static_cast<int>(i);}
     if (name.starts_with(L".bash") || name == L".profile") extension = L"sh";
     int matched=0;
     if(extension==L"r" && d.hwnd){char prefix[10]{};d.Send(SCI_GETTEXT,sizeof(prefix)-1,reinterpret_cast<LPARAM>(prefix));if(_strnicmp(prefix,"rebol",5)==0 && (prefix[5]==' ' || prefix[5]=='\t' || prefix[5]=='['))for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->rid==NP2LEX_REBOL)return static_cast<int>(i);}
@@ -187,7 +201,7 @@ int ResolveScheme(const EditorDocument& d) {
     for (size_t i = 1; i < Count; ++i) {
         if(matched)break;
         if (!lexerCatalog[i]->pszDefExt) continue;
-        std::wistringstream fields(sharedExtensions.contains(lexerCatalog[i]->rid)?sharedExtensions[lexerCatalog[i]->rid]:lexerCatalog[i]->pszDefExt); std::wstring entry;
+        std::wistringstream fields(ExtensionsFor(d).contains(lexerCatalog[i]->rid)?ExtensionsFor(d).at(lexerCatalog[i]->rid):lexerCatalog[i]->pszDefExt); std::wstring entry;
         while (std::getline(fields, entry, L';')) {
             entry.erase(0, entry.find_first_not_of(L" \t"));
             auto end = entry.find_last_not_of(L" \t"); if (end != std::wstring::npos) entry.resize(end+1);
@@ -200,26 +214,42 @@ int ResolveScheme(const EditorDocument& d) {
         char prefix[512]{};d.Send(SCI_GETTEXT,sizeof(prefix)-1,reinterpret_cast<LPARAM>(prefix));int dialect=0;
         auto sniffed=SniffShebang(prefix,dialect);
         if(!sniffed){const char* first=prefix;while(*first&&isspace(static_cast<unsigned char>(*first)))++first;
-            if(Starts(first,"<?xml"))sniffed=&lexXML;
-            else if(Starts(first,"<?php"))sniffed=&lexPHP;
-            else if(_strnicmp(first,"<html",5)==0 || (_strnicmp(first,"<!doctype",9)==0 && StrStrIA(first,"html")))sniffed=&lexHTML;
-            else if(*first=='<' && (isalpha(static_cast<unsigned char>(first[1])) || first[1]=='!' || first[1]=='?' || first[1]=='/'))sniffed=&lexXML;
+            if(Starts(first,"<?xml"))sniffed=&Language("xml");
+            else if(Starts(first,"<?php"))sniffed=&Language("php");
+            else if(_strnicmp(first,"<html",5)==0 || (_strnicmp(first,"<!doctype",9)==0 && StrStrIA(first,"html")))sniffed=&Language("html");
+            else if(*first=='<' && (isalpha(static_cast<unsigned char>(first[1])) || first[1]=='!' || first[1]=='?' || first[1]=='/'))sniffed=&Language("xml");
         }
-        if(sniffed)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]==sniffed)return static_cast<int>(i);
+        if(sniffed)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->rid==sniffed->rid)return static_cast<int>(i);
     }
-    if(!matched && d.hwnd){auto detected=AutoDetectContent(d,name.starts_with(L"."));if(detected)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]==detected)return static_cast<int>(i);}
+    if(!matched && d.hwnd){auto detected=AutoDetectContent(d,name.starts_with(L"."));if(detected)for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->id==detected->id)return static_cast<int>(i);}
     return matched?matched:defaultScheme;
 }
 int ActualScheme(const EditorDocument& d){return d.style.resolvedScheme>0 && d.style.resolvedScheme<static_cast<int>(Count)?d.style.resolvedScheme:ResolveScheme(d);}
-std::wstring Value(const EditorDocument& d, const EDITLEXER& lexer, unsigned index) {
-    if(d.style.dark){auto found=darkOverrides.find({lexer.rid,index});if(found!=darkOverrides.end())return found->second;}
-    auto found = sharedOverrides.find({lexer.rid,index});
-    if (found != sharedOverrides.end()) return found->second;
-    auto local = d.style.overrides.find((static_cast<unsigned>(lexer.rid) << 8) | index);
-    return local == d.style.overrides.end() ? lexer.Styles[index].pszDefault : local->second;
+std::wstring ResolveStyleValue(const EditorDocument& d, const LanguageDefinition& lexer, unsigned index) {
+    std::wstring value=lexer.Styles[index].pszDefault;
+    auto id=ConfigurationUtf8(lexer.Styles[index].id);
+    value+=L"; "+ThemeStyleValue(*DefaultTheme(d.style.paletteDark),id);
+    if(d.style.theme)value+=L"; "+ThemeStyleValue(*d.style.theme,id);
+    auto shared=SharedFor(d).find({lexer.rid,index});if(shared!=SharedFor(d).end())value+=L"; "+shared->second;
+    if(d.style.dark){auto found=DarkFor(d).find({lexer.rid,index});if(found!=DarkFor(d).end())value+=L"; "+found->second;}
+    auto local=d.style.overrides.find((static_cast<unsigned>(lexer.rid)<<8)|index);
+    if(local!=d.style.overrides.end())value+=L"; "+local->second;
+    auto semantic=d.style.semanticOverrides.find(id);if(semantic!=d.style.semanticOverrides.end())value+=L"; "+semantic->second;
+    return value;
+}
+std::wstring Value(const EditorDocument& d,const LanguageDefinition& lexer,unsigned index){
+    if(d.style.configuration){auto found=d.style.configuration->styleValues.find({lexer.id,index});if(found!=d.style.configuration->styleValues.end())return found->second;}
+    return ResolveStyleValue(d,lexer,index);
+}
+std::wstring UserStyleValue(const EditorDocument& d,const LanguageDefinition& language,unsigned index){
+    std::wstring value;auto shared=SharedFor(d).find({language.rid,index});if(shared!=SharedFor(d).end())value+=L"; "+shared->second;
+    if(d.style.dark){auto dark=DarkFor(d).find({language.rid,index});if(dark!=DarkFor(d).end())value+=L"; "+dark->second;}
+    auto local=d.style.overrides.find((static_cast<unsigned>(language.rid)<<8)|index);if(local!=d.style.overrides.end())value+=L"; "+local->second;
+    return value;
 }
 unsigned StyleProperty(const std::wstring& value,const wchar_t* name,unsigned fallback){
-    auto at=value.find(name);if(at==std::wstring::npos)return fallback;auto* first=value.c_str()+at+wcslen(name);
+    auto at=value.rfind(name);if(at==std::wstring::npos)return fallback;auto* first=value.c_str()+at+wcslen(name);
+    if(wcsncmp(first,L"inherit",7)==0)return fallback;
     if(*first=='#'){unsigned color=0;if(swscanf_s(first,L"#%x",&color)==1)return RGB((color>>16)&255,(color>>8)&255,color&255);return fallback;}
     return static_cast<unsigned>(wcstoul(first,nullptr,10));
 }
@@ -241,7 +271,8 @@ void ApplyStyle(EditorDocument& d, unsigned style, const std::wstring& value) {
         while(!key.empty() && iswspace(key.back()))key.pop_back();
         while(!val.empty() && iswspace(val.front()))val.erase(val.begin());while(!val.empty()&&iswspace(val.back()))val.pop_back();
         if (key == L"fore" || key == L"back") {
-            unsigned color = 0; if (swscanf_s(val.c_str(), L"#%x", &color) == 1) {
+            unsigned color = 0; if(val==L"inherit"){d.Send(key==L"fore"?SCI_STYLESETFORE:SCI_STYLESETBACK,style,d.Send(key==L"fore"?SCI_STYLEGETFORE:SCI_STYLEGETBACK,STYLE_DEFAULT));}
+            else if (swscanf_s(val.c_str(), L"#%x", &color) == 1) {
                 auto rgb = RGB((color>>16)&255,(color>>8)&255,color&255);
                 d.Send(key == L"fore" ? SCI_STYLESETFORE : SCI_STYLESETBACK,style,rgb);
             }
@@ -249,14 +280,16 @@ void ApplyStyle(EditorDocument& d, unsigned style, const std::wstring& value) {
             while(!val.empty() && iswspace(val.front()))val.erase(val.begin());while(!val.empty()&&iswspace(val.back()))val.pop_back();
             if(val==L"$(Code)")val=d.style.codeFont.empty()?d.style.font:d.style.codeFont;
             else if(val==L"$(Text)")val=d.style.textFont.empty()?d.style.font:d.style.textFont;
+            if(val.empty()){if(style==STYLE_DEFAULT)val=d.style.font;else{char inherited[256]{};d.Send(SCI_STYLEGETFONT,STYLE_DEFAULT,reinterpret_cast<LPARAM>(inherited));val=files::FromUtf8(inherited);}}
             if (val.find(L"$(") == std::wstring::npos) { auto face = files::ToUtf8(val); d.Send(SCI_STYLESETFONT,style,reinterpret_cast<LPARAM>(face.c_str())); }
         } else if (key == L"size") {
             double size = wcstod(val.c_str(), nullptr);
+            if(size==0)size=static_cast<double>(d.Send(SCI_STYLEGETSIZE,STYLE_DEFAULT));
             if (val.starts_with(L"+") || val.starts_with(L"-")) size += d.Send(SCI_STYLEGETSIZE,STYLE_DEFAULT);
             d.Send(SCI_STYLESETSIZEFRACTIONAL,style,static_cast<int>(std::clamp(size,2.0,512.0)*100));
-        } else if (key == L"bold") d.Send(SCI_STYLESETBOLD,style,TRUE);
-        else if (key == L"italic") d.Send(SCI_STYLESETITALIC,style,TRUE);
-        else if (key == L"underline") d.Send(SCI_STYLESETUNDERLINE,style,TRUE);
+        } else if (key == L"bold") d.Send(SCI_STYLESETBOLD,style,val!=L"0");
+        else if (key == L"italic") d.Send(SCI_STYLESETITALIC,style,val!=L"0");
+        else if (key == L"underline") d.Send(SCI_STYLESETUNDERLINE,style,val!=L"0");
         else if (key == L"strikeout") d.Send(SCI_STYLESETSTRIKE,style,TRUE);
         else if (key == L"overline") d.Send(SCI_STYLESETOVERLINE,style,TRUE);
         else if (key == L"eolfilled") d.Send(SCI_STYLESETEOLFILLED,style,TRUE);
@@ -266,32 +299,14 @@ void ApplyStyle(EditorDocument& d, unsigned style, const std::wstring& value) {
     }
 }
 int SchemeForCommand(UINT id) {
-    int rid = 0;
-    if (id == IDM_LEXER_TEXTFILE) rid = NP2LEX_TEXTFILE;
-    else if (id == IDM_LEXER_2NDTEXTFILE) rid = NP2LEX_2NDTEXTFILE;
-    else if (id == IDM_LEXER_CSV) rid = NP2LEX_CSV;
-    else if (id >= IDM_LEXER_CSS && id <= IDM_LEXER_HSS) rid = NP2LEX_CSS;
-    else if (id >= IDM_LEXER_JAVASCRIPT && id <= IDM_LEXER_JAVASCRIPT_JSX) rid = NP2LEX_JAVASCRIPT;
-    else if (id >= IDM_LEXER_TYPESCRIPT && id <= IDM_LEXER_TYPESCRIPT_TSX) rid = NP2LEX_TYPESCRIPT;
-    else if (id >= IDM_LEXER_WEB && id <= IDM_LEXER_JSPX) rid = NP2LEX_HTML;
-    else if (id == IDM_LEXER_PHP) rid = NP2LEX_PHP;
-    else if (id >= IDM_LEXER_MARKDOWN_GITHUB && id <= IDM_LEXER_MARKDOWN_PANDOC) rid = NP2LEX_MARKDOWN;
-    else if (id == IDM_LEXER_MATHEMATICA) rid = NP2LEX_MATHEMATICA;
-    else if (id >= IDM_LEXER_MATLAB && id <= IDM_LEXER_SCILAB) rid = NP2LEX_MATLAB;
-    else if (id >= IDM_LEXER_BASH && id <= IDM_LEXER_M4) rid = NP2LEX_BASH;
-    else if (id >= IDM_LEXER_XML && id <= IDM_LEXER_SVG) rid = NP2LEX_XML;
-    else if (id == IDM_LEXER_VBNET || id == IDM_LEXER_VBA) rid = NP2LEX_VISUALBASIC;
-    else if (id == IDM_LEXER_VBS) rid = NP2LEX_VBSCRIPT;
-    else if (id == IDM_LEXER_APACHE) rid = NP2LEX_CONFIG;
-    for (size_t i=1;i<Count;++i) if (lexerCatalog[i]->rid == rid) return static_cast<int>(i);
-    return 0;
+    if(id<IDM_LEXER_TEXTFILE||id>=IDM_LEXER_LEXER_COUNT)return 0;
+    const auto& commands=CurrentConfiguration()->commandLanguages;auto found=commands.find(static_cast<int>(id));return found==commands.end()?0:found->second;
 }
-int Dialect(const EditorDocument& d, const EDITLEXER& lexer,int* command=nullptr) {
+int Dialect(const EditorDocument& d, const LanguageDefinition& lexer,int* command=nullptr) {
     int id=d.style.dialect;
     if(!id){
         auto filename=SchemeFilename(d);auto extension=filename.extension().wstring();for(auto& ch:extension)ch=static_cast<wchar_t>(towlower(ch));
-        const std::pair<const wchar_t*,int> dialects[]={{L".scss",IDM_LEXER_SCSS},{L".less",IDM_LEXER_LESS},{L".hss",IDM_LEXER_HSS},{L".jsx",IDM_LEXER_JAVASCRIPT_JSX},{L".tsx",IDM_LEXER_TYPESCRIPT_TSX},{L".csh",IDM_LEXER_CSHELL},{L".tcsh",IDM_LEXER_CSHELL},{L".m4",IDM_LEXER_M4},{L".ac",IDM_LEXER_M4},{L".xsd",IDM_LEXER_XSD},{L".xsl",IDM_LEXER_XSLT},{L".xslt",IDM_LEXER_XSLT},{L".dtd",IDM_LEXER_DTD},{L".plist",IDM_LEXER_PROPERTY_LIST},{L".sci",IDM_LEXER_SCILAB},{L".sce",IDM_LEXER_SCILAB},{L".aspx",IDM_LEXER_ASPX_CS},{L".jsp",IDM_LEXER_JSP},{L".jspx",IDM_LEXER_JSPX},{L".asp",IDM_LEXER_ASP_VBS},{L".svg",IDM_LEXER_SVG},{L".vba",IDM_LEXER_VBA},{L".vbs",IDM_LEXER_VBS}};
-        for(const auto& entry:dialects)if(extension==entry.first){id=entry.second;break;}
+        for(const auto& variant:lexer.variants){std::wistringstream extensions(variant.extensions);std::wstring candidate;while(std::getline(extensions,candidate,L';'))if(extension==candidate){id=variant.command;break;}if(id)break;}
         auto name=filename.wstring();for(auto& ch:name)ch=static_cast<wchar_t>(towlower(ch));
         if(lexer.rid==NP2LEX_MATLAB && extension==L".m"){int sniffedDialect=0;DetectObjCAndMatlab(d,sniffedDialect);if(sniffedDialect)id=sniffedDialect;}
         if(lexer.rid==NP2LEX_CONFIG && (name.starts_with(L"httpd") || extension==L".htaccess"))id=IDM_LEXER_APACHE;
@@ -299,33 +314,18 @@ int Dialect(const EditorDocument& d, const EDITLEXER& lexer,int* command=nullptr
     }
     if(!d.style.dialect && (lexer.rid==NP2LEX_HTML || lexer.rid==NP2LEX_XML)){auto markup=DetectDocumentMarkupDialect(d);if(markup)id=markup;}
     if(command)*command=id;
-    switch(lexer.rid) {
-    case NP2LEX_ACTIONSCRIPT: case NP2LEX_APDL: case NP2LEX_ELIXIR: case NP2LEX_RESOURCESCRIPT: return 1;
-    case NP2LEX_CSS: return id >= IDM_LEXER_CSS && id <= IDM_LEXER_HSS ? id-IDM_LEXER_CSS : 0;
-    case NP2LEX_JAVASCRIPT: return id == IDM_LEXER_JAVASCRIPT_JSX ? 1 : 0;
-    case NP2LEX_TYPESCRIPT: return id == IDM_LEXER_TYPESCRIPT_TSX ? 3 : 2;
-    case NP2LEX_BASH: return id >= IDM_LEXER_BASH && id <= IDM_LEXER_M4 ? id-IDM_LEXER_BASH : 0;
-    case NP2LEX_MARKDOWN: return id >= IDM_LEXER_MARKDOWN_GITHUB && id <= IDM_LEXER_MARKDOWN_PANDOC ? id-IDM_LEXER_MARKDOWN_GITHUB : 0;
-    case NP2LEX_MATLAB: return id >= IDM_LEXER_MATLAB && id <= IDM_LEXER_SCILAB ? id-IDM_LEXER_MATLAB : 0;
-    case NP2LEX_VISUALBASIC: return id == IDM_LEXER_VBA ? 1 : 0;
-    case NP2LEX_VBSCRIPT: return 2;
-    case NP2LEX_CSV: return d.style.csvOptions;
-    case NP2LEX_HTML:
-        if(id==IDM_LEXER_ASPX_VB || id==IDM_LEXER_ASP_VBS)return 2|4|8|(2<<12);
-        if(id==IDM_LEXER_JSP)return 2|4|16|8|(1<<12);
-        if(id==IDM_LEXER_JSPX)return 2|4|16|32|1|(1<<12);
-        return 2|4|8|(1<<12);
-    case NP2LEX_XML:return 1|(1<<12)|(id==IDM_LEXER_SVG?4:0);
-    default:return 0;
-    }
+    if(lexer.rid==NP2LEX_CSV)return d.style.csvOptions;
+    for(const auto& variant:lexer.variants)if(variant.command==id)return variant.parameter;
+    return lexer.defaultDialect;
 }
+
 std::string Range(EditorDocument& d,LRESULT start,LRESULT end){
     if(end<start)return {};std::string text(static_cast<size_t>(end-start)+1,'\0');Sci_TextRangeFull range{{start,end},text.data()};d.Send(SCI_GETTEXTRANGEFULL,0,reinterpret_cast<LPARAM>(&range));text.resize(static_cast<size_t>(end-start));return text;
 }
 int CompletionOption(const EditorDocument& d,int id,int fallback=1) {
     auto found=d.style.completionOptions.find(id);return found==d.style.completionOptions.end()?fallback:found->second;
 }
-int StyleCategory(const EDITLEXER& lexer,int style){
+int StyleCategory(const LanguageDefinition& lexer,int style){
     const auto& cache=GetCompletionCache(lexer);
     if(cache.Test(cache.CommentStyleMask,style))return 1;
     if(cache.Test(cache.AllStringStyleMask,style))return 2;
@@ -495,7 +495,7 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
         if(!list)return;std::istringstream stream(list);std::string word;
         while(stream>>word){for(auto& ch:word)if(ch=='^')ch=' ';auto open=word.find('(');if(open!=std::string::npos){word.resize(open+1);word+=')';}accept(word);}
     };
-    auto addLexer=[&](const EDITLEXER& source){for(unsigned i=0;i<min<unsigned>(source.keywordCount,16);++i)if(!((source.keywordAttr>>(i*4))&KeywordAttr_NoAutoComp))addKeywordList(source.pszKeyWords[i]);};
+    auto addLexer=[&](const LanguageDefinition& source){for(unsigned i=0;i<min<unsigned>(source.keywordCount,16);++i)if(!((source.keywordAttr>>(i*4))&KeywordAttr_NoAutoComp))addKeywordList(source.pszKeyWords[i]);};
     int contextResult=0;char documentPrefix=0;
     if(!CompletionOption(d,IDC_AUTOC_ONLY_DOCUMENT_WORDS,0) && !prefix.empty() && !isdigit(static_cast<unsigned char>(prefix[0]))){
         int marker=start>lineStart?static_cast<int>(d.Send(SCI_GETCHARAT,start-1)):0;
@@ -510,17 +510,17 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
     }
     auto collectKeywords=[&](){if(contextResult || ignoreLexer)return;
         if(lexer.iLexer!=SCLEX_PHPSCRIPT)addLexer(lexer);
-        const char* const* extra=GetCompletionExtraKeywords(d.style.resolvedDialect);if(!extra && category==1)extra=cache.extraKeywords;
+        const char* const* extra=DocumentCompletionExtraKeywords(d);if(!extra && category==1)extra=cache.extraKeywords;
         if(extra)for(unsigned i=0;i<4;++i)addKeywordList(extra[i]);
         int style=static_cast<int>(d.Send(SCI_GETSTYLEINDEXAT,max<LRESULT>(0,position-1)));
         if(lexer.iLexer==SCLEX_HTML || lexer.iLexer==SCLEX_PHPSCRIPT){
-            if(style>=SCE_STYLE_OFFSET_PHP)addLexer(lexPHP);
-            else if(style>=SCE_STYLE_OFFSET_CSS)addLexer(lexCSS);
-            else if(style>=SCE_STYLE_OFFSET_JS)addLexer(lexJavaScript);
-            else if(style>=SCE_HB_DEFAULT)addLexer(lexVBScript);
+            if(style>=SCE_STYLE_OFFSET_PHP)addLexer(DocumentLanguage(d,"php"));
+            else if(style>=SCE_STYLE_OFFSET_CSS)addLexer(DocumentLanguage(d,"css"));
+            else if(style>=SCE_STYLE_OFFSET_JS)addLexer(DocumentLanguage(d,"javascript"));
+            else if(style>=SCE_HB_DEFAULT)addLexer(DocumentLanguage(d,"vbscript"));
         }
-        if(lexer.rid==NP2LEX_TYPESCRIPT)addLexer(lexJavaScript);
-        if(lexer.iLexer==SCLEX_PHPSCRIPT || lexer.iLexer==SCLEX_JAVASCRIPT || lexer.iLexer==SCLEX_MARKDOWN)for(unsigned i=0;i<3 && i<lexHTML.keywordCount;++i)addKeywordList(lexHTML.pszKeyWords[i]);
+        if(lexer.rid==NP2LEX_TYPESCRIPT)addLexer(DocumentLanguage(d,"javascript"));
+        if(lexer.iLexer==SCLEX_PHPSCRIPT || lexer.iLexer==SCLEX_JAVASCRIPT || lexer.iLexer==SCLEX_MARKDOWN)for(unsigned i=0;i<3 && i<DocumentLanguage(d,"html").keywordCount;++i)addKeywordList(DocumentLanguage(d,"html").pszKeyWords[i]);
     };
     collectKeywords();
     bool latexRoot=d.style.latex && start>0 && d.Send(SCI_GETCHARAT,start-1)=='\\';
@@ -545,12 +545,20 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
 }
 }
 size_t DocumentSchemeCount() { return Count-1; }
-const EDITLEXER* GetDocumentLexer(const EditorDocument& document) {return lexerCatalog[ActualScheme(document)];}
+const LanguageDefinition* GetDocumentLexer(const EditorDocument& document) {return document.style.configuration?document.style.configuration->catalog[ActualScheme(document)]:lexerCatalog[ActualScheme(document)];}
+const LanguageDefinition& DocumentLanguage(const EditorDocument& document,const std::string& id){const auto& catalog=document.style.configuration?document.style.configuration->catalog:LanguageCatalog();for(auto language:catalog)if(language->id==id)return *language;throw std::runtime_error("Unknown document language");}
+const char* const* DocumentCompletionExtraKeywords(const EditorDocument& document){auto snapshot=document.style.configuration?document.style.configuration:CurrentConfiguration();auto found=snapshot->dialectPointers.find(document.style.resolvedDialect);return found==snapshot->dialectPointers.end()?nullptr:found->second.data();}
+std::wstring DocumentGlobalStyleOverrides(const EditorDocument& document,unsigned index) {
+    if(document.style.configuration){auto found=document.style.configuration->userStyleValues.find({"global",index});if(found!=document.style.configuration->userStyleValues.end())return found->second;}
+    return UserStyleValue(document,Language("global"),index);
+}
 bool SelectDocumentScheme(EditorDocument& document,const std::wstring& name) {
     for(size_t i=1;i<Count;++i) {
         const auto& lexer=*lexerCatalog[i];
         bool matches=CompareStringOrdinal(lexer.pszName,-1,name.c_str(),-1,TRUE)==CSTR_EQUAL || (name.size()>=3 && _wcsnicmp(lexer.pszName,name.c_str(),name.size())==0);
         if(!matches && lexer.pszDefExt){std::wistringstream fields(lexer.pszDefExt);std::wstring extension;while(std::getline(fields,extension,L';')){extension.erase(0,extension.find_first_not_of(L" \t"));extension.erase(extension.find_last_not_of(L" \t")+1);if(CompareStringOrdinal(extension.c_str(),-1,name.c_str(),-1,TRUE)==CSTR_EQUAL){matches=true;break;}}}
+        if(!matches){const auto& legacy=BuiltinLanguage(lexer.id);matches=CompareStringOrdinal(legacy.pszName,-1,name.c_str(),-1,TRUE)==CSTR_EQUAL||(name.size()>=3&&_wcsnicmp(legacy.pszName,name.c_str(),name.size())==0);}
+        if(!matches)for(const auto& alias:lexer.aliases)if(CompareStringOrdinal(alias.c_str(),-1,name.c_str(),-1,TRUE)==CSTR_EQUAL){matches=true;break;}
         if(matches){document.style.scheme=static_cast<int>(i);document.style.dialect=0;ConfigureDocumentStyle(document);return true;}
     }
     return false;
@@ -558,11 +566,35 @@ bool SelectDocumentScheme(EditorDocument& document,const std::wstring& name) {
 void ForgetDocumentStyle(EditorDocument& d) {d.style.autoClosers.clear();d.style.colorStart=d.style.colorEnd=-1;d.style.calltipHex.clear();d.Send(SCI_AUTOCCANCEL);d.Send(SCI_CALLTIPCANCEL);}
 void ApplyStyleTabSettings(EditorDocument&,int,int,int,bool,bool);
 void ConfigureDocumentStyle(EditorDocument& d) {
+    d.style.fontKind=std::clamp(d.style.fontKind,-1,1);
+    d.style.paletteDark=d.style.dark;
+    if(d.style.theme){auto root=d.style.theme->styles.find("editor.default");if(root!=d.style.theme->styles.end()&&root->second.background){auto color=*root->second.background;d.style.paletteDark=(((color>>16)&255)*299+((color>>8)&255)*587+(color&255)*114)<128000;}}
+    auto candidate=d.style.theme?ConfigurationWithTheme(CurrentConfiguration(),*d.style.theme):CurrentConfiguration();
     d.style.lineHighlight=std::clamp(d.style.lineHighlight,0,2);d.style.wrapMode=std::clamp(d.style.wrapMode,1,4);d.style.wrapIndent=std::clamp(d.style.wrapIndent,0,7);int symbols=std::clamp(d.style.wrapSymbols,0,32);d.style.wrapSymbols=std::clamp(symbols%10,0,2)+10*std::clamp(symbols/10,0,3);
     d.style.fontSize=std::clamp(d.style.fontSize,2,512);d.style.codeFontSize=std::clamp(d.style.codeFontSize,2,512);d.style.textFontSize=std::clamp(d.style.textFontSize,2,512);
     bool initializeAppearance=d.style.appliedTabScheme<0;
-    const auto selected=d.LargeFile() ? 1 : ResolveScheme(d);d.style.resolvedScheme=selected;
-    auto& lexer=*lexerCatalog[selected];
+    const auto selected=d.LargeFile()?1:ResolveScheme(d);
+    auto snapshot=std::make_shared<ConfigurationSnapshot>(*candidate);
+    for(auto& [command,words]:snapshot->dialectWords){auto& pointers=snapshot->dialectPointers[command];for(size_t index=0;index<4;++index)pointers[index]=words[index]?words[index]->c_str():nullptr;}
+    snapshot->version=NextConfigurationVersion();snapshot->theme=d.style.theme;snapshot->semanticStyles=d.style.semanticOverrides;
+    std::set<std::string> sources{"global",snapshot->catalog[selected]->id};
+    auto resource=snapshot->catalog[selected]->rid;
+    if(resource==NP2LEX_HTML||resource==NP2LEX_XML||resource==NP2LEX_MARKDOWN||resource==NP2LEX_PHP)for(const char* id:{"html","javascript","css","vbscript","php"})sources.insert(id);
+    for(auto language:snapshot->catalog)if(sources.contains(language->id))for(unsigned index=0;index<language->iStyleCount;++index){
+        auto value=ResolveStyleValue(d,*language,index);ValidateLegacyStyle(value);snapshot->styleValues[{language->id,index}]=std::move(value);
+        snapshot->userStyleValues[{language->id,index}]=UserStyleValue(d,*language,index);
+    }
+    for(const auto& [id,value]:snapshot->semanticStyles)ValidateLegacyStyle(value);
+    snapshot->themeVersion=d.style.theme?d.style.theme->version:DefaultTheme(d.style.paletteDark)->version;
+    auto hash=[&](const std::wstring& value){for(wchar_t character:value){snapshot->themeVersion^=static_cast<uint16_t>(character);snapshot->themeVersion*=1099511628211ULL;}};
+    for(const auto& [key,value]:snapshot->styleValues){hash(ConfigurationWide(key.first)+std::to_wstring(key.second));hash(value);}
+    for(const auto& [id,value]:snapshot->semanticStyles){hash(ConfigurationWide(id));hash(value);}
+    hash(d.style.font+d.style.codeFont+d.style.textFont+std::to_wstring(d.style.fontSize)+std::to_wstring(d.style.codeFontSize)+std::to_wstring(d.style.textFontSize)+std::to_wstring(d.style.fontKind));
+    // All validation and merging precedes publication and editor mutations.
+    d.style.configuration=std::move(snapshot);d.style.resolvedScheme=selected;
+    for(unsigned element:{SC_ELEMENT_SELECTION_TEXT,SC_ELEMENT_SELECTION_ADDITIONAL_TEXT,SC_ELEMENT_CARET_ADDITIONAL,SC_ELEMENT_WHITE_SPACE_BACK})d.Send(SCI_RESETELEMENTCOLOUR,element);
+    auto& lexer=*d.style.configuration->catalog[selected];
+    d.style.languageId=lexer.id;
     ApplyStyleTabSettings(d,selected,lexer.defaultTabWidth,lexer.defaultIndentWidth,(lexer.lexerAttr&LexerAttr_TabAsSpaces)!=0,!(lexer.lexerAttr&LexerAttr_NoGlobalTabSettings));
     d.language=lexer.pszName;
     if(lexer.rid==NP2LEX_CPP)d.language=L"C/C++";
@@ -573,13 +605,16 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     if(initializeAppearance){d.edgeMode=std::clamp(d.style.longLineMode,EDGE_LINE,EDGE_BACKGROUND);d.Send(SCI_SETEDGECOLUMN,std::clamp(d.style.longLineColumn,0,1000000));d.Send(SCI_SETEDGEMODE,d.style.longLineEnabled?d.edgeMode:EDGE_NONE);}
     ApplyDocumentWrapSettings(d);
     if (d.LargeFile()) d.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);
-    d.Send(SCI_SETLEXER,d.LargeFile() ? SCLEX_NULL : lexer.iLexer);
+    const auto previousDialect=d.style.resolvedDialect;
     if(lexer.rid==NP2LEX_CSV && !d.style.csvConfigured){auto ext=SchemeFilename(d).extension().wstring();int delimiter=_wcsicmp(ext.c_str(),L".tsv")==0?'\t':DetectDocumentCSVDelimiter(d);d.style.csvOptions=(static_cast<int>('"')<<8)|(delimiter?delimiter:',');}
     int effective=0;unsigned dialect=static_cast<unsigned>(Dialect(d,lexer,&effective));d.style.resolvedDialect=effective;
     // This fork stores HTML/CSV options as a little-endian four-byte property;
     // ordinary small dialects are ASCII digits (same representation as upstream).
     if(dialect<10 && lexer.rid!=NP2LEX_HTML && lexer.rid!=NP2LEX_XML && lexer.rid!=NP2LEX_CSV)dialect+='0';
     char dialectBytes[5]{};memcpy(dialectBytes,&dialect,sizeof(dialect));
+    bool rulesChanged=d.style.appliedRules!=lexer.rulesVersion||d.style.appliedLexer!=lexer.iLexer||previousDialect!=effective||d.Send(SCI_GETLEXER)!=(d.LargeFile()?SCLEX_NULL:lexer.iLexer);
+    if(rulesChanged){
+    d.Send(SCI_SETLEXER,d.LargeFile()?SCLEX_NULL:lexer.iLexer);
     d.Send(SCI_SETPROPERTY,reinterpret_cast<WPARAM>("lexer.lang"),reinterpret_cast<LPARAM>(dialectBytes));
     d.Send(SCI_SETPROPERTY,reinterpret_cast<WPARAM>("fold"),reinterpret_cast<LPARAM>("1"));
     for(unsigned i=0;i<16;++i) {
@@ -587,6 +622,8 @@ void ConfigureDocumentStyle(EditorDocument& d) {
         const char* words=i<lexer.keywordCount && !(attr&KeywordAttr_NoLexer) ? lexer.pszKeyWords[i] : "";
         d.Send(SCI_SETKEYWORDS,i|((attr&3)<<8),reinterpret_cast<LPARAM>(words?words:""));
     }
+    }
+    d.style.appliedRules=lexer.rulesVersion;d.style.appliedLexer=lexer.iLexer;
     d.Send(SCI_STYLERESETDEFAULT);
     bool codeFont=d.style.fontKind<0?lexer.bUseDefaultCodeStyle:d.style.fontKind==0;
     const auto& chosenFont=codeFont?d.style.codeFont:d.style.textFont;
@@ -594,12 +631,28 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.Send(SCI_STYLESETFONT,STYLE_DEFAULT,reinterpret_cast<LPARAM>(font.c_str()));
     d.Send(SCI_STYLESETSIZE,STYLE_DEFAULT,chosenFont.empty()?d.style.fontSize:(codeFont?d.style.codeFontSize:d.style.textFontSize));
     wchar_t locale[LOCALE_NAME_MAX_LENGTH]{};GetUserDefaultLocaleName(locale,LOCALE_NAME_MAX_LENGTH);auto fontLocale=files::ToUtf8(locale);d.Send(SCI_SETFONTLOCALE,0,reinterpret_cast<LPARAM>(fontLocale.c_str()));
-    d.Send(SCI_STYLESETFORE,STYLE_DEFAULT,d.style.dark?RGB(220,220,220):RGB(32,36,42));
-    d.Send(SCI_STYLESETBACK,STYLE_DEFAULT,d.style.dark?RGB(30,30,30):RGB(255,255,255));
-    ApplyStyle(d,STYLE_DEFAULT,Value(d,*lexerCatalog[0],d.style.fontKind<0?(lexer.bUseDefaultCodeStyle?0:1):d.style.fontKind));
-    ApplyStyle(d,STYLE_DEFAULT,Value(d,lexer,0));d.Send(SCI_STYLECLEARALL);
+    d.Send(SCI_STYLESETFORE,STYLE_DEFAULT,d.style.paletteDark?RGB(220,220,220):RGB(32,36,42));
+    d.Send(SCI_STYLESETBACK,STYLE_DEFAULT,d.style.paletteDark?RGB(30,30,30):RGB(255,255,255));
+    unsigned rootIndex=d.style.fontKind<0?(lexer.bUseDefaultCodeStyle?0:1):d.style.fontKind;
+    const auto& global=*lexerCatalog[0];
+    ApplyStyle(d,STYLE_DEFAULT,ThemeStyleValue(*DefaultTheme(d.style.paletteDark),"editor.default"));
+    ApplyStyle(d,STYLE_DEFAULT,global.Styles[rootIndex].pszDefault);
+    ApplyStyle(d,STYLE_DEFAULT,lexer.Styles[0].pszDefault);
+    auto rootTheme=[&](const ThemeDefinition& theme){
+        ApplyStyle(d,STYLE_DEFAULT,ThemeStyleValue(theme,ConfigurationUtf8(global.Styles[rootIndex].id)));
+        ApplyStyle(d,STYLE_DEFAULT,ThemeStyleValue(theme,ConfigurationUtf8(lexer.Styles[0].id)));
+    };
+    rootTheme(*DefaultTheme(d.style.paletteDark));
+    if(d.style.theme){ApplyStyle(d,STYLE_DEFAULT,ThemeStyleValue(*d.style.theme,"editor.default"));rootTheme(*d.style.theme);}
+    auto rootOverrides=[&](const LanguageDefinition& language,unsigned index){
+        auto found=d.style.configuration->userStyleValues.find({language.id,index});if(found!=d.style.configuration->userStyleValues.end())ApplyStyle(d,STYLE_DEFAULT,found->second);
+        auto semantic=d.style.configuration->semanticStyles.find(ConfigurationUtf8(language.Styles[index].id));if(semantic!=d.style.configuration->semanticStyles.end())ApplyStyle(d,STYLE_DEFAULT,semantic->second);
+    };
+    rootOverrides(global,rootIndex);rootOverrides(lexer,0);
+    if(!chosenFont.empty()){auto face=files::ToUtf8(chosenFont);d.Send(SCI_STYLESETFONT,STYLE_DEFAULT,reinterpret_cast<LPARAM>(face.c_str()));d.Send(SCI_STYLESETSIZE,STYLE_DEFAULT,codeFont?d.style.codeFontSize:d.style.textFontSize);}
+    d.Send(SCI_STYLECLEARALL);
     for(unsigned index : {2u,5u,6u,16u,19u})ApplyStyle(d,lexerCatalog[0]->Styles[index].iStyle,Value(d,*lexerCatalog[0],index));
-    auto applyAll=[&](const EDITLEXER& styles,unsigned offset,unsigned limit=0){
+    auto applyAll=[&](const LanguageDefinition& styles,unsigned offset,unsigned limit=0){
         for(unsigned i=1;i<styles.iStyleCount;++i){auto packed=styles.Styles[i].iStyle;const auto value=Value(d,styles,i);const unsigned first=(packed&255)+offset;
             ApplyStyle(d,first,value);
             if(packed>255)d.Send(SCI_COPYSTYLES,first|(offset<<8),packed>>8);
@@ -608,13 +661,29 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     };
     applyAll(lexer,0);
     if(lexer.rid==NP2LEX_HTML || lexer.rid==NP2LEX_XML || lexer.rid==NP2LEX_MARKDOWN || lexer.rid==NP2LEX_PHP){
-        if(lexer.rid!=NP2LEX_MARKDOWN){applyAll(lexJavaScript,SCE_STYLE_OFFSET_JS);applyAll(lexCSS,SCE_STYLE_OFFSET_CSS);}
-        if(lexer.rid==NP2LEX_MARKDOWN || lexer.rid==NP2LEX_PHP)applyAll(lexHTML,0,SCE_H_QUESTION);
+        if(lexer.rid!=NP2LEX_MARKDOWN){applyAll(Language("javascript"),SCE_STYLE_OFFSET_JS);applyAll(Language("css"),SCE_STYLE_OFFSET_CSS);}
+        if(lexer.rid==NP2LEX_MARKDOWN || lexer.rid==NP2LEX_PHP)applyAll(Language("html"),0,SCE_H_QUESTION);
     }
+    auto applyCategories=[&](const LanguageDefinition& language,unsigned offset=0){
+        for(const auto& category:language.categories){
+            unsigned target=category.nativeStyle+offset;
+            ApplyStyle(d,target,ThemeStyleValue(*DefaultTheme(d.style.paletteDark),category.id));
+            if(d.style.theme)ApplyStyle(d,target,ThemeStyleValue(*d.style.theme,category.id));
+            for(unsigned i=0;i<language.iStyleCount;++i)if(ConfigurationUtf8(language.Styles[i].id)==category.group){
+                auto user=d.style.configuration->userStyleValues.find({language.id,i});if(user!=d.style.configuration->userStyleValues.end())ApplyStyle(d,target,user->second);
+                auto semantic=d.style.configuration->semanticStyles.find(category.group);if(semantic!=d.style.configuration->semanticStyles.end())ApplyStyle(d,target,semantic->second);
+                break;
+            }
+            auto local=d.style.configuration->semanticStyles.find(category.id);if(local!=d.style.configuration->semanticStyles.end())ApplyStyle(d,target,local->second);
+        }
+    };
+    applyCategories(lexer);
+    if(lexer.rid==NP2LEX_HTML||lexer.rid==NP2LEX_XML||lexer.rid==NP2LEX_PHP){applyCategories(Language("javascript"),SCE_STYLE_OFFSET_JS);applyCategories(Language("css"),SCE_STYLE_OFFSET_CSS);}
     auto property=[&](unsigned index,const wchar_t* name,unsigned fallback){
-        const auto value=Value(d,*lexerCatalog[0],index);const auto at=value.find(name);
+        const auto value=Value(d,*lexerCatalog[0],index);const auto at=value.rfind(name);
         if(at==std::wstring::npos)return fallback;
         const auto first=value.c_str()+at+wcslen(name);
+        if(wcsncmp(first,L"inherit",7)==0)return fallback;
         if(*first=='#'){unsigned color=0;if(swscanf_s(first,L"#%x",&color)==1)return static_cast<unsigned>(RGB((color>>16)&255,(color>>8)&255,color&255));}
         return static_cast<unsigned>(wcstoul(first,nullptr,10));
     };
@@ -622,7 +691,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     element(SC_ELEMENT_WHITE_SPACE,8,L"fore:",RGB(255,64,0));
     element(SC_ELEMENT_SELECTION_BACK,7,L"back:",GetSysColor(COLOR_HIGHLIGHT));
     element(SC_ELEMENT_SELECTION_ADDITIONAL_BACK,7,L"fore:",GetSysColor(COLOR_HIGHLIGHT));
-    auto caret = property(10, L"fore:", d.style.dark ? RGB(220,220,220) : RGB(0,0,0));
+    auto caret = property(10, L"fore:", d.style.paletteDark ? RGB(220,220,220) : RGB(0,0,0));
     auto background = static_cast<COLORREF>(d.Send(SCI_STYLEGETBACK, STYLE_DEFAULT));
     if (!simd::VerifyContrast(caret, background)) caret = static_cast<COLORREF>(d.Send(SCI_STYLEGETFORE, STYLE_DEFAULT));
     d.Send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET, caret | 0xff000000U);
@@ -641,7 +710,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.Send(SCI_SETMARGINSENSITIVEN,2,TRUE);
     const int folderShapes[]={SC_MARK_BOXPLUSCONNECTED,SC_MARK_BOXMINUSCONNECTED,SC_MARK_TCORNER,SC_MARK_LCORNER,SC_MARK_VLINE,SC_MARK_BOXPLUS,SC_MARK_BOXMINUS};
     for(int marker=SC_MARKNUM_FOLDEREND;marker<=SC_MARKNUM_FOLDEROPEN;++marker){
-        d.Send(SCI_MARKERDEFINE,marker,folderShapes[marker-SC_MARKNUM_FOLDEREND]);d.Send(SCI_MARKERSETFORETRANSLUCENT,marker,property(15,L"back:",d.style.dark?RGB(80,80,80):RGB(173,216,230))|0xFF000000u);d.Send(SCI_MARKERSETBACKTRANSLUCENT,marker,property(15,L"fore:",RGB(128,128,255))|0xFF000000u);
+        d.Send(SCI_MARKERDEFINE,marker,folderShapes[marker-SC_MARKNUM_FOLDEREND]);d.Send(SCI_MARKERSETFORETRANSLUCENT,marker,property(15,L"back:",d.style.paletteDark?RGB(80,80,80):RGB(173,216,230))|0xFF000000u);d.Send(SCI_MARKERSETBACKTRANSLUCENT,marker,property(15,L"fore:",RGB(128,128,255))|0xFF000000u);
     }
     d.Send(SCI_SETFOLDMARGINCOLOUR,TRUE,d.Send(SCI_STYLEGETBACK,STYLE_DEFAULT));d.Send(SCI_SETFOLDMARGINHICOLOUR,TRUE,d.Send(SCI_STYLEGETBACK,STYLE_DEFAULT));
     d.Send(SCI_SETAUTOMATICFOLD,SC_AUTOMATICFOLD_SHOW|SC_AUTOMATICFOLD_CHANGE);
@@ -655,7 +724,11 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.Send(SCI_AUTOCSETFILLUPS,0,reinterpret_cast<LPARAM>(fillups.c_str()));
     HighlightCurrentLine(d);
     d.Send(SCI_SETMOUSEDWELLTIME,500);
-    if (!d.LargeFile()) d.Send(SCI_COLOURISE,0,-1);
+    ApplyThemeEditorElements(d);
+    if(!d.LargeFile()){
+        auto start=rulesChanged?0:d.Send(SCI_GETENDSTYLED);
+        if(rulesChanged||start<d.Send(SCI_GETLENGTH))d.Send(SCI_COLOURISE,start,-1);
+    }
 }
 namespace {
 struct SchemeDialogContext {
@@ -811,13 +884,13 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         if(file.DoModal()!=IDOK)return TRUE;
         if(id==IDC_EXPORT)EnsureUnicodeProfile(file.m_szFileName);
         for(size_t i=0;i<Count;++i)for(unsigned j=0;j<lexerCatalog[i]->iStyleCount;++j){
-            const auto& lexer=*lexerCatalog[i];std::wstring key=lexer.Styles[j].pszName;
-            if(id==IDC_EXPORT){auto& definitions=c->document.style.dark?darkOverrides:sharedOverrides;auto found=definitions.find({lexer.rid,j});WriteStyleProfile(lexer.pszName,key.c_str(),found==definitions.end()?lexer.Styles[j].pszDefault:found->second.c_str(),file.m_szFileName);}
-            else{wchar_t value[2048]{};if(GetPrivateProfileStringW(lexer.pszName,key.c_str(),nullptr,value,2048,file.m_szFileName))(c->document.style.dark?darkOverrides:sharedOverrides)[{lexer.rid,j}]=value;}
+            const auto& lexer=*lexerCatalog[i];const auto& legacy=BuiltinLanguage(lexer.id);std::wstring key=legacy.Styles[j].pszName;
+            if(id==IDC_EXPORT){auto& definitions=c->document.style.dark?darkOverrides:sharedOverrides;auto found=definitions.find({lexer.rid,j});WriteStyleProfile(legacy.pszName,key.c_str(),found==definitions.end()?lexer.Styles[j].pszDefault:found->second.c_str(),file.m_szFileName);}
+            else{wchar_t value[2048]{};if(GetPrivateProfileStringW(legacy.pszName,key.c_str(),nullptr,value,2048,file.m_szFileName))(c->document.style.dark?darkOverrides:sharedOverrides)[{lexer.rid,j}]=value;}
         }
         for(auto lexer:lexerCatalog)if(lexer->pszDefExt){
-            if(id==IDC_EXPORT)WriteStyleProfile(L"File Extensions",lexer->pszName,sharedExtensions.contains(lexer->rid)?sharedExtensions[lexer->rid].c_str():lexer->pszDefExt,file.m_szFileName);
-            else {wchar_t extension[2048]{};if(GetPrivateProfileStringW(L"File Extensions",lexer->pszName,nullptr,extension,2048,file.m_szFileName))sharedExtensions[lexer->rid]=extension;}
+            if(id==IDC_EXPORT)WriteStyleProfile(L"File Extensions",BuiltinLanguage(lexer->id).pszName,sharedExtensions.contains(lexer->rid)?sharedExtensions[lexer->rid].c_str():lexer->pszDefExt,file.m_szFileName);
+            else {wchar_t extension[2048]{};if(GetPrivateProfileStringW(L"File Extensions",BuiltinLanguage(lexer->id).pszName,nullptr,extension,2048,file.m_szFileName))sharedExtensions[lexer->rid]=extension;}
         }
         ShowStyleField(window,*c);return TRUE;
     }
@@ -826,13 +899,13 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
 }
 void SelectScheme(HWND owner,EditorDocument& document,bool customize,bool favorites=false) {
     SchemeDialogContext c{document,customize,ActualScheme(document),0,sharedOverrides};c.favorites=favorites;c.savedExtensions=sharedExtensions;c.savedDark=darkOverrides;
+    struct PreviewGuard{~PreviewGuard(){stylePreview={};}} guard;
+    if(customize)stylePreview={&document,&c.saved,&c.savedDark,&c.savedExtensions};
     DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(customize?IDD_STYLECONFIG:IDD_STYLESELECT),owner,SchemeProcedure,reinterpret_cast<LPARAM>(&c));
 }
 }
 namespace {
-UINT DefaultSchemeCommand(const EDITLEXER& lexer){
-    switch(lexer.rid){case NP2LEX_TEXTFILE:return IDM_LEXER_TEXTFILE;case NP2LEX_2NDTEXTFILE:return IDM_LEXER_2NDTEXTFILE;case NP2LEX_CSV:return IDM_LEXER_CSV;case NP2LEX_CSS:return IDM_LEXER_CSS;case NP2LEX_JAVASCRIPT:return IDM_LEXER_JAVASCRIPT;case NP2LEX_TYPESCRIPT:return IDM_LEXER_TYPESCRIPT;case NP2LEX_HTML:return IDM_LEXER_WEB;case NP2LEX_PHP:return IDM_LEXER_PHP;case NP2LEX_MARKDOWN:return IDM_LEXER_MARKDOWN_GITHUB;case NP2LEX_MATHEMATICA:return IDM_LEXER_MATHEMATICA;case NP2LEX_MATLAB:return IDM_LEXER_MATLAB;case NP2LEX_BASH:return IDM_LEXER_BASH;case NP2LEX_VISUALBASIC:return IDM_LEXER_VBNET;case NP2LEX_VBSCRIPT:return IDM_LEXER_VBS;case NP2LEX_XML:return IDM_LEXER_XML;default:return 0;}
-}
+UINT DefaultSchemeCommand(const LanguageDefinition& lexer){return lexer.defaultCommand;}
 }
 CommandState StyleCommandState(const EditorDocument* d,UINT id) {
     int scheme=SchemeForCommand(id);
@@ -840,7 +913,7 @@ CommandState StyleCommandState(const EditorDocument* d,UINT id) {
     if(id>=IDM_EDIT_GOTO_BLOCK_START && id<=IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK)return {true,d!=nullptr,false};
     if(id>=IDM_VIEW_FOLD_LEVEL1 && id<=IDM_VIEW_FOLD_LEVEL10)return {true,d!=nullptr,false};
     switch(id){
-    case IDM_VIEW_SCHEME:case IDM_VIEW_SCHEME_CONFIG:case IDM_VIEW_SCHEME_FAVORITE:case IDM_VIEW_DEFAULT_CODE_FONT:case IDM_VIEW_DEFAULT_TEXT_FONT:
+    case ID_THEME_CONFIG:case ID_RELOAD_CONFIGURATION:case IDM_VIEW_SCHEME:case IDM_VIEW_SCHEME_CONFIG:case IDM_VIEW_SCHEME_FAVORITE:case IDM_VIEW_DEFAULT_CODE_FONT:case IDM_VIEW_DEFAULT_TEXT_FONT:
     case IDM_VIEW_FOLD_CURRENT_LEVEL:case IDM_VIEW_FOLD_CURRENT_BLOCK:case IDM_VIEW_FOLD_DEFAULT:case IDM_VIEW_FOLD_ALL:
     case IDM_VIEW_TABSETTINGS:case IDM_VIEW_WORDWRAPSETTINGS:case IDM_VIEW_AUTOCOMPLETION_SETTINGS:
     case IDM_EDIT_COMPLETEWORD:return {true,d!=nullptr,false};
@@ -874,6 +947,8 @@ bool ExecuteStyleCommand(HWND owner,EditorDocument& d,UINT id) {
     if(id>=IDM_EDIT_GOTO_BLOCK_START && id<=IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK){GotoBlock(d,id);return true;}
     if(id>=IDM_VIEW_FOLD_LEVEL1 && id<=IDM_VIEW_FOLD_LEVEL10){ToggleFoldLevels(d,static_cast<int>(id-IDM_VIEW_FOLD_LEVEL1),false);return true;}
     switch(id){
+    case ID_THEME_CONFIG:ShowThemeDialog(owner,d);break;
+    case ID_RELOAD_CONFIGURATION:if(!ReloadLanguageConfiguration())throw std::runtime_error("Configuration reload failed; previous snapshot retained. See theme diagnostics.");ConfigureDocumentStyle(d);break;
     case IDM_VIEW_SCHEME:SelectScheme(owner,d,false);break;
     case IDM_VIEW_SCHEME_CONFIG:SelectScheme(owner,d,true);break;
     case IDM_VIEW_SCHEME_FAVORITE:SelectScheme(owner,d,false,true);break;
@@ -1031,13 +1106,15 @@ void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
 }
 void LoadStyleDialogPreferences(const std::filesystem::path&);
 void LoadStylePreferences(const std::filesystem::path& path){
+    auto previousShared=sharedOverrides,previousDark=darkOverrides;
+    SetConfigurationUserDirectory(path.parent_path());ReloadLanguageConfiguration();LoadThemePreferences(path);
     darkOverrides.clear();
     for(unsigned i=0;i<16;++i){wchar_t key[4]{};swprintf_s(key,L"%02u",i+1);wchar_t color[32]{};GetPrivateProfileStringW(L"Custom Colors",key,L"#FFFFFF",color,32,path.c_str());unsigned value=0xFFFFFF;swscanf_s(color,L"#%x",&value);customColors[i]=RGB((value>>16)&255,(value>>8)&255,value&255);}
     auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
     // Keep existing user overrides from profiles written before the brand rename.
     if(!std::filesystem::exists(theme))theme=path.parent_path()/L"Notepad4 DarkTheme.ini";
-    if(!std::filesystem::exists(theme)){wchar_t executable[32768]{};GetModuleFileNameW(nullptr,executable,32768);theme=std::filesystem::path(executable).parent_path()/L"MultiPad4 DarkTheme.ini";}
-    if(std::filesystem::exists(theme))for(auto lexer:lexerCatalog)for(unsigned index=0;index<lexer->iStyleCount;++index){wchar_t value[2048]{};if(GetPrivateProfileStringW(lexer->pszName,lexer->Styles[index].pszName,nullptr,value,2048,theme.c_str()))darkOverrides[{lexer->rid,index}]=value;}
+
+    if(std::filesystem::exists(theme))for(auto lexer:lexerCatalog)for(unsigned index=0;index<lexer->iStyleCount;++index){wchar_t value[2048]{};if(GetPrivateProfileStringW(BuiltinLanguage(lexer->id).pszName,BuiltinLanguage(lexer->id).Styles[index].pszName,nullptr,value,2048,theme.c_str()))darkOverrides[{lexer->rid,index}]=value;}
     defaultScheme=std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Style Preferences",L"DefaultScheme",1,path.c_str())),1,static_cast<int>(Count)-1);
     autoSelectScheme=GetPrivateProfileIntW(L"Style Preferences",L"AutoSelect",1,path.c_str())!=0;
     favoriteSchemes.clear();wchar_t favorites[1024]{};GetPrivateProfileStringW(L"Style Preferences",L"Favorites",L"",favorites,1024,path.c_str());std::wistringstream list(favorites);int favorite=0;while(list>>favorite)if(favorite>0&&favorite<static_cast<int>(Count)&&!FavoriteContains(favorite)&&favoriteSchemes.size()<31)favoriteSchemes.push_back(favorite);
@@ -1047,6 +1124,15 @@ void LoadStylePreferences(const std::filesystem::path& path){
         auto section=L"Styles."+std::to_wstring(lexer->rid),key=std::to_wstring(index);wchar_t value[2048]{};
         if(GetPrivateProfileStringW(section.c_str(),key.c_str(),nullptr,value,2048,path.c_str()))sharedOverrides[{lexer->rid,index}]=value;
     }
+    auto readStable=[&](const std::wstring& section,const std::wstring& key)->std::optional<std::wstring>{wchar_t value[32768]{};constexpr wchar_t missing[]=L"{MultiPad4-missing-configuration-field}";GetPrivateProfileStringW(section.c_str(),key.c_str(),missing,value,32768,path.c_str());if(value==std::wstring(missing))return {};return std::wstring(value);};
+    if(auto stable=readStable(L"Language Preferences",L"Default")){int index=LanguageIndex(ConfigurationUtf8(*stable));if(index>0)defaultScheme=index;}
+    if(auto stable=readStable(L"Language Preferences",L"Favorites")){favoriteSchemes.clear();std::wistringstream stableList(*stable);std::wstring id;while(stableList>>id){int index=LanguageIndex(ConfigurationUtf8(id));if(index>0&&!FavoriteContains(index)&&favoriteSchemes.size()<31)favoriteSchemes.push_back(index);}}
+    for(auto language:lexerCatalog){auto id=ConfigurationWide(language->id);
+        if(auto value=readStable(L"Language Extensions",id))sharedExtensions[language->rid]=*value;
+        for(unsigned i=0;i<language->iStyleCount;++i)if(auto value=readStable(L"Language Styles."+id,language->Styles[i].id))sharedOverrides[{language->rid,i}]=*value;
+    }
+    auto validate=[&](auto& values,const auto& previous){for(auto item=values.begin();item!=values.end();){try{ValidateLegacyStyle(item->second);++item;}catch(const std::exception& error){RecordConfigurationDiagnostic(path,error);auto old=previous.find(item->first);if(old!=previous.end()){item->second=old->second;++item;}else item=values.erase(item);}}};
+    validate(sharedOverrides,previousShared);validate(darkOverrides,previousDark);
     LoadStyleDialogPreferences(path);
 }
 void WriteStyleDialogPreferencesChecked(const std::filesystem::path&);
@@ -1064,7 +1150,7 @@ void WriteStyleProfile(const wchar_t* section,const wchar_t* key,const wchar_t* 
 }
 }
 void SaveStylePreferences(const std::filesystem::path& path){
-    EnsureUnicodeProfile(path);
+    EnsureUnicodeProfile(path);SaveThemePreferences(path);
     for(unsigned i=0;i<16;++i){wchar_t key[4]{};swprintf_s(key,L"%02u",i+1);wchar_t color[16]{};swprintf_s(color,L"#%02X%02X%02X",GetRValue(customColors[i]),GetGValue(customColors[i]),GetBValue(customColors[i]));WriteStyleProfile(L"Custom Colors",key,color,path.c_str());}
     auto scheme=std::to_wstring(defaultScheme);std::wstring favorites;for(int favorite:favoriteSchemes){favorites+=std::to_wstring(favorite)+L" ";}WriteStyleProfile(L"Style Preferences",L"Favorites",favorites.c_str(),path.c_str());
     WriteStyleProfile(L"Style Preferences",L"DefaultScheme",scheme.c_str(),path.c_str());
@@ -1072,14 +1158,22 @@ void SaveStylePreferences(const std::filesystem::path& path){
     WriteStyleProfile(L"File Extensions",nullptr,nullptr,path.c_str());for(auto& [rid,extensions]:sharedExtensions){auto key=std::to_wstring(rid);WriteStyleProfile(L"File Extensions",key.c_str(),extensions.c_str(),path.c_str());}
     for(auto lexer:lexerCatalog){auto section=L"Styles."+std::to_wstring(lexer->rid);WriteStyleProfile(section.c_str(),nullptr,nullptr,path.c_str());}
     for(auto& [entry,value]:sharedOverrides){auto section=L"Styles."+std::to_wstring(entry.first),key=std::to_wstring(entry.second);WriteStyleProfile(section.c_str(),key.c_str(),value.c_str(),path.c_str());}
+    WriteStyleProfile(L"Language Preferences",L"Default",ConfigurationWide(lexerCatalog[defaultScheme]->id).c_str(),path.c_str());
+    std::wstring stableFavorites;for(int index:favoriteSchemes)stableFavorites+=ConfigurationWide(lexerCatalog[index]->id)+L" ";
+    WriteStyleProfile(L"Language Preferences",L"Favorites",stableFavorites.c_str(),path.c_str());
+    WriteStyleProfile(L"Language Extensions",nullptr,nullptr,path.c_str());
+    for(auto language:lexerCatalog){auto id=ConfigurationWide(language->id);auto section=L"Language Styles."+id;WriteStyleProfile(section.c_str(),nullptr,nullptr,path.c_str());
+        auto ext=sharedExtensions.find(language->rid);if(ext!=sharedExtensions.end())WriteStyleProfile(L"Language Extensions",id.c_str(),ext->second.c_str(),path.c_str());
+        for(unsigned i=0;i<language->iStyleCount;++i){auto value=sharedOverrides.find({language->rid,i});if(value!=sharedOverrides.end())WriteStyleProfile(section.c_str(),language->Styles[i].id.c_str(),value->second.c_str(),path.c_str());}
+    }
     auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
     if(!darkOverrides.empty() || std::filesystem::exists(theme)){
         EnsureUnicodeProfile(theme);
         for(auto lexer:lexerCatalog){
             std::wstring section;
-            for(unsigned index=0;index<lexer->iStyleCount;++index){auto found=darkOverrides.find({lexer->rid,index});if(found!=darkOverrides.end()){section+=lexer->Styles[index].pszName;section+=L'=';section+=found->second;section+=L'\0';}}
+            for(unsigned index=0;index<lexer->iStyleCount;++index){auto found=darkOverrides.find({lexer->rid,index});if(found!=darkOverrides.end()){section+=BuiltinLanguage(lexer->id).Styles[index].pszName;section+=L'=';section+=found->second;section+=L'\0';}}
             section+=L'\0';if(section.size()==1)section+=L'\0';
-            if(!WritePrivateProfileSectionW(lexer->pszName,section.c_str(),theme.c_str()))throw std::runtime_error("Cannot write dark style theme.");
+            if(!WritePrivateProfileSectionW(BuiltinLanguage(lexer->id).pszName,section.c_str(),theme.c_str()))throw std::runtime_error("Cannot write dark style theme.");
         }
     }
     WriteStyleDialogPreferencesChecked(path);

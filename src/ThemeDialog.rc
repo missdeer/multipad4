@@ -1,0 +1,21 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include "resource.h"
+IDD_THEME_CONFIG DIALOGEX 0, 0, 470, 295
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Themes and configuration"
+FONT 9, "Segoe UI"
+BEGIN
+    LTEXT "Theme:", -1, 10, 12, 35, 12
+    COMBOBOX IDC_THEME_LIST, 48, 9, 305, 160, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "Import XML...", IDC_THEME_IMPORT, 362, 9, 95, 15
+    LTEXT "Preview affects this document. Cancel restores its theme.", -1, 10, 35, 390, 14
+    PUSHBUTTON "Preview", IDC_THEME_PREVIEW, 10, 55, 70, 17
+    PUSHBUTTON "Reload", IDC_THEME_RELOAD, 88, 55, 70, 17
+    PUSHBUTTON "Reset", IDC_THEME_RESET, 166, 55, 70, 17
+    AUTOCHECKBOX "Apply to all documents and new documents", IDC_THEME_ALL, 10, 82, 365, 15, WS_TABSTOP
+    LTEXT "Compatibility report", -1, 10, 106, 200, 12
+    EDITTEXT IDC_THEME_REPORT, 10, 121, 447, 133, ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON "Apply", IDOK, 303, 268, 72, 17
+    PUSHBUTTON "Cancel", IDCANCEL, 385, 268, 72, 17
+END

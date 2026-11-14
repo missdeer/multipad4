@@ -6,6 +6,7 @@
 #include <map>
 #include "resource.h"
 namespace {
+#ifdef MULTIPAD4_STATIC_BASELINE
 #define NP2_KEYWORDS_COUNT	4
 typedef const char * const NP2_KEYWORDS[NP2_KEYWORDS_COUNT];
 
@@ -112,9 +113,10 @@ static const char * const kwPList[NP2_KEYWORDS_COUNT] = {
 
 
 
+#endif
 constexpr uint32_t DefaultWordCharSet[8]={0x00000000U,0x03ff0000U,0x87fffffeU,0x07fffffeU,0xffffffffU,0xffffffffU,0xffffffffU,0xffffffffU};
 }
-void CompletionCache::Initialize(const EDITLEXER* pLex) noexcept {
+void CompletionCache::Initialize(const LanguageDefinition* pLex) noexcept {
 	memset(CharacterPrefixMask, 0, sizeof(CharacterPrefixMask));
 	memset(RawStringStyleMask, 0, sizeof(RawStringStyleMask));
 	memset(GenericTypeStyleMask, 0, sizeof(GenericTypeStyleMask));
@@ -195,7 +197,11 @@ void CompletionCache::Initialize(const EDITLEXER* pLex) noexcept {
 		IgnoreWordStyleMask[SCE_C_PREPROCESSOR >> 5] |= (1U << (SCE_C_PREPROCESSOR & 31));
 		IgnoreWordStyleMask[SCE_C_ASM_REGISTER >> 5] |= (1U << (SCE_C_ASM_REGISTER & 31));
 		IgnoreWordStyleMask[SCE_C_ASM_INSTRUCTION >> 5] |= (1U << (SCE_C_ASM_INSTRUCTION & 31));
-		extraKeywords = kwDoxyDoc;
+		#ifdef MULTIPAD4_STATIC_BASELINE
+        extraKeywords = kwDoxyDoc;
+#else
+        extraKeywords = pLex->completionExtras.data();
+#endif
 		break;
 
 	case NP2LEX_CSHARP:
@@ -658,12 +664,24 @@ void CompletionCache::Initialize(const EDITLEXER* pLex) noexcept {
 
 
 }
-const CompletionCache& GetCompletionCache(const EDITLEXER& lexer){
+const CompletionCache& GetCompletionCache(const LanguageDefinition& lexer){
+#ifdef MULTIPAD4_STATIC_BASELINE
     static std::map<int,CompletionCache> caches;
     auto found=caches.find(lexer.rid);if(found!=caches.end())return found->second;
     CompletionCache cache{};cache.Initialize(&lexer);return caches.emplace(lexer.rid,cache).first->second;
+#else
+    struct Entry { uint64_t version=0; CompletionCache cache; };
+    static std::map<std::string,Entry> caches;
+    auto& entry=caches[lexer.id];
+    if(entry.version!=lexer.rulesVersion){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}
+    return entry.cache;
+#endif
 }
 
 const char* const* GetCompletionExtraKeywords(int command){
+#ifdef MULTIPAD4_STATIC_BASELINE
     switch(command){case IDM_LEXER_XSD:return kwXmlSchema;case IDM_LEXER_XSLT:return kwXmlStylesheet;case IDM_LEXER_APACHE:return kwApache;case IDM_LEXER_PROPERTY_LIST:return kwPList;default:return nullptr;}
+#else
+    return ConfigurationDialectWords(command);
+#endif
 }

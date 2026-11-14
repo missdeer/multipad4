@@ -1,3 +1,4 @@
+#include "LanguageConfiguration.h"
 // Original language-specific completion selection from pinned EditAutoC.cpp.
 // Copyright/license: 3rdparty/notepad4/License.txt.
 #include "StyleManager.h"
@@ -84,7 +85,7 @@ enum {
 }
 int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle,int ch,int chPrev,const std::function<void(const char*)>& add) {
     const auto* pLexCurrent=GetDocumentLexer(d);
-    const char*const* extra=GetCompletionExtraKeywords(d.style.resolvedDialect);if(!extra)extra=GetCompletionCache(*pLexCurrent).extraKeywords;
+    const char*const* extra=DocumentCompletionExtraKeywords(d);if(!extra)extra=GetCompletionCache(*pLexCurrent).extraKeywords;
     WordList pWList{add};
     auto IsDocWordChar=[&](int value){return GetCompletionCache(*pLexCurrent).Word(value);};
 #if NP2_ENABLE_LATEX_LIKE_EMOJI_INPUT
@@ -101,24 +102,24 @@ int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle
 	}
 #endif
 
-	LPCEDITLEXER pLex = pLexCurrent;
+	const LanguageDefinition* pLex = pLexCurrent;
 	int rid = pLex->rid;
 	if (rid == NP2LEX_PHP || rid == NP2LEX_HTML || rid == NP2LEX_XML) {
 		if (iCurrentStyle < js_style(SCE_JS_DEFAULT)) {
 			if (rid == NP2LEX_PHP) {
 				rid = NP2LEX_HTML;
-				pLex = &lexHTML;
+				pLex = &DocumentLanguage(d,"html");
 			}
 		} else if (iCurrentStyle < css_style(SCE_CSS_DEFAULT)) {
 			iCurrentStyle -= js_style(SCE_JS_DEFAULT);
 			iPrevStyle -= js_style(SCE_JS_DEFAULT);
 			rid = NP2LEX_JAVASCRIPT;
-			pLex = &lexJavaScript;
+			pLex = &DocumentLanguage(d,"javascript");
 		} else if (iCurrentStyle < SCE_PHP_DEFAULT) {
 			iCurrentStyle -= css_style(SCE_CSS_DEFAULT);
 			iPrevStyle -= css_style(SCE_CSS_DEFAULT);
 			rid = NP2LEX_CSS;
-			pLex = &lexCSS;
+			pLex = &DocumentLanguage(d,"css");
 		}
 	}
 
@@ -243,7 +244,7 @@ int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle
 
 	case NP2LEX_MARKDOWN:
 		if (ch == '<' || (chPrev == '<' && ch == '/')) {
-			pWList.AddList(lexHTML.pszKeyWords[HTMLKeywordIndex_Tag]);
+			pWList.AddList(DocumentLanguage(d,"html").pszKeyWords[HTMLKeywordIndex_Tag]);
 			return AddWordResult_IgnoreLexer; // custom tags
 		}
 		break;
@@ -265,7 +266,7 @@ int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle
 
 	case NP2LEX_FORTRAN:
 		if (ch == '#' && iCurrentStyle == SCE_F_PREPROCESSOR) {
-			pWList.AddList(lexCPP.pszKeyWords[CPPKeywordIndex_Preprocessor]);
+			pWList.AddList(DocumentLanguage(d,"cpp").pszKeyWords[CPPKeywordIndex_Preprocessor]);
 			return AddWordResult_Finish;
 		}
 		break;
@@ -283,7 +284,7 @@ int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle
 
 	case NP2LEX_HASKELL:
 		if (ch == '#' && iCurrentStyle == SCE_HA_DEFAULT) {
-			pWList.AddList(lexCPP.pszKeyWords[CPPKeywordIndex_Preprocessor]);
+			pWList.AddList(DocumentLanguage(d,"cpp").pszKeyWords[CPPKeywordIndex_Preprocessor]);
 			return AddWordResult_Finish;
 		}
 		break;
@@ -337,7 +338,7 @@ int AddContextCompletionWords(EditorDocument& d,int iCurrentStyle,int iPrevStyle
 			if (iCurrentStyle >= SCE_JS_COMMENTLINE && iCurrentStyle <= SCE_JS_TASKMARKER) {
 				pWList.AddList(pLex->pszKeyWords[JavaScriptKeywordIndex_JSDoc]);
 				if (rid != NP2LEX_JAVASCRIPT) {
-					pWList.AddList(lexJavaScript.pszKeyWords[JavaScriptKeywordIndex_JSDoc]);
+					pWList.AddList(DocumentLanguage(d,"javascript").pszKeyWords[JavaScriptKeywordIndex_JSDoc]);
 				}
 				return AddWordResult_Finish;
 			}

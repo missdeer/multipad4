@@ -12,7 +12,7 @@ inline void RunStyleFeatureTests(EditorDocument& d) {
     auto require=[](bool ok,std::source_location where=std::source_location::current()){
         if(!ok)throw std::runtime_error("Style feature assertion at line "+std::to_string(where.line()));
     };
-    const size_t count=sizeof(lexerCatalog)/sizeof(*lexerCatalog);
+    const size_t count=sizeof(lexerCatalog)/sizeof(lexerCatalog[0]);
     require(DocumentSchemeCount()==count-1 && count>=90);
     for(size_t i=1;i<count;++i){d.style.scheme=static_cast<int>(i);ConfigureDocumentStyle(d);require(d.Send(SCI_GETLEXER)==lexerCatalog[i]->iLexer);}
     struct Sample {const wchar_t* path;const char* text;int lexer,style;};

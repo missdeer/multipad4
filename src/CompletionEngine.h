@@ -1,14 +1,22 @@
 #pragma once
 #include <cstdint>
-struct EDITLEXER;
+#ifdef MULTIPAD4_STATIC_BASELINE
+#include "../3rdparty/notepad4/src/EditLexer.h"
+using LanguageDefinition = EDITLEXER;
+#else
+#include "LanguageConfiguration.h"
+#endif
 struct CompletionCache {
     uint32_t CurrentWordCharSet[8]{},CharacterPrefixMask[8]{},RawStringStyleMask[8]{},GenericTypeStyleMask[8]{},IgnoreWordStyleMask[8]{},CommentStyleMask[8]{},AllStringStyleMask[8]{},PlainTextStyleMask[8]{};
     const char* const* extraKeywords=nullptr;
-    void Initialize(const EDITLEXER*) noexcept;
+#ifndef MULTIPAD4_STATIC_BASELINE
+    std::shared_ptr<const LanguageDefinition> owner;
+#endif
+    void Initialize(const LanguageDefinition*) noexcept;
     bool Test(const uint32_t (&mask)[8],unsigned value)const{return value<256&&(mask[value>>5]&(1u<<(value&31)));}
     bool Word(unsigned ch)const{return Test(CurrentWordCharSet,ch);}
 };
-const CompletionCache& GetCompletionCache(const EDITLEXER&);
+const CompletionCache& GetCompletionCache(const LanguageDefinition&);
 
 const char* const* GetCompletionExtraKeywords(int command);
 

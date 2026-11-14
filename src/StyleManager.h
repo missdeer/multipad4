@@ -1,7 +1,10 @@
 #pragma once
 #include "EditorCommands.h"
-struct EDITLEXER;
-const EDITLEXER* GetDocumentLexer(const EditorDocument& document);
+#include "LanguageConfiguration.h"
+const LanguageDefinition* GetDocumentLexer(const EditorDocument& document);
+std::wstring DocumentGlobalStyleOverrides(const EditorDocument& document,unsigned index);
+const LanguageDefinition& DocumentLanguage(const EditorDocument& document,const std::string& id);
+const char* const* DocumentCompletionExtraKeywords(const EditorDocument& document);
 bool SelectDocumentScheme(EditorDocument& document, const std::wstring& name);
 bool IsDocumentEscapeOrFormat(EditorDocument&,LRESULT before,int character,int previous,int style,bool punctuation);
 bool ApplyDocumentAutoCloseTag(EditorDocument& document,bool closeTags);

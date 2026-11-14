@@ -1,3 +1,4 @@
+#include "LanguageConfiguration.h"
 // Adapted from pinned notepad4 EditAutoC.cpp, with explicit document state.
 // See 3rdparty/notepad4/License.txt for original copyright and license.
 #include "StyleManager.h"
@@ -19,7 +20,7 @@ enum AutoIndentType {
 	AutoIndentType_IndentAndClose,
 };
 
-static const char* EditKeywordIndent(const EDITLEXER* pLex,int dialect,const char* head,AutoIndentType* indent) {
+static const char* EditKeywordIndent(const LanguageDefinition* pLex,int dialect,const char* head,AutoIndentType* indent) {
 	char word[16] = "";
 	char word_low[16] = "";
 	int length = 0;

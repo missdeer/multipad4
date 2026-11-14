@@ -1,3 +1,4 @@
+#include "LanguageConfiguration.h"
 // Content detection algorithms from the pinned notepad4 Styles.cpp.
 // Original copyright/license: 3rdparty/notepad4/License.txt.
 #include "LexerDetection.h"
@@ -31,10 +32,12 @@ bool MatchCPPKeyword(const char *p, int index) noexcept {
 	}
 	word[len++] = ' ';
 	word[len++] = 0;
-	p = strstr(lexCPP.pszKeyWords[index], word);
+	const auto& cpp=Language("cpp");
+	if(index<0||index>=static_cast<int>(cpp.keywordCount)||!cpp.pszKeyWords[index])return false;
+	p = strstr(cpp.pszKeyWords[index], word);
 	return p != nullptr;
 }
-const EDITLEXER* DetectObjCAndMatlab(const EditorDocument& d,int& dialect) {
+const LanguageDefinition* DetectObjCAndMatlab(const EditorDocument& d,int& dialect) {
 	char tchText[4000] = ""; // maybe contains header comments
 	d.Send(SCI_GETTEXT,sizeof(tchText)-1,reinterpret_cast<LPARAM>(tchText));
 
@@ -52,42 +55,42 @@ const EDITLEXER* DetectObjCAndMatlab(const EditorDocument& d,int& dialect) {
 					++p;
 				}
 				if (MatchCPPKeyword(p, 2)) {
-					return &lexCPP;
+					return &Language("cpp");
 				}
 				dialect = IDM_LEXER_OCTAVE;
-				return &lexMatlab;
+				return &Language("matlab");
 			}
 			break;
 		case '(':
 			++p;
 			if (*p == '*') { // Mathematica comment
-				return &lexMathematica;
+				return &Language("mathematica");
 			}
 			break;
 		case '@':	// ObjC keyword or Matlab command
 			++p;
 			if (MatchCPPKeyword(p, 3)) {
-				return &lexCPP;
+				return &Language("cpp");
 			}
-			return &lexMatlab;
+			return &Language("matlab");
 		case '/':	// C/C++ style comment
 			++p;
 			if (*p == '/' || *p == '*') {
-				return &lexCPP;
+				return &Language("cpp");
 			}
 			break;
 		case 'f':	// Matlab function
 			if (Starts(p, "function") && (Space(p[CSTRLEN("function")]) || p[CSTRLEN("function")] == '[')) {
-				return &lexMatlab;
+				return &Language("matlab");
 			}
 			break;
 		case 'c':	// Matlab classdef
 			if (Starts(p, "classdef") && Space(p[CSTRLEN("classdef")])) {
-				return &lexMatlab;
+				return &Language("matlab");
 			}
 			break;
 		case '%':	// ObjC modular or Matlab comment
-			return &lexMatlab;
+			return &Language("matlab");
 		}
 		// skip to next line
 		while (*p && !(*p == '\r' || *p == '\n')) {
@@ -97,7 +100,7 @@ const EDITLEXER* DetectObjCAndMatlab(const EditorDocument& d,int& dialect) {
 
 	return nullptr;
 }
-const EDITLEXER* AutoDetectContent(const EditorDocument& d,bool bDotFile) {
+const LanguageDefinition* AutoDetectContent(const EditorDocument& d,bool bDotFile) {
 	char tchText[4000] = ""; // maybe contains header comments
 	d.Send(SCI_GETTEXT,sizeof(tchText)-1,reinterpret_cast<LPARAM>(tchText));
 
@@ -121,7 +124,7 @@ const EDITLEXER* AutoDetectContent(const EditorDocument& d,bool bDotFile) {
 				++p;
 			}
 			if (Space(*p) || *p == '#' || *p == '%') {
-				return &lexYAML;
+				return &Language("yaml");
 			}
 		} else {
 			// skip leading space
@@ -145,7 +148,7 @@ const EDITLEXER* AutoDetectContent(const EditorDocument& d,bool bDotFile) {
 				if (*p == '/' || *p == '*') {
 					++cppCount;
 					if (!sharpCount) {
-						return &lexCPP;
+						return &Language("cpp");
 					}
 				}
 			} else if (*p == '{' || *p == '}' || *p == '[') {
@@ -177,23 +180,23 @@ const EDITLEXER* AutoDetectContent(const EditorDocument& d,bool bDotFile) {
 	}
 
 	if (cppCount > sharpCount && !(shebang || bDotFile)) {
-		return &lexCPP;
+		return &Language("cpp");
 	}
 	if (sharpCount) {
-		return (shebang || shellWord == 3) ? &lexBash : &lexConfig;
+		return (shebang || shellWord == 3) ? &Language("bash") : &Language("config");
 	}
 	if (maybeJson && !notJson) {
-		return &lexJSON;
+		return &Language("json");
 	}
 	if (maybeIni) {
-		return &lexINI;
+		return &Language("ini");
 	}
 	if (bDotFile) {
-		return &lexConfig;
+		return &Language("config");
 	}
 	if (maybeJson) {
 		// for braces and brackets
-		return &lexCPP;
+		return &Language("cpp");
 	}
 	return nullptr;
 }

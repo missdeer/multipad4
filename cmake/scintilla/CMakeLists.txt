@@ -3,7 +3,16 @@ set(SCI_ROOT "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla")
 file(GLOB SCI_SOURCES CONFIGURE_DEPENDS
   "${SCI_ROOT}/src/*.cxx" "${SCI_ROOT}/win32/*.cxx"
   "${SCI_ROOT}/lexlib/*.cxx" "${SCI_ROOT}/lexers/*.cxx")
+include("${PROJECT_SOURCE_DIR}/cmake/ScintillaInstrumentation.cmake")
 add_library(notepad4_scintilla STATIC ${SCI_SOURCES})
+target_include_directories(notepad4_scintilla BEFORE PRIVATE "${SCI_INSTRUMENTED_DIR}" "${SCI_LEXLIB_DIR}" "${PROJECT_SOURCE_DIR}/src")
+option(MULTIPAD4_LEXER_METRICS "Trace lexer character reads for benchmarks" OFF)
+if(DEFINED ENV{MULTIPAD4_LEXER_METRICS})
+  set(MULTIPAD4_LEXER_METRICS "$ENV{MULTIPAD4_LEXER_METRICS}" CACHE BOOL "Trace lexer character reads" FORCE)
+endif()
+if(MULTIPAD4_LEXER_METRICS)
+  target_compile_definitions(notepad4_scintilla PUBLIC MULTIPAD4_LEXER_METRICS)
+endif()
 target_include_directories(notepad4_scintilla PUBLIC "${SCI_ROOT}/include" PRIVATE "${SCI_ROOT}/src" "${SCI_ROOT}/lexlib")
 
 if(MINGW)

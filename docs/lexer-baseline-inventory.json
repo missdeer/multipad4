@@ -1,0 +1,5965 @@
+{
+  "version": 1,
+  "upstream": "3fcfb70fd0d3c8802100c85f7293ccb326aa8b64",
+  "license": "3rdparty/notepad4/License.txt",
+  "languageCount": 90,
+  "sourceCount": 83,
+  "styleCount": 1403,
+  "keywordSlotCount": 572,
+  "lexerFields": [
+    "iLexer",
+    "rid",
+    "lexerAttr",
+    "defaultTabWidth",
+    "defaultIndentWidth",
+    "defaultFoldLevelMask",
+    "defaultFoldIgnoreInner",
+    "escapeCharacterStart",
+    "escapeCharacterStyle",
+    "formatSpecifierStyle",
+    "autoIdentWordStyle",
+    "characterLiteralStyle",
+    "noneSingleQuotedStyle",
+    "operatorStyle",
+    "operatorStyle2",
+    "keywordAttr",
+    "commentStyleMarker",
+    "stringStyleFirst",
+    "stringStyleLast",
+    "keywordCount",
+    "iStyleTheme",
+    "bStyleChanged",
+    "bUseDefaultCodeStyle",
+    "iFavoriteOrder",
+    "iStyleCount",
+    "iNameLen",
+    "pszName",
+    "szExtensions",
+    "szStyleBuf",
+    "pszDefExt",
+    "pszKeyWords",
+    "Styles"
+  ],
+  "styleFields": [
+    "iStyle",
+    "rid",
+    "iNameLen",
+    "pszName",
+    "pszDefault"
+  ],
+  "sources": [
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlABAQUS.cpp",
+      "sha256": "0e7a4a9eab3420bdf36cc71b4e6df5e5aac7977d1a3a75f141ae7ab022fa1188",
+      "objects": [
+        "lexABAQUS"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlActionScript.cpp",
+      "sha256": "b95152aad2dcb82f775fe6c796ed240339a9b3f27427773df3dad2dd0338ac0a",
+      "objects": [
+        "lexActionScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAPDL.cpp",
+      "sha256": "9e4e32c160faef48978dae25cd30d55c98881d9bae161636f5ea096c6d5c13bd",
+      "objects": [
+        "lexAPDL"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAsm.cpp",
+      "sha256": "d9a2848c05902b3fce7842a8e94a868f5aa9364909ecbd6fa036cfcedea40297",
+      "objects": [
+        "lexASM"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAsymptote.cpp",
+      "sha256": "314db397ce8793e6dc72cf169329db76a80af9e86fd8a852320c44e7c3e63743",
+      "objects": [
+        "lexAsymptote"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAutoHotkey.cpp",
+      "sha256": "666214ec6e44b7ba2405486f8198fbf450875ce87c1b15e64b3a5d78eb55cd51",
+      "objects": [
+        "lexAutoHotkey"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAutoIt3.cpp",
+      "sha256": "6c297695a4b07a8511045e88390f14b8cb65c2d5bb606f547969157d0e5de102",
+      "objects": [
+        "lexAutoIt3"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAviSynth.cpp",
+      "sha256": "a870f5be9dc6d0b2730b562ac0e7212ce314a36cc7e362d9b7349c7f4b865cc4",
+      "objects": [
+        "lexAviSynth"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlAwk.cpp",
+      "sha256": "50b030b9955d6fd9c480804cc97811516333163a691a553335fe783110a8236a",
+      "objects": [
+        "lexAwk"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlBash.cpp",
+      "sha256": "c99f04f30bc4c626f4de0aead0d0c730f1b84992671bc8d7920bbf27f62a3e25",
+      "objects": [
+        "lexBash"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlBatch.cpp",
+      "sha256": "36f68ca77a51ef1d39932df9a1cab188bc9339b085d40324955856b30eb15945",
+      "objects": [
+        "lexBatch"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlBlockdiag.cpp",
+      "sha256": "325715dbc02942ac4dedf6d14fcdd11ff3c24c0f8051795f699fba6ac1ac90ad",
+      "objects": [
+        "lexBlockdiag"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCangjie.cpp",
+      "sha256": "b79e39a094dd1f41f3dc47c428448dbdced0e0060129eda9adb19d1230d4f774",
+      "objects": [
+        "lexCangjie"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCIL.cpp",
+      "sha256": "53618aa335f4089d118f621df64fa2f0a850f7c626b0953a323be14dc647e100",
+      "objects": [
+        "lexCIL"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCMake.cpp",
+      "sha256": "8e1ecb42ac79e814e1cb8c92923db2e7a22c5541d766225a7776690d9230d3dd",
+      "objects": [
+        "lexCMake"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCoffeeScript.cpp",
+      "sha256": "33aedf1ada2efe4d0ec492247c3fc34479dbb52245fa8662eccbfe503418c2c1",
+      "objects": [
+        "lexCoffeeScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCPP.cpp",
+      "sha256": "1c49bbea95ab0c815445b53d544c998e155ce661a92e7ac5e03101cfb295419e",
+      "objects": [
+        "lexCPP"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCSharp.cpp",
+      "sha256": "7cdf687494d767247851f360e470c0bc6016202ee9e58f673f9347ef63307705",
+      "objects": [
+        "lexCSharp"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlCSS.cpp",
+      "sha256": "43951d3b854ce782fd55dc2576182ee27e35a638fed3394bec5e116a8d0c2f37",
+      "objects": [
+        "lexCSS"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlD.cpp",
+      "sha256": "7cce631efd0b4dd28f8be55a8061c7a8a0f86db11ed880f442173220cd03a481",
+      "objects": [
+        "lexDLang"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlDart.cpp",
+      "sha256": "32d3340d85fc3f7f8e7496b8d0c01f627b355d8ff3b2c9a0c1c463c8190cb53b",
+      "objects": [
+        "lexDart"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlDefault.cpp",
+      "sha256": "92bd7a03c7538474ffaf9ef5a5b02d0bd89b2775a68dd52a0e8262deb5acb1c1",
+      "objects": [
+        "lexGlobal",
+        "lexTextFile",
+        "lex2ndTextFile",
+        "lexANSI",
+        "lexConfig",
+        "lexCSV",
+        "lexDiff",
+        "lexINI"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlElixir.cpp",
+      "sha256": "f275032ecea6b443545dc27c5c78ab843774c3e87da4a780ca3f1aefbd65ec74",
+      "objects": [
+        "lexElixir"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlErlang.cpp",
+      "sha256": "e7c3e81d711861f46068de1f3995832a2248a66f463e3274a5068f1f5b1c2735",
+      "objects": [
+        "lexErlang"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlFortran.cpp",
+      "sha256": "ea3e26c01858b7ead20d4d9e504714b60a04a37b230e3cf99505a89cbbcdb550",
+      "objects": [
+        "lexFortran"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlFSharp.cpp",
+      "sha256": "4ac073daa04f906d4d62c602b89b4c7f1f6e46d6e0f202641a4f806e376e2d61",
+      "objects": [
+        "lexFSharp"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlGN.cpp",
+      "sha256": "4d5c808a64bc8679c82926f3379ba7c8cfcadbc7c1fface038050638054360cd",
+      "objects": [
+        "lexGN"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlGo.cpp",
+      "sha256": "7fee4ced30b62586bbfe4f7cae583d99a0bb16a98a1ba7575fe191b7390e6f9e",
+      "objects": [
+        "lexGo"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlGradle.cpp",
+      "sha256": "ad349b9c2066e8fda25b329178ff4e3278afd04c9e36bf6f991b143d1118d807",
+      "objects": [
+        "lexGradle"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlGraphViz.cpp",
+      "sha256": "13129459abed8cf218936aee2994e3af7a85455c324b9f03792eb0925a79daa4",
+      "objects": [
+        "lexGraphViz"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlGroovy.cpp",
+      "sha256": "847c0d0ec8c37ed69c983ec2c872e2f82b10371acb71fe62b8515c83ee621af8",
+      "objects": [
+        "lexGroovy"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlHaskell.cpp",
+      "sha256": "70e4d178a4e8476664150a7b4a47650f2fbbe27279fb91ab872ed38e95dc442e",
+      "objects": [
+        "lexHaskell"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlHaxe.cpp",
+      "sha256": "99bc42d42a7cb515b6c473ccd2451896666ec0b33971e018bde87ff5118307a3",
+      "objects": [
+        "lexHaxe"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlHTML.cpp",
+      "sha256": "b7763f18862bb258643a37efda9965346dd23f6077a92491a6c598fc483d2880",
+      "objects": [
+        "lexHTML"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlInno.cpp",
+      "sha256": "d9259fb00135e140dd8042c57b25dc03e4c1b3df382d7fe090883742cfa85391",
+      "objects": [
+        "lexInnoSetup"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlJamfile.cpp",
+      "sha256": "fb6052a5c7b73c9e3cb5229957f900dd5c4e09519ced2ad8590543b2e32288e4",
+      "objects": [
+        "lexJamfile"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlJava.cpp",
+      "sha256": "7c464619e8b3eb00f104970d4c2890481601d795389226e572b8662b33dd158d",
+      "objects": [
+        "lexJava"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlJavaScript.cpp",
+      "sha256": "69a4ebfdf6adfc242bd4f3015f788113f09fbfb81b6ede96eb3b10e35f8e73a8",
+      "objects": [
+        "lexJavaScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlJSON.cpp",
+      "sha256": "47ec5ae34bd85dc5425629ded8a78dd884a94b005f065a864deb0e21f0c6ed2f",
+      "objects": [
+        "lexJSON"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlJulia.cpp",
+      "sha256": "5e3e4ec0ca300f69174ca3fa74e11933778a59e285bc8fb8f5456a2fccd5888b",
+      "objects": [
+        "lexJulia"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlKotlin.cpp",
+      "sha256": "a8271de74b4cb0463465f7072b450f967666919d9772ebe0df2b84b4d14d17b6",
+      "objects": [
+        "lexKotlin"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlLaTeX.cpp",
+      "sha256": "80d918201f0dd865e39ef90f63b45452861e841fa77d4cb58cab03c98fc29067",
+      "objects": [
+        "lexLaTeX"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlLisp.cpp",
+      "sha256": "a5d272e5186fa361a4b5ea333c57ae02a65ea0c2a4cebb335a283d4178a304e4",
+      "objects": [
+        "lexLisp"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlLLVM.cpp",
+      "sha256": "9b71c05775edefdbf582186fac98e3ee637a346c1bcb484ade524dfff5d8605d",
+      "objects": [
+        "lexLLVM"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlLua.cpp",
+      "sha256": "6084193be6dd8482b6e71854865149e1a3d70022fe4db035fa169b2eda522e22",
+      "objects": [
+        "lexLua"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlMake.cpp",
+      "sha256": "c713a2b28b3e742a47ec92f5ba72f45d444e06033375e693a8771f57e2bcb35a",
+      "objects": [
+        "lexMakefile"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlMarkdown.cpp",
+      "sha256": "0c73e3c158dd70073783956447e456bcb19f1d1e6890a0d0476949936521e60b",
+      "objects": [
+        "lexMarkdown"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlMathematica.cpp",
+      "sha256": "a83587dd8f2628cb8d5b9a2c7cc97e81b64cffef06b2943b80ad3121884e15cc",
+      "objects": [
+        "lexMathematica"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlMatlab.cpp",
+      "sha256": "2bfa2b0e13b7a15dd4b320d00c38e32b82746acab8de2d256d7150f2bd2fc45e",
+      "objects": [
+        "lexMatlab"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlNim.cpp",
+      "sha256": "3dd9aa2e23cd2e178ed7b08a6eeb487003c28b004a4ed7a7948e13ce16532c61",
+      "objects": [
+        "lexNim"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlNsis.cpp",
+      "sha256": "c3df7944667d482235517da2cdfd2c88697a43aa72699f4958acdf5db72a2a46",
+      "objects": [
+        "lexNsis"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlOCaml.cpp",
+      "sha256": "363bfecd0ad0794a5f5a8332ca65f772774f1e545bf1193704c80dce37c546d8",
+      "objects": [
+        "lexOCaml"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPascal.cpp",
+      "sha256": "5f6b7a5401d8eb62817417d5f1e520ba46a5ecec561ad73db3aa86475e075c3e",
+      "objects": [
+        "lexPascal"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPerl.cpp",
+      "sha256": "192c64c224d38b8c4f7c9b0e3d4827bc7c44e33d444f06709cef9735314267e8",
+      "objects": [
+        "lexPerl"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPHP.cpp",
+      "sha256": "df943e89f3ca372ebd50da52a9ee369c7fb5b4f21c07b12cbb52f4d545e249a1",
+      "objects": [
+        "lexPHP"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPowerBuilder.cpp",
+      "sha256": "0952254744fe11612fe9385e82666181e568d1cf7f7253254709e61c110c11e3",
+      "objects": [
+        "lexPowerBuilder"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPowerShell.cpp",
+      "sha256": "6b2face67d6efe9c2f4660ff1445ec6d102c51cb5c959a67cd84bab1a3ba2286",
+      "objects": [
+        "lexPowerShell"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlPython.cpp",
+      "sha256": "22a808e33d1c704225192cb02abb235af520cd2ede5f64dc010f835821043730",
+      "objects": [
+        "lexPython"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlR.cpp",
+      "sha256": "c83f94cd2f28137c93c2c87b8e747631692bd8993b0286894ec20c015ce0ebb8",
+      "objects": [
+        "lexRLang"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlRebol.cpp",
+      "sha256": "5c353172f1785be8399e02241ef6b5205c55e9c747c2b159e9675cc47cbcf637",
+      "objects": [
+        "lexRebol"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlResource.cpp",
+      "sha256": "7032a5297d3be28945c6ce8ef380dde241958507153958d0201dbec88219a636",
+      "objects": [
+        "lexResourceScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlRuby.cpp",
+      "sha256": "d4cbff0cfb3e468b4d4f9004d5ad7ea21985ba433180fc2bc56c50f57e0b393e",
+      "objects": [
+        "lexRuby"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlRust.cpp",
+      "sha256": "d8266188cb9a793abe9a002655127492e244cccfe0c287683fc681a6c9e3187a",
+      "objects": [
+        "lexRust"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlSAS.cpp",
+      "sha256": "7380dfc8d72506fcd89b4ab129d3e92a43871961a5a8019c641fae762157d0e4",
+      "objects": [
+        "lexSAS"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlScala.cpp",
+      "sha256": "6c52836dd626687e4ef7fb1f5c6c2f56e747c58966aa275a51256b350434e05b",
+      "objects": [
+        "lexScala"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlSmali.cpp",
+      "sha256": "8839fe28b1a171976dc8e297de99903a0d832047ead8df21856b1f43cf432b08",
+      "objects": [
+        "lexSmali"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlSQL.cpp",
+      "sha256": "3bfc3ebb759af9dfbbf879268998415eb727ea0e954c5066716cd9efb0584bef",
+      "objects": [
+        "lexSQL"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlSwift.cpp",
+      "sha256": "6d1a1d424d6d7f581bf6469ab644b0a4b47f79382499f061b9a6dec2b5137f1f",
+      "objects": [
+        "lexSwift"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlTcl.cpp",
+      "sha256": "34dc531d2d9a1bd9f5ae46235738b46fe63e3bd4e408cf0243704a90f7c50a05",
+      "objects": [
+        "lexTcl"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlTexinfo.cpp",
+      "sha256": "987646d09369b4b3937eec1cddf384ab2e142de7951c6896ffc1e337bc5a2dde",
+      "objects": [
+        "lexTexinfo"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlTOML.cpp",
+      "sha256": "bac63d6ba1f32de27ddbaf587d71bab5bbca117b533ed47f533f22f720f88e7e",
+      "objects": [
+        "lexTOML"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlTypeScript.cpp",
+      "sha256": "fbad447ba4734d5fa10c7961dce02404b9b4694c7fac584e7e7f89a71c7b8eea",
+      "objects": [
+        "lexTypeScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlTypst.cpp",
+      "sha256": "56e7f5d1b82da59e096a0daca5f9dfd779bae9857717f78ac24f83c349277b83",
+      "objects": [
+        "lexTypst"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlVB.cpp",
+      "sha256": "a6ea0e5bdb0b50c5a12fb3cbe7b433351b3bc0c32ac3f06afffadf88504495a3",
+      "objects": [
+        "lexVisualBasic"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlVBS.cpp",
+      "sha256": "c243501a50019ae357c0b53d505d6dd732f7c8194d8be10f04b2d9984f8e161a",
+      "objects": [
+        "lexVBScript"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlVerilog.cpp",
+      "sha256": "1ae7e2bf9cebbf903e0827a820e12467cd56bedbff66c3669a4fc4e3542cf1f2",
+      "objects": [
+        "lexVerilog"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlVHDL.cpp",
+      "sha256": "52c4d80d050d6d5509ed0ae6caff8778f81a10566a0d48ffba50076c49ee2744",
+      "objects": [
+        "lexVHDL"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlVim.cpp",
+      "sha256": "0663f425aed02f7c20651d94fc196f234c715c6ff713c733e1bdf62caf0b536d",
+      "objects": [
+        "lexVim"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlWASM.cpp",
+      "sha256": "bf951461db1f2adc0b7da1f2a9da6a9e3307170e83b1c20715c77559f5fdb699",
+      "objects": [
+        "lexWASM"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlWinHex.cpp",
+      "sha256": "9a0764da9c51bb7577ec756d950f9962142d47e3c2584047dd85c3eb491291d4",
+      "objects": [
+        "lexWinHex"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlXML.cpp",
+      "sha256": "3dde819bda3e0f9d3658bb4e63a2406585e32310e94e6ba3f6939ef92ec3bd67",
+      "objects": [
+        "lexXML"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlYAML.cpp",
+      "sha256": "be29d161418b5919d1f294f04ef02fb632e441b77f0d59922dc60fda819e295b",
+      "objects": [
+        "lexYAML"
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/src/EditLexers/stlZig.cpp",
+      "sha256": "c03bcfce7452d0fc0136f374341da5e4644fbdcba9882e9918d9582dad1f3f9a",
+      "objects": [
+        "lexZig"
+      ]
+    }
+  ],
+  "migration": [
+    {
+      "id": "global",
+      "legacyIndex": 0,
+      "resourceId": 63200,
+      "legacyName": "Global Styles",
+      "styleIds": [
+        "global.defaultcodestyle",
+        "global.defaulttextstyle",
+        "global.marginlinenumber",
+        "global.matchingbrace",
+        "global.matchingbraceerror",
+        "global.controlcharacter",
+        "global.indentationguide",
+        "global.selectedtext",
+        "global.whitespace",
+        "global.currentline",
+        "global.caret",
+        "global.imeindicator",
+        "global.longlinemarker",
+        "global.extralinespacing",
+        "global.codefolding",
+        "global.foldingmarker",
+        "global.foldellipsis",
+        "global.markoccurrences",
+        "global.bookmark",
+        "global.changehistorymarker",
+        "global.calltip",
+        "global.link"
+      ]
+    },
+    {
+      "id": "text",
+      "legacyIndex": 1,
+      "resourceId": 63000,
+      "legacyName": "Text File",
+      "styleIds": [
+        "text.default"
+      ]
+    },
+    {
+      "id": "text-secondary",
+      "legacyIndex": 2,
+      "resourceId": 63197,
+      "legacyName": "2nd Text File",
+      "styleIds": [
+        "text-secondary.default"
+      ]
+    },
+    {
+      "id": "cpp",
+      "legacyIndex": 3,
+      "resourceId": 63001,
+      "legacyName": "C/C++ Source",
+      "styleIds": [
+        "cpp.default",
+        "cpp.keyword",
+        "cpp.typekeyword",
+        "cpp.preprocessor",
+        "cpp.attribute",
+        "cpp.directive",
+        "cpp.type",
+        "cpp.class",
+        "cpp.structure",
+        "cpp.union",
+        "cpp.interface",
+        "cpp.function",
+        "cpp.enumeration",
+        "cpp.constant",
+        "cpp.macro",
+        "cpp.comment",
+        "cpp.doccomment",
+        "cpp.doccommenttag",
+        "cpp.string",
+        "cpp.rawstring",
+        "cpp.escapesequence",
+        "cpp.label",
+        "cpp.number",
+        "cpp.operator",
+        "cpp.instruction",
+        "cpp.register"
+      ]
+    },
+    {
+      "id": "csharp",
+      "legacyIndex": 4,
+      "resourceId": 63003,
+      "legacyName": "C# Source",
+      "styleIds": [
+        "csharp.default",
+        "csharp.keyword",
+        "csharp.typekeyword",
+        "csharp.preprocessor",
+        "csharp.attribute",
+        "csharp.class",
+        "csharp.structure",
+        "csharp.record",
+        "csharp.interface",
+        "csharp.enumeration",
+        "csharp.methoddefinition",
+        "csharp.method",
+        "csharp.constant",
+        "csharp.comment",
+        "csharp.doccomment",
+        "csharp.doccommenttag",
+        "csharp.taskmarker",
+        "csharp.string",
+        "csharp.verbatimstring",
+        "csharp.rawstring",
+        "csharp.escapesequence",
+        "csharp.formatspecifier",
+        "csharp.placeholder",
+        "csharp.label",
+        "csharp.number",
+        "csharp.operator"
+      ]
+    },
+    {
+      "id": "css",
+      "legacyIndex": 5,
+      "resourceId": 63027,
+      "legacyName": "CSS Style Sheet",
+      "styleIds": [
+        "css.default",
+        "css.atrule",
+        "css.htmltag",
+        "css.tagclass",
+        "css.tagid",
+        "css.tagattribute",
+        "css.property",
+        "css.pseudoclass",
+        "css.pseudoelement",
+        "css.unknownproperty",
+        "css.unknownpseudoclass",
+        "css.unknownpseudoelement",
+        "css.comment",
+        "css.doccomment",
+        "css.string",
+        "css.escapesequence",
+        "css.placeholder",
+        "css.function",
+        "css.important",
+        "css.value",
+        "css.variable",
+        "css.number",
+        "css.operator"
+      ]
+    },
+    {
+      "id": "java",
+      "legacyIndex": 6,
+      "resourceId": 63002,
+      "legacyName": "Java Source",
+      "styleIds": [
+        "java.default",
+        "java.keyword",
+        "java.typekeyword",
+        "java.directive",
+        "java.annotation",
+        "java.class",
+        "java.record",
+        "java.interface",
+        "java.enumeration",
+        "java.methoddefinition",
+        "java.method",
+        "java.constant",
+        "java.comment",
+        "java.doccomment",
+        "java.doccommenttag",
+        "java.taskmarker",
+        "java.string",
+        "java.textblock",
+        "java.escapesequence",
+        "java.formatspecifier",
+        "java.placeholder",
+        "java.label",
+        "java.number",
+        "java.operator"
+      ]
+    },
+    {
+      "id": "javascript",
+      "legacyIndex": 7,
+      "resourceId": 63004,
+      "legacyName": "JavaScript",
+      "styleIds": [
+        "javascript.default",
+        "javascript.keyword",
+        "javascript.reservedword",
+        "javascript.directive",
+        "javascript.class",
+        "javascript.decorator",
+        "javascript.functiondefinition",
+        "javascript.function",
+        "javascript.constant",
+        "javascript.comment",
+        "javascript.doccomment",
+        "javascript.doccommenttag",
+        "javascript.taskmarker",
+        "javascript.string",
+        "javascript.templateliteral",
+        "javascript.escapesequence",
+        "javascript.property",
+        "javascript.regex",
+        "javascript.xmltag",
+        "javascript.xmlattribute",
+        "javascript.label",
+        "javascript.number",
+        "javascript.operator"
+      ]
+    },
+    {
+      "id": "json",
+      "legacyIndex": 8,
+      "resourceId": 63054,
+      "legacyName": "JSON Document",
+      "styleIds": [
+        "json.default",
+        "json.keyword",
+        "json.property",
+        "json.comment",
+        "json.string",
+        "json.escapesequence",
+        "json.number",
+        "json.operator"
+      ]
+    },
+    {
+      "id": "python",
+      "legacyIndex": 9,
+      "resourceId": 63032,
+      "legacyName": "Python Script",
+      "styleIds": [
+        "python.default",
+        "python.keyword",
+        "python.type",
+        "python.class",
+        "python.functiondefinition",
+        "python.function",
+        "python.attribute",
+        "python.decorator",
+        "python.builtinconstant",
+        "python.builtinfunction",
+        "python.magicmethod",
+        "python.comment",
+        "python.doccommenttag",
+        "python.taskmarker",
+        "python.string",
+        "python.rawstring",
+        "python.triplequotedstring",
+        "python.formattedstring",
+        "python.triplequotedfstring",
+        "python.bytes",
+        "python.triplequotedbytes",
+        "python.escapesequence",
+        "python.formatspecifier",
+        "python.placeholder",
+        "python.key",
+        "python.number",
+        "python.operator"
+      ]
+    },
+    {
+      "id": "sql",
+      "legacyIndex": 10,
+      "resourceId": 63028,
+      "legacyName": "SQL Query",
+      "styleIds": [
+        "sql.default",
+        "sql.keyword",
+        "sql.typekeyword",
+        "sql.basicfunction",
+        "sql.comment",
+        "sql.string",
+        "sql.escapesequence",
+        "sql.hexstring",
+        "sql.bitfield",
+        "sql.variable",
+        "sql.number",
+        "sql.operator"
+      ]
+    },
+    {
+      "id": "html",
+      "legacyIndex": 11,
+      "resourceId": 63026,
+      "legacyName": "Web Source Code",
+      "styleIds": [
+        "html.default",
+        "html.htmltag",
+        "html.htmlunknowntag",
+        "html.htmlattribute",
+        "html.htmlunknownattribute",
+        "html.htmlvalue",
+        "html.htmlstring",
+        "html.htmlothertag",
+        "html.htmlcomment",
+        "html.htmlentity",
+        "html.htmlelementtext",
+        "html.xmlidentifier",
+        "html.xmlsgml",
+        "html.xmlcdata",
+        "html.asptag",
+        "html.phptag",
+        "html.vbsdefault",
+        "html.vbskeyword",
+        "html.vbscomment",
+        "html.vbsstring",
+        "html.vbsnumber",
+        "html.vbsoperator"
+      ]
+    },
+    {
+      "id": "xml",
+      "legacyIndex": 12,
+      "resourceId": 63025,
+      "legacyName": "XML Document",
+      "styleIds": [
+        "xml.default",
+        "xml.xmltag",
+        "xml.xmlattribute",
+        "xml.xmlvalue",
+        "xml.xmlstring",
+        "xml.xmlothertag",
+        "xml.xmlcomment",
+        "xml.xmlentity",
+        "xml.xmlelementtext",
+        "xml.xmlidentifier",
+        "xml.xmlsgml",
+        "xml.xmlcdata"
+      ]
+    },
+    {
+      "id": "abaqus",
+      "legacyIndex": 13,
+      "resourceId": 63078,
+      "legacyName": "ABAQUS",
+      "styleIds": [
+        "abaqus.default",
+        "abaqus.keyword",
+        "abaqus.command",
+        "abaqus.function",
+        "abaqus.parameter",
+        "abaqus.comment",
+        "abaqus.string",
+        "abaqus.number",
+        "abaqus.operator"
+      ]
+    },
+    {
+      "id": "actionscript",
+      "legacyIndex": 14,
+      "resourceId": 63011,
+      "legacyName": "ActionScript",
+      "styleIds": [
+        "actionscript.default",
+        "actionscript.keyword",
+        "actionscript.typekeyword",
+        "actionscript.class",
+        "actionscript.interface",
+        "actionscript.metadata",
+        "actionscript.functiondefinition",
+        "actionscript.function",
+        "actionscript.comment",
+        "actionscript.doccomment",
+        "actionscript.doccommenttag",
+        "actionscript.taskmarker",
+        "actionscript.string",
+        "actionscript.escapesequence",
+        "actionscript.property",
+        "actionscript.regex",
+        "actionscript.xmltag",
+        "actionscript.xmlattribute",
+        "actionscript.label",
+        "actionscript.number",
+        "actionscript.operator"
+      ]
+    },
+    {
+      "id": "smali",
+      "legacyIndex": 15,
+      "resourceId": 63055,
+      "legacyName": "Android Smali",
+      "styleIds": [
+        "smali.default",
+        "smali.keyword",
+        "smali.directive",
+        "smali.instruction",
+        "smali.register",
+        "smali.type",
+        "smali.field",
+        "smali.method",
+        "smali.comment",
+        "smali.string",
+        "smali.label",
+        "smali.number",
+        "smali.operator"
+      ]
+    },
+    {
+      "id": "ansi",
+      "legacyIndex": 16,
+      "resourceId": 63196,
+      "legacyName": "ANSI Art",
+      "styleIds": [
+        "ansi.default",
+        "ansi.marginlinenumber",
+        "ansi.extralinespacing",
+        "ansi.foldellipsis"
+      ]
+    },
+    {
+      "id": "apdl",
+      "legacyIndex": 17,
+      "resourceId": 63077,
+      "legacyName": "ANSYS APDL",
+      "styleIds": [
+        "apdl.default",
+        "apdl.keyword",
+        "apdl.command",
+        "apdl.function",
+        "apdl.parameter",
+        "apdl.comment",
+        "apdl.string",
+        "apdl.number",
+        "apdl.operator"
+      ]
+    },
+    {
+      "id": "asm",
+      "legacyIndex": 18,
+      "resourceId": 63023,
+      "legacyName": "Assembler Source",
+      "styleIds": [
+        "asm.default",
+        "asm.comment",
+        "asm.string",
+        "asm.preprocessor",
+        "asm.cpuinstruction",
+        "asm.fpuinstruction",
+        "asm.extendedinstruction",
+        "asm.directive",
+        "asm.directiveoperand",
+        "asm.register",
+        "asm.label",
+        "asm.number",
+        "asm.operator"
+      ]
+    },
+    {
+      "id": "asymptote",
+      "legacyIndex": 19,
+      "resourceId": 63008,
+      "legacyName": "Asymptote Code",
+      "styleIds": [
+        "asymptote.default",
+        "asymptote.keyword",
+        "asymptote.type",
+        "asymptote.structure",
+        "asymptote.constant",
+        "asymptote.functiondefinition",
+        "asymptote.function",
+        "asymptote.comment",
+        "asymptote.string",
+        "asymptote.escapesequence",
+        "asymptote.number",
+        "asymptote.operator"
+      ]
+    },
+    {
+      "id": "autohotkey",
+      "legacyIndex": 20,
+      "resourceId": 63095,
+      "legacyName": "AutoHotkey Script",
+      "styleIds": [
+        "autohotkey.default",
+        "autohotkey.keyword",
+        "autohotkey.directive",
+        "autohotkey.class",
+        "autohotkey.builtinfunction",
+        "autohotkey.function",
+        "autohotkey.predefinedvariable",
+        "autohotkey.variable",
+        "autohotkey.key",
+        "autohotkey.comment",
+        "autohotkey.string",
+        "autohotkey.hotstring",
+        "autohotkey.hotkey",
+        "autohotkey.sendkey",
+        "autohotkey.section",
+        "autohotkey.escapesequence",
+        "autohotkey.formatspecifier",
+        "autohotkey.label",
+        "autohotkey.number",
+        "autohotkey.operator"
+      ]
+    },
+    {
+      "id": "autoit3",
+      "legacyIndex": 21,
+      "resourceId": 63039,
+      "legacyName": "AutoIt3 Script",
+      "styleIds": [
+        "autoit3.default",
+        "autoit3.keyword",
+        "autoit3.directive",
+        "autoit3.function",
+        "autoit3.macro",
+        "autoit3.variable",
+        "autoit3.comment",
+        "autoit3.string",
+        "autoit3.sendkey",
+        "autoit3.number",
+        "autoit3.operator"
+      ]
+    },
+    {
+      "id": "avisynth",
+      "legacyIndex": 22,
+      "resourceId": 63087,
+      "legacyName": "AviSynth Script",
+      "styleIds": [
+        "avisynth.default",
+        "avisynth.keyword",
+        "avisynth.builtinfunction",
+        "avisynth.internalfilter",
+        "avisynth.externalfilter",
+        "avisynth.property",
+        "avisynth.function",
+        "avisynth.comment",
+        "avisynth.taskmarker",
+        "avisynth.string",
+        "avisynth.triplequotedstring",
+        "avisynth.escapesequence",
+        "avisynth.number",
+        "avisynth.operator"
+      ]
+    },
+    {
+      "id": "awk",
+      "legacyIndex": 23,
+      "resourceId": 63051,
+      "legacyName": "Awk Script",
+      "styleIds": [
+        "awk.default",
+        "awk.keyword",
+        "awk.functiondefinition",
+        "awk.function",
+        "awk.builtinfunction",
+        "awk.predefinedvariable",
+        "awk.variable",
+        "awk.comment",
+        "awk.string",
+        "awk.escapesequence",
+        "awk.formatspecifier",
+        "awk.regex",
+        "awk.number",
+        "awk.operator"
+      ]
+    },
+    {
+      "id": "batch",
+      "legacyIndex": 24,
+      "resourceId": 63036,
+      "legacyName": "Batch File",
+      "styleIds": [
+        "batch.default",
+        "batch.keyword",
+        "batch.command",
+        "batch.comment",
+        "batch.doublequotedstring",
+        "batch.singlequotedstring",
+        "batch.backticks",
+        "batch.escapesequence",
+        "batch.variable",
+        "batch.label",
+        "batch.operator"
+      ]
+    },
+    {
+      "id": "blockdiag",
+      "legacyIndex": 25,
+      "resourceId": 63079,
+      "legacyName": "blockdiag",
+      "styleIds": [
+        "blockdiag.default",
+        "blockdiag.keyword",
+        "blockdiag.attribute",
+        "blockdiag.value",
+        "blockdiag.label",
+        "blockdiag.comment",
+        "blockdiag.string",
+        "blockdiag.escapesequence",
+        "blockdiag.number",
+        "blockdiag.operator"
+      ]
+    },
+    {
+      "id": "cangjie",
+      "legacyIndex": 26,
+      "resourceId": 63085,
+      "legacyName": "Cangjie Source",
+      "styleIds": [
+        "cangjie.default",
+        "cangjie.keyword",
+        "cangjie.typekeyword",
+        "cangjie.macro",
+        "cangjie.type",
+        "cangjie.annotation",
+        "cangjie.class",
+        "cangjie.structure",
+        "cangjie.interface",
+        "cangjie.enumeration",
+        "cangjie.functiondefinition",
+        "cangjie.function",
+        "cangjie.comment",
+        "cangjie.doccomment",
+        "cangjie.taskmarker",
+        "cangjie.string",
+        "cangjie.triplequotedstring",
+        "cangjie.rawstring",
+        "cangjie.escapesequence",
+        "cangjie.variable",
+        "cangjie.number",
+        "cangjie.operator"
+      ]
+    },
+    {
+      "id": "cil",
+      "legacyIndex": 27,
+      "resourceId": 63009,
+      "legacyName": "CIL Assembly",
+      "styleIds": [
+        "cil.default",
+        "cil.keyword",
+        "cil.typekeyword",
+        "cil.directive",
+        "cil.instruction",
+        "cil.comment",
+        "cil.string",
+        "cil.label",
+        "cil.number",
+        "cil.operator"
+      ]
+    },
+    {
+      "id": "cmake",
+      "legacyIndex": 28,
+      "resourceId": 63046,
+      "legacyName": "CMake Script",
+      "styleIds": [
+        "cmake.default",
+        "cmake.keyword",
+        "cmake.command",
+        "cmake.function",
+        "cmake.macro",
+        "cmake.parameter",
+        "cmake.property",
+        "cmake.value",
+        "cmake.comment",
+        "cmake.string",
+        "cmake.bracketargument",
+        "cmake.variable",
+        "cmake.escapesequence",
+        "cmake.number",
+        "cmake.operator"
+      ]
+    },
+    {
+      "id": "coffeescript",
+      "legacyIndex": 29,
+      "resourceId": 63094,
+      "legacyName": "CoffeeScript",
+      "styleIds": [
+        "coffeescript.default",
+        "coffeescript.keyword",
+        "coffeescript.reservedword",
+        "coffeescript.directive",
+        "coffeescript.class",
+        "coffeescript.property",
+        "coffeescript.comment",
+        "coffeescript.string",
+        "coffeescript.triplequotedstring",
+        "coffeescript.escapesequence",
+        "coffeescript.backticks",
+        "coffeescript.regex",
+        "coffeescript.xmltag",
+        "coffeescript.xmlattribute",
+        "coffeescript.number",
+        "coffeescript.operator"
+      ]
+    },
+    {
+      "id": "config",
+      "legacyIndex": 30,
+      "resourceId": 63049,
+      "legacyName": "Config File",
+      "styleIds": [
+        "config.default",
+        "config.section",
+        "config.directive",
+        "config.comment",
+        "config.string",
+        "config.number",
+        "config.operator"
+      ]
+    },
+    {
+      "id": "csv",
+      "legacyIndex": 31,
+      "resourceId": 63080,
+      "legacyName": "CSV File",
+      "styleIds": [
+        "csv.default",
+        "csv.column1",
+        "csv.column2",
+        "csv.column3",
+        "csv.column4",
+        "csv.column5",
+        "csv.column6",
+        "csv.column7",
+        "csv.column8",
+        "csv.column9",
+        "csv.column10",
+        "csv.delimiter"
+      ]
+    },
+    {
+      "id": "d",
+      "legacyIndex": 32,
+      "resourceId": 63007,
+      "legacyName": "D Source",
+      "styleIds": [
+        "d.default",
+        "d.keyword",
+        "d.typekeyword",
+        "d.preprocessor",
+        "d.attribute",
+        "d.class",
+        "d.structure",
+        "d.union",
+        "d.interface",
+        "d.trait",
+        "d.enumeration",
+        "d.constant",
+        "d.functiondefinition",
+        "d.function",
+        "d.comment",
+        "d.doccomment",
+        "d.doccommenttag",
+        "d.taskmarker",
+        "d.string",
+        "d.rawstring",
+        "d.hexstring",
+        "d.delimitedstring",
+        "d.escapesequence",
+        "d.formatspecifier",
+        "d.label",
+        "d.number",
+        "d.operator",
+        "d.instruction",
+        "d.register"
+      ]
+    },
+    {
+      "id": "dart",
+      "legacyIndex": 33,
+      "resourceId": 63073,
+      "legacyName": "Dart Source",
+      "styleIds": [
+        "dart.default",
+        "dart.keyword",
+        "dart.typekeyword",
+        "dart.metadata",
+        "dart.class",
+        "dart.enumeration",
+        "dart.functiondefinition",
+        "dart.function",
+        "dart.comment",
+        "dart.doccomment",
+        "dart.taskmarker",
+        "dart.string",
+        "dart.triplequotedstring",
+        "dart.rawstring",
+        "dart.escapesequence",
+        "dart.property",
+        "dart.label",
+        "dart.symbol",
+        "dart.number",
+        "dart.operator"
+      ]
+    },
+    {
+      "id": "diff",
+      "legacyIndex": 34,
+      "resourceId": 63050,
+      "legacyName": "Diff File",
+      "styleIds": [
+        "diff.default",
+        "diff.comment",
+        "diff.command",
+        "diff.sourcedestination",
+        "diff.positionsetting",
+        "diff.lineaddition",
+        "diff.lineremoval",
+        "diff.linechange"
+      ]
+    },
+    {
+      "id": "elixir",
+      "legacyIndex": 35,
+      "resourceId": 63019,
+      "legacyName": "Elixir Source",
+      "styleIds": [
+        "elixir.default",
+        "elixir.keyword",
+        "elixir.annotation",
+        "elixir.structure",
+        "elixir.function",
+        "elixir.comment",
+        "elixir.string",
+        "elixir.triplequotedstring",
+        "elixir.delimitedstring",
+        "elixir.escapesequence",
+        "elixir.symbol",
+        "elixir.number",
+        "elixir.operator"
+      ]
+    },
+    {
+      "id": "erlang",
+      "legacyIndex": 36,
+      "resourceId": 63018,
+      "legacyName": "Erlang Source",
+      "styleIds": [
+        "erlang.default",
+        "erlang.keyword",
+        "erlang.preprocessor",
+        "erlang.macro",
+        "erlang.record",
+        "erlang.function",
+        "erlang.comment",
+        "erlang.string",
+        "erlang.triplequotedstring",
+        "erlang.delimitedstring",
+        "erlang.escapesequence",
+        "erlang.number",
+        "erlang.operator"
+      ]
+    },
+    {
+      "id": "fsharp",
+      "legacyIndex": 37,
+      "resourceId": 63022,
+      "legacyName": "F# Source",
+      "styleIds": [
+        "fsharp.default",
+        "fsharp.keyword",
+        "fsharp.type",
+        "fsharp.preprocessor",
+        "fsharp.attribute",
+        "fsharp.comment",
+        "fsharp.doccomment",
+        "fsharp.string",
+        "fsharp.verbatimstring",
+        "fsharp.triplequotedstring",
+        "fsharp.codequotation",
+        "fsharp.escapesequence",
+        "fsharp.formatspecifier",
+        "fsharp.number",
+        "fsharp.operator"
+      ]
+    },
+    {
+      "id": "fortran",
+      "legacyIndex": 38,
+      "resourceId": 63041,
+      "legacyName": "Fortran Source",
+      "styleIds": [
+        "fortran.default",
+        "fortran.keyword",
+        "fortran.typekeyword",
+        "fortran.preprocessor",
+        "fortran.attribute",
+        "fortran.basicfunction",
+        "fortran.functiondefinition",
+        "fortran.function",
+        "fortran.comment",
+        "fortran.string",
+        "fortran.escapesequence",
+        "fortran.number",
+        "fortran.operator"
+      ]
+    },
+    {
+      "id": "gn",
+      "legacyIndex": 39,
+      "resourceId": 63072,
+      "legacyName": "GN Build Script",
+      "styleIds": [
+        "gn.default",
+        "gn.keyword",
+        "gn.function",
+        "gn.builtinfunction",
+        "gn.predefinedvariable",
+        "gn.comment",
+        "gn.string",
+        "gn.escapesequence",
+        "gn.variable",
+        "gn.placeholder",
+        "gn.number",
+        "gn.operator"
+      ]
+    },
+    {
+      "id": "go",
+      "legacyIndex": 40,
+      "resourceId": 63015,
+      "legacyName": "Go Source",
+      "styleIds": [
+        "go.default",
+        "go.keyword",
+        "go.typekeyword",
+        "go.type",
+        "go.structure",
+        "go.interface",
+        "go.constant",
+        "go.builtinfunction",
+        "go.functiondefinition",
+        "go.function",
+        "go.comment",
+        "go.taskmarker",
+        "go.string",
+        "go.rawstring",
+        "go.property",
+        "go.escapesequence",
+        "go.formatspecifier",
+        "go.label",
+        "go.number",
+        "go.operator"
+      ]
+    },
+    {
+      "id": "gradle",
+      "legacyIndex": 41,
+      "resourceId": 63016,
+      "legacyName": "Gradle Build Script",
+      "styleIds": [
+        "gradle.default",
+        "gradle.keyword",
+        "gradle.typekeyword",
+        "gradle.annotation",
+        "gradle.class",
+        "gradle.interface",
+        "gradle.trait",
+        "gradle.enumeration",
+        "gradle.methoddefinition",
+        "gradle.method",
+        "gradle.action",
+        "gradle.property",
+        "gradle.constant",
+        "gradle.comment",
+        "gradle.doccomment",
+        "gradle.doccommenttag",
+        "gradle.taskmarker",
+        "gradle.string",
+        "gradle.triplequotedstring",
+        "gradle.escapesequence",
+        "gradle.regex",
+        "gradle.attribute",
+        "gradle.label",
+        "gradle.number",
+        "gradle.operator"
+      ]
+    },
+    {
+      "id": "graphviz",
+      "legacyIndex": 42,
+      "resourceId": 63053,
+      "legacyName": "GraphViz Dot",
+      "styleIds": [
+        "graphviz.default",
+        "graphviz.keyword",
+        "graphviz.attribute",
+        "graphviz.value",
+        "graphviz.label",
+        "graphviz.comment",
+        "graphviz.string",
+        "graphviz.escapesequence",
+        "graphviz.number",
+        "graphviz.operator"
+      ]
+    },
+    {
+      "id": "groovy",
+      "legacyIndex": 43,
+      "resourceId": 63013,
+      "legacyName": "Groovy Script",
+      "styleIds": [
+        "groovy.default",
+        "groovy.keyword",
+        "groovy.typekeyword",
+        "groovy.annotation",
+        "groovy.class",
+        "groovy.interface",
+        "groovy.trait",
+        "groovy.enumeration",
+        "groovy.methoddefinition",
+        "groovy.method",
+        "groovy.property",
+        "groovy.constant",
+        "groovy.comment",
+        "groovy.doccomment",
+        "groovy.doccommenttag",
+        "groovy.taskmarker",
+        "groovy.string",
+        "groovy.triplequotedstring",
+        "groovy.escapesequence",
+        "groovy.regex",
+        "groovy.attribute",
+        "groovy.label",
+        "groovy.number",
+        "groovy.operator"
+      ]
+    },
+    {
+      "id": "haskell",
+      "legacyIndex": 44,
+      "resourceId": 63084,
+      "legacyName": "Haskell Source",
+      "styleIds": [
+        "haskell.default",
+        "haskell.keyword",
+        "haskell.module",
+        "haskell.class",
+        "haskell.preprocessor",
+        "haskell.pragma",
+        "haskell.comment",
+        "haskell.string",
+        "haskell.escapesequence",
+        "haskell.number",
+        "haskell.operator"
+      ]
+    },
+    {
+      "id": "haxe",
+      "legacyIndex": 45,
+      "resourceId": 63012,
+      "legacyName": "Haxe Script",
+      "styleIds": [
+        "haxe.default",
+        "haxe.keyword",
+        "haxe.preprocessor",
+        "haxe.class",
+        "haxe.interface",
+        "haxe.enumeration",
+        "haxe.metadata",
+        "haxe.functiondefinition",
+        "haxe.function",
+        "haxe.constant",
+        "haxe.comment",
+        "haxe.doccomment",
+        "haxe.doccommenttag",
+        "haxe.taskmarker",
+        "haxe.string",
+        "haxe.escapesequence",
+        "haxe.regex",
+        "haxe.variable",
+        "haxe.number",
+        "haxe.operator"
+      ]
+    },
+    {
+      "id": "ini",
+      "legacyIndex": 46,
+      "resourceId": 63048,
+      "legacyName": "Ini Config File",
+      "styleIds": [
+        "ini.default",
+        "ini.section",
+        "ini.property",
+        "ini.comment",
+        "ini.assignment",
+        "ini.defaultvalue"
+      ]
+    },
+    {
+      "id": "innosetup",
+      "legacyIndex": 47,
+      "resourceId": 63047,
+      "legacyName": "Inno Setup Script",
+      "styleIds": [
+        "innosetup.default",
+        "innosetup.keyword",
+        "innosetup.type",
+        "innosetup.preprocessor",
+        "innosetup.function",
+        "innosetup.section",
+        "innosetup.parameter",
+        "innosetup.inlineexpansion",
+        "innosetup.constant",
+        "innosetup.comment",
+        "innosetup.string",
+        "innosetup.number",
+        "innosetup.operator"
+      ]
+    },
+    {
+      "id": "jamfile",
+      "legacyIndex": 48,
+      "resourceId": 63052,
+      "legacyName": "Jamfile",
+      "styleIds": [
+        "jamfile.default",
+        "jamfile.keyword",
+        "jamfile.module",
+        "jamfile.class",
+        "jamfile.rule",
+        "jamfile.feature",
+        "jamfile.constant",
+        "jamfile.comment",
+        "jamfile.string",
+        "jamfile.escapesequence",
+        "jamfile.number",
+        "jamfile.operator"
+      ]
+    },
+    {
+      "id": "julia",
+      "legacyIndex": 49,
+      "resourceId": 63066,
+      "legacyName": "Julia Script",
+      "styleIds": [
+        "julia.default",
+        "julia.keyword",
+        "julia.type",
+        "julia.constant",
+        "julia.macro",
+        "julia.basicfunction",
+        "julia.functiondefinition",
+        "julia.function",
+        "julia.comment",
+        "julia.taskmarker",
+        "julia.string",
+        "julia.triplequotedstring",
+        "julia.rawstring",
+        "julia.bytes",
+        "julia.escapesequence",
+        "julia.formatspecifier",
+        "julia.backticks",
+        "julia.regex",
+        "julia.variable",
+        "julia.symbol",
+        "julia.number",
+        "julia.operator"
+      ]
+    },
+    {
+      "id": "kotlin",
+      "legacyIndex": 50,
+      "resourceId": 63068,
+      "legacyName": "Kotlin Source",
+      "styleIds": [
+        "kotlin.default",
+        "kotlin.keyword",
+        "kotlin.annotation",
+        "kotlin.class",
+        "kotlin.interface",
+        "kotlin.enumeration",
+        "kotlin.functiondefinition",
+        "kotlin.function",
+        "kotlin.comment",
+        "kotlin.doccomment",
+        "kotlin.doccommenttag",
+        "kotlin.taskmarker",
+        "kotlin.string",
+        "kotlin.rawstring",
+        "kotlin.escapesequence",
+        "kotlin.backticks",
+        "kotlin.label",
+        "kotlin.number",
+        "kotlin.operator"
+      ]
+    },
+    {
+      "id": "latex",
+      "legacyIndex": 51,
+      "resourceId": 63042,
+      "legacyName": "LaTeX File",
+      "styleIds": [
+        "latex.default",
+        "latex.chapter",
+        "latex.section",
+        "latex.subection",
+        "latex.subsubection",
+        "latex.title",
+        "latex.command",
+        "latex.macro",
+        "latex.comment",
+        "latex.math",
+        "latex.specialcharacter",
+        "latex.tag",
+        "latex.parameter",
+        "latex.verbatimsegment",
+        "latex.listcode",
+        "latex.operator"
+      ]
+    },
+    {
+      "id": "lisp",
+      "legacyIndex": 52,
+      "resourceId": 63058,
+      "legacyName": "Lisp Script",
+      "styleIds": [
+        "lisp.default",
+        "lisp.keyword",
+        "lisp.comment",
+        "lisp.string",
+        "lisp.number",
+        "lisp.operator"
+      ]
+    },
+    {
+      "id": "llvm",
+      "legacyIndex": 53,
+      "resourceId": 63060,
+      "legacyName": "LLVM IR",
+      "styleIds": [
+        "llvm.default",
+        "llvm.keyword",
+        "llvm.typekeyword",
+        "llvm.intrinsic",
+        "llvm.instruction",
+        "llvm.attribute",
+        "llvm.metadata",
+        "llvm.comdat",
+        "llvm.globalvariable",
+        "llvm.variable",
+        "llvm.function",
+        "llvm.type",
+        "llvm.comment",
+        "llvm.string",
+        "llvm.escapesequence",
+        "llvm.label",
+        "llvm.number",
+        "llvm.operator"
+      ]
+    },
+    {
+      "id": "lua",
+      "legacyIndex": 54,
+      "resourceId": 63034,
+      "legacyName": "Lua Script",
+      "styleIds": [
+        "lua.default",
+        "lua.keyword",
+        "lua.attribute",
+        "lua.basicfunction",
+        "lua.metamethod",
+        "lua.functiondefinition",
+        "lua.function",
+        "lua.comment",
+        "lua.string",
+        "lua.escapesequence",
+        "lua.formatspecifier",
+        "lua.label",
+        "lua.number",
+        "lua.operator"
+      ]
+    },
+    {
+      "id": "makefile",
+      "legacyIndex": 55,
+      "resourceId": 63045,
+      "legacyName": "Makefile",
+      "styleIds": [
+        "makefile.default",
+        "makefile.comment",
+        "makefile.preprocessor",
+        "makefile.function",
+        "makefile.variable",
+        "makefile.target",
+        "makefile.operator"
+      ]
+    },
+    {
+      "id": "markdown",
+      "legacyIndex": 56,
+      "resourceId": 63092,
+      "legacyName": "Markdown",
+      "styleIds": [
+        "markdown.default",
+        "markdown.header1",
+        "markdown.header2",
+        "markdown.header3",
+        "markdown.header4",
+        "markdown.header5",
+        "markdown.header6",
+        "markdown.metadata",
+        "markdown.horizontalrule",
+        "markdown.blockquote",
+        "markdown.orderedlist",
+        "markdown.unorderedlist",
+        "markdown.definitionlist",
+        "markdown.tasklist",
+        "markdown.examplelist",
+        "markdown.codeblock",
+        "markdown.inlinecode",
+        "markdown.displaymath",
+        "markdown.inlinemath",
+        "markdown.linktext",
+        "markdown.emphasis",
+        "markdown.strong",
+        "markdown.strikethrough",
+        "markdown.superscript",
+        "markdown.subscript",
+        "markdown.citation",
+        "markdown.delimiterrow",
+        "markdown.delimiter",
+        "markdown.emoji",
+        "markdown.escapesequence",
+        "markdown.hardlinebreak",
+        "markdown.lineaddition",
+        "markdown.lineremoval"
+      ]
+    },
+    {
+      "id": "mathematica",
+      "legacyIndex": 57,
+      "resourceId": 63064,
+      "legacyName": "Mathematica",
+      "styleIds": [
+        "mathematica.default",
+        "mathematica.keyword",
+        "mathematica.comment",
+        "mathematica.string",
+        "mathematica.placeholder",
+        "mathematica.number",
+        "mathematica.operator"
+      ]
+    },
+    {
+      "id": "matlab",
+      "legacyIndex": 58,
+      "resourceId": 63040,
+      "legacyName": "MATLAB Code",
+      "styleIds": [
+        "matlab.default",
+        "matlab.keyword",
+        "matlab.attribute",
+        "matlab.command",
+        "matlab.basicfunction",
+        "matlab.function",
+        "matlab.callback",
+        "matlab.comment",
+        "matlab.string",
+        "matlab.number",
+        "matlab.operator"
+      ]
+    },
+    {
+      "id": "nim",
+      "legacyIndex": 59,
+      "resourceId": 63081,
+      "legacyName": "Nim Script",
+      "styleIds": [
+        "nim.default",
+        "nim.keyword",
+        "nim.type",
+        "nim.functiondefinition",
+        "nim.function",
+        "nim.pragma",
+        "nim.comment",
+        "nim.doccomment",
+        "nim.string",
+        "nim.rawstring",
+        "nim.triplequotedstring",
+        "nim.escapesequence",
+        "nim.formatspecifier",
+        "nim.placeholder",
+        "nim.backticks",
+        "nim.number",
+        "nim.operator"
+      ]
+    },
+    {
+      "id": "nsis",
+      "legacyIndex": 60,
+      "resourceId": 63056,
+      "legacyName": "Nsis Setup Script",
+      "styleIds": [
+        "nsis.default",
+        "nsis.keyword",
+        "nsis.preprocessor",
+        "nsis.instruction",
+        "nsis.comment",
+        "nsis.string",
+        "nsis.escapesequence",
+        "nsis.label",
+        "nsis.variable",
+        "nsis.number",
+        "nsis.operator"
+      ]
+    },
+    {
+      "id": "ocaml",
+      "legacyIndex": 61,
+      "resourceId": 63083,
+      "legacyName": "OCaml Source",
+      "styleIds": [
+        "ocaml.default",
+        "ocaml.keyword",
+        "ocaml.type",
+        "ocaml.attribute",
+        "ocaml.tag",
+        "ocaml.comment",
+        "ocaml.string",
+        "ocaml.rawstring",
+        "ocaml.escapesequence",
+        "ocaml.formatspecifier",
+        "ocaml.number",
+        "ocaml.operator"
+      ]
+    },
+    {
+      "id": "pascal",
+      "legacyIndex": 62,
+      "resourceId": 63024,
+      "legacyName": "Pascal Source",
+      "styleIds": [
+        "pascal.default",
+        "pascal.keyword",
+        "pascal.typekeyword",
+        "pascal.basicfunction",
+        "pascal.function",
+        "pascal.preprocessor",
+        "pascal.comment",
+        "pascal.string",
+        "pascal.number",
+        "pascal.operator",
+        "pascal.inlineasm"
+      ]
+    },
+    {
+      "id": "perl",
+      "legacyIndex": 63,
+      "resourceId": 63031,
+      "legacyName": "Perl Script",
+      "styleIds": [
+        "perl.default",
+        "perl.keyword",
+        "perl.comment",
+        "perl.singlequotedstring",
+        "perl.doublequotedstring",
+        "perl.scalarvar",
+        "perl.arrayvar",
+        "perl.hashvar",
+        "perl.symboltablevar",
+        "perl.regex",
+        "perl.substitution",
+        "perl.backticks",
+        "perl.heredocdelimiter",
+        "perl.heredocsinglequoted",
+        "perl.heredocdoublequoted",
+        "perl.heredocbackticks",
+        "perl.stringarray",
+        "perl.prototype",
+        "perl.formatidentifier",
+        "perl.formatbody",
+        "perl.podcommon",
+        "perl.podverbatim",
+        "perl.datasection",
+        "perl.number",
+        "perl.operator",
+        "perl.parsingerror"
+      ]
+    },
+    {
+      "id": "php",
+      "legacyIndex": 64,
+      "resourceId": 63029,
+      "legacyName": "PHP Script",
+      "styleIds": [
+        "php.default",
+        "php.keyword",
+        "php.typekeyword",
+        "php.attribute",
+        "php.class",
+        "php.interface",
+        "php.trait",
+        "php.enumeration",
+        "php.functiondefinition",
+        "php.function",
+        "php.magicmethod",
+        "php.magicconstant",
+        "php.constant",
+        "php.predefinedvariable",
+        "php.variable",
+        "php.comment",
+        "php.doccomment",
+        "php.doccommenttag",
+        "php.taskmarker",
+        "php.string",
+        "php.heredocstring",
+        "php.nowdocstring",
+        "php.backticks",
+        "php.escapesequence",
+        "php.formatspecifier",
+        "php.label",
+        "php.number",
+        "php.operator"
+      ]
+    },
+    {
+      "id": "powerbuilder",
+      "legacyIndex": 65,
+      "resourceId": 63020,
+      "legacyName": "PowerBuilder Source",
+      "styleIds": [
+        "powerbuilder.default",
+        "powerbuilder.keyword",
+        "powerbuilder.typekeyword",
+        "powerbuilder.preprocessor",
+        "powerbuilder.function",
+        "powerbuilder.parameter",
+        "powerbuilder.variable",
+        "powerbuilder.comment",
+        "powerbuilder.string",
+        "powerbuilder.escapesequence",
+        "powerbuilder.datetime",
+        "powerbuilder.label",
+        "powerbuilder.number",
+        "powerbuilder.operator"
+      ]
+    },
+    {
+      "id": "powershell",
+      "legacyIndex": 66,
+      "resourceId": 63038,
+      "legacyName": "PowerShell Script",
+      "styleIds": [
+        "powershell.default",
+        "powershell.keyword",
+        "powershell.type",
+        "powershell.directive",
+        "powershell.attribute",
+        "powershell.class",
+        "powershell.enumeration",
+        "powershell.cmdlet",
+        "powershell.alias",
+        "powershell.functiondefinition",
+        "powershell.function",
+        "powershell.parameter",
+        "powershell.predefinedvariable",
+        "powershell.variable",
+        "powershell.comment",
+        "powershell.doccommenttag",
+        "powershell.string",
+        "powershell.verbatimstring",
+        "powershell.escapesequence",
+        "powershell.label",
+        "powershell.number",
+        "powershell.operator"
+      ]
+    },
+    {
+      "id": "r",
+      "legacyIndex": 67,
+      "resourceId": 63063,
+      "legacyName": "R Code",
+      "styleIds": [
+        "r.default",
+        "r.keyword",
+        "r.directive",
+        "r.function",
+        "r.comment",
+        "r.string",
+        "r.rawstring",
+        "r.escapesequence",
+        "r.formatspecifier",
+        "r.backticks",
+        "r.number",
+        "r.operator"
+      ]
+    },
+    {
+      "id": "rebol",
+      "legacyIndex": 68,
+      "resourceId": 63074,
+      "legacyName": "Rebol Script",
+      "styleIds": [
+        "rebol.default",
+        "rebol.keyword",
+        "rebol.type",
+        "rebol.directive",
+        "rebol.property",
+        "rebol.macro",
+        "rebol.comment",
+        "rebol.string",
+        "rebol.rawstring",
+        "rebol.bytes",
+        "rebol.escapesequence",
+        "rebol.htmltag",
+        "rebol.htmlattribute",
+        "rebol.htmlvalue",
+        "rebol.file",
+        "rebol.money",
+        "rebol.issue",
+        "rebol.datetime",
+        "rebol.pair",
+        "rebol.tuple",
+        "rebol.symbol",
+        "rebol.number",
+        "rebol.operator"
+      ]
+    },
+    {
+      "id": "resourcescript",
+      "legacyIndex": 69,
+      "resourceId": 63005,
+      "legacyName": "Resource Script",
+      "styleIds": [
+        "resourcescript.default",
+        "resourcescript.keyword",
+        "resourcescript.preprocessor",
+        "resourcescript.comment",
+        "resourcescript.string",
+        "resourcescript.escapesequence",
+        "resourcescript.number",
+        "resourcescript.operator"
+      ]
+    },
+    {
+      "id": "ruby",
+      "legacyIndex": 70,
+      "resourceId": 63033,
+      "legacyName": "Ruby Script",
+      "styleIds": [
+        "ruby.default",
+        "ruby.keyword",
+        "ruby.module",
+        "ruby.class",
+        "ruby.functiondefinition",
+        "ruby.function",
+        "ruby.builtinconstant",
+        "ruby.builtinfunction",
+        "ruby.comment",
+        "ruby.singlequotedstring",
+        "ruby.doublequotedstring",
+        "ruby.pod",
+        "ruby.backticks",
+        "ruby.regex",
+        "ruby.symbol",
+        "ruby.variable",
+        "ruby.heredocdelimiter",
+        "ruby.heredocsinglequoted",
+        "ruby.heredocdoublequoted",
+        "ruby.heredocbackticks",
+        "ruby.stringarray",
+        "ruby.symbolarray",
+        "ruby.datasection",
+        "ruby.number",
+        "ruby.operator"
+      ]
+    },
+    {
+      "id": "rust",
+      "legacyIndex": 71,
+      "resourceId": 63067,
+      "legacyName": "Rust Source",
+      "styleIds": [
+        "rust.default",
+        "rust.keyword",
+        "rust.reservedword",
+        "rust.type",
+        "rust.attribute",
+        "rust.structure",
+        "rust.union",
+        "rust.trait",
+        "rust.enumeration",
+        "rust.constant",
+        "rust.macro",
+        "rust.functiondefinition",
+        "rust.function",
+        "rust.comment",
+        "rust.doccomment",
+        "rust.taskmarker",
+        "rust.string",
+        "rust.rawstring",
+        "rust.bytes",
+        "rust.rawbytes",
+        "rust.escapesequence",
+        "rust.formatspecifier",
+        "rust.placeholder",
+        "rust.lifetime",
+        "rust.variable",
+        "rust.number",
+        "rust.operator"
+      ]
+    },
+    {
+      "id": "sas",
+      "legacyIndex": 72,
+      "resourceId": 63065,
+      "legacyName": "SAS File",
+      "styleIds": [
+        "sas.default",
+        "sas.keyword",
+        "sas.macrokeyword",
+        "sas.macrofunction",
+        "sas.macro",
+        "sas.basicfunction",
+        "sas.comment",
+        "sas.string",
+        "sas.number",
+        "sas.operator"
+      ]
+    },
+    {
+      "id": "scala",
+      "legacyIndex": 73,
+      "resourceId": 63014,
+      "legacyName": "Scala Script",
+      "styleIds": [
+        "scala.default",
+        "scala.keyword",
+        "scala.annotation",
+        "scala.class",
+        "scala.trait",
+        "scala.enumeration",
+        "scala.methoddefinition",
+        "scala.method",
+        "scala.comment",
+        "scala.doccomment",
+        "scala.doccommenttag",
+        "scala.taskmarker",
+        "scala.string",
+        "scala.triplequotedstring",
+        "scala.escapesequence",
+        "scala.backticks",
+        "scala.xmltag",
+        "scala.xmlattribute",
+        "scala.xmlvalue",
+        "scala.symbol",
+        "scala.number",
+        "scala.operator"
+      ]
+    },
+    {
+      "id": "bash",
+      "legacyIndex": 74,
+      "resourceId": 63037,
+      "legacyName": "Shell Script",
+      "styleIds": [
+        "bash.default",
+        "bash.keyword",
+        "bash.function",
+        "bash.comment",
+        "bash.doublequotedstring",
+        "bash.singlequotedstring",
+        "bash.scalarvar",
+        "bash.parameterexpansion",
+        "bash.backticks",
+        "bash.heredocdelimiter",
+        "bash.heredocsinglequoted",
+        "bash.number",
+        "bash.operator",
+        "bash.parsingerror"
+      ]
+    },
+    {
+      "id": "swift",
+      "legacyIndex": 75,
+      "resourceId": 63075,
+      "legacyName": "Swift Source",
+      "styleIds": [
+        "swift.default",
+        "swift.keyword",
+        "swift.directive",
+        "swift.attribute",
+        "swift.class",
+        "swift.structure",
+        "swift.protocol",
+        "swift.enumeration",
+        "swift.macro",
+        "swift.functiondefinition",
+        "swift.function",
+        "swift.comment",
+        "swift.doccomment",
+        "swift.taskmarker",
+        "swift.string",
+        "swift.triplequotedstring",
+        "swift.delimitedstring",
+        "swift.regex",
+        "swift.escapesequence",
+        "swift.key",
+        "swift.label",
+        "swift.variable",
+        "swift.number",
+        "swift.operator"
+      ]
+    },
+    {
+      "id": "tcl",
+      "legacyIndex": 76,
+      "resourceId": 63035,
+      "legacyName": "Tcl Script",
+      "styleIds": [
+        "tcl.default",
+        "tcl.keyword",
+        "tcl.comment",
+        "tcl.string",
+        "tcl.substitution",
+        "tcl.modifier",
+        "tcl.number",
+        "tcl.operator"
+      ]
+    },
+    {
+      "id": "texinfo",
+      "legacyIndex": 77,
+      "resourceId": 63057,
+      "legacyName": "Texinfo File",
+      "styleIds": [
+        "texinfo.default",
+        "texinfo.command",
+        "texinfo.macro",
+        "texinfo.comment",
+        "texinfo.chapter",
+        "texinfo.section",
+        "texinfo.subection",
+        "texinfo.subsubection",
+        "texinfo.title",
+        "texinfo.verbatimsegment",
+        "texinfo.specialcharacter",
+        "texinfo.operator"
+      ]
+    },
+    {
+      "id": "toml",
+      "legacyIndex": 78,
+      "resourceId": 63071,
+      "legacyName": "TOML File",
+      "styleIds": [
+        "toml.default",
+        "toml.keyword",
+        "toml.table",
+        "toml.key",
+        "toml.comment",
+        "toml.string",
+        "toml.triplequotedstring",
+        "toml.escapesequence",
+        "toml.datetime",
+        "toml.number",
+        "toml.operator"
+      ]
+    },
+    {
+      "id": "typescript",
+      "legacyIndex": 79,
+      "resourceId": 63076,
+      "legacyName": "TypeScript",
+      "styleIds": [
+        "typescript.default",
+        "typescript.keyword",
+        "typescript.typekeyword",
+        "typescript.directive",
+        "typescript.class",
+        "typescript.interface",
+        "typescript.enumeration",
+        "typescript.decorator",
+        "typescript.functiondefinition",
+        "typescript.function",
+        "typescript.constant",
+        "typescript.comment",
+        "typescript.doccomment",
+        "typescript.doccommenttag",
+        "typescript.taskmarker",
+        "typescript.string",
+        "typescript.templateliteral",
+        "typescript.escapesequence",
+        "typescript.property",
+        "typescript.regex",
+        "typescript.xmltag",
+        "typescript.xmlattribute",
+        "typescript.label",
+        "typescript.number",
+        "typescript.operator"
+      ]
+    },
+    {
+      "id": "typst",
+      "legacyIndex": 80,
+      "resourceId": 63017,
+      "legacyName": "Typst File",
+      "styleIds": [
+        "typst.default",
+        "typst.header1",
+        "typst.header2",
+        "typst.header3",
+        "typst.header4",
+        "typst.header5",
+        "typst.header6",
+        "typst.keyword",
+        "typst.function",
+        "typst.comment",
+        "typst.string",
+        "typst.math",
+        "typst.symbol",
+        "typst.orderedlist",
+        "typst.unorderedlist",
+        "typst.definitionlist",
+        "typst.emphasis",
+        "typst.strong",
+        "typst.inlinecode",
+        "typst.codeblock",
+        "typst.escapesequence",
+        "typst.hardlinebreak",
+        "typst.property",
+        "typst.variable",
+        "typst.label",
+        "typst.number",
+        "typst.operator"
+      ]
+    },
+    {
+      "id": "vbscript",
+      "legacyIndex": 81,
+      "resourceId": 63030,
+      "legacyName": "VBScript",
+      "styleIds": [
+        "vbscript.default",
+        "vbscript.keyword",
+        "vbscript.class",
+        "vbscript.basicfunction",
+        "vbscript.functiondefinition",
+        "vbscript.constant",
+        "vbscript.comment",
+        "vbscript.string",
+        "vbscript.datetime",
+        "vbscript.label",
+        "vbscript.number",
+        "vbscript.operator"
+      ]
+    },
+    {
+      "id": "verilog",
+      "legacyIndex": 82,
+      "resourceId": 63044,
+      "legacyName": "Verilog HDL Source",
+      "styleIds": [
+        "verilog.default",
+        "verilog.keyword",
+        "verilog.typekeyword",
+        "verilog.directive",
+        "verilog.attribute",
+        "verilog.module",
+        "verilog.systemtaskfunction",
+        "verilog.function",
+        "verilog.macro",
+        "verilog.comment",
+        "verilog.doccomment",
+        "verilog.string",
+        "verilog.escapesequence",
+        "verilog.formatspecifier",
+        "verilog.event",
+        "verilog.label",
+        "verilog.number",
+        "verilog.operator"
+      ]
+    },
+    {
+      "id": "vhdl",
+      "legacyIndex": 83,
+      "resourceId": 63043,
+      "legacyName": "VHDL Source",
+      "styleIds": [
+        "vhdl.default",
+        "vhdl.keyword",
+        "vhdl.directive",
+        "vhdl.attribute",
+        "vhdl.package",
+        "vhdl.standardfunction",
+        "vhdl.standardtype",
+        "vhdl.type",
+        "vhdl.constant",
+        "vhdl.function",
+        "vhdl.comment",
+        "vhdl.doccomment",
+        "vhdl.string",
+        "vhdl.label",
+        "vhdl.number",
+        "vhdl.operator"
+      ]
+    },
+    {
+      "id": "vim",
+      "legacyIndex": 84,
+      "resourceId": 63059,
+      "legacyName": "Vim Script",
+      "styleIds": [
+        "vim.default",
+        "vim.keyword",
+        "vim.command",
+        "vim.function",
+        "vim.comment",
+        "vim.string",
+        "vim.hexstring",
+        "vim.regex",
+        "vim.escapesequence",
+        "vim.variable",
+        "vim.register",
+        "vim.option",
+        "vim.number",
+        "vim.operator"
+      ]
+    },
+    {
+      "id": "visualbasic",
+      "legacyIndex": 85,
+      "resourceId": 63021,
+      "legacyName": "Visual Basic",
+      "styleIds": [
+        "visualbasic.default",
+        "visualbasic.keyword",
+        "visualbasic.typekeyword",
+        "visualbasic.preprocessor",
+        "visualbasic.attribute",
+        "visualbasic.class",
+        "visualbasic.interface",
+        "visualbasic.enumeration",
+        "visualbasic.basicfunction",
+        "visualbasic.functiondefinition",
+        "visualbasic.constant",
+        "visualbasic.comment",
+        "visualbasic.string",
+        "visualbasic.formatspecifier",
+        "visualbasic.datetime",
+        "visualbasic.label",
+        "visualbasic.number",
+        "visualbasic.operator"
+      ]
+    },
+    {
+      "id": "wasm",
+      "legacyIndex": 86,
+      "resourceId": 63070,
+      "legacyName": "WebAssembly",
+      "styleIds": [
+        "wasm.default",
+        "wasm.keyword",
+        "wasm.type",
+        "wasm.annotation",
+        "wasm.instruction",
+        "wasm.comment",
+        "wasm.string",
+        "wasm.escapesequence",
+        "wasm.symbol",
+        "wasm.number",
+        "wasm.operator"
+      ]
+    },
+    {
+      "id": "winhex",
+      "legacyIndex": 87,
+      "resourceId": 63086,
+      "legacyName": "WinHex Script",
+      "styleIds": [
+        "winhex.default",
+        "winhex.keyword",
+        "winhex.type",
+        "winhex.command",
+        "winhex.comment",
+        "winhex.string",
+        "winhex.number",
+        "winhex.operator"
+      ]
+    },
+    {
+      "id": "yaml",
+      "legacyIndex": 88,
+      "resourceId": 63069,
+      "legacyName": "YAML Document",
+      "styleIds": [
+        "yaml.default",
+        "yaml.keyword",
+        "yaml.directive",
+        "yaml.document",
+        "yaml.property",
+        "yaml.anchor",
+        "yaml.alias",
+        "yaml.tag",
+        "yaml.comment",
+        "yaml.string",
+        "yaml.textblock",
+        "yaml.escapesequence",
+        "yaml.datetime",
+        "yaml.number",
+        "yaml.operator"
+      ]
+    },
+    {
+      "id": "zig",
+      "legacyIndex": 89,
+      "resourceId": 63082,
+      "legacyName": "Zig Source",
+      "styleIds": [
+        "zig.default",
+        "zig.keyword",
+        "zig.type",
+        "zig.builtinfunction",
+        "zig.functiondefinition",
+        "zig.function",
+        "zig.comment",
+        "zig.doccomment",
+        "zig.string",
+        "zig.rawstring",
+        "zig.escapesequence",
+        "zig.formatspecifier",
+        "zig.placeholder",
+        "zig.number",
+        "zig.operator"
+      ]
+    }
+  ],
+  "consumers": [
+    {
+      "path": "src/CompletionContext.cpp",
+      "references": [
+        {
+          "line": 87,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 88,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        },
+        {
+          "line": 90,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        },
+        {
+          "line": 105,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 107,
+          "symbols": [
+            "NP2LEX_HTML",
+            "NP2LEX_PHP",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 109,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 110,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 116,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 121,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 127,
+          "symbols": [
+            "NP2LEX_AUTOHOTKEY"
+          ]
+        },
+        {
+          "line": 138,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 150,
+          "symbols": [
+            "NP2LEX_ABAQUS"
+          ]
+        },
+        {
+          "line": 151,
+          "symbols": [
+            "NP2LEX_APDL"
+          ]
+        },
+        {
+          "line": 159,
+          "symbols": [
+            "NP2LEX_BASH"
+          ]
+        },
+        {
+          "line": 166,
+          "symbols": [
+            "NP2LEX_CANGJIE"
+          ]
+        },
+        {
+          "line": 174,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 191,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 192,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 194,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        },
+        {
+          "line": 220,
+          "symbols": [
+            "NP2LEX_CSHARP"
+          ]
+        },
+        {
+          "line": 231,
+          "symbols": [
+            "NP2LEX_CONFIG"
+          ]
+        },
+        {
+          "line": 232,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 233,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 236,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 245,
+          "symbols": [
+            "NP2LEX_MARKDOWN"
+          ]
+        },
+        {
+          "line": 252,
+          "symbols": [
+            "NP2LEX_DLANG"
+          ]
+        },
+        {
+          "line": 260,
+          "symbols": [
+            "NP2LEX_DART"
+          ]
+        },
+        {
+          "line": 267,
+          "symbols": [
+            "NP2LEX_FORTRAN"
+          ]
+        },
+        {
+          "line": 274,
+          "symbols": [
+            "NP2LEX_FSHARP"
+          ]
+        },
+        {
+          "line": 285,
+          "symbols": [
+            "NP2LEX_HASKELL"
+          ]
+        },
+        {
+          "line": 292,
+          "symbols": [
+            "NP2LEX_HAXE"
+          ]
+        },
+        {
+          "line": 303,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 310,
+          "symbols": [
+            "NP2LEX_GRAPHVIZ"
+          ]
+        },
+        {
+          "line": 317,
+          "symbols": [
+            "NP2LEX_GRADLE"
+          ]
+        },
+        {
+          "line": 318,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 319,
+          "symbols": [
+            "NP2LEX_JAVA"
+          ]
+        },
+        {
+          "line": 334,
+          "symbols": [
+            "NP2LEX_ACTIONSCRIPT"
+          ]
+        },
+        {
+          "line": 335,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 336,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 337,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 340,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 354,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 361,
+          "symbols": [
+            "NP2LEX_KOTLIN"
+          ]
+        },
+        {
+          "line": 374,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 375,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 381,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 385,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 392,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 399,
+          "symbols": [
+            "NP2LEX_PERL"
+          ]
+        },
+        {
+          "line": 406,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 418,
+          "symbols": [
+            "NP2LEX_POWERBUILDER"
+          ]
+        },
+        {
+          "line": 425,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 432,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 439,
+          "symbols": [
+            "NP2LEX_REBOL"
+          ]
+        },
+        {
+          "line": 446,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 453,
+          "symbols": [
+            "NP2LEX_SAS"
+          ]
+        },
+        {
+          "line": 460,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 473,
+          "symbols": [
+            "NP2LEX_SMALI"
+          ]
+        },
+        {
+          "line": 480,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 488,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 499,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 507,
+          "symbols": [
+            "NP2LEX_VISUALBASIC"
+          ]
+        },
+        {
+          "line": 514,
+          "symbols": [
+            "NP2LEX_ZIG"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionDocument.cpp",
+      "references": [
+        {
+          "line": 14,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 76,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 105,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionEngine.cpp",
+      "references": [
+        {
+          "line": 119,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 131,
+          "symbols": [
+            "NP2LEX_2NDTEXTFILE"
+          ]
+        },
+        {
+          "line": 132,
+          "symbols": [
+            "NP2LEX_ANSI"
+          ]
+        },
+        {
+          "line": 133,
+          "symbols": [
+            "NP2LEX_BATCH"
+          ]
+        },
+        {
+          "line": 134,
+          "symbols": [
+            "NP2LEX_BLOCKDIAG"
+          ]
+        },
+        {
+          "line": 135,
+          "symbols": [
+            "NP2LEX_CSV"
+          ]
+        },
+        {
+          "line": 136,
+          "symbols": [
+            "NP2LEX_GRAPHVIZ"
+          ]
+        },
+        {
+          "line": 137,
+          "symbols": [
+            "NP2LEX_LISP"
+          ]
+        },
+        {
+          "line": 138,
+          "symbols": [
+            "NP2LEX_SMALI"
+          ]
+        },
+        {
+          "line": 139,
+          "symbols": [
+            "NP2LEX_TEXTFILE"
+          ]
+        },
+        {
+          "line": 140,
+          "symbols": [
+            "NP2LEX_WINHEX"
+          ]
+        },
+        {
+          "line": 144,
+          "symbols": [
+            "NP2LEX_ACTIONSCRIPT"
+          ]
+        },
+        {
+          "line": 145,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 155,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 156,
+          "symbols": [
+            "NP2LEX_CIL"
+          ]
+        },
+        {
+          "line": 157,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 161,
+          "symbols": [
+            "NP2LEX_AWK"
+          ]
+        },
+        {
+          "line": 167,
+          "symbols": [
+            "NP2LEX_BASH"
+          ]
+        },
+        {
+          "line": 173,
+          "symbols": [
+            "NP2LEX_CANGJIE"
+          ]
+        },
+        {
+          "line": 184,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 207,
+          "symbols": [
+            "NP2LEX_CSHARP"
+          ]
+        },
+        {
+          "line": 222,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 228,
+          "symbols": [
+            "NP2LEX_DART"
+          ]
+        },
+        {
+          "line": 240,
+          "symbols": [
+            "NP2LEX_DLANG"
+          ]
+        },
+        {
+          "line": 245,
+          "symbols": [
+            "NP2LEX_ELIXIR"
+          ]
+        },
+        {
+          "line": 251,
+          "symbols": [
+            "NP2LEX_ERLANG"
+          ]
+        },
+        {
+          "line": 259,
+          "symbols": [
+            "NP2LEX_FORTRAN"
+          ]
+        },
+        {
+          "line": 269,
+          "symbols": [
+            "NP2LEX_FSHARP"
+          ]
+        },
+        {
+          "line": 276,
+          "symbols": [
+            "NP2LEX_GN"
+          ]
+        },
+        {
+          "line": 281,
+          "symbols": [
+            "NP2LEX_GO"
+          ]
+        },
+        {
+          "line": 285,
+          "symbols": [
+            "NP2LEX_GRADLE"
+          ]
+        },
+        {
+          "line": 286,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 294,
+          "symbols": [
+            "NP2LEX_HAXE"
+          ]
+        },
+        {
+          "line": 300,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 301,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 333,
+          "symbols": [
+            "NP2LEX_JAVA"
+          ]
+        },
+        {
+          "line": 341,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 347,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 354,
+          "symbols": [
+            "NP2LEX_KOTLIN"
+          ]
+        },
+        {
+          "line": 363,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 375,
+          "symbols": [
+            "NP2LEX_LLVM"
+          ]
+        },
+        {
+          "line": 376,
+          "symbols": [
+            "NP2LEX_WASM"
+          ]
+        },
+        {
+          "line": 383,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 387,
+          "symbols": [
+            "NP2LEX_MAKEFILE"
+          ]
+        },
+        {
+          "line": 388,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 394,
+          "symbols": [
+            "NP2LEX_MARKDOWN"
+          ]
+        },
+        {
+          "line": 408,
+          "symbols": [
+            "NP2LEX_NIM"
+          ]
+        },
+        {
+          "line": 415,
+          "symbols": [
+            "NP2LEX_OCAML"
+          ]
+        },
+        {
+          "line": 419,
+          "symbols": [
+            "NP2LEX_PERL"
+          ]
+        },
+        {
+          "line": 428,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 464,
+          "symbols": [
+            "NP2LEX_POWERBUILDER"
+          ]
+        },
+        {
+          "line": 471,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 481,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 515,
+          "symbols": [
+            "NP2LEX_REBOL"
+          ]
+        },
+        {
+          "line": 526,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 537,
+          "symbols": [
+            "NP2LEX_RLANG"
+          ]
+        },
+        {
+          "line": 544,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 553,
+          "symbols": [
+            "NP2LEX_RUST"
+          ]
+        },
+        {
+          "line": 566,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 583,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 592,
+          "symbols": [
+            "NP2LEX_TCL"
+          ]
+        },
+        {
+          "line": 597,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 608,
+          "symbols": [
+            "NP2LEX_TYPST"
+          ]
+        },
+        {
+          "line": 619,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 624,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 628,
+          "symbols": [
+            "NP2LEX_VIM"
+          ]
+        },
+        {
+          "line": 632,
+          "symbols": [
+            "NP2LEX_ZIG"
+          ]
+        },
+        {
+          "line": 667,
+          "symbols": [
+            "GetCompletionCache",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 681,
+          "symbols": [
+            "GetCompletionExtraKeywords"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionEngine.h",
+      "references": [
+        {
+          "line": 5,
+          "symbols": [
+            "EDITLEXER",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 13,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 15,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 19,
+          "symbols": [
+            "GetCompletionCache",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 21,
+          "symbols": [
+            "GetCompletionExtraKeywords"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionIndent.cpp",
+      "references": [
+        {
+          "line": 23,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 42,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 43,
+          "symbols": [
+            "NP2LEX_BASH"
+          ]
+        },
+        {
+          "line": 69,
+          "symbols": [
+            "NP2LEX_CMAKE"
+          ]
+        },
+        {
+          "line": 87,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 88,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 90,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 92,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 101,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 108,
+          "symbols": [
+            "NP2LEX_MAKEFILE"
+          ]
+        },
+        {
+          "line": 120,
+          "symbols": [
+            "NP2LEX_MATLAB"
+          ]
+        },
+        {
+          "line": 145,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 146,
+          "symbols": [
+            "NP2LEX_PASCAL"
+          ]
+        },
+        {
+          "line": 147,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 154,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 185,
+          "symbols": [
+            "NP2LEX_VISUALBASIC"
+          ]
+        },
+        {
+          "line": 186,
+          "symbols": [
+            "NP2LEX_VBSCRIPT"
+          ]
+        },
+        {
+          "line": 187,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 188,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 194,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionPair.cpp",
+      "references": [
+        {
+          "line": 12,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 13,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 14,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 36,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 84,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 154,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 240,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 314,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/EditAdvanced.cpp",
+      "references": [
+        {
+          "line": 451,
+          "symbols": [
+            "GetDocumentLexer",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 717,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 843,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/EditCaseMapping.cpp",
+      "references": [
+        {
+          "line": 257,
+          "symbols": [
+            "GetDocumentLexer",
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/EditCodeFormat.cpp",
+      "references": [
+        {
+          "line": 29,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 58,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 368,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 372,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/EditComments.cpp",
+      "references": [
+        {
+          "line": 53,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 55,
+          "symbols": [
+            "NP2LEX_ASM"
+          ]
+        },
+        {
+          "line": 65,
+          "symbols": [
+            "NP2LEX_BASH"
+          ]
+        },
+        {
+          "line": 68,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 72,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 73,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 74,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 82,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 87,
+          "symbols": [
+            "NP2LEX_VIM"
+          ]
+        },
+        {
+          "line": 92,
+          "symbols": [
+            "NP2LEX_MATLAB"
+          ]
+        },
+        {
+          "line": 96,
+          "symbols": [
+            "NP2LEX_ABAQUS"
+          ]
+        },
+        {
+          "line": 100,
+          "symbols": [
+            "NP2LEX_ACTIONSCRIPT"
+          ]
+        },
+        {
+          "line": 101,
+          "symbols": [
+            "NP2LEX_ASYMPTOTE"
+          ]
+        },
+        {
+          "line": 102,
+          "symbols": [
+            "NP2LEX_BLOCKDIAG"
+          ]
+        },
+        {
+          "line": 103,
+          "symbols": [
+            "NP2LEX_CANGJIE"
+          ]
+        },
+        {
+          "line": 104,
+          "symbols": [
+            "NP2LEX_CIL"
+          ]
+        },
+        {
+          "line": 105,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 106,
+          "symbols": [
+            "NP2LEX_CSHARP"
+          ]
+        },
+        {
+          "line": 107,
+          "symbols": [
+            "NP2LEX_DART"
+          ]
+        },
+        {
+          "line": 108,
+          "symbols": [
+            "NP2LEX_DLANG"
+          ]
+        },
+        {
+          "line": 109,
+          "symbols": [
+            "NP2LEX_FSHARP"
+          ]
+        },
+        {
+          "line": 110,
+          "symbols": [
+            "NP2LEX_GO"
+          ]
+        },
+        {
+          "line": 111,
+          "symbols": [
+            "NP2LEX_GRADLE"
+          ]
+        },
+        {
+          "line": 112,
+          "symbols": [
+            "NP2LEX_GRAPHVIZ"
+          ]
+        },
+        {
+          "line": 113,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 114,
+          "symbols": [
+            "NP2LEX_HAXE"
+          ]
+        },
+        {
+          "line": 115,
+          "symbols": [
+            "NP2LEX_JAVA"
+          ]
+        },
+        {
+          "line": 116,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 117,
+          "symbols": [
+            "NP2LEX_JSON"
+          ]
+        },
+        {
+          "line": 118,
+          "symbols": [
+            "NP2LEX_KOTLIN"
+          ]
+        },
+        {
+          "line": 119,
+          "symbols": [
+            "NP2LEX_PASCAL"
+          ]
+        },
+        {
+          "line": 120,
+          "symbols": [
+            "NP2LEX_POWERBUILDER"
+          ]
+        },
+        {
+          "line": 121,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 122,
+          "symbols": [
+            "NP2LEX_RUST"
+          ]
+        },
+        {
+          "line": 123,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 124,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 125,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 126,
+          "symbols": [
+            "NP2LEX_TYPST"
+          ]
+        },
+        {
+          "line": 127,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 128,
+          "symbols": [
+            "NP2LEX_WINHEX"
+          ]
+        },
+        {
+          "line": 129,
+          "symbols": [
+            "NP2LEX_ZIG"
+          ]
+        },
+        {
+          "line": 133,
+          "symbols": [
+            "NP2LEX_APDL"
+          ]
+        },
+        {
+          "line": 134,
+          "symbols": [
+            "NP2LEX_FORTRAN"
+          ]
+        },
+        {
+          "line": 138,
+          "symbols": [
+            "NP2LEX_AUTOHOTKEY"
+          ]
+        },
+        {
+          "line": 139,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 140,
+          "symbols": [
+            "NP2LEX_INI"
+          ]
+        },
+        {
+          "line": 141,
+          "symbols": [
+            "NP2LEX_LISP"
+          ]
+        },
+        {
+          "line": 142,
+          "symbols": [
+            "NP2LEX_LLVM"
+          ]
+        },
+        {
+          "line": 143,
+          "symbols": [
+            "NP2LEX_REBOL"
+          ]
+        },
+        {
+          "line": 147,
+          "symbols": [
+            "NP2LEX_AVISYNTH"
+          ]
+        },
+        {
+          "line": 148,
+          "symbols": [
+            "NP2LEX_AWK"
+          ]
+        },
+        {
+          "line": 149,
+          "symbols": [
+            "NP2LEX_CMAKE"
+          ]
+        },
+        {
+          "line": 150,
+          "symbols": [
+            "NP2LEX_COFFEESCRIPT"
+          ]
+        },
+        {
+          "line": 151,
+          "symbols": [
+            "NP2LEX_CONFIG"
+          ]
+        },
+        {
+          "line": 152,
+          "symbols": [
+            "NP2LEX_ELIXIR"
+          ]
+        },
+        {
+          "line": 153,
+          "symbols": [
+            "NP2LEX_GN"
+          ]
+        },
+        {
+          "line": 154,
+          "symbols": [
+            "NP2LEX_JAMFILE"
+          ]
+        },
+        {
+          "line": 155,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 156,
+          "symbols": [
+            "NP2LEX_MAKEFILE"
+          ]
+        },
+        {
+          "line": 157,
+          "symbols": [
+            "NP2LEX_NIM"
+          ]
+        },
+        {
+          "line": 158,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 159,
+          "symbols": [
+            "NP2LEX_PERL"
+          ]
+        },
+        {
+          "line": 160,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 161,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 162,
+          "symbols": [
+            "NP2LEX_RLANG"
+          ]
+        },
+        {
+          "line": 163,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 164,
+          "symbols": [
+            "NP2LEX_SMALI"
+          ]
+        },
+        {
+          "line": 165,
+          "symbols": [
+            "NP2LEX_TCL"
+          ]
+        },
+        {
+          "line": 166,
+          "symbols": [
+            "NP2LEX_TOML"
+          ]
+        },
+        {
+          "line": 167,
+          "symbols": [
+            "NP2LEX_YAML"
+          ]
+        },
+        {
+          "line": 171,
+          "symbols": [
+            "NP2LEX_BATCH"
+          ]
+        },
+        {
+          "line": 175,
+          "symbols": [
+            "NP2LEX_ERLANG"
+          ]
+        },
+        {
+          "line": 176,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 180,
+          "symbols": [
+            "NP2LEX_HASKELL"
+          ]
+        },
+        {
+          "line": 181,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 182,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 186,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 190,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 194,
+          "symbols": [
+            "NP2LEX_VBSCRIPT"
+          ]
+        },
+        {
+          "line": 195,
+          "symbols": [
+            "NP2LEX_VISUALBASIC"
+          ]
+        },
+        {
+          "line": 199,
+          "symbols": [
+            "NP2LEX_WASM"
+          ]
+        },
+        {
+          "line": 212,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 214,
+          "symbols": [
+            "NP2LEX_BLOCKDIAG"
+          ]
+        },
+        {
+          "line": 215,
+          "symbols": [
+            "NP2LEX_GRAPHVIZ"
+          ]
+        },
+        {
+          "line": 221,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 232,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 233,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 234,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 247,
+          "symbols": [
+            "NP2LEX_MATLAB"
+          ]
+        },
+        {
+          "line": 258,
+          "symbols": [
+            "NP2LEX_ACTIONSCRIPT"
+          ]
+        },
+        {
+          "line": 259,
+          "symbols": [
+            "NP2LEX_ASM"
+          ]
+        },
+        {
+          "line": 260,
+          "symbols": [
+            "NP2LEX_ASYMPTOTE"
+          ]
+        },
+        {
+          "line": 261,
+          "symbols": [
+            "NP2LEX_AUTOHOTKEY"
+          ]
+        },
+        {
+          "line": 262,
+          "symbols": [
+            "NP2LEX_AVISYNTH"
+          ]
+        },
+        {
+          "line": 263,
+          "symbols": [
+            "NP2LEX_CANGJIE"
+          ]
+        },
+        {
+          "line": 264,
+          "symbols": [
+            "NP2LEX_CIL"
+          ]
+        },
+        {
+          "line": 265,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 266,
+          "symbols": [
+            "NP2LEX_CSHARP"
+          ]
+        },
+        {
+          "line": 267,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 268,
+          "symbols": [
+            "NP2LEX_DART"
+          ]
+        },
+        {
+          "line": 269,
+          "symbols": [
+            "NP2LEX_DLANG"
+          ]
+        },
+        {
+          "line": 270,
+          "symbols": [
+            "NP2LEX_GO"
+          ]
+        },
+        {
+          "line": 271,
+          "symbols": [
+            "NP2LEX_GRADLE"
+          ]
+        },
+        {
+          "line": 272,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 273,
+          "symbols": [
+            "NP2LEX_HAXE"
+          ]
+        },
+        {
+          "line": 274,
+          "symbols": [
+            "NP2LEX_JAVA"
+          ]
+        },
+        {
+          "line": 275,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 276,
+          "symbols": [
+            "NP2LEX_JSON"
+          ]
+        },
+        {
+          "line": 277,
+          "symbols": [
+            "NP2LEX_KOTLIN"
+          ]
+        },
+        {
+          "line": 278,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 279,
+          "symbols": [
+            "NP2LEX_POWERBUILDER"
+          ]
+        },
+        {
+          "line": 280,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 281,
+          "symbols": [
+            "NP2LEX_RUST"
+          ]
+        },
+        {
+          "line": 282,
+          "symbols": [
+            "NP2LEX_SAS"
+          ]
+        },
+        {
+          "line": 283,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 284,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 285,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 286,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 287,
+          "symbols": [
+            "NP2LEX_TYPST"
+          ]
+        },
+        {
+          "line": 288,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 289,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 294,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 300,
+          "symbols": [
+            "NP2LEX_CMAKE"
+          ]
+        },
+        {
+          "line": 305,
+          "symbols": [
+            "NP2LEX_COFFEESCRIPT"
+          ]
+        },
+        {
+          "line": 310,
+          "symbols": [
+            "NP2LEX_FSHARP"
+          ]
+        },
+        {
+          "line": 311,
+          "symbols": [
+            "NP2LEX_MATHEMATICA"
+          ]
+        },
+        {
+          "line": 312,
+          "symbols": [
+            "NP2LEX_OCAML"
+          ]
+        },
+        {
+          "line": 317,
+          "symbols": [
+            "NP2LEX_HASKELL"
+          ]
+        },
+        {
+          "line": 322,
+          "symbols": [
+            "NP2LEX_JAMFILE"
+          ]
+        },
+        {
+          "line": 323,
+          "symbols": [
+            "NP2LEX_LISP"
+          ]
+        },
+        {
+          "line": 328,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 333,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 339,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 344,
+          "symbols": [
+            "NP2LEX_MARKDOWN"
+          ]
+        },
+        {
+          "line": 349,
+          "symbols": [
+            "NP2LEX_NIM"
+          ]
+        },
+        {
+          "line": 354,
+          "symbols": [
+            "NP2LEX_PASCAL"
+          ]
+        },
+        {
+          "line": 359,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 364,
+          "symbols": [
+            "NP2LEX_REBOL"
+          ]
+        },
+        {
+          "line": 370,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 376,
+          "symbols": [
+            "NP2LEX_WASM"
+          ]
+        },
+        {
+          "line": 418,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/EditExtra.cpp",
+      "references": [
+        {
+          "line": 20,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 23,
+          "symbols": [
+            "NP2LEX_AWK"
+          ]
+        },
+        {
+          "line": 26,
+          "symbols": [
+            "NP2LEX_ERLANG"
+          ]
+        },
+        {
+          "line": 29,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 32,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 35,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 38,
+          "symbols": [
+            "NP2LEX_PERL"
+          ]
+        },
+        {
+          "line": 41,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 44,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 47,
+          "symbols": [
+            "NP2LEX_RLANG"
+          ]
+        },
+        {
+          "line": 50,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 53,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 56,
+          "symbols": [
+            "NP2LEX_TCL"
+          ]
+        },
+        {
+          "line": 61,
+          "symbols": [
+            "NP2LEX_BASH"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LanguageConfiguration.cpp",
+      "references": [
+        {
+          "line": 36,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 103,
+          "symbols": [
+            "LanguageStyle"
+          ]
+        },
+        {
+          "line": 182,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 193,
+          "symbols": [
+            "LanguageCatalog",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 194,
+          "symbols": [
+            "LanguageCatalog",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 195,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 196,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LanguageConfiguration.h",
+      "references": [
+        {
+          "line": 11,
+          "symbols": [
+            "LanguageStyle"
+          ]
+        },
+        {
+          "line": 19,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 54,
+          "symbols": [
+            "LanguageStyle"
+          ]
+        },
+        {
+          "line": 81,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 82,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 91,
+          "symbols": [
+            "LanguageCatalog",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 92,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 93,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LexerCatalog.h",
+      "references": [
+        {
+          "line": 3,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 4,
+          "symbols": [
+            "LanguageCatalog",
+            "lexerCatalog"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LexerDetection.cpp",
+      "references": [
+        {
+          "line": 40,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 103,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LexerDetection.h",
+      "references": [
+        {
+          "line": 4,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 5,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/LexerMetrics.h",
+      "references": [
+        {
+          "line": 8,
+          "symbols": [
+            "lexMilliseconds"
+          ]
+        },
+        {
+          "line": 27,
+          "symbols": [
+            "lexMilliseconds"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/Session.cpp",
+      "references": [
+        {
+          "line": 39,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 41,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 70,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 73,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/StyleManager.cpp",
+      "references": [
+        {
+          "line": 27,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 54,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 196,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 199,
+          "symbols": [
+            "NP2LEX_REBOL",
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 200,
+          "symbols": [
+            "NP2LEX_CONFIG",
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 203,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 204,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 212,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 222,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 224,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 228,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 240,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 244,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 259,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 305,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 311,
+          "symbols": [
+            "NP2LEX_MATLAB"
+          ]
+        },
+        {
+          "line": 312,
+          "symbols": [
+            "NP2LEX_CONFIG"
+          ]
+        },
+        {
+          "line": 315,
+          "symbols": [
+            "NP2LEX_HTML",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 317,
+          "symbols": [
+            "NP2LEX_CSV"
+          ]
+        },
+        {
+          "line": 328,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 329,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        },
+        {
+          "line": 437,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 441,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 458,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 498,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 522,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 548,
+          "symbols": [
+            "GetDocumentLexer",
+            "LanguageDefinition",
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 549,
+          "symbols": [
+            "LanguageCatalog",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 557,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 582,
+          "symbols": [
+            "NP2LEX_HTML",
+            "NP2LEX_MARKDOWN",
+            "NP2LEX_PHP",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 600,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 601,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 602,
+          "symbols": [
+            "NP2LEX_JSON"
+          ]
+        },
+        {
+          "line": 603,
+          "symbols": [
+            "NP2LEX_TEXTFILE"
+          ]
+        },
+        {
+          "line": 609,
+          "symbols": [
+            "NP2LEX_CSV"
+          ]
+        },
+        {
+          "line": 613,
+          "symbols": [
+            "NP2LEX_CSV",
+            "NP2LEX_HTML",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 637,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 647,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 654,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 655,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 663,
+          "symbols": [
+            "NP2LEX_HTML",
+            "NP2LEX_MARKDOWN",
+            "NP2LEX_PHP",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 664,
+          "symbols": [
+            "NP2LEX_MARKDOWN"
+          ]
+        },
+        {
+          "line": 665,
+          "symbols": [
+            "NP2LEX_MARKDOWN",
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 667,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 681,
+          "symbols": [
+            "NP2LEX_HTML",
+            "NP2LEX_PHP",
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 683,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 754,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 755,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 756,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 760,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 794,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 797,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 798,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 863,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 864,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 865,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 869,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 874,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 880,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 886,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 887,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 891,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 908,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 912,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 923,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1067,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 1075,
+          "symbols": [
+            "GetCompletionCache"
+          ]
+        },
+        {
+          "line": 1117,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1121,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1123,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1130,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1159,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1161,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1162,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1165,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1172,
+          "symbols": [
+            "lexerCatalog"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/StyleManager.h",
+      "references": [
+        {
+          "line": 4,
+          "symbols": [
+            "GetDocumentLexer",
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 6,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/ThemeConfiguration.cpp",
+      "references": [
+        {
+          "line": 50,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 126,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 164,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 165,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/ThemeDialog.cpp",
+      "references": [
+        {
+          "line": 109,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/UpstreamUI.cpp",
+      "references": [
+        {
+          "line": 336,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        }
+      ]
+    }
+  ],
+  "applicationBindings": [
+    {
+      "path": "src/StyleManager.cpp",
+      "sha256": "4c3204683c3787f5d0c319e9f0c834fd8c13bd68be552654b126e8147ecffbaa",
+      "rules": [
+        {
+          "line": 176,
+          "text": "std::filesystem::path SchemeFilename(const EditorDocument& d){"
+        },
+        {
+          "line": 181,
+          "text": "int ResolveScheme(const EditorDocument& d) {"
+        },
+        {
+          "line": 184,
+          "text": "    auto filename=SchemeFilename(d);auto name=filename.wstring(),extension=filename.extension().wstring();"
+        },
+        {
+          "line": 227,
+          "text": "int ActualScheme(const EditorDocument& d){return d.style.resolvedScheme>0 && d.style.resolvedScheme<static_cast<int>(Count)?d.style.resolvedScheme:ResolveScheme(d);}"
+        },
+        {
+          "line": 301,
+          "text": "int SchemeForCommand(UINT id) {"
+        },
+        {
+          "line": 305,
+          "text": "int Dialect(const EditorDocument& d, const LanguageDefinition& lexer,int* command=nullptr) {"
+        },
+        {
+          "line": 308,
+          "text": "        auto filename=SchemeFilename(d);auto extension=filename.extension().wstring();for(auto& ch:extension)ch=static_cast<wchar_t>(towlower(ch));"
+        },
+        {
+          "line": 311,
+          "text": "        if(lexer.rid==NP2LEX_MATLAB && extension==L\".m\"){int sniffedDialect=0;DetectObjCAndMatlab(d,sniffedDialect);if(sniffedDialect)id=sniffedDialect;}"
+        },
+        {
+          "line": 315,
+          "text": "    if(!d.style.dialect && (lexer.rid==NP2LEX_HTML || lexer.rid==NP2LEX_XML)){auto markup=DetectDocumentMarkupDialect(d);if(markup)id=markup;}"
+        },
+        {
+          "line": 319,
+          "text": "    return lexer.defaultDialect;"
+        },
+        {
+          "line": 550,
+          "text": "const char* const* DocumentCompletionExtraKeywords(const EditorDocument& document){auto snapshot=document.style.configuration?document.style.configuration:CurrentConfiguration();auto found=snapshot->dialectPointers.find(document.style.resolvedDialect);return found==snapshot->dialectPointers.end()?nullptr:found->second.data();}"
+        },
+        {
+          "line": 555,
+          "text": "bool SelectDocumentScheme(EditorDocument& document,const std::wstring& name) {"
+        },
+        {
+          "line": 576,
+          "text": "    const auto selected=d.LargeFile()?1:ResolveScheme(d);"
+        },
+        {
+          "line": 608,
+          "text": "    const auto previousDialect=d.style.resolvedDialect;"
+        },
+        {
+          "line": 609,
+          "text": "    if(lexer.rid==NP2LEX_CSV && !d.style.csvConfigured){auto ext=SchemeFilename(d).extension().wstring();int delimiter=_wcsicmp(ext.c_str(),L\".tsv\")==0?'\\t':DetectDocumentCSVDelimiter(d);d.style.csvOptions=(static_cast<int>('\"')<<8)|(delimiter?delimiter:',');}"
+        },
+        {
+          "line": 610,
+          "text": "    int effective=0;unsigned dialect=static_cast<unsigned>(Dialect(d,lexer,&effective));d.style.resolvedDialect=effective;"
+        },
+        {
+          "line": 615,
+          "text": "    bool rulesChanged=d.style.appliedRules!=lexer.rulesVersion||d.style.appliedLexer!=lexer.iLexer||previousDialect!=effective||d.Send(SCI_GETLEXER)!=(d.LargeFile()?SCLEX_NULL:lexer.iLexer);"
+        },
+        {
+          "line": 911,
+          "text": "    int scheme=SchemeForCommand(id);"
+        },
+        {
+          "line": 912,
+          "text": "    if(scheme){UINT selected=d?static_cast<UINT>(d->style.dialect?d->style.dialect:d->style.resolvedDialect):0;if(d && !selected)selected=DefaultSchemeCommand(*GetDocumentLexer(*d));return {true,d!=nullptr,d && ActualScheme(*d)==scheme && selected==id};}"
+        },
+        {
+          "line": 943,
+          "text": "    if(int scheme=SchemeForCommand(id)){"
+        },
+        {
+          "line": 1108,
+          "text": "void LoadStylePreferences(const std::filesystem::path& path){"
+        },
+        {
+          "line": 1152,
+          "text": "void SaveStylePreferences(const std::filesystem::path& path){"
+        }
+      ]
+    },
+    {
+      "path": "src/Session.cpp",
+      "sha256": "e3a3ea1b90504954c99435302d951840a2011f40cf88bdfdd65b9d1005409673",
+      "rules": [
+        {
+          "line": 23,
+          "text": "    X(csvConfigured) X(csvOptions) X(tabWidth) X(indentWidth) X(tabsAsSpaces) X(useSchemeTabs) \\"
+        },
+        {
+          "line": 30,
+          "text": "void SaveStyle(AppSettings& profile, const std::wstring& section, const DocumentStyleState& style) {"
+        },
+        {
+          "line": 31,
+          "text": "#define WRITE_NUMBER(field) profile.WriteString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), std::to_wstring(style.field));"
+        },
+        {
+          "line": 34,
+          "text": "#define WRITE_STRING(field) profile.WriteString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), style.field);"
+        },
+        {
+          "line": 37,
+          "text": "    if(!style.themePath.empty()){auto relative=std::filesystem::path(style.themePath).lexically_relative(profile.path.parent_path());if(!relative.empty()&&*relative.begin()!=L\"..\")profile.WriteString(section.c_str(),L\"Style.themePath\",relative.generic_wstring());}"
+        },
+        {
+          "line": 44,
+          "text": "    for(const auto& [id,value]:style.semanticOverrides){keys+=ConfigurationWide(id)+L\" \";profile.WriteString(section.c_str(),(L\"Style.Semantic.\"+ConfigurationWide(id)).c_str(),value);}"
+        },
+        {
+          "line": 45,
+          "text": "    profile.WriteString(section.c_str(),L\"Style.SemanticKeys\",keys);keys.clear();"
+        },
+        {
+          "line": 48,
+          "text": "        profile.WriteString(section.c_str(), (L\"Style.Override.\" + std::to_wstring(key)).c_str(), value);"
+        },
+        {
+          "line": 50,
+          "text": "    profile.WriteString(section.c_str(), L\"Style.OverrideKeys\", keys);"
+        },
+        {
+          "line": 53,
+          "text": "    profile.WriteString(section.c_str(), L\"Style.CompletionOptions\", keys);"
+        },
+        {
+          "line": 55,
+          "text": "void RestoreStyle(const AppSettings& profile, const std::wstring& section, DocumentStyleState& style) {"
+        },
+        {
+          "line": 56,
+          "text": "#define READ_NUMBER(field) style.field = static_cast<decltype(style.field)>(std::clamp(Number(profile, section, L\"Style.\" SESSION_WIDEN(#field), style.field), static_cast<long long>(INT_MIN), static_cast<long long>(INT_MAX)));"
+        },
+        {
+          "line": 59,
+          "text": "#define READ_STRING(field) style.field = profile.ReadString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), style.field.c_str());"
+        },
+        {
+          "line": 63,
+          "text": "    std::wistringstream overrides(profile.ReadString(section.c_str(), L\"Style.OverrideKeys\")); unsigned key;"
+        },
+        {
+          "line": 64,
+          "text": "    while (overrides >> key){auto value=profile.ReadString(section.c_str(), (L\"Style.Override.\" + std::to_wstring(key)).c_str());try{ValidateLegacyStyle(value);style.overrides[key]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}"
+        },
+        {
+          "line": 65,
+          "text": "    std::wistringstream options(profile.ReadString(section.c_str(), L\"Style.CompletionOptions\")); int option, value;"
+        },
+        {
+          "line": 71,
+          "text": "    style.semanticOverrides.clear();std::wistringstream semantic(profile.ReadString(section.c_str(),L\"Style.SemanticKeys\"));std::wstring id;"
+        },
+        {
+          "line": 72,
+          "text": "    while(semantic>>id){auto value=profile.ReadString(section.c_str(),(L\"Style.Semantic.\"+id).c_str());try{ValidateLegacyStyle(value);style.semanticOverrides[ConfigurationUtf8(id)]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}"
+        },
+        {
+          "line": 74,
+          "text": "        unsigned index=key&255;if(index<language->iStyleCount)for(const auto& category:language->categories)if(category.group==ConfigurationUtf8(language->Styles[index].id))style.semanticOverrides.try_emplace(category.id,value);"
+        },
+        {
+          "line": 77,
+          "text": "    style.appliedTabScheme = -1;"
+        },
+        {
+          "line": 106,
+          "text": "        SaveStyle(profile, section, d->style);"
+        },
+        {
+          "line": 137,
+          "text": "        write(L\"Scheme\", d->style.scheme); write(L\"Dialect\", d->style.dialect); write(L\"Dark\", d->style.dark); write(L\"Folding\", d->style.folding);"
+        },
+        {
+          "line": 201,
+          "text": "        d->style.scheme = static_cast<int>(read(L\"Scheme\", 0)); d->style.dialect = static_cast<int>(read(L\"Dialect\", 0));"
+        },
+        {
+          "line": 203,
+          "text": "        d->style.fontKind = static_cast<int>(read(L\"FontKind\", -1)); RestoreStyle(profile, section, d->style); d->ConfigureLexer();"
+        }
+      ]
+    },
+    {
+      "path": "src/CompletionEngine.cpp",
+      "sha256": "35ede43371cfbfdde3de8f156b3fa88addb8c871b42807faef160087be34bfbf",
+      "rules": [
+        {
+          "line": 14,
+          "text": "static const char * const kwDoxyDoc[NP2_KEYWORDS_COUNT] = {"
+        },
+        {
+          "line": 25,
+          "text": "static const char * const kwXmlSchema[NP2_KEYWORDS_COUNT] = {"
+        },
+        {
+          "line": 49,
+          "text": "static const char * const kwXmlStylesheet[NP2_KEYWORDS_COUNT] = {"
+        },
+        {
+          "line": 74,
+          "text": "static const char * const kwApache[NP2_KEYWORDS_COUNT] = {"
+        },
+        {
+          "line": 106,
+          "text": "static const char * const kwPList[NP2_KEYWORDS_COUNT] = {"
+        },
+        {
+          "line": 119,
+          "text": "void CompletionCache::Initialize(const LanguageDefinition* pLex) noexcept {"
+        },
+        {
+          "line": 201,
+          "text": "        extraKeywords = kwDoxyDoc;"
+        },
+        {
+          "line": 671,
+          "text": "    CompletionCache cache{};cache.Initialize(&lexer);return caches.emplace(lexer.rid,cache).first->second;"
+        },
+        {
+          "line": 676,
+          "text": "    if(entry.version!=lexer.rulesVersion){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}"
+        },
+        {
+          "line": 683,
+          "text": "    switch(command){case IDM_LEXER_XSD:return kwXmlSchema;case IDM_LEXER_XSLT:return kwXmlStylesheet;case IDM_LEXER_APACHE:return kwApache;case IDM_LEXER_PROPERTY_LIST:return kwPList;default:return nullptr;}"
+        }
+      ]
+    },
+    {
+      "path": "src/LexerDetection.cpp",
+      "sha256": "66044a32a8db514acebcbdfd1e6706c30925ad09d054fd1878b9040b295c2679",
+      "rules": [
+        {
+          "line": 4,
+          "text": "#include \"LexerDetection.h\""
+        },
+        {
+          "line": 18,
+          "text": "bool MatchCPPKeyword(const char *p, int index) noexcept {"
+        },
+        {
+          "line": 40,
+          "text": "const LanguageDefinition* DetectObjCAndMatlab(const EditorDocument& d,int& dialect) {"
+        },
+        {
+          "line": 57,
+          "text": "\t\t\t\tif (MatchCPPKeyword(p, 2)) {"
+        },
+        {
+          "line": 72,
+          "text": "\t\t\tif (MatchCPPKeyword(p, 3)) {"
+        },
+        {
+          "line": 103,
+          "text": "const LanguageDefinition* AutoDetectContent(const EditorDocument& d,bool bDotFile) {"
+        },
+        {
+          "line": 140,
+          "text": "\t\t\t\t\tif (MatchCPPKeyword(p, 2)) {"
+        },
+        {
+          "line": 203,
+          "text": "int DetectDocumentMarkupDialect(const EditorDocument& d) {"
+        },
+        {
+          "line": 309,
+          "text": "int DetectDocumentCSVDelimiter(const EditorDocument& d){"
+        }
+      ]
+    }
+  ],
+  "localization": [
+    {
+      "path": "3rdparty/notepad4/src/Notepad4.rc",
+      "sha256": "1bb760bc81b688a77ddd58b9068c0cc690e690e88091f4ab1b8b96c5b9f3d5c7",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Text File\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2nd Text File\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Global Styles\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/de/Notepad4.rc",
+      "sha256": "d45a7e897784b10e954644606eea79ca31f97577b6ae7d96a7315aa255eb28da",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Text Datei\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2. Text Datei\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Standardschema\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/fr/Notepad4.rc",
+      "sha256": "48b476a6d02530ce38e57c4b64333aa93b765f5220cf122a7ef24de956e82b78",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Fichier texte\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2eme Fichier texte\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Styles globaux\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/it/Notepad4.rc",
+      "sha256": "0ab925eec27146835c4cdb976b778e6757ee094211ca08fbeac291a1fd843bd4",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"File di Testo\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2° File di testo\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Stili Globali\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/ja/Notepad4.rc",
+      "sha256": "16ecf14e99b4e96e8c9804cec8363375213a16d87c4c101dc58836fd9f9b3281",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"テキストファイル\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"テキストファイル2\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"配色設定\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/ko/Notepad4.rc",
+      "sha256": "212919156ab7e3b82a858292ea0531aef1370994f7806047f9a81b4059ab9b05",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"텍스트 파일\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"두 번째 텍스트 파일\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"전역 스타일\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/pl/Notepad4.rc",
+      "sha256": "c76170daf5f7dcec1b8dc12c143cba81b06ccf7df45728773e26fea7b1926fcf",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Plik tekstowy\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"Drugi plik tekstowy\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Style globalne\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/pt-BR/Notepad4.rc",
+      "sha256": "6eb3502d3edfa16f551d7b78fa1de8252f3e9817594ae4d33792025ae275a6a2",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Arquivo de Texto\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2º Arquivo de Texto\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Estilos Globais\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/ru/Notepad4.rc",
+      "sha256": "48b6d941ba9215b7c5c6e2b93fca9bc35170f9c65e7f0732d8dc8aad07ae1603",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\"Текстовый файл\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\"Второй текстовый файл\"",
+        "NP2LEX_GLOBAL\t\t\t\t\"Глобальные стили\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/sl/Notepad4.rc",
+      "sha256": "f4b81e469d18c6b06a9db1b28a8f6cdb653bb84b3acbab0dbc1bdde81bb7c14e",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"Text File\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"2nd Text File\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"Global Styles\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/zh-Hans/Notepad4.rc",
+      "sha256": "41171c475553463e69c61601dc403356d3040f88dbc00480970b9c6bf1bc438f",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"文本文件\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"第二文本文件\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"全局样式\""
+      ]
+    },
+    {
+      "path": "3rdparty/notepad4/locale/zh-Hant/Notepad4.rc",
+      "sha256": "6cf17fe5dc58b0171f724b62fa9f1166b31a34320a1561ef3a3eea58b42279df",
+      "languageStrings": [
+        "NP2LEX_TEXTFILE\t\t\t\t\t\"文字檔案\"",
+        "NP2LEX_2NDTEXTFILE\t\t\t\t\"第二文字檔案\"",
+        "NP2LEX_GLOBAL\t\t\t\t\t\"全域樣式\""
+      ]
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 #include "SmokeTest.h"
 #include "../tests/LargeFileTests.h"
 #include "../tests/PluginFeatureTests.h"
+#include "../tests/LexerBaselineTests.h"
+#include "../tests/ConfigurationBenchmark.h"
 #include <shellapi.h>
 #include <cstdio>
 #include <fstream>
@@ -45,7 +47,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
-    bool smoke = noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
+    bool configurationTest=count==4&&wcscmp(args[1],L"--configuration-test")==0;
+    bool themeReport=count==4&&wcscmp(args[1],L"--theme-report")==0;
+    bool benchmark=count==3&&wcscmp(args[1],L"--configuration-benchmark")==0;
+    bool configurationMode=configurationTest||themeReport||benchmark;
+    bool smoke = configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
@@ -55,10 +62,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(largeTest || report);
+        frame.plugins.enabled = !(largeTest || report || lexerBaseline || configurationMode);
         if (smoke || render) frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
+        SetConfigurationUserDirectory(frame.settings.path.parent_path());
         if (frame.settings.persistent) LoadStylePreferences(frame.settings.path.c_str());
         if (frame.settings.persistent) LoadEditPreferences(frame.settings.path);
         ParsedCommandLine options;
@@ -98,7 +106,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
             try {
-                if (largeTest) { RunLargeFileTests(frame); }
+                if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
+                else if(themeReport){RunThemeCompatibilityReport(frame,args[2],args[3]);}
+                else if(benchmark){RunConfigurationBenchmark(frame,args[2]);}
+                else if (lexerBaseline) { RunLexerBaseline(frame, args[2], wcscmp(args[1], L"--check-lexer-baseline") == 0); }
+                else if (largeTest) { RunLargeFileTests(frame); }
                 else if (pluginTest) {
                     RunPluginFeatureTests(frame);
                 } else if (smoke || render) { if (render) frame.ShowWindow(SW_SHOWNORMAL); RunSmokeTest(frame); }

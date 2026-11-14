@@ -6,6 +6,8 @@
 #include "FileCommands.h"
 #include "FileDialogs.h"
 #include "StyleManager.h"
+#include "ThemeDialog.h"
+#include "LanguageConfiguration.h"
 #include "FrameCommands.h"
 #include "CommandLine.h"
 #include "InfoDialog.h"
@@ -34,6 +36,7 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_FILES, L"Find in Files...\tCtrl+Shift+F");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_MARK, L"Mark...\tCtrl+M");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_RESULTS, L"Search results\tF7");
+    auto themeMenu=GetSubMenu(GetMenu(),3);AppendMenuW(themeMenu,MF_SEPARATOR,0,nullptr);AppendMenuW(themeMenu,MF_STRING,ID_THEME_CONFIG,L"Themes and configuration...");AppendMenuW(themeMenu,MF_STRING,ID_RELOAD_CONFIGURATION,L"Reload language configuration");
     InitializeDockingFrame();
     SetTabOwnerParent(m_hWnd);
     CreateMDIClient(windowMenu);
@@ -55,6 +58,7 @@ EditorDocument* MainFrame::NewDocument() {
     document->untitled = L"未命名 " + std::to_wstring(++untitledCount);
     if (!document->Create(tabs)) { MessageBox(L"无法创建 Scintilla 编辑器。", L"MultiPad4", MB_ICONERROR); return nullptr; }
     ApplyDocumentPreferences(*this, *document);
+    ApplyDefaultDocumentTheme(*document);document->ConfigureLexer();
     document->encoding = static_cast<files::Encoding>(settings.Get(IDM_ENCODING_SETDEFAULT, static_cast<int>(files::Encoding::Ansi)));
     auto* raw = document.get();
     if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw)) { ::DestroyWindow(raw->hwnd); return nullptr; }
@@ -313,6 +317,8 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     if (!State(id).enabled) return 0;
     auto* d = Active();
     if (ExecuteFileCommand(*this, id) || ExecuteFrameCommand(*this, id)) { Refresh(); return 0; }
+    if(id==ID_THEME_CONFIG&&d){if(ShowThemeDialog(m_hWnd,*d)&&ThemeScopeAll())for(auto& document:documents){ApplyDefaultDocumentTheme(*document);document->ConfigureLexer();}Refresh();return 0;}
+    if(id==ID_RELOAD_CONFIGURATION){if(!ReloadLanguageConfiguration())throw std::runtime_error("Language reload rejected; previous snapshot retained. See configuration diagnostics.");for(auto& document:documents)document->ConfigureLexer();Refresh();return 0;}
     if (d && (ExecuteStyleCommand(m_hWnd, *d, id) || ExecuteEditorCommand(*d, id, [&](bool previous) { return ConfirmSearchWrap(previous); }))) {
         RememberDocumentPreferences(*this, *d, id); Refresh(); return 0;
     }

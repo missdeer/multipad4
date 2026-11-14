@@ -1,3 +1,4 @@
+#include "LanguageConfiguration.h"
 // Original notepad4 Bridge.cpp code pretty/compress algorithms, adapted to an
 // explicit MDI document. Authors and license are recorded in THIRD_PARTY.md.
 #include "EditCodeFormat.h"
@@ -25,7 +26,7 @@ enum {
     SpaceOption_PopBrace = 128,
 };
 
-int AddStyleSeparator(LPCEDITLEXER pLex, int ch, int chPrev, int style) noexcept {
+int AddStyleSeparator(const LanguageDefinition* pLex, int ch, int chPrev, int style) noexcept {
     if ((style >= pLex->stringStyleFirst && style <= pLex->stringStyleLast) ||
         (pLex->iLexer == SCLEX_JSON && (style == SCE_JSON_PROPERTYNAME)) ||
         (pLex->iLexer == SCLEX_JAVASCRIPT && (style == SCE_JS_KEY || style == SCE_JS_OPERATOR_PF))) {
@@ -54,7 +55,7 @@ int AddStyleSeparator(LPCEDITLEXER pLex, int ch, int chPrev, int style) noexcept
     return SpaceOption_None;
 }
 
-void CodePretty(EditorDocument &document, std::string &output, LPCEDITLEXER pLex, const char *styledText,
+void CodePretty(EditorDocument &document, std::string &output, const LanguageDefinition* pLex, const char *styledText,
                 size_t textLength) {
     char fmtbuf[128];
     std::string braceStack(1, '\0'); // sentinel
