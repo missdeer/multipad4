@@ -2,7 +2,6 @@
 #include "App.h"
 #include "resource.h"
 #include "EditorDocument.h"
-#include "DockHost.h"
 #include "EditorCommands.h"
 #include "SearchDialog.h"
 #include "SearchResultsPane.h"
@@ -18,7 +17,6 @@ public:
     DECLARE_FRAME_WND_CLASS(L"MultiPad4.MainFrame", IDR_MAINFRAME)
     PluginHost plugins;
     PluginAdmin pluginAdmin;
-    DockHost dock;
     EditorTabs tabs;
     std::vector<std::unique_ptr<EditorDocument>> documents;
     unsigned untitledCount = 0;
@@ -65,7 +63,6 @@ public:
         MESSAGE_HANDLER(WM_DROPFILES, OnDrop)
         MESSAGE_HANDLER(WM_DOCUMENT_CHANGED, OnChanged)
         MESSAGE_HANDLER(WM_CLOSE_TAB, OnCloseTab)
-        MESSAGE_HANDLER(WM_PANE_ACTION, OnPane)
         MESSAGE_HANDLER(WM_INITMENUPOPUP, OnMenu)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpi)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
@@ -108,7 +105,6 @@ public:
     LRESULT OnDrop(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnChanged(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnCloseTab(UINT, WPARAM, LPARAM, BOOL&);
-    LRESULT OnPane(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnMenu(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDpi(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);

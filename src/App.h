@@ -26,6 +26,5 @@ using std::min;
 using std::max;
 constexpr UINT WM_DOCUMENT_CHANGED = WM_APP + 0x100;
 constexpr UINT WM_CLOSE_TAB = WM_APP + 0x101;
-constexpr UINT WM_PANE_ACTION = WM_APP + 0x102;
 #include "Frameworks.h"
 

@@ -137,3 +137,8 @@ option(MULTIPAD4_BUILD_MATEPATH "Build the optional Matepath browser plugin" ON)
 if(MULTIPAD4_BUILD_MATEPATH)
   add_subdirectory(plugins/Matepath)
 endif()
+
+option(MULTIPAD4_BUILD_OPEN_DOCUMENTS "Build the optional open-documents pane plugin" ON)
+if(MULTIPAD4_BUILD_OPEN_DOCUMENTS)
+  add_subdirectory(plugins/OpenDocuments)
+endif()

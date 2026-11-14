@@ -30,6 +30,7 @@
 #include "../tests/UIConsistencyTests.h"
 #include "../tests/FrameworkCompatibilityTests.h"
 #include "../tests/MatepathPaneTests.h"
+#include "../tests/OpenDocumentsPaneTests.h"
 // Runs against actual WTL and Scintilla windows on the application's UI thread.
 inline void RunSmokeTest(MainFrame& frame) {
     RunFrameworkCompatibilityTests();
@@ -105,13 +106,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunSystemIntegrationRegistryTests();
         frame.MDIMaximize(frame.tabs.GetPageHWND(frame.tabs.GetActivePage()));
         frame.UpdateLayout(); frame.Refresh(); CaptureQAWindow(frame, L"MDI-frame");
-        for (auto side : {DockSide::Right, DockSide::Bottom, DockSide::Floating, DockSide::Left}) {
-            frame.dock.SetSide(side); require(frame.dock.side == side);
-            require((frame.dock.pane.GetStyle() & WS_CHILD) != 0 ? side != DockSide::Floating : side == DockSide::Floating);
-            require(side == DockSide::Floating ? !frame.dock.pane.IsDocking() : frame.dock.pane.IsDocking());
-            require(side == DockSide::Floating ? ::GetWindow(frame.dock.pane, GW_OWNER) == frame.m_hWnd : frame.IsChild(frame.dock.pane));
-        }
-        frame.dock.Toggle(); require(!frame.dock.visible); frame.dock.Toggle(); require(frame.dock.visible);
+        RunOpenDocumentsPaneTests(frame);
         RunMatepathPaneTests(frame, dir);
         while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1));
         require(frame.documents.empty());

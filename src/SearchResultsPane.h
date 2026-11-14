@@ -1,5 +1,5 @@
 #pragma once
-#include "DockHost.h"
+#include "App.h"
 #include "EditorDocument.h"
 #include "SearchResultLexer.h"
 class MainFrame;

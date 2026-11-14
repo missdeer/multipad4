@@ -1,7 +1,16 @@
 #pragma once
 #include "../src/Frameworks.h"
 #include <stdexcept>
-#include "../src/DockHost.h"
+enum class DockSide { Left, Right, Bottom, Floating };
+class DockPane : public dockwins::CTitleDockingWindowImpl<DockPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
+public:
+    using Base = dockwins::CTitleDockingWindowImpl<DockPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits>;
+    DECLARE_WND_CLASS_EX(L"MultiPad4.TestDockPane", CS_DBLCLKS, COLOR_BTNFACE)
+    HWND owner = nullptr;
+    BEGIN_MSG_MAP(DockPane)
+        CHAIN_MSG_MAP(Base)
+    END_MSG_MAP()
+};
 #include "QAArtifacts.h"
 
 // Exercise the actual framework tracker against a popup HWND. Screen-to-client

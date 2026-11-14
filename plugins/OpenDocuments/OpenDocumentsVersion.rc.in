@@ -1,0 +1,40 @@
+#include <windows.h>
+#include <winver.h>
+
+1 VERSIONINFO
+FILEVERSION @OPEN_DOCUMENTS_VERSION_COMMAS@
+PRODUCTVERSION @OPEN_DOCUMENTS_VERSION_COMMAS@
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+FILEFLAGS VS_FF_DEBUG
+#else
+FILEFLAGS 0
+#endif
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "MultiPad4 contributors"
+            VALUE "PluginName", "OpenDocuments"
+            VALUE "FileDescription", "Open Documents Dock Pane Plugin"
+            VALUE "Comments", "Dockable open-document list for MultiPad4 with tab-order synchronization, modified indicators and document activation."
+            VALUE "Author", "MultiPad4 contributors"
+            VALUE "Homepage", "https://github.com/missdeer/multipad4"
+            VALUE "LegalCopyright", "(C) 2026 MultiPad4 contributors"
+            VALUE "License", "Third-party license notices: see bundled THIRD_PARTY.md"
+            VALUE "FileVersion", "@OPEN_DOCUMENTS_VERSION@"
+            VALUE "InternalName", "OpenDocuments"
+            VALUE "OriginalFilename", "OpenDocuments.dll"
+            VALUE "ProductName", "MultiPad4 OpenDocuments Plugin"
+            VALUE "ProductVersion", "@OPEN_DOCUMENTS_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

@@ -1,4 +1,5 @@
 #include "MainFrame.h"
+#include "../plugins/PluginApi.h"
 #include <shellapi.h>
 #include "UpstreamUI.h"
 #include "EditorDialogs.h"
@@ -37,7 +38,6 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     CreateMDIClient(windowMenu);
     m_tabbedClient.HideMDITabsWhenMDIChildNotMaximized(FALSE);
     tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();
-    dock.Create(m_hWnd);
     searchResults.CreatePane(*this);
     InitializeFramePreferences(*this);
     UpdateLayout();
@@ -231,23 +231,12 @@ void MainFrame::Refresh() {
     auto* active = Active();
     plugins.Activated();
     searchDialog.SyncDocument();
-    std::vector<std::wstring> labels;
     for (int i = 0; i < tabs.GetPageCount(); ++i) {
-        auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i)); auto title = d->Title();
+        auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
+        auto title = d->Title();
         if (title != tabs.GetPageTitle(i)) tabs.SetPageTitle(i, title.c_str());
-        labels.push_back(std::move(title));
     }
-    bool changed = dock.pane.list.GetCount() != static_cast<int>(labels.size());
-    for (int i = 0; !changed && i < static_cast<int>(labels.size()); ++i) {
-        int n = dock.pane.list.GetTextLen(i); std::wstring old(static_cast<size_t>(n) + 1, L'\0');
-        dock.pane.list.GetText(i, old.data()); old.resize(n); changed = old != labels[i];
-    }
-    if (changed) {
-        dock.pane.list.SetRedraw(FALSE); dock.pane.list.ResetContent();
-        for (const auto& label : labels) dock.pane.list.AddString(label.c_str());
-        dock.pane.list.SetRedraw(TRUE); dock.pane.list.Invalidate();
-    }
-    dock.pane.list.SetCurSel(tabs.GetActivePage());
+    if (plugins.ready) plugins.Notify(MPN_DOCUMENTSCHANGED);
     std::wstring title = L"MultiPad4";
     if (!runtime.titleOverride.empty()) title = runtime.titleOverride + L" — MultiPad4";
     else if (active) {
@@ -337,11 +326,6 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     case ID_CLOSE: Close(tabs.GetActivePage()); break;
     case ID_CLOSEALL: while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) break; break;
     case ID_EXIT: PostMessage(WM_CLOSE); break;
-    case ID_DOCUMENTS: dock.Toggle(); break;
-    case ID_DOCKLEFT: dock.SetSide(DockSide::Left); break;
-    case ID_DOCKRIGHT: dock.SetSide(DockSide::Right); break;
-    case ID_DOCKBOTTOM: dock.SetSide(DockSide::Bottom); break;
-    case ID_FLOAT: dock.SetSide(DockSide::Floating); break;
     case ID_NEXTTAB: case ID_PREVTAB: {
         int n = tabs.GetPageCount();
         if (n) tabs.SetActivePage((tabs.GetActivePage() + n + (id == ID_NEXTTAB ? 1 : -1)) % n);
@@ -385,7 +369,6 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     pluginAdmin.Close();
     plugins.Shutdown();
     searchDialog.Close();
-    if (dock.pane.IsWindow()) { if (dock.pane.IsDocking()) dock.pane.Undock(); dock.pane.DestroyWindow(); }
     DestroyWindow(); return 0;
 }
 LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
@@ -418,17 +401,6 @@ LRESULT MainFrame::OnCloseTab(UINT, WPARAM w, LPARAM, BOOL&) {
         if (tabs.GetPageHWND(i) == child) { Close(i); break; }
     return 0;
 }
-LRESULT MainFrame::OnPane(UINT, WPARAM action, LPARAM index, BOOL&) {
-    switch(action) {
-    case 0: dock.Toggle(); break;
-    case 1: dock.SetSide(DockSide::Left); break;
-    case 2: dock.SetSide(DockSide::Right); break;
-    case 3: dock.SetSide(DockSide::Bottom); break;
-    case 4: dock.SetSide(dock.side == DockSide::Floating ? DockSide::Left : DockSide::Floating); break;
-    case 10: if (index >= 0 && index < tabs.GetPageCount()) tabs.SetActivePage(static_cast<int>(index)); break;
-    }
-    return 0;
-}
 LRESULT MainFrame::OnMenu(UINT, WPARAM, LPARAM, BOOL&) {
     UpdateCommandUI(); return 0;
 }
@@ -437,5 +409,5 @@ LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     SetWindowPos(nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
     for (auto& d : documents) if (d->Send(SCI_GETMARGINWIDTHN, 0)) d->Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(m_hWnd), 96));
     UpdateToolbarImages(*this);
-    dock.Layout(); return 0;
+    return 0;
 }

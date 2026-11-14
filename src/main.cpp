@@ -56,7 +56,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
         frame.plugins.enabled = !(largeTest || report);
-        if (smoke || render) frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"Matepath.dll";
+        if (smoke || render) frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         if (frame.settings.persistent) LoadStylePreferences(frame.settings.path.c_str());
@@ -118,7 +118,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if ((smoke || render) && (MatepathTestWindow() || GetModuleHandleW(L"Matepath.dll"))) {
                 fprintf(stderr, "Matepath plugin did not unload cleanly\n"); result = 4;
             }
-            if (frame.dock.pane.IsWindow()) { if (frame.dock.pane.IsDocking()) frame.dock.pane.Undock(); frame.dock.pane.DestroyWindow(); }
+            if ((smoke || render) && (OpenDocumentsTestWindow() || GetModuleHandleW(L"OpenDocuments.dll"))) {
+                fprintf(stderr, "OpenDocuments plugin did not unload cleanly\n"); result = 4;
+            }
             frame.DestroyWindow();
         } else {
             frame.ShowWindow(frame.runtime.restoredShowCmd == SW_SHOWMAXIMIZED ? SW_SHOWMAXIMIZED : show); frame.UpdateWindow();

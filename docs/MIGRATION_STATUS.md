@@ -8,7 +8,7 @@
 
 | 范围 | 当前代码与接入情况 | 主要实现 / 回归入口 |
 |---|---|---|
-| MDI 与框架 | 真实 MDI 子窗口、标签切换/重排、层叠/平铺、停靠、关闭保存流程 | `MainFrame.*`、`Frameworks.*`、`DockHost.*`；`SmokeTest.h`、`MDILayoutTests.h`、`CloseReentrancyTests.h` |
+| MDI 与框架 | 真实 MDI 子窗口、标签切换/重排、层叠/平铺、停靠、关闭保存流程 | `MainFrame.*`、`Frameworks.*`、`plugins/OpenDocuments/*`；`SmokeTest.h`、`MDILayoutTests.h`、`CloseReentrancyTests.h` |
 | 上游 UI | 原始菜单、快捷键、图像、字符串、32 个对话框模板和语言资源；27 种工具栏按钮、定制布局恢复/保存、打开历史与折叠下拉；13 段状态栏及点击入口 | `UpstreamUI.cpp`、`Localization.cpp`、`FrameCommands.cpp`；`ToolbarOpenTests.h` |
 | 文件与编码 | 打开/保存/副本/重载、编码目录和检测转换、换行、文件变量、大文件模式、备份、历史/收藏夹、命令行与外部打开请求 | `FileIO.cpp`、`FileCommands.cpp`、`FileDialogs.cpp`、`CommandLine.cpp`；`FileIOTests.cpp`、`FileCommandSmokeTest.h`、`FileDialogTests.h` |
 | 编辑与查找 | 基础及高级选择/行操作、大小写/数字/编码转换、排序/对齐/插入等；正则/通配符/反斜杠查找替换、标记和多选；modeless 对话框绑定文档 | `Edit*.cpp`、`DocumentSearch.cpp`、`SearchDialog.cpp`；`EditorFeatureTests.h`、`EditDialogTests.h`、`SearchDialogFeatureTests.h`、`SearchHelpTests.h` |

@@ -118,12 +118,6 @@ void MainFrame::CreateUpstreamUI() {
     AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_TILE_HORZ, L"Tile Horizontally");
     AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_TILE_VERT, L"Tile Vertically");
     AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_ARRANGE, L"Arrange Icons");
-    AppendMenuW(windowMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(windowMenu, MF_STRING, ID_DOCUMENTS, L"Document Panel");
-    AppendMenuW(windowMenu, MF_STRING, ID_DOCKLEFT, L"Dock Left");
-    AppendMenuW(windowMenu, MF_STRING, ID_DOCKRIGHT, L"Dock Right");
-    AppendMenuW(windowMenu, MF_STRING, ID_DOCKBOTTOM, L"Dock Bottom");
-    AppendMenuW(windowMenu, MF_STRING, ID_FLOAT, L"Float Panel");
     InsertMenuW(GetMenu(), GetMenuItemCount(GetMenu()) - 1, MF_BYPOSITION | MF_POPUP,
         reinterpret_cast<UINT_PTR>(windowMenu), L"&Window");
     mdiAccelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_MDIACCEL));
@@ -160,12 +154,10 @@ CommandState MainFrame::QueryState(UINT input) {
     if (editor.supported) return editor;
     switch (id) {
     case ID_NEW: case ID_OPEN: case ID_EXIT: case ID_ABOUT: case IDM_FILE_NEWWINDOW:
-    case ID_DOCKLEFT: case ID_DOCKRIGHT: case ID_DOCKBOTTOM: case ID_FLOAT:
     case IDM_VIEW_CUSTOMIZE_TOOLBAR: return {true, true, false};
     case ID_SEARCH_RESULTS: return {true, true, searchResults.visible};
     case ID_FIND: case IDM_EDIT_REPLACE: return {true, true, false};
     case ID_SEARCH_FILES: case ID_SEARCH_MARK: return {true, d != nullptr, false};
-    case ID_DOCUMENTS: return {true, true, dock.visible};
     case IDM_VIEW_TOOLBAR: return {true, true, toolbarVisible};
     case IDM_VIEW_STATUSBAR: return {true, true, statusVisible};
     case IDM_VIEW_ALWAYSONTOP: return {true, true, (GetExStyle() & WS_EX_TOPMOST) != 0};

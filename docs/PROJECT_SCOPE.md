@@ -9,7 +9,7 @@
 - 标签与 MDI：Daniel Bowen 的 WTL Tabbing Framework，使用 `CTabbedMDIFrameWindowImpl`、`CTabbedMDIChildWindowImpl`、`CTabbedMDIClient` 和 `CDotNetTabCtrl`。
 - Docking：Sergey Klimov 的 WTL Docking Framework，使用 `CDockingFrameImplBase` 和 `CTitleDockingWindowImpl`。
 - 来源：Programmer's Notepad 的框架目录，固定提交 `618ea4ad538b26a8795b1cdaa684f08b72d31d09`。该项目同时使用这两套库，可参考集成方式，但应用功能仍以 notepad4 为准。
-- 正式构建不再使用 `CTabViewImpl` 或自行实现停靠、浮动、拖动和分隔条算法。`DockHost` 仅作为第三方框架的应用适配层。
+- 正式构建不再使用 `CTabViewImpl` 或自行实现停靠、浮动、拖动和分隔条算法。`plugins/OpenDocuments` 的停靠适配层使用第三方框架，打开文档列表由可选 DLL 插件实现。
 - 保留上游源码及作者许可；MSVC 兼容变换在 `cmake/FrameworkCompatibility.cmake`，只生成构建目录副本。
 
 ## notepad4 基线

@@ -35,7 +35,7 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
     bool loaded = false;
     for (const auto& plugin : frame.plugins.plugins) if (plugin.module == L"Matepath.dll") loaded = true;
 #ifdef MULTIPAD4_TEST_MATEPATH
-    if (frame.plugins.onlyModule == L"Matepath.dll" && !loaded) throw std::runtime_error("Matepath DLL was not loaded");
+    if (frame.plugins.onlyModule == L"__bundled__" && !loaded) throw std::runtime_error("Matepath DLL was not loaded");
 #endif
     if (!loaded) return;
     HWND pane = MatepathTestWindow();

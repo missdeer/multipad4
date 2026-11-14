@@ -1,4 +1,5 @@
 #include "MainFrame.h"
+#include "../plugins/PluginApi.h"
 #include <fstream>
 #include "StyleManager.h"
 
@@ -89,7 +90,8 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!entry.is_directory()) continue;
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
-        if (!onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
+        if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments") continue;
+        if (onlyModule != L"__bundled__" && !onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }
     std::sort(candidates.begin(), candidates.end()); std::vector<ACCEL> keys;
@@ -185,6 +187,16 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     auto path = [](EditorDocument* doc) { return doc->path.empty() ? doc->untitled : doc->path.wstring(); };
     auto language = [](EditorDocument* doc) { return !doc ? L_TEXT : doc->language == L"JSON" ? L_JSON : doc->language == L"XML" ? L_XML : doc->language == L"HTML" ? L_HTML : doc->language == L"C/C++" ? L_CPP : L_TEXT; };
     switch (msg) {
+    case MPM_GETBUFFERTITLE: {
+        auto* doc = Document(w); auto* request = reinterpret_cast<MultiPadBufferTitle*>(l);
+        if (!doc || !request) return -1;
+        auto title = doc->Title();
+        if (request->text) {
+            if (request->capacity <= title.size()) return -1;
+            wcscpy_s(request->text, request->capacity, title.c_str());
+        }
+        return static_cast<LRESULT>(title.size());
+    }
     case NPPM_GETCURRENTSCINTILLA: if (!l) return FALSE; *reinterpret_cast<int*>(l) = 0; return TRUE;
     case NPPM_GETCURRENTVIEW: return 0;
     case NPPM_GETNPPVERSION: return MAKELONG(w ? 880 : 88, 8);
