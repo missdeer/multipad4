@@ -201,7 +201,9 @@ int ResolveScheme(const EditorDocument& d) {
     for (size_t i = 1; i < Count; ++i) {
         if(matched)break;
         if (!lexerCatalog[i]->pszDefExt) continue;
-        std::wistringstream fields(ExtensionsFor(d).contains(lexerCatalog[i]->rid)?ExtensionsFor(d).at(lexerCatalog[i]->rid):lexerCatalog[i]->pszDefExt); std::wstring entry;
+        std::wstring associations=ExtensionsFor(d).contains(lexerCatalog[i]->rid)?ExtensionsFor(d).at(lexerCatalog[i]->rid):lexerCatalog[i]->pszDefExt;
+        if(d.style.theme){auto extra=d.style.theme->extensions.find(lexerCatalog[i]->id);if(extra!=d.style.theme->extensions.end())associations+=L";"+extra->second;}
+        std::wistringstream fields(associations); std::wstring entry;
         while (std::getline(fields, entry, L';')) {
             entry.erase(0, entry.find_first_not_of(L" \t"));
             auto end = entry.find_last_not_of(L" \t"); if (end != std::wstring::npos) entry.resize(end+1);

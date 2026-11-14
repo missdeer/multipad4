@@ -73,6 +73,7 @@ struct ThemeDefinition {
     std::map<std::string, StylePatch> styles;
     std::map<std::string, std::wstring> legacy;
     std::map<std::pair<std::string,unsigned>,std::string> keywords;
+    std::map<std::string, std::wstring> extensions;
     std::vector<ImportDiagnostic> diagnostics;
 };
 struct ConfigurationSnapshot {

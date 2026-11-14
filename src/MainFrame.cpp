@@ -36,7 +36,7 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_FILES, L"Find in Files...\tCtrl+Shift+F");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_MARK, L"Mark...\tCtrl+M");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_RESULTS, L"Search results\tF7");
-    auto themeMenu=GetSubMenu(GetMenu(),3);AppendMenuW(themeMenu,MF_SEPARATOR,0,nullptr);AppendMenuW(themeMenu,MF_STRING,ID_THEME_CONFIG,L"Themes and configuration...");AppendMenuW(themeMenu,MF_STRING,ID_RELOAD_CONFIGURATION,L"Reload language configuration");
+    auto themeMenu=GetSubMenu(GetMenu(),3);AppendMenuW(themeMenu,MF_SEPARATOR,0,nullptr);AppendMenuW(themeMenu,MF_STRING,ID_THEME_CONFIG,PRIMARYLANGID(GetThreadUILanguage())==LANG_CHINESE?L"语言样式配置器...":L"Language Style Configurator...");AppendMenuW(themeMenu,MF_STRING,ID_RELOAD_CONFIGURATION,L"Reload language configuration");
     InitializeDockingFrame();
     SetTabOwnerParent(m_hWnd);
     CreateMDIClient(windowMenu);

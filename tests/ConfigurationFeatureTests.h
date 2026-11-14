@@ -103,6 +103,107 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
         SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_SETCURSEL,index,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(IDC_THEME_LIST,CBN_SELCHANGE),0);CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);
     },IDOK,ID_THEME_CONFIG);
     require(first->style.theme&&std::filesystem::exists(first->style.themePath));require(!second->style.theme);
+    // Exercise actual configurator controls, scoped preview, persistence and re-opening.
+    auto select=[&](HWND dialog,int control,int index,UINT notification){
+        SendDlgItemMessageW(dialog,control,control==IDC_THEME_STYLES?LB_SETCURSEL:CB_SETCURSEL,index,0);
+        SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(control,notification),0);
+    };
+    auto editStyle=[&](HWND dialog){
+        select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
+        auto index=SendDlgItemMessageW(dialog,IDC_THEME_STYLES,LB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"Number"));require(index>=0);
+        select(dialog,IDC_THEME_STYLES,static_cast<int>(index),LBN_SELCHANGE);
+        SetDlgItemTextW(dialog,IDC_THEME_FOREGROUND,L"#2468AC");
+        SetDlgItemTextW(dialog,IDC_THEME_BACKGROUND,L"#F1F2F3");
+        SetDlgItemTextW(dialog,IDC_THEME_FONT_NAME,L"Courier New");SetDlgItemTextW(dialog,IDC_THEME_FONT_SIZE,L"15");
+        CheckDlgButton(dialog,IDC_THEME_BOLD,BST_CHECKED);CheckDlgButton(dialog,IDC_THEME_ITALIC,BST_CHECKED);CheckDlgButton(dialog,IDC_THEME_UNDERLINE,BST_UNCHECKED);
+        SetDlgItemTextW(dialog,IDC_THEME_EXTENSIONS,L"multipad_style_test");
+        select(dialog,IDC_THEME_KEYWORD_MODE,1,CBN_SELCHANGE);SetDlgItemTextW(dialog,IDC_THEME_KEYWORDS,L"configurator_keyword");
+        SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);
+        require(first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER)==RGB(0x24,0x68,0xAC));
+        require(first->Send(SCI_STYLEGETBACK,SCE_C_NUMBER)==RGB(0xF1,0xF2,0xF3));
+        require(first->Send(SCI_STYLEGETSIZE,SCE_C_NUMBER)==15&&first->Send(SCI_STYLEGETBOLD,SCE_C_NUMBER)&&first->Send(SCI_STYLEGETITALIC,SCE_C_NUMBER));
+        require(std::string(GetDocumentLexer(*first)->pszKeyWords[0]).find("configurator_keyword")!=std::string::npos);
+        require(second->Send(SCI_STYLEGETFORE,SCE_PY_NUMBER)==secondColor);
+        CaptureQAWindow(dialog,L"language-style-configurator");
+    };
+    auto savedTheme=first->style.theme;auto savedThemePath=first->style.themePath;auto savedNumber=first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER);
+    StyleDialogTest::RunScheme(frame,*first,true,editStyle,IDCANCEL,ID_THEME_CONFIG);
+    require(first->style.theme==savedTheme&&first->style.themePath==savedThemePath&&first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER)==savedNumber);
+    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){editStyle(dialog);CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);},IDOK,ID_THEME_CONFIG);
+    require(!ThemeScopeAll());auto editedTheme=LoadTheme(first->style.themePath);
+    require(editedTheme->styles.at("cpp.number").foreground==0x2468AC&&editedTheme->styles.at("cpp.number").decorations==3);
+    require(editedTheme->extensions.at("cpp")==L"multipad_style_test");
+    first->style.theme=editedTheme;first->style.scheme=0;first->path=L"example.multipad_style_test";ConfigureDocumentStyle(*first);require(GetDocumentLexer(*first)->id=="cpp");
+    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+        select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
+        auto index=SendDlgItemMessageW(dialog,IDC_THEME_STYLES,LB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"Number"));require(index>=0);
+        select(dialog,IDC_THEME_STYLES,static_cast<int>(index),LBN_SELCHANGE);
+        wchar_t color[32]{};GetDlgItemTextW(dialog,IDC_THEME_FOREGROUND,color,32);require(wcscmp(color,L"#2468AC")==0);
+        // Invalid edits never publish a partial candidate; a corrected edit can be retried.
+        auto valid=first->style.theme;SetDlgItemTextW(dialog,IDC_THEME_FOREGROUND,L"#XYZ");SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);require(first->style.theme==valid);
+        SendMessageW(dialog,WM_COMMAND,IDC_THEME_STYLE_RESET,0);require(!first->style.theme->styles.contains("cpp.number"));
+    },IDCANCEL,ID_THEME_CONFIG);
+    require(first->style.theme==editedTheme);
+    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+        select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
+        select(dialog,IDC_THEME_KEYWORD_MODE,2,CBN_SELCHANGE);SetDlgItemTextW(dialog,IDC_THEME_KEYWORDS,L"only_keyword");
+        SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);
+        require(std::string(GetDocumentLexer(*first)->pszKeyWords[0])=="only_keyword");
+        // Switching themes keeps this dialog's unsaved edits in memory.
+        auto current=SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_GETCURSEL,0,0);
+        select(dialog,IDC_THEME_LIST,0,CBN_SELCHANGE);select(dialog,IDC_THEME_LIST,static_cast<int>(current),CBN_SELCHANGE);
+        require(std::string(GetDocumentLexer(*first)->pszKeyWords[0])=="only_keyword");
+        select(dialog,IDC_THEME_KEYWORD_MODE,0,CBN_SELCHANGE);SetDlgItemTextW(dialog,IDC_THEME_KEYWORDS,L"");
+        SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);
+        require(std::string(GetDocumentLexer(*first)->pszKeyWords[0])==Language("cpp").pszKeyWords[0]);
+        CheckDlgButton(dialog,IDC_THEME_ALL,BST_CHECKED);
+    },IDOK,ID_THEME_CONFIG);
+    require(ThemeScopeAll());SaveThemePreferences(directory/L"Settings.ini");LoadThemePreferences(directory/L"Settings.ini");
+    EditorDocument future;ApplyDefaultDocumentTheme(future);require(future.style.theme&&future.style.theme->extensions.at("cpp")==L"multipad_style_test");
+    first->style.theme=editedTheme;
+
+    // Product UI: effective values, compact layout, reversible live edits and disclosure.
+    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+        require(!IsWindowEnabled(GetDlgItem(dialog,IDOK)));
+        require(!IsWindowVisible(GetDlgItem(dialog,IDC_THEME_KEYWORDS)));
+        CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);SendMessageW(dialog,WM_COMMAND,IDC_THEME_ALL,0);
+
+        require(SendDlgItemMessageW(dialog,IDC_THEME_FONT_NAME,CB_GETCOUNT,0,0)>10);
+        select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
+        require(IsWindowEnabled(GetDlgItem(dialog,IDOK)));
+        auto list=GetDlgItem(dialog,IDC_THEME_STYLES);auto count=SendMessageW(list,LB_GETCOUNT,0,0);
+        auto index=SendMessageW(list,LB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"Number"));require(index>=0);
+        select(dialog,IDC_THEME_STYLES,static_cast<int>(index),LBN_SELCHANGE);
+        wchar_t font[256]{};GetDlgItemTextW(dialog,IDC_THEME_FONT_NAME,font,256);require(*font);
+        wchar_t swatch[128]{};GetDlgItemTextW(dialog,IDC_THEME_PICK_FORE,swatch,128);require(wcsstr(swatch,L"#2468AC"));
+        // Clicks update immediately, including toggling back to the original value.
+        CheckDlgButton(dialog,IDC_THEME_BOLD,BST_UNCHECKED);SendMessageW(dialog,WM_COMMAND,IDC_THEME_BOLD,0);require(!first->Send(SCI_STYLEGETBOLD,SCE_C_NUMBER));
+        CheckDlgButton(dialog,IDC_THEME_BOLD,BST_CHECKED);SendMessageW(dialog,WM_COMMAND,IDC_THEME_BOLD,0);require(first->Send(SCI_STYLEGETBOLD,SCE_C_NUMBER));
+        for(const wchar_t* size:{L"16",L"15"}){
+            SetDlgItemTextW(dialog,IDC_THEME_FONT_SIZE,size);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(IDC_THEME_FONT_SIZE,CBN_EDITCHANGE),0);SendMessageW(dialog,WM_TIMER,1,0);
+            require(first->Send(SCI_STYLEGETSIZE,SCE_C_NUMBER)==_wtoi(size));
+        }
+        CheckDlgButton(dialog,IDC_THEME_DETAILS,BST_CHECKED);SendMessageW(dialog,WM_COMMAND,IDC_THEME_DETAILS,0);
+        require(SendMessageW(list,LB_GETCOUNT,0,0)>count);
+        for(LRESULT i=0;i<SendMessageW(list,LB_GETCOUNT,0,0);++i){wchar_t label[256]{};SendMessageW(list,LB_GETTEXT,i,reinterpret_cast<LPARAM>(label));require(!wcschr(label,L'.'));}
+        RECT compact{},expanded{};GetWindowRect(dialog,&compact);SendMessageW(dialog,WM_COMMAND,IDC_THEME_ADVANCED,0);GetWindowRect(dialog,&expanded);
+        require(expanded.bottom-expanded.top>compact.bottom-compact.top&&IsWindowVisible(GetDlgItem(dialog,IDC_THEME_KEYWORDS)));
+        CaptureQAWindow(dialog,L"language-style-advanced");
+        SendMessageW(dialog,WM_COMMAND,IDC_THEME_ADVANCED,0);GetWindowRect(dialog,&expanded);
+        require(expanded.bottom-expanded.top==compact.bottom-compact.top&&!IsWindowVisible(GetDlgItem(dialog,IDC_THEME_KEYWORDS)));
+    },IDCANCEL,ID_THEME_CONFIG);
+    {
+        struct RestoreLanguage{LANGID saved=GetThreadUILanguage();~RestoreLanguage(){SetThreadUILanguage(saved);}} restoreLanguage;
+        SetThreadUILanguage(MAKELANGID(LANG_CHINESE,SUBLANG_CHINESE_SIMPLIFIED));
+        StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+            wchar_t caption[128]{};GetWindowTextW(dialog,caption,128);require(wcscmp(caption,L"语言样式配置器")==0);
+            select(dialog,IDC_THEME_LANGUAGE,0,CBN_SELCHANGE);
+            CaptureQAWindow(dialog,L"language-style-chinese");
+        },IDCANCEL,ID_THEME_CONFIG);
+    }
+    require(rejects("<theme version='1'><extensions language='global'>bad</extensions></theme>"));
+    require(rejects("<theme version='1'><extensions language='cpp'>bad/path</extensions></theme>"));
+    first->path=L"one.cpp";
     // Restore mutations at the fixture level and compare incremental lexing to a fresh document.
     first->style.theme.reset();first->Load({"int main() {\n/* comment */\nreturn 42;\n}\n"});ConfigureDocumentStyle(*first);
     first->Send(SCI_SETTARGETSTART,14);first->Send(SCI_SETTARGETEND,15);first->Send(SCI_REPLACETARGET,1,reinterpret_cast<LPARAM>(" "));first->Send(SCI_COLOURISE,14,-1);
