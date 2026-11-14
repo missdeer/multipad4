@@ -107,6 +107,8 @@ inline void RunStyleFeatureTests(EditorDocument& d) {
     d.style.markOccurrences=1;d.style.completionOptions[IDM_VIEW_MARKOCCURRENCES_CASE]=1;d.style.completionOptions[IDM_VIEW_MARKOCCURRENCES_WORD]=1;
     d.Load({"alpha ALPHA alphabet alpha"});d.Send(SCI_SETSEL,0,5);
     SCNotification update{};update.nmhdr.code=SCN_UPDATEUI;HandleStyleNotification(d,update);
+    require(d.style.occurrencePending);
+    ProcessStyleBackground(d);
     require(d.Send(SCI_INDICATORVALUEAT,8,0)!=0);
     require(d.Send(SCI_INDICATORVALUEAT,8,6)==0);
     require(d.Send(SCI_INDICATORVALUEAT,8,12)==0);

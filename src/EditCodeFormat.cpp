@@ -379,7 +379,7 @@ void FormatDocumentCode(EditorDocument &document, bool pretty) {
     if (start == end)
         return;
     document.Send(SCI_COLOURISE, 0, end);
-    auto text = document.Text().substr(start, end - start);
+    auto text = document.Range(start, end - start);
     std::vector<char> styled(text.size() * 2 + 2, '\0');
     for (size_t i = 0; i < text.size(); ++i)
         styled[i] = static_cast<char>(document.Send(SCI_GETSTYLEINDEXAT, start + i));

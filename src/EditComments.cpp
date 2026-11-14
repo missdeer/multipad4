@@ -481,13 +481,13 @@ void ToggleDocumentComment(EditorDocument &d, bool block) {
         marker.pop_back();
     bool remove = false, chosen = false;
     LRESULT column = LLONG_MAX;
-    const auto original = d.Text();
     auto hasMarker = [&](LRESULT indent, LRESULT finish) {
         auto available = finish - indent;
+        auto prefix = d.Range(indent, marker.size() + 1);
         return available >= static_cast<LRESULT>(marker.size()) &&
-               _strnicmp(original.c_str() + indent, marker.c_str(), marker.size()) == 0 &&
+               _strnicmp(prefix.c_str(), marker.c_str(), marker.size()) == 0 &&
                (!forcedSpace || available == static_cast<LRESULT>(marker.size()) ||
-                static_cast<unsigned char>(original[indent + marker.size()]) <= ' ');
+                static_cast<unsigned char>(prefix[marker.size()]) <= ' ');
     };
     for (auto line = first; line <= last; ++line) {
         auto indent = d.Send(SCI_GETLINEINDENTPOSITION, line), finish = d.Send(SCI_GETLINEENDPOSITION, line);
@@ -507,7 +507,7 @@ void ToggleDocumentComment(EditorDocument &d, bool block) {
         if (remove) {
             if (hasMarker(indent, finish)) {
                 size_t size = marker.size();
-                if (spaceAfter && indent + size < original.size() && original[indent + size] == ' ')
+                if (spaceAfter && indent + static_cast<LRESULT>(size) < finish && d.Send(SCI_GETCHARAT, indent + size) == ' ')
                     ++size;
                 d.Send(SCI_DELETERANGE, indent, size);
             }

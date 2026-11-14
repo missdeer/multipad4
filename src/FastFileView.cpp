@@ -313,6 +313,23 @@ void FastFileView::CompleteTask() {
 void FastFileView::StartGoToLine(large::Position line) {
     Launch([line](const auto& snapshot, const auto& stop) -> std::optional<large::Document::Match> { return large::Document::Match{large::Document::PositionFromLine(snapshot, line, &stop), 0}; });
 }
+void FastFileView::StartExternalMatch(large::Document::Snapshot utf8, large::Position line, large::Position lineStart, large::Position start, large::Position end) {
+    Launch([this, utf8, line, lineStart, start, end](const auto& snapshot, const auto& stop) -> std::optional<large::Document::Match> {
+        auto encodedSize = [&](large::Position first, large::Position last) {
+            large::Position length = 0;
+            while (first < last) {
+                if (stop.load()) throw std::runtime_error("Search cancelled.");
+                auto bytes = large::Document::Read(utf8, first, static_cast<size_t>((std::min)(last - first, large::Position(64 * 1024 + 4))));
+                size_t count = bytes.size();
+                if (first + count < last) { count -= 4; while (count && (static_cast<unsigned char>(bytes[count]) & 0xC0) == 0x80) --count; bytes.resize(count); }
+                length += Encode(bytes).size(); first += count;
+            }
+            return length;
+        };
+        auto native = large::Document::PositionFromLine(snapshot, line, &stop) + encodedSize(lineStart, start);
+        return large::Document::Match{native, static_cast<size_t>(encodedSize(start, end))};
+    });
+}
 namespace {
 bool SameSearch(const large::SearchOptions& a, const large::SearchOptions& b) {
     return a.pattern == b.pattern && a.regex == b.regex && a.matchCase == b.matchCase && a.wholeWord == b.wholeWord && a.wordStart == b.wordStart && a.dotAll == b.dotAll;

@@ -85,6 +85,7 @@ public:
     void StopWork() { CancelTask(); }
     const std::string& Status() const { return resultStatus; }
     void StartGoToLine(large::Position line);
+    void StartExternalMatch(large::Document::Snapshot utf8, large::Position line, large::Position lineStart, large::Position start, large::Position end);
     bool Active() const { return model != nullptr; }
     bool Modified() const { return model && model->Modified(); }
     bool CanUndo() const { return model && model->CanUndo(); }

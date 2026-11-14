@@ -6,6 +6,8 @@
 #include "FileVariables.h"
 #include "FastFileView.h"
 #include <functional>
+#include <unordered_map>
+#include "StatusStatistics.h"
 struct SearchState {
     std::wstring findText, replaceText;
     int flags = 0;
@@ -24,6 +26,8 @@ struct SearchMatch {
     std::shared_ptr<const large::Document::Snapshot> mappedSource;
     large::Position nativeStart = 0, nativeEnd = 0, nativeLineStart = 0;
     std::string preview;
+    std::shared_ptr<const large::Document::Snapshot> diskSource;
+    unsigned long long sourceRevision = 0, sourceSize = 0, sourceWriteTime = 0;
 };
 struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
@@ -35,6 +39,9 @@ struct EditorDocument {
     HWND ViewWindow() const { return fastView ? fastView->Window() : hwnd; }
     void OpenFastFile(const std::filesystem::path& source, const files::ReadOptions& options, std::optional<files::Encoding> forced = {});
     HWND hwnd = nullptr;
+    SciFnDirect directFunction = nullptr;
+    sptr_t directPointer = 0;
+    DWORD editorThread = 0;
     std::filesystem::path path;
     std::wstring untitled;
     files::Encoding encoding = files::Encoding::Utf8;
@@ -42,6 +49,7 @@ struct EditorDocument {
     SearchState search;
     DocumentStyleState style;
     DocumentRuntime runtime;
+    StatusStatistics statusStatistics;
     FileVariableState fileVariables;
     bool encodingDirty = false;
     int edgeMode = EDGE_LINE;
@@ -55,6 +63,8 @@ struct EditorDocument {
             // Document-wide APIs are explicit on FastFileView/large::Document.
         }
         if (msg == SCI_GETCOLUMN && l == 0) l = -1;
+        if (directFunction && GetCurrentThreadId() == editorThread)
+            return directFunction(directPointer, msg, w, l);
         return ::SendMessageW(hwnd, msg, w, l);
     }
     bool Modified() const { return encodingDirty || (FastView() ? fastView->Modified() : Send(SCI_GETMODIFY) != 0); }
@@ -98,8 +108,10 @@ public:
         auto* n = reinterpret_cast<NMHDR*>(l);
         if (document && n->hwndFrom == document->hwnd) ::SendMessageW(owner, WM_APP + 0x120, 0, l);
         if (document && n->hwndFrom == document->hwnd) HandleStyleNotification(*document, *reinterpret_cast<SCNotification*>(l));
-        if (n->code == SCN_SAVEPOINTLEFT || n->code == SCN_SAVEPOINTREACHED || n->code == SCN_UPDATEUI || n->code == SCN_ZOOM)
+        if (n->code == SCN_SAVEPOINTLEFT || n->code == SCN_SAVEPOINTREACHED || n->code == SCN_ZOOM)
             ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
+        else if (n->code == SCN_UPDATEUI)
+            ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 1, 0);
         handled = FALSE; return 0;
     }
     LRESULT OnActivate(UINT, WPARAM, LPARAM, BOOL& handled) {
@@ -112,13 +124,15 @@ public:
     HWND owner = nullptr, m_hWnd = nullptr;
     CDotNetTabCtrl<CTabViewTabItem>* control = nullptr;
     std::vector<std::unique_ptr<EditorChild>> children;
+    std::unordered_map<HWND, EditorChild*> childrenByWindow;
+    std::unordered_map<UINT_PTR, EditorDocument*> documentsById;
     operator HWND() const { return m_hWnd; }
     int GetPageCount() const { return control ? control->GetItemCount() : 0; }
     HWND GetPageHWND(int i) const { return control->GetItem(i)->GetTabView(); }
     EditorChild* Child(int i) const {
         HWND window = GetPageHWND(i);
-        for (const auto& child : children) if (child->m_hWnd == window) return child.get();
-        return nullptr;
+        auto found = childrenByWindow.find(window);
+        return found == childrenByWindow.end() ? nullptr : found->second;
     }
     void* GetPageData(int i) const { auto* child = Child(i); return child ? child->document : nullptr; }
     int GetActivePage() const { return control ? control->GetCurSel() : -1; }
@@ -137,10 +151,14 @@ public:
         if (!child->Create(m_hWnd, CWindow::rcDefault, title, EditorChild::GetWndStyle(0) | WS_MAXIMIZE)) return false;
         ::SetParent(editor, child->m_hWnd); child->m_hWndClient = editor;
         ::ShowWindow(editor, SW_SHOW); child->UpdateLayout(); child->SetTitle(title);
+        childrenByWindow.emplace(child->m_hWnd, child.get());
+        documentsById.emplace(child->document->searchIdentity, child->document);
         children.push_back(std::move(child)); return true;
     }
     void RemovePage(int i) {
         auto* child = Child(i); if (!child) return;
+        childrenByWindow.erase(child->m_hWnd);
+        documentsById.erase(child->document->searchIdentity);
         ::SendMessageW(m_hWnd, WM_MDIDESTROY, reinterpret_cast<WPARAM>(child->m_hWnd), 0);
         std::erase_if(children, [child](const auto& p) { return p.get() == child; });
     }

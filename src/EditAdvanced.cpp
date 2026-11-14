@@ -45,8 +45,7 @@ Range Selection(EditorDocument &d, bool lines = false) {
     return r;
 }
 std::string Text(EditorDocument &d, Range r) {
-    auto text = d.Text();
-    return text.substr(r.start, r.end - r.start);
+    return d.Range(r.start, r.end - r.start);
 }
 void Replace(EditorDocument &d, Range r, const std::string &text) {
     d.Send(SCI_BEGINUNDOACTION);
@@ -1464,8 +1463,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             }
             return wide;
         };
-        auto key = [&](const Line &line) {
-            auto wide = fullKey(line);
+        auto key = [&](std::wstring wide) {
             if (options.columnSort) {
                 size_t position = 0;
                 LRESULT column = 0;
@@ -1488,37 +1486,45 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             }
             return wide;
         };
+        struct SortKeys { std::wstring full, column, extension; };
+        // Moves during sorting can change string storage (especially SSO).
+        // Sort stable indices and move the payloads only after comparisons.
+        std::vector<SortKeys> keys;
+        std::vector<size_t> order;
+        keys.reserve(result.size()); order.reserve(result.size());
+        for (size_t i = 0; i < result.size(); ++i) {
+            auto full = fullKey(result[i]);
+            auto column = options.columnSort ? key(full) : std::wstring{};
+            auto dot = (options.columnSort ? column : full).find_last_of(L'.');
+            keys.push_back({std::move(full), std::move(column), {}});
+            if (options.group && dot != std::wstring::npos) keys.back().extension = (options.columnSort ? keys.back().column : keys.back().full).substr(dot);
+            order.push_back(i);
+        }
         if (options.order == IDC_SORT_SHUFFLE) {
             std::mt19937 engine(std::random_device{}());
-            std::shuffle(result.begin(), result.end(), engine);
+            std::shuffle(order.begin(), order.end(), engine);
         } else if (options.order != IDC_SORT_NONE)
-            std::stable_sort(result.begin(), result.end(), [&](const Line &a, const Line &b) {
-                auto x = key(a), y = key(b);
-                int compare = 0;
-                if (options.group) {
-                    auto ext = [](const std::wstring &s) {
-                        auto p = s.find_last_of(L'.');
-                        return p == std::wstring::npos ? std::wstring{} : s.substr(p);
-                    };
-                    compare = ext(x).compare(ext(y));
-                }
-                if (!compare)
-                    compare = options.logical ? StrCmpLogicalW(x.c_str(), y.c_str()) : x.compare(y);
-                if (!compare && (options.columnSort || options.group)) {
-                    auto fullA = fullKey(a), fullB = fullKey(b);
-                    compare = options.logical ? StrCmpLogicalW(fullA.c_str(), fullB.c_str()) : fullA.compare(fullB);
-                }
+            std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+                const auto& x = keys[a]; const auto& y = keys[b];
+                const auto& xKey = options.columnSort ? x.column : x.full;
+                const auto& yKey = options.columnSort ? y.column : y.full;
+                int compare = options.group ? x.extension.compare(y.extension) : 0;
+                if (!compare) compare = options.logical ? StrCmpLogicalW(xKey.c_str(), yKey.c_str()) : xKey.compare(yKey);
+                if (!compare && (options.columnSort || options.group))
+                    compare = options.logical ? StrCmpLogicalW(x.full.c_str(), y.full.c_str()) : x.full.compare(y.full);
                 return options.order == IDC_SORT_DESC ? compare > 0 : compare < 0;
             });
         std::map<std::wstring, size_t> count;
-        for (const auto &line : result)
-            ++count[fullKey(line)];
+        if (options.remove || options.unique) for (const auto& k : keys) ++count[k.full];
         std::set<std::wstring> emitted;
-        std::erase_if(result, [&](const Line &line) {
-            auto k = fullKey(line);
-            return (options.remove && count[k] > 1) || (options.unique && count[k] == 1) ||
-                   (options.merge && !emitted.insert(k).second);
-        });
+        std::vector<Line> sorted; sorted.reserve(result.size());
+        for (size_t i : order) {
+            const auto& k = keys[i].full;
+            if ((options.remove && count[k] > 1) || (options.unique && count[k] == 1) ||
+                (options.merge && !emitted.insert(k).second)) continue;
+            sorted.push_back(std::move(result[i]));
+        }
+        result = std::move(sorted);
         // EOL belongs to positions, not sorted payloads; preserve the original final-line state.
         auto original = Lines(Text(d, r));
         for (size_t i = 0; i < result.size(); ++i)
@@ -1543,24 +1549,19 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         out.clear();
         for (auto &line : result) {
             auto wide = files::FromUtf8(line.text);
-            while (wide.size() > static_cast<size_t>(options.column)) {
-                size_t split = wide.rfind(L' ', options.column);
-                if (split == std::wstring::npos || split == 0)
-                    split = options.column;
+            size_t offset = 0;
+            while (wide.size() - offset > static_cast<size_t>(options.column)) {
+                size_t split = wide.rfind(L' ', offset + options.column);
+                if (split == std::wstring::npos || split <= offset) split = offset + options.column;
                 if (split < wide.size() && wide[split] >= 0xDC00 && wide[split] <= 0xDFFF) {
-                    if (split == 1)
-                        ++split;
-                    else
-                        --split;
+                    if (split == offset + 1) ++split; else --split;
                 }
-                if (!split)
-                    split = min<size_t>(2, wide.size());
-                out += files::ToUtf8(wide.substr(0, split)) + eol;
-                wide.erase(0, split);
-                while (!wide.empty() && wide.front() == L' ')
-                    wide.erase(0, 1);
+                if (split == offset) split = min(wide.size(), offset + 2);
+                out += files::ToUtf8(wide.substr(offset, split - offset)) + eol;
+                offset = split;
+                while (offset < wide.size() && wide[offset] == L' ') ++offset;
             }
-            out += files::ToUtf8(wide) + line.eol;
+            out += files::ToUtf8(wide.substr(offset)) + line.eol;
         }
     } else {
         if (!result.empty() && !lines.empty())

@@ -17,8 +17,8 @@ LRESULT PluginPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
 }
 UINT_PTR PluginHost::Buffer(const EditorDocument* document) const { return document ? document->searchIdentity : 0; }
 EditorDocument* PluginHost::Document(UINT_PTR id) {
-    for (auto& d : frame->documents) if (Buffer(d.get()) == id) return d.get();
-    return nullptr;
+    auto found = frame->tabs.documentsById.find(id);
+    return found == frame->tabs.documentsById.end() ? nullptr : found->second;
 }
 LRESULT CALLBACK PluginHost::ProxyProc(HWND window, UINT msg, WPARAM w, LPARAM l) {
     auto* host = reinterpret_cast<PluginHost*>(GetWindowLongPtrW(window, GWLP_USERDATA));

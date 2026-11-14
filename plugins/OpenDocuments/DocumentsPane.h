@@ -10,6 +10,7 @@ public:
     CListBox list;
     bool floating = false;
     void Refresh();
+    void UpdateSelection();
     void ActivateSelection();
     BEGIN_MSG_MAP(DockPane)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)

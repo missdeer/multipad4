@@ -10,6 +10,7 @@
 #include "CommandLine.h"
 #include "InfoDialog.h"
 #include "Session.h"
+#include "AutoSave.h"
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
     if (pluginAdmin.hwnd && ::IsWindowVisible(pluginAdmin.hwnd) && ::IsDialogMessageW(pluginAdmin.hwnd, msg)) return TRUE;
     if (plugins.PreTranslate(msg)) return TRUE;
@@ -96,6 +97,7 @@ bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
     return SaveTo(document, path, mode == SaveMode::Copy, keepBackup);
 }
 bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& input, bool copy, bool keepBackup) {
+    CancelDocumentBackup(*this, document);
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
         for (auto& other : documents) {
@@ -127,6 +129,7 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
     } catch (const std::exception& error) { Error(error); return false; }
 }
 bool MainFrame::Reload(EditorDocument& document) {
+    CancelDocumentBackup(*this, document);
     if (document.path.empty()) return false;
     if (document.Modified() && MessageBox(L"Discard changes and reload this document?", document.Title().c_str(),
         MB_OKCANCEL | MB_ICONWARNING) != IDOK) return false;
@@ -231,12 +234,22 @@ void MainFrame::Refresh() {
     auto* active = Active();
     plugins.Activated();
     searchDialog.SyncDocument();
+    std::vector<std::pair<UINT_PTR, std::wstring>> currentDocuments;
     for (int i = 0; i < tabs.GetPageCount(); ++i) {
         auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
         auto title = d->Title();
+        currentDocuments.emplace_back(d->searchIdentity, title);
         if (title != tabs.GetPageTitle(i)) tabs.SetPageTitle(i, title.c_str());
     }
-    if (plugins.ready) plugins.Notify(MPN_DOCUMENTSCHANGED);
+    const auto currentActive = active ? active->searchIdentity : 0;
+    const bool activeChanged = currentActive != publishedActive;
+    publishedActive = currentActive;
+    if (currentDocuments != publishedDocuments) {
+        publishedDocuments = std::move(currentDocuments);
+        if (plugins.ready) plugins.Notify(MPN_DOCUMENTSCHANGED);
+    } else if (activeChanged && plugins.ready) {
+        plugins.Notify(MPN_DOCUMENTSCHANGED, currentActive);
+    }
     std::wstring title = L"MultiPad4";
     if (!runtime.titleOverride.empty()) title = runtime.titleOverride + L" — MultiPad4";
     else if (active) {
@@ -255,7 +268,7 @@ void MainFrame::Refresh() {
         title = name + L" — MultiPad4";
     }
     SetWindowText(title.c_str());
-    UpdateStatus(); UpdateCommandUI();
+    UpdateStatus(); UpdateMenuCommands(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu()); UpdateCommandUI();
 }
 void MainFrame::ShowSearch(bool replace) {
     if (searchDialog.hwnd) searchDialog.ReadFields();
@@ -389,7 +402,18 @@ LRESULT MainFrame::OnDrop(UINT, WPARAM w, LPARAM, BOOL&) {
     }
     DragFinish(drop); return 0;
 }
-LRESULT MainFrame::OnChanged(UINT, WPARAM, LPARAM, BOOL&) { Refresh(); return 0; }
+LRESULT MainFrame::OnChanged(UINT, WPARAM lightweight, LPARAM, BOOL&) {
+    MSG message{};
+    // One queued update represents all notifications already waiting for this frame.
+    while (::PeekMessageW(&message, m_hWnd, WM_DOCUMENT_CHANGED, WM_DOCUMENT_CHANGED, PM_REMOVE))
+        lightweight = lightweight && message.wParam;
+    if (!lightweight || settings.Get(IDM_VIEW_SHOWEXCERPT)) Refresh();
+    else { UpdateStatus(); UpdateCommandUI(); }
+    if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
+        SetTimer(3, 30); runtime.workTimerArmed = true;
+    }
+    return 0;
+}
 LRESULT MainFrame::OnCloseTab(UINT, WPARAM w, LPARAM, BOOL&) {
     const HWND child = reinterpret_cast<HWND>(w);
     if (runtime.operationDepth || runtime.inBackgroundWork || !IsWindowEnabled()) {
@@ -401,7 +425,8 @@ LRESULT MainFrame::OnCloseTab(UINT, WPARAM w, LPARAM, BOOL&) {
         if (tabs.GetPageHWND(i) == child) { Close(i); break; }
     return 0;
 }
-LRESULT MainFrame::OnMenu(UINT, WPARAM, LPARAM, BOOL&) {
+LRESULT MainFrame::OnMenu(UINT, WPARAM menu, LPARAM, BOOL&) {
+    UpdateMenuCommands(*this, reinterpret_cast<HMENU>(menu));
     UpdateCommandUI(); return 0;
 }
 LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {

@@ -15,6 +15,9 @@ bool EditorDocument::Create(HWND parent) {
     hwnd = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         0, 0, 0, 0, parent, nullptr, _Module.GetModuleInstance(), nullptr);
     if (!hwnd) return false;
+    directFunction = reinterpret_cast<SciFnDirect>(::SendMessageW(hwnd, SCI_GETDIRECTFUNCTION, 0, 0));
+    directPointer = ::SendMessageW(hwnd, SCI_GETDIRECTPOINTER, 0, 0);
+    editorThread = GetCurrentThreadId();
     Send(SCI_SETCODEPAGE, SC_CP_UTF8);
     Send(SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<LPARAM>("Consolas"));
     Send(SCI_STYLESETSIZE, STYLE_DEFAULT, 11);
@@ -51,6 +54,7 @@ void EditorDocument::LoadFile(const std::filesystem::path& source, const files::
         [&](const files::ChunkConsumer& consume) { return files::ReadChunks(source, consume, options, forced, &loadMetrics.fileRead); });
 }
 void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, const std::function<files::Encoding(const files::ChunkConsumer&)>& produce) {
+    ++style.revision;
     // Populate a separate Scintilla document before replacing the live buffer.
     // Scintilla reports allocation failure through SCI_GETSTATUS, not a C++
     // exception; clearing the live buffer first would lose its text/undo state.

@@ -37,17 +37,17 @@ bool ExecuteWhitespaceEdit(EditorDocument &d, UINT id) {
     }
     if (RejectRectangularEdit(d))
         return true;
-    const auto all = d.Text();
+    const auto total = d.Send(SCI_GETLENGTH);
     auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
     if (id == IDM_EDIT_COMPRESSWS) {
         if (start == end) {
             start = 0;
-            end = static_cast<LRESULT>(all.size());
+            end = total;
         }
-        auto input = all.substr(start, end - start);
+        auto input = d.Range(start, end - start);
         auto buffer = input;
-        const char following = end < static_cast<LRESULT>(all.size()) ? all[end] : '\n';
-        char previous = start ? all[start - 1] : '\n';
+        const char following = end < total ? static_cast<char>(d.Send(SCI_GETCHARAT, end)) : '\n';
+        char previous = start ? static_cast<char>(d.Send(SCI_GETCHARAT, start - 1)) : '\n';
         buffer += following;
         std::string output;
         output.reserve(input.size());
@@ -71,7 +71,7 @@ bool ExecuteWhitespaceEdit(EditorDocument &d, UINT id) {
     if (start == end)
         return true;
     start = d.Send(SCI_POSITIONFROMLINE, d.Send(SCI_LINEFROMPOSITION, start));
-    auto input = all.substr(start, end - start);
+    auto input = d.Range(start, end - start);
     auto wide = files::FromUtf8(input);
     const auto length = wide.size();
     wide += L'\0';

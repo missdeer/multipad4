@@ -167,8 +167,8 @@ inline void RunMappedSearchTests(MainFrame& frame, const std::filesystem::path& 
     require(archive->Page(2000, 2)[0].start == 8000 && archive->FirstEndingAtOrAfter(8001) == 2000);
     frame.searchResults.Clear(); frame.searchResults.Begin(L"hit");
     frame.searchResults.AddMapped(*document, document->fastView->Model().Capture(), archive); frame.searchResults.Finish(archive->Count(), 1);
-    require(frame.searchResults.targets.size() < 1100); require(frame.searchResults.Navigate(frame.searchResults.targets.size() - 1));
-    require(frame.searchResults.targets.size() > 2000 && frame.searchResults.targets.size() < 2100);
+    require(frame.searchResults.targets.size() < 70); require(frame.searchResults.Navigate(frame.searchResults.targets.size() - 1));
+    require(frame.searchResults.targets.size() > 128 && frame.searchResults.targets.size() < 140);
     require(frame.searchResults.Navigate(frame.searchResults.targets.size() - 1));
     require(document->FindAll(false, true) == 2205);
     load("one two");

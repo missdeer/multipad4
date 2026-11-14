@@ -276,9 +276,9 @@ class MappedInput {
     std::shared_ptr<std::mutex> fallbackMutex = std::make_shared<std::mutex>();
 public:
     unsigned long long size = 0;
-    explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped, bool shareDelete = false) : stats(trace) {
+    explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped, bool shareDelete = false, bool deleteOnClose = false) : stats(trace) {
         ReadTimer timer(stats ? &stats->mappingMs : nullptr);
-        file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | (shareDelete ? FILE_SHARE_DELETE : 0), nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+        file = CreateFileW(path.c_str(), GENERIC_READ | (deleteOnClose ? DELETE : 0), FILE_SHARE_READ | (shareDelete ? FILE_SHARE_DELETE : 0), nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | (deleteOnClose ? FILE_FLAG_DELETE_ON_CLOSE : 0), nullptr);
         if (file == INVALID_HANDLE_VALUE) Fail("Cannot open file.");
         LARGE_INTEGER length{};
         if (!GetFileSizeEx(file, &length) || length.QuadPart < 0) { CloseHandle(file); Fail("Cannot read file size."); }
@@ -368,10 +368,10 @@ size_t ChunkEnd(std::string_view bytes, Encoding encoding, bool last) {
 struct MappedFile::Impl {
     MappedInput input;
     unsigned long long bytesRead = 0;
-    explicit Impl(const std::filesystem::path& path, ReadStats* stats, bool shareDelete) : input(path, stats, ReadBackend::Mapped, shareDelete) {}
+    explicit Impl(const std::filesystem::path& path, ReadStats* stats, bool shareDelete, bool deleteOnClose) : input(path, stats, ReadBackend::Mapped, shareDelete, deleteOnClose) {}
     explicit Impl(const Impl& source) : input(source.input, 0) {}
 };
-MappedFile::MappedFile(const std::filesystem::path& path, ReadStats* stats, bool shareDelete) : impl(std::make_unique<Impl>(path, stats, shareDelete)) {}
+MappedFile::MappedFile(const std::filesystem::path& path, ReadStats* stats, bool shareDelete, bool deleteOnClose) : impl(std::make_unique<Impl>(path, stats, shareDelete, deleteOnClose)) {}
 MappedFile::~MappedFile() = default;
 MappedFile::MappedFile(const MappedFile& source, int) : impl(std::make_unique<Impl>(*source.impl)) {}
 std::unique_ptr<MappedFile> MappedFile::NewReadSession() const { return std::unique_ptr<MappedFile>(new MappedFile(*this, 0)); }
@@ -475,13 +475,13 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
 Text ReadForReload(const std::filesystem::path& path,Encoding current,const ReadOptions& options) {
     auto bytes=ReadBytes(path);
     if(bytes.empty())return Decode(bytes,current);
-    if(bytes.starts_with("\xEF\xBB\xBF")||bytes.starts_with("\xFF\xFE")||bytes.starts_with("\xFE\xFF"))return Read(path,options);
+    if(bytes.starts_with("\xEF\xBB\xBF")||bytes.starts_with("\xFF\xFE")||bytes.starts_with("\xFE\xFF"))return DetectBytes(bytes,options);
     const bool unicode=current==Encoding::Utf16LE||current==Encoding::Utf16BE||current==Encoding::Utf16LEPlain||current==Encoding::Utf16BEPlain;
     const bool ascii=simd::IsAscii(bytes);
     auto actual=options;
     if(!unicode&&current!=Encoding::Utf8&&current!=Encoding::Utf8Bom)actual.fallback=current;
     Text detected;
-    try{detected=Read(path,actual);}catch(const std::runtime_error&){detected=Read(path,options);}
+    try{detected=DetectBytes(bytes,actual);}catch(const std::runtime_error&){detected=DetectBytes(bytes,options);}
     if(detected.encoding==Encoding::Utf16LEPlain||detected.encoding==Encoding::Utf16BEPlain)return detected;
     if(ascii&&!unicode)return Decode(bytes,current==Encoding::Utf8Bom?Encoding::Utf8:current);
     try{Validate(bytes);return Decode(bytes,Encoding::Utf8);}catch(const std::runtime_error&){}

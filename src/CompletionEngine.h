@@ -18,4 +18,4 @@ struct EditorDocument;
 // Return 0: general keywords; 1: context only; 2: context and document words.
 int AddContextCompletionWords(EditorDocument&,int currentStyle,int previousStyle,int prefix,int previous,const std::function<void(const char*)>&);
 
-void AddDocumentCompletionWords(EditorDocument&,const std::string& root,bool ignoreCase,char prefix,unsigned timeout,const uint32_t (&ignoredStyleMask)[8],const std::function<void(std::string)>&);
+void AddDocumentCompletionWords(EditorDocument&,const std::string& root,bool ignoreCase,char prefix,unsigned timeout,const uint32_t (&ignoredStyleMask)[8],const std::function<void(std::string)>&, size_t scanBytes = SIZE_MAX);

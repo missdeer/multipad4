@@ -35,11 +35,12 @@ void Configure(HWND editor) {
     send(SCI_MARKERDEFINE, SC_MARKNUM_FOLDER, SC_MARK_BOXPLUS);
     send(SCI_MARKERDEFINE, SC_MARKNUM_FOLDEROPEN, SC_MARK_BOXMINUS);
     send(SCI_SETAUTOMATICFOLD, SC_AUTOMATICFOLD_SHOW | SC_AUTOMATICFOLD_CHANGE);
+    send(SCI_SETUNDOCOLLECTION, FALSE);
     send(SCI_SETREADONLY, TRUE);
 }
-void Colourise(HWND editor, const std::vector<Line>& lines) {
+void Colourise(HWND editor, const std::vector<Line>& lines, size_t first, size_t last) {
     auto send = [editor](UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageW(editor, m, w, l); };
-    for (size_t i = 0; i < lines.size(); ++i) {
+    for (size_t i = first; i < (std::min)(last, lines.size()); ++i) {
         auto start = send(SCI_POSITIONFROMLINE, i), length = send(SCI_LINELENGTH, i);
         const auto& line = lines[i];
         send(SCI_STARTSTYLING, start);

@@ -14,7 +14,7 @@ void ConfigureDocumentStyle(EditorDocument& document);
 CommandState StyleCommandState(const EditorDocument* document, UINT id);
 bool ExecuteStyleCommand(HWND owner, EditorDocument& document, UINT id);
 void HandleStyleNotification(EditorDocument& document, const SCNotification& notification);
-void ProcessStyleBackground(EditorDocument& document);
+void ProcessStyleBackground(EditorDocument& document, unsigned budgetMilliseconds = 8);
 void ForgetDocumentStyle(EditorDocument& document);
 size_t DocumentSchemeCount();
 void LoadStylePreferences(const std::filesystem::path& path);

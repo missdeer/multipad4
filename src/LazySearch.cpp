@@ -150,22 +150,22 @@ struct Iterator {
 };
 }
 struct HitArchive::Impl {
-    struct Record { Position start, end; };
+    struct Record { Position start, end, line, lineStart; };
     HANDLE file = INVALID_HANDLE_VALUE;
     std::vector<Record> pending;
     size_t count = 0;
     bool retainOffsets;
-    explicit Impl(bool retain) : retainOffsets(retain) {
-        if (!retainOffsets) return;
+    explicit Impl(bool retain) : retainOffsets(retain) {}
+    void Open() {
         wchar_t directory[32768]{}, name[32768]{};
         if (!GetTempPathW(_countof(directory), directory) || !GetTempFileNameW(directory, L"MPQ", 0, name)) throw std::runtime_error("Cannot create search result archive.");
         file = CreateFileW(name, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
         if (file == INVALID_HANDLE_VALUE) { DeleteFileW(name); throw std::runtime_error("Cannot open search result archive."); }
-        pending.reserve(4096);
     }
     ~Impl() { if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
     void Flush() {
         if (pending.empty()) return;
+        if (file == INVALID_HANDLE_VALUE) Open();
         LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((count - pending.size()) * sizeof(Record)); DWORD written = 0;
         const auto bytes = static_cast<DWORD>(pending.size() * sizeof(Record));
         if (!SetFilePointerEx(file, offset, nullptr, FILE_BEGIN) || !WriteFile(file, pending.data(), bytes, &written, nullptr) || written != bytes) throw std::runtime_error("Cannot write complete search result archive.");
@@ -177,7 +177,7 @@ HitArchive::~HitArchive() = default;
 void HitArchive::Append(const SearchHit& hit) {
     if (impl->count >= static_cast<size_t>(LLONG_MAX) / sizeof(Impl::Record)) throw std::runtime_error("Too many search results.");
     if (!impl->retainOffsets) { ++impl->count; return; }
-    impl->pending.push_back({hit.start, hit.end}); ++impl->count;
+    impl->pending.push_back({hit.start, hit.end, hit.line, hit.lineStart}); ++impl->count;
     if (impl->pending.size() == 4096) impl->Flush();
 }
 size_t HitArchive::Count() const { return impl->count; }
@@ -189,14 +189,24 @@ void HitArchive::AddCount(size_t count) {
 std::vector<SearchHit> HitArchive::Page(size_t first, size_t count) const {
     if (!impl->retainOffsets) throw std::runtime_error("Offsets are unavailable for a count-only search.");
     if (first > impl->count) throw std::runtime_error("Invalid search result page.");
-    count = (std::min)(count, impl->count - first); impl->Flush();
+    count = (std::min)(count, impl->count - first);
     std::vector<SearchHit> output; output.reserve(count);
+    // Small results remain bounded in memory; creating a temp file for every
+    // matching (or empty) directory entry would dominate small-file searches.
+    if (impl->file == INVALID_HANDLE_VALUE) {
+        for (size_t i = first; i < first + count; ++i) {
+            const auto& record = impl->pending[i];
+            output.push_back({record.start, record.end, {}, record.line, record.lineStart});
+        }
+        return output;
+    }
+    impl->Flush();
     for (size_t index = 0; index < count;) {
         const auto take = (std::min)(size_t(4096), count - index); std::vector<Impl::Record> records(take);
         LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((first + index) * sizeof(Impl::Record)); DWORD got = 0;
         const auto bytes = static_cast<DWORD>(take * sizeof(Impl::Record));
         if (!SetFilePointerEx(impl->file, offset, nullptr, FILE_BEGIN) || !ReadFile(impl->file, records.data(), bytes, &got, nullptr) || got != bytes) throw std::runtime_error("Cannot read search result page.");
-        for (const auto& record : records) output.push_back({record.start, record.end, {}}); index += take;
+        for (const auto& record : records) output.push_back({record.start, record.end, {}, record.line, record.lineStart}); index += take;
     }
     return output;
 }

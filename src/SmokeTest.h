@@ -14,6 +14,7 @@
 #include "../tests/SearchDialogFeatureTests.h"
 #include "../tests/SessionFeatureTests.h"
 #include "../tests/AutoSaveFeatureTests.h"
+#include "../tests/PerformanceFeatureTests.h"
 #include "../tests/TabPreferenceTests.h"
 #include "../tests/SettingsCancelTests.h"
 #include "../tests/LongLinePreferenceTests.h"
@@ -99,6 +100,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunToolbarOpenTests(frame);
         RunSessionFeatureTests(frame);
         RunAutoSaveFeatureTests(frame);
+        RunPerformanceFeatureTests(frame);
         RunTabPreferenceTests(frame);
         RunSettingsCancelTests(frame);
         RunLongLinePreferenceTests(frame);

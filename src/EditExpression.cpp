@@ -65,7 +65,7 @@ void EvaluateDocumentExpression(EditorDocument &d, bool math) {
     auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
     if (start == end)
         return;
-    auto expression = files::FromUtf8(d.Text().substr(start, end - start));
+    auto expression = files::FromUtf8(d.Range(start, end - start));
     if (math)
         expression = L"with(Math){\n" + expression + L"}";
     constexpr GUID chakra = {0x1b7cd997, 0xe5ff, 0x4932, {0xa7, 0xa6, 0x2a, 0x9e, 0x63, 0x6d, 0xa3, 0x85}};

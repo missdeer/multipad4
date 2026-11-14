@@ -1,6 +1,7 @@
 #include "SimdGraphics.h"
 #include "SimdText.h"
 #include "StyleManager.h"
+#include <chrono>
 #include "DialogResizeGrip.h"
 #include "StyleState.h"
 #include "CompletionEngine.h"
@@ -470,6 +471,7 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
         if(context)ImmReleaseContext(d.hwnd,context);if(native)return;
     }
     auto prefix=Range(d,start,position);
+    if (!autoInsert && prefix.size() > 124) return;
     auto styled=d.Send(SCI_GETENDSTYLED);if(styled<position)d.Send(SCI_COLOURISE,styled,position);
     const bool rootNumber=!prefix.empty() && isdigit(static_cast<unsigned char>(prefix[0]));
     const bool ignoreLexer=CompletionOption(d,IDC_AUTOC_ONLY_DOCUMENT_WORDS,0)!=0 || rootNumber;
@@ -528,7 +530,8 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
         if(contextResult==1 || latexRoot || emojiRoot || !CompletionOption(d,IDC_AUTOC_SCAN_DOCUMENT_WORDS))return;
         uint32_t ignored[8]{};
         for(unsigned i=0;i<8;++i){ignored[i]=cache.IgnoreWordStyleMask[i];if(category!=1&&!CompletionOption(d,IDC_SCAN_WORD_INSIDE_COMMONT))ignored[i]|=cache.CommentStyleMask[i];if(category!=2&&!CompletionOption(d,IDC_SCAN_WORD_INSIDE_STRING))ignored[i]|=cache.AllStringStyleMask[i];if(category!=3&&!CompletionOption(d,IDC_SCAN_WORD_INSIDE_PLAINTEXT))ignored[i]|=cache.PlainTextStyleMask[i];}
-        AddDocumentCompletionWords(d,prefix,ignoreCase,documentPrefix,static_cast<UINT>(CompletionOption(d,IDC_AUTOC_SCAN_WORDS_TIMEOUT,500)),ignored,accept);
+        const auto configured = static_cast<UINT>(CompletionOption(d,IDC_AUTOC_SCAN_WORDS_TIMEOUT,500));
+        AddDocumentCompletionWords(d,prefix,ignoreCase,documentPrefix,autoInsert ? configured : (std::min)(configured, 4u),ignored,accept,autoInsert ? SIZE_MAX : 128 * 1024);
     };
     collectDocument();
     if(words.empty() && !latexRoot && !emojiRoot){
@@ -1011,13 +1014,13 @@ void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
         }
         auto start=d.Send(SCI_GETSELECTIONSTART),end=d.Send(SCI_GETSELECTIONEND);
         if(start==end){start=d.Send(SCI_WORDSTARTPOSITION,pos,TRUE);end=d.Send(SCI_WORDENDPOSITION,pos,TRUE);}
-        const auto needle=d.style.markOccurrences && end>start?Range(d,start,end):std::string{};
+        const auto needle=d.style.markOccurrences && end>start && end-start<=256?Range(d,start,end):std::string{};
         const int flags=(CompletionOption(d,IDM_VIEW_MARKOCCURRENCES_CASE,0)?SCFIND_MATCHCASE:0)|(CompletionOption(d,IDM_VIEW_MARKOCCURRENCES_WORD,0)?SCFIND_WHOLEWORD:0);
         if(d.style.occurrenceNeedle!=needle || d.style.occurrenceRevision!=d.style.revision || d.style.occurrenceFlags!=flags){
             d.style.occurrenceNeedle=needle;d.style.occurrenceCursor=0;d.style.occurrenceRevision=d.style.revision;d.style.occurrenceFlags=flags;d.style.occurrences=0;d.style.occurrencePending=!needle.empty();
             d.Send(SCI_SETINDICATORCURRENT,8);d.Send(SCI_INDICATORCLEARRANGE,0,d.Send(SCI_GETLENGTH));
         }
-        if(d.style.occurrencePending)ProcessStyleBackground(d);
+        // The frame schedules all occurrence scans under one shared time budget.
 
     }
     } catch(const std::exception& error) {
@@ -1096,15 +1099,15 @@ void DetectDocumentIndentation(EditorDocument& d){
     }
 }
 
-void ProcessStyleBackground(EditorDocument& d){
+void ProcessStyleBackground(EditorDocument& d, unsigned budgetMilliseconds){
     if (d.LargeFile()) return;
     static thread_local bool processing=false;if(processing || !d.style.occurrencePending)return;processing=true;struct ResetProcessing{bool& value;~ResetProcessing(){value=false;}}resetProcessing{processing};
     if(d.style.revision!=d.style.occurrenceRevision){d.style.occurrencePending=false;return;}
     const auto originalIndicator=d.Send(SCI_GETINDICATORCURRENT),originalStart=d.Send(SCI_GETTARGETSTART),originalEnd=d.Send(SCI_GETTARGETEND),originalFlags=d.Send(SCI_GETSEARCHFLAGS);
     struct Restore{EditorDocument& d;LRESULT indicator,start,end,flags;~Restore(){d.Send(SCI_SETINDICATORCURRENT,indicator);d.Send(SCI_SETTARGETRANGE,start,end);d.Send(SCI_SETSEARCHFLAGS,flags);}}restore{d,originalIndicator,originalStart,originalEnd,originalFlags};
-    auto& state=d.style;const auto length=d.Send(SCI_GETLENGTH);const auto tick=GetTickCount64();
+    auto& state=d.style;const auto length=d.Send(SCI_GETLENGTH);const auto tick=std::chrono::steady_clock::now();
     d.Send(SCI_SETINDICATORCURRENT,8);d.Send(SCI_SETSEARCHFLAGS,state.occurrenceFlags);
-    for(unsigned count=0;count<2048 && GetTickCount64()-tick<8;++count){
+    for(unsigned count=0;count<2048 && std::chrono::steady_clock::now()-tick<std::chrono::milliseconds(budgetMilliseconds);++count){
         if(state.occurrenceCursor>=length){state.occurrencePending=false;break;}
         const auto end=std::min<LRESULT>(length,state.occurrenceCursor+64*1024+static_cast<LRESULT>(state.occurrenceNeedle.size()));
         d.Send(SCI_SETTARGETRANGE,state.occurrenceCursor,end);

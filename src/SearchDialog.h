@@ -2,6 +2,7 @@
 #include "EditorDocument.h"
 #include "SearchResources.h"
 #include "FileSearch.h"
+#include <future>
 class MainFrame;
 class SearchDialog {
 public:
@@ -42,6 +43,16 @@ private:
     std::unique_ptr<files::FileSearch> fileTask;
     std::unique_ptr<files::SearchWalker> replaceWalker;
     unsigned long long fileGeneration = 0;
+    struct OpenSearch {
+        unsigned long long identity = 0, revision = 0;
+        std::filesystem::path path;
+        std::shared_ptr<std::string> text = std::make_shared<std::string>();
+        size_t offset = 0, length = 0;
+        std::atomic<bool> cancel{false};
+        std::future<files::FileSearchResult> future;
+        bool mapped = false;
+    };
+    std::shared_ptr<OpenSearch> openSearch;
     void ReplaceFileStep();
     void StartFiles(bool replace);
     void FileStep();

@@ -2,6 +2,7 @@
 #include <windows.h>
 // MultiPad4 extensions to the Unicode Notepad++ plugin protocol.
 // Sent synchronously after tab titles, order, selection or membership change.
+// idFrom is the active buffer id for selection-only updates, otherwise zero.
 constexpr UINT MPN_DOCUMENTSCHANGED = 0x4D500001;
 constexpr UINT MPM_GETBUFFERTITLE = WM_USER + 1000 + 950; // NPPMSG + 950
 struct MultiPadBufferTitle {

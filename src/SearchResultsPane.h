@@ -2,6 +2,7 @@
 #include "App.h"
 #include "EditorDocument.h"
 #include "SearchResultLexer.h"
+#include "FileSearch.h"
 class MainFrame;
 class SearchResultsPane : public dockwins::CTitleDockingWindowImpl<SearchResultsPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
 public:
@@ -21,6 +22,7 @@ public:
     void Add(EditorDocument& document, const std::vector<SearchMatch>& matches);
     void Add(const std::filesystem::path& path, unsigned long long identity, const std::vector<SearchMatch>& matches, const std::wstring& title = {});
     void AddMapped(EditorDocument& document, large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> hits);
+    void AddFile(files::FileSearchResult result, unsigned long long identity = 0, unsigned long long revision = 0);
     bool LoadMore(size_t archive);
     void Finish(size_t hits, size_t files);
     bool Navigate(size_t line, size_t matchIndex = 0);
@@ -39,7 +41,7 @@ public:
     LRESULT OnNotify(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnContext(UINT, WPARAM, LPARAM, BOOL&);
 private:
-    struct MappedPage { unsigned long long identity; std::filesystem::path path; large::Document::Snapshot snapshot; std::shared_ptr<large::HitArchive> hits; size_t next = 0; };
+    struct MappedPage { unsigned long long identity; std::filesystem::path path; large::Document::Snapshot snapshot; std::shared_ptr<large::HitArchive> hits; size_t next = 0; files::FileSearchResult disk; unsigned long long revision = 0; bool file = false; };
     std::vector<MappedPage> archives;
     size_t header = 0;
     void Append(const std::string& text, SearchResultLexer::Line style, Target target);

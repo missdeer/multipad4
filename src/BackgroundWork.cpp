@@ -3,6 +3,7 @@
 #include <shellapi.h>
 #include "StyleManager.h"
 #include "AutoSave.h"
+#include <chrono>
 void SnapshotDocument(EditorDocument& document) {
     WIN32_FILE_ATTRIBUTE_DATA data{};
     auto& state = document.runtime;
@@ -33,6 +34,7 @@ void BackupDocuments(MainFrame& frame, bool force) {
         auto& d = **found;
         if (d.LargeFile()) continue;
         if (!d.Modified() || d.Send(SCI_GETLENGTH) == 0 || (!force && (now - d.runtime.lastAutoSave < period))) continue;
+        CancelDocumentBackup(frame, d);
         d.runtime.lastAutoSave = now;
         if (!force && (options & 16) && !d.path.empty()) {
             // EndSession-style autosave must retain the dirty buffer and must
@@ -68,15 +70,12 @@ void TickBackgroundWork(MainFrame& frame) {
     // Modal commands own a stable document snapshot until OK/Cancel. A timer
     // must not reload that buffer underneath a pending edit or settings dialog.
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth) return;
-    if (frame.settings.Get(IDM_SET_FILE_AUTOSAVE, 6) & 1) BackupDocuments(frame);
+    if (frame.settings.Get(IDM_SET_FILE_AUTOSAVE, 6) & 1) QueueDocumentBackups(frame);
     std::vector<HWND> windows; for (const auto& document : frame.documents) windows.push_back(document->hwnd);
     for (HWND window : windows) {
         auto found = std::find_if(frame.documents.begin(), frame.documents.end(), [&](const auto& d) { return d->hwnd == window; });
         if (found == frame.documents.end()) continue;
         auto& d = **found; auto& state = d.runtime;
-        auto matches = d.style.occurrences; bool pending = d.style.occurrencePending;
-        ProcessStyleBackground(d);
-        if (frame.Active() == &d && (matches != d.style.occurrences || pending != d.style.occurrencePending)) frame.UpdateStatus();
         if (!state.monitorMode || d.path.empty()) continue;
         if (!state.monitorLog && state.changeNotification != INVALID_HANDLE_VALUE && !state.externalChangePending) {
             if (WaitForSingleObject(state.changeNotification, 0) != WAIT_OBJECT_0) continue;
@@ -105,6 +104,26 @@ void TickBackgroundWork(MainFrame& frame) {
     }
 }
 LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
+    if (id == 3) {
+        if (!IsWindowEnabled() || runtime.operationDepth || runtime.inBackgroundWork) return 0;
+        auto* activeDocument = Active();
+        const auto before = activeDocument ? activeDocument->style.occurrences : 0;
+        const bool wasPending = activeDocument && activeDocument->style.occurrencePending;
+        PumpDocumentBackup(*this);
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(4);
+        // The first slice favors the active buffer; the rest rotates fairly.
+        if (auto* d = Active(); d && d->style.occurrencePending) ProcessStyleBackground(*d, 1);
+        for (size_t visited = 0; visited < documents.size() && std::chrono::steady_clock::now() < deadline; ++visited) {
+            auto& d = *documents[runtime.styleCursor++ % documents.size()];
+            if (d.style.occurrencePending) ProcessStyleBackground(d, 1);
+        }
+        if (activeDocument && (before != activeDocument->style.occurrences || wasPending != activeDocument->style.occurrencePending)) UpdateStatus();
+        if (!runtime.autoSaveTask && !std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
+            KillTimer(3); runtime.workTimerArmed = false;
+        }
+        return 0;
+    }
+    if (id == 2) { UpdateStatus(); return 0; }
     if (id != 1) { handled = FALSE; return 0; }
     TickBackgroundWork(*this); return 0;
 }

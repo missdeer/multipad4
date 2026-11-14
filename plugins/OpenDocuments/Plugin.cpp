@@ -55,7 +55,9 @@ extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) { *count = 
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
     if (notification->nmhdr.code == NPPN_READY && !pluginLayout::Read(configPath, L"OpenDocuments").empty()) Start();
     else if (notification->nmhdr.code == NPPN_SHUTDOWN) Stop();
-    else if (pane && notification->nmhdr.code == MPN_DOCUMENTSCHANGED) pane->pane.Refresh();
+    else if (pane && notification->nmhdr.code == MPN_DOCUMENTSCHANGED) {
+        if (notification->nmhdr.idFrom) pane->pane.UpdateSelection(); else pane->pane.Refresh();
+    }
 }
 extern "C" __declspec(dllexport) LRESULT messageProc(UINT, WPARAM, LPARAM) { return TRUE; }
 extern "C" __declspec(dllexport) BOOL multipadSupportsFastView() { return TRUE; }

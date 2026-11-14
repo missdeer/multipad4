@@ -10,5 +10,5 @@ struct Line {
     LRESULT numberStart = 0, numberEnd = 0;
 };
 void Configure(HWND editor);
-void Colourise(HWND editor, const std::vector<Line>& lines);
+void Colourise(HWND editor, const std::vector<Line>& lines, size_t first = 0, size_t last = SIZE_MAX);
 }

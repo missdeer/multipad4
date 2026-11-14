@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstdint>
 #include <climits>
+#include <memory>
+struct AutoSaveTask;
 struct DocumentRuntime {
     HANDLE changeNotification = INVALID_HANDLE_VALUE;
     ~DocumentRuntime() { if (changeNotification != INVALID_HANDLE_VALUE) FindCloseChangeNotification(changeNotification); }
@@ -36,6 +38,9 @@ struct FrameRuntime {
     std::vector<std::pair<ULONG_PTR, std::wstring>> pendingCommands;
     std::vector<HWND> pendingTabCloses;
     int restoredShowCmd = SW_SHOWNORMAL;
+    size_t styleCursor = 0;
+    std::shared_ptr<AutoSaveTask> autoSaveTask;
+    bool workTimerArmed = false;
 };
 struct FrameOperation {
     FrameRuntime& runtime;

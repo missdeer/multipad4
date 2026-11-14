@@ -5,6 +5,7 @@
 #include "../3rdparty/notepad4/src/EditLexer.h"
 #include <functional>
 #include <cstring>
+#include <chrono>
 namespace {
 constexpr LRESULT NP2_AUTOC_MAX_WORD_LENGTH=124;
 constexpr size_t NP2_AUTOC_WORD_BUFFER_SIZE=128;
@@ -20,8 +21,8 @@ struct DocumentWords {
     void AddSubWord(LPSTR,UINT,UINT);
 };
 LRESULT FindWord(EditorDocument& d,UINT flags,Sci_TextToFindFull* range,UINT timeout){
-    const auto started=GetTickCount64();auto start=range->chrg.cpMin;const auto end=range->chrg.cpMax;
-    while(start<=end && GetTickCount64()-started<timeout){
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);auto start=range->chrg.cpMin;const auto end=range->chrg.cpMax;
+    while(start<=end && std::chrono::steady_clock::now()<deadline){
         auto trial=*range;auto stop=std::min<LRESULT>(end,start+64*1024+static_cast<LRESULT>(range->textLength));trial.chrg={start,stop};
         auto found=d.Send(SCI_FINDTEXTFULL,flags,reinterpret_cast<LPARAM>(&trial));if(found>=0){range->chrgText=trial.chrgText;return found;}
         if(stop==end)break;start=stop-static_cast<LRESULT>(range->textLength);
@@ -71,7 +72,7 @@ void DocumentWords::AddSubWord(LPSTR pWord,UINT wordLength,UINT iRootLen) {
 	}
 }
 }
-void AddDocumentCompletionWords(EditorDocument& d,const std::string& root,bool bIgnoreCase,char prefix,UINT timeout,const uint32_t (&ignoredStyleMask)[8],const std::function<void(std::string)>& add) {
+void AddDocumentCompletionWords(EditorDocument& d,const std::string& root,bool bIgnoreCase,char prefix,UINT timeout,const uint32_t (&ignoredStyleMask)[8],const std::function<void(std::string)>& add, size_t scanBytes) {
     DocumentWords pWList{root,static_cast<int>(root.size()),bIgnoreCase,add};const auto* pLexCurrent=GetDocumentLexer(d);
 	LPCSTR const pRoot = pWList.pWordStart;
 	const int iRootLen = pWList.iStartLen;
@@ -88,12 +89,16 @@ void AddDocumentCompletionWords(EditorDocument& d,const std::string& root,bool b
 	const LRESULT iCurrentPos = d.Send(SCI_GETCURRENTPOS) - textLength;
 	const LRESULT iDocLen = d.Send(SCI_GETLENGTH);
 	Sci_TextToFindFull ft = { { 0, iDocLen }, pFind.data(), static_cast<size_t>(textLength), { 0, 0 } };
+    if (scanBytes != SIZE_MAX) {
+        const auto radius = static_cast<LRESULT>(scanBytes / 2);
+        ft.chrg = {(std::max)(LRESULT(0), iCurrentPos - radius), (std::min)(iDocLen, iCurrentPos + radius)};
+    }
 
-	const auto timer=GetTickCount64();
-    auto remaining=[&](){auto elapsed=GetTickCount64()-timer;return elapsed>=timeout?0u:timeout-static_cast<UINT>(elapsed);};
+    const auto timer=std::chrono::steady_clock::now();
+    auto remaining=[&](){auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-timer).count();return elapsed>=timeout?0u:timeout-static_cast<UINT>(elapsed);};
 	LRESULT iPosFind = FindWord(d,findFlag,&ft,remaining());
 
-	while (iPosFind >= 0 && iPosFind < iDocLen && GetTickCount64()-timer<timeout) {
+	while (iPosFind >= 0 && iPosFind < iDocLen && remaining()) {
 		LRESULT wordEnd = iPosFind + iRootLen;
 		const int style = static_cast<int>(d.Send(SCI_GETSTYLEINDEXAT,wordEnd-1));
 		wordEnd = ft.chrgText.cpMax;
@@ -177,7 +182,7 @@ void AddDocumentCompletionWords(EditorDocument& d,const std::string& root,bool b
 				if (wordLength >= iRootLen && (pWord[0] != ':' || pWord[1] == ':') && pWList.StartsWith(pWord)) {
 					bool space = false;
 					if (!(pLexCurrent->iLexer == SCLEX_CPP && style == SCE_C_MACRO)) {
-						while (IsASpaceOrTab(static_cast<int>(d.Send(SCI_GETCHARAT,wordEnd)))) {
+						while (remaining() && IsASpaceOrTab(static_cast<int>(d.Send(SCI_GETCHARAT,wordEnd)))) {
 							space = true;
 							wordEnd++;
 						}

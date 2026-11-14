@@ -7,6 +7,7 @@
 #include "SearchResultsPane.h"
 #include "AppSettings.h"
 #include <optional>
+#include <array>
 #include "PluginHost.h"
 #include "PluginAdmin.h"
 class MainFrame;
@@ -30,6 +31,13 @@ public:
     HIMAGELIST toolbarDisabledImages = nullptr;
     HACCEL mdiAccelerators = nullptr;
     bool toolbarVisible = true, statusVisible = true;
+    std::vector<std::pair<UINT_PTR, std::wstring>> publishedDocuments;
+    UINT_PTR publishedActive = 0;
+    std::map<UINT, std::pair<bool, bool>> toolbarState;
+    std::array<std::wstring, 13> statusText;
+    int statusWidth = -1;
+    UINT statusDpi = 0;
+    HFONT statusFont = nullptr;
     BOOL PreTranslateMessage(MSG* msg) override;
     EditorDocument* Active();
     EditorDocument* NewDocument();

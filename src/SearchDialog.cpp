@@ -312,6 +312,15 @@ void SearchDialog::StartFiles(bool replace) {
 }
 void SearchDialog::FinishFiles(bool cancelled) {
     KillTimer(hwnd, 1); fileRunning = false;
+    if (openSearch) {
+        openSearch->cancel.store(true);
+        if (openSearch->mapped) {
+            auto found = owner->tabs.documentsById.find(openSearch->identity);
+            if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
+        }
+        if (openSearch->future.valid()) openSearch->future.wait();
+        openSearch.reset();
+    }
     if (fileTask) { fileTask->Stop(); fileErrors += fileTask->Errors(); fileTask.reset(); }
     replaceWalker.reset();
     if (owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
@@ -322,9 +331,44 @@ void SearchDialog::FileStep() {
     if (!fileRunning) return;
     if (owner->searchResults.generation != fileGeneration) { FinishFiles(true); return; }
     if (replaceFiles) { ReplaceFileStep(); return; }
-    const auto deadline = GetTickCount64() + 12;
+    if (openSearch) {
+        auto task = openSearch;
+        auto found = owner->tabs.documentsById.find(task->identity);
+        if (found == owner->tabs.documentsById.end() || found->second->style.revision != task->revision) {
+            task->cancel.store(true);
+            if (task->mapped && found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
+            if (task->future.valid()) task->future.wait();
+            openSearch.reset(); ++fileErrors; return;
+        }
+        auto& target = *found->second;
+        if (task->mapped) {
+            if (!target.FastView() || !target.fastView->Busy()) { ++fileErrors; openSearch.reset(); }
+            return;
+        }
+        if (!task->future.valid()) {
+            if (task->offset < task->length) {
+                auto bytes = target.Range(task->offset, (std::min)(size_t(256 * 1024), task->length - task->offset));
+                task->offset += bytes.size(); task->text->append(bytes);
+                return;
+            }
+            auto snapshot = large::Document::FromUtf8(task->text)->Capture();
+            UseSearch state(target, fileSearch); auto options = target.MappedSearchOptions();
+            task->future = std::async(std::launch::async, [ptr = task.get(), snapshot, options] { return files::SearchSnapshot(snapshot, options, ptr->cancel); });
+            return;
+        }
+        if (task->future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        try {
+            auto result = task->future.get(); result.path = task->path;
+            if (result.archive->Count()) {
+                fileHits += result.archive->Count(); ++foundFiles;
+                owner->searchResults.AddFile(std::move(result), task->identity, task->revision);
+            }
+        } catch (const std::exception&) { ++fileErrors; }
+        openSearch.reset();
+        return;
+    }
     files::FileSearchResult result;
-    while (fileTask->Poll(result)) {
+    if (fileTask->Poll(result)) {
         EditorDocument* open = nullptr;
         for (const auto& d : owner->documents) {
             std::error_code error;
@@ -333,27 +377,32 @@ void SearchDialog::FileStep() {
         if (open) {
             UseSearch state(*open, fileSearch);
             if (open->FastView()) {
-                auto snapshot = open->fastView->Model().Capture();
-                auto hits = open->fastView->ArchiveMatches(open->MappedSearchOptions(), false);
-                if (hits->Count()) { owner->searchResults.AddMapped(*open, snapshot, hits); fileHits += hits->Count(); ++foundFiles; }
+                // The view owns cancellation and validates its snapshot before publishing.
+                auto identity = open->searchIdentity; auto generation = fileGeneration;
+                openSearch = std::make_shared<OpenSearch>(); openSearch->identity = identity;
+                openSearch->revision = open->style.revision; openSearch->mapped = true;
+                open->fastView->StartEnumerate(open->MappedSearchOptions(), false,
+                    [this, identity, generation](const auto& snapshot, const auto& hits) {
+                        if (!fileRunning || generation != owner->searchResults.generation || !openSearch || openSearch->identity != identity) return;
+                        auto found = owner->tabs.documentsById.find(identity);
+                        if (found != owner->tabs.documentsById.end() && hits->Count()) {
+                            owner->searchResults.AddMapped(*found->second, snapshot, hits); fileHits += hits->Count(); ++foundFiles;
+                        }
+                        openSearch.reset();
+                    }, true, true);
             } else {
-                auto matches = open->CollectMatches();
-                if (!matches.empty()) { owner->searchResults.Add(*open, matches); fileHits += matches.size(); ++foundFiles; }
+                openSearch = std::make_shared<OpenSearch>();
+                openSearch->identity = open->searchIdentity; openSearch->revision = open->style.revision;
+                openSearch->path = open->path; openSearch->length = static_cast<size_t>(open->Send(SCI_GETLENGTH));
+                openSearch->text->reserve(openSearch->length);
             }
-        } else if (!result.openDocument) {
-            std::vector<SearchMatch> matches;
-            for (const auto& hit : result.matches)
-                matches.push_back({static_cast<LRESULT>(hit.start), static_cast<LRESULT>(hit.end),
-                    static_cast<LRESULT>(hit.line), static_cast<LRESULT>(hit.lineStart), result.text});
-            if (!matches.empty()) {
-                owner->searchResults.Add(result.path, 0, matches);
-                ++foundFiles; fileHits += matches.size();
-            }
+        } else if (!result.openDocument && result.archive) {
+            fileHits += result.archive->Count(); ++foundFiles;
+            owner->searchResults.AddFile(std::move(result));
         }
-        Status(L"Searching: " + result.path.wstring());
-        if (GetTickCount64() >= deadline) break;
     }
-    if (fileTask->Done()) FinishFiles(false);
+    if (!openSearch && fileTask->Done()) FinishFiles(false);
+
 }
 void SearchDialog::ReplaceFileStep() {
     std::atomic<bool> cancel{false};

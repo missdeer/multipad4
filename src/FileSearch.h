@@ -27,7 +27,12 @@ struct FileSearchResult {
     std::shared_ptr<const std::string> text;
     std::vector<FileSearchMatch> matches;
     bool openDocument = false;
+    std::shared_ptr<const large::Document::Snapshot> snapshot;
+    std::shared_ptr<large::HitArchive> archive;
+    unsigned long long originalSize = 0, originalWriteTime = 0;
 };
+// Worker-only search over an immutable UTF-8 snapshot; offsets and line metadata are spooled.
+FileSearchResult SearchSnapshot(large::Document::Snapshot snapshot, large::SearchOptions pattern, const std::atomic<bool>& cancel);
 // Each thread owns its matcher. Workers never access editor windows or documents.
 class FileSearch {
     SearchWalker walker;

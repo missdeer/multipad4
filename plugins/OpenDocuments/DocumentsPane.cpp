@@ -95,5 +95,8 @@ void DockPane::Refresh() {
         }
         list.SetRedraw(TRUE); list.Invalidate();
     }
+    UpdateSelection();
+}
+void DockPane::UpdateSelection() {
     list.SetCurSel(static_cast<int>(::SendMessageW(owner, NPPM_GETCURRENTDOCINDEX, 0, 0)));
 }

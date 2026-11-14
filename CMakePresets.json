@@ -23,6 +23,15 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "ON"
       }
+    },
+    {
+      "name": "msvc-release",
+      "inherits": "msvc-x64",
+      "displayName": "MSVC x64 Release with link-time optimization",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MULTIPAD4_ENABLE_IPO": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -33,6 +42,10 @@
     {
       "name": "mingw64-x64",
       "configurePreset": "mingw64-x64"
+    },
+    {
+      "name": "msvc-release",
+      "configurePreset": "msvc-release"
     }
   ],
   "testPresets": [
@@ -46,6 +59,13 @@
     {
       "name": "mingw64-x64",
       "configurePreset": "mingw64-x64",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "msvc-release",
+      "configurePreset": "msvc-release",
       "output": {
         "outputOnFailure": true
       }

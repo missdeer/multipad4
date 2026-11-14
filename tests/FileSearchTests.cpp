@@ -78,6 +78,23 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(50)); stopped.Stop();
         files::FileSearchResult result; while (stopped.Poll(result)) {}
         Check(stopped.Done());
+        // Large files and dense hits retain disk archives, not one allocation per hit or full file.
+        files::WriteAtomic(root / L"large.archive", {std::string(2 * 1024 * 1024, 'x') + "\r\nneedle\rneedle\n"});
+        options.filter = L"*.archive"; pattern = {L"needle", false, true};
+        auto archived = Collect(options, pattern);
+        const auto& large = archived.at(root / L"large.archive");
+        Check(!large.text && large.matches.empty() && large.archive && large.archive->Count() == 2);
+        Check(large.archive->Page(0, 2)[0].line == 1 && large.archive->Page(1, 1)[0].line == 2);
+        Check(large::Document::Read(*large.snapshot, 2 * 1024 * 1024 + 2, 6) == "needle");
+        std::string dense; for (int i = 0; i < 5000; ++i) dense += "needle\n";
+        files::WriteAtomic(root / L"dense.archive", {dense});
+        auto denseResults = Collect(options, pattern);
+        const auto& many = denseResults.at(root / L"dense.archive");
+        Check(!many.text && many.matches.empty() && many.archive->Count() == 5000);
+        Check(many.archive->Page(4999, 1)[0].line == 4999 && many.archive->Page(4999, 1)[0].start == 4999 * 7);
+        // Published snapshots are stable after the original path is replaced.
+        files::WriteAtomic(root / L"large.archive", {"changed"});
+        Check(large::Document::Read(*large.snapshot, 2 * 1024 * 1024 + 2, 6) == "needle");
         std::filesystem::remove_all(root); std::cout << "File search tests passed.\n"; return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n'; std::filesystem::remove_all(root); return 1;

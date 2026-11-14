@@ -24,7 +24,7 @@ class MappedFile {
     std::unique_ptr<Impl> impl;
     explicit MappedFile(const MappedFile& source, int);
 public:
-    explicit MappedFile(const std::filesystem::path& path, ReadStats* stats = nullptr, bool shareDelete = false);
+    explicit MappedFile(const std::filesystem::path& path, ReadStats* stats = nullptr, bool shareDelete = false, bool deleteOnClose = false);
     ~MappedFile();
     // Independent window over the same open file version, including after save.
     std::unique_ptr<MappedFile> NewReadSession() const;

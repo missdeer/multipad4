@@ -55,6 +55,8 @@ inline void RunOpenDocumentsPaneTests(MainFrame& frame) {
     document->untitled = L"插件测试 — untitled";
     document->Send(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("modified")); verify();
     const int created = frame.tabs.GetActivePage();
+    frame.tabs.SetActivePage(0); verify();
+    frame.tabs.SetActivePage(created); verify();
     SendMessageW(list, LB_SETCURSEL, 0, 0);
     SendMessageW(pane, WM_COMMAND, MAKEWPARAM(100, LBN_DBLCLK), reinterpret_cast<LPARAM>(list));
     require(frame.tabs.GetActivePage() == 0); verify();

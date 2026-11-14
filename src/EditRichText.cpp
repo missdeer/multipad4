@@ -81,7 +81,7 @@ void CopyRichText(EditorDocument &d) {
     };
     int background = lineBackground(start);
     out += "\\pard\\box\\cbpat" + std::to_string(background) + " ";
-    auto text = d.Text();
+    auto text = d.Range(start, end - start);
     int previous = -1;
     size_t column = 0;
     const auto tabWidth = static_cast<size_t>(max<LRESULT>(1, d.Send(SCI_GETTABWIDTH)));
@@ -99,10 +99,10 @@ void CopyRichText(EditorDocument &d) {
             previous = style;
         }
         auto next = d.Send(SCI_POSITIONAFTER, pos);
-        char c = text[static_cast<size_t>(pos)];
+        char c = text[static_cast<size_t>(pos - start)];
         if (c == '\r' || c == '\n') {
             column = 0;
-            if (c == '\r' && next < end && text[static_cast<size_t>(next)] == '\n')
+            if (c == '\r' && next < end && text[static_cast<size_t>(next - start)] == '\n')
                 next = d.Send(SCI_POSITIONAFTER, next);
             int nextBackground = next < end ? lineBackground(next) : background;
             if (nextBackground != background) {
@@ -119,13 +119,13 @@ void CopyRichText(EditorDocument &d) {
                 out.append(padding, ' ');
             column += padding;
         } else {
-            out += RtfText(files::FromUtf8(text.substr(pos, next - pos)));
+            out += RtfText(files::FromUtf8(text.substr(pos - start, next - pos)));
             ++column;
         }
         pos = next;
     }
     out += "\\par\n}";
-    auto wide = files::FromUtf8(text.substr(start, end - start));
+    auto wide = files::FromUtf8(text);
     if (OpenEditClipboard(d.hwnd)) {
         EmptyClipboard();
         SetData(CF_UNICODETEXT, wide.c_str(), (wide.size() + 1) * sizeof(wchar_t));
@@ -138,7 +138,7 @@ void ShowCharacterInfo(EditorDocument &d) {
     if (position >= d.Send(SCI_GETLENGTH))
         return;
     auto next = d.Send(SCI_POSITIONAFTER, position);
-    auto utf8 = d.Text().substr(position, next - position);
+    auto utf8 = d.Range(position, next - position);
     auto utf16 = files::FromUtf8(utf8);
     unsigned character = utf16[0];
     if (utf16.size() == 2)

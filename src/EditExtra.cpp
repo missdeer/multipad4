@@ -14,7 +14,7 @@ void Replace(EditorDocument &d, LRESULT start, LRESULT end, const std::string &t
 }
 std::string Selected(EditorDocument &d) {
     auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
-    return d.Text().substr(start, end - start);
+    return d.Range(start, end - start);
 }
 std::string Shebang(EditorDocument &d) {
     const auto *lexer = GetDocumentLexer(d);
@@ -148,7 +148,7 @@ bool ExecuteExtraEdit(EditorDocument &d, UINT id, const std::function<bool(bool)
         if (selection.empty()) {
             auto pos = d.Send(SCI_GETCURRENTPOS), start = d.Send(SCI_WORDSTARTPOSITION, pos, TRUE),
                  end = d.Send(SCI_WORDENDPOSITION, pos, TRUE);
-            selection = d.Text().substr(start, end - start);
+            selection = d.Range(start, end - start);
         }
         if (selection.empty())
             break;

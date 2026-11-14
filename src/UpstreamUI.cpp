@@ -171,61 +171,66 @@ CommandState MainFrame::QueryState(UINT input) {
     }
 }
 void MainFrame::UpdateCommandUI() {
-    UpdateMenu(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu());
     for (UINT id = IDT_FILE_NEW; id <= IDT_FILE_NEWWINDOW; ++id) {
         auto state = State(id);
-        ::SendMessageW(m_hWndToolBar, TB_ENABLEBUTTON, id, state.enabled);
-        ::SendMessageW(m_hWndToolBar, TB_CHECKBUTTON, id, state.checked);
+        auto value = std::make_pair(state.enabled, state.checked);
+        auto found = toolbarState.find(id);
+        if (found == toolbarState.end() || found->second != value) {
+            ::SendMessageW(m_hWndToolBar, TB_ENABLEBUTTON, id, state.enabled);
+            ::SendMessageW(m_hWndToolBar, TB_CHECKBUTTON, id, state.checked);
+            toolbarState[id] = value;
+        }
     }
 }
 void MainFrame::UpdateStatus() {
-    if (!m_hWndStatusBar) return;
+    if (!m_hWndStatusBar || !statusVisible) { KillTimer(2); return; }
     // Stable upstream StatusItem order, including the flexible empty part.
     std::array<std::wstring, 13> text{};
     auto* d = Active();
+    if (!d) KillTimer(2);
     if (d) {
         if (d->Send(SCI_GETMARGINWIDTHN, 0)) {
             const auto number = "__" + std::to_string(d->Send(SCI_GETLINECOUNT));
             d->Send(SCI_SETMARGINWIDTHN, 0, d->Send(SCI_TEXTWIDTH, STYLE_LINENUMBER, reinterpret_cast<LPARAM>(number.c_str())));
         }
-        auto pos = d->Send(SCI_GETCURRENTPOS), line = d->Send(SCI_LINEFROMPOSITION, pos);
-        auto lineStart = d->Send(SCI_POSITIONFROMLINE, line), lineEnd = d->Send(SCI_GETLINEENDPOSITION, line);
-        text[0] = L"Ln " + std::to_wstring(line + 1) + L" / " + std::to_wstring(d->Send(SCI_GETLINECOUNT));
-        text[1] = L"Col " + std::to_wstring(d->Send(SCI_GETCOLUMN, pos) + 1) + L" / " + std::to_wstring(d->Send(SCI_GETCOLUMN, lineEnd));
-        text[2] = L"Ch " + std::to_wstring(d->Send(SCI_COUNTCHARACTERS, lineStart, pos) + 1)
-            + L" / " + std::to_wstring(d->Send(SCI_COUNTCHARACTERS, lineStart, lineEnd));
-        LRESULT selectedCharacters = 0, selectedBytes = 0, selectedLines = 0;
-        for (LRESULT i = 0; i < d->Send(SCI_GETSELECTIONS); ++i) {
-            auto a = d->Send(SCI_GETSELECTIONNSTART, i), b = d->Send(SCI_GETSELECTIONNEND, i);
-            selectedCharacters += d->Send(SCI_COUNTCHARACTERS, a, b); selectedBytes += b - a;
-            if (b > a) selectedLines += d->Send(SCI_LINEFROMPOSITION, d->Send(SCI_POSITIONBEFORE, b)) - d->Send(SCI_LINEFROMPOSITION, a) + 1;
-        }
-        const bool rectangular = d->Send(SCI_SELECTIONISRECTANGLE) != 0;
-        const auto selectionCharacters = rectangular ? L"--" : StatusNumber(selectedCharacters);
-        const auto selectionBytes = rectangular ? L"--" : StatusNumber(selectedBytes);
-        text[3] = L"Sel " + selectionCharacters + L" / " + selectionBytes;
-        text[4] = L"SelLn " + std::to_wstring(selectedLines);
-        text[5] = L"Fnd " + std::to_wstring(d->style.markOccurrences ? d->style.occurrences : d->search.matches)
-            + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"");
-        // Reuse the upstream localized six-field format instead of hard-coding
-        // English prefixes when the rest of the interface uses another locale.
-        wchar_t format[512]{}, formatted[1024]{};
-        std::array<std::wstring, 10> values{
-            StatusNumber(line + 1), StatusNumber(d->Send(SCI_GETLINECOUNT)),
-            StatusNumber(d->Send(SCI_GETCOLUMN, pos) + 1), StatusNumber(d->Send(SCI_GETCOLUMN, lineEnd)),
-            StatusNumber(d->Send(SCI_COUNTCHARACTERS, lineStart, pos) + 1), StatusNumber(d->Send(SCI_COUNTCHARACTERS, lineStart, lineEnd)),
-            selectionCharacters, selectionBytes, StatusNumber(selectedLines),
-            StatusNumber(d->style.markOccurrences ? d->style.occurrences : d->search.matches) + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"")};
-        if (LoadStringW(_Module.GetModuleInstance(), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
-            _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, format, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),
-                values[4].c_str(), values[5].c_str(), values[6].c_str(), values[7].c_str(), values[8].c_str(), values[9].c_str()) >= 0) {
-            const wchar_t* start = formatted;
-            for (size_t field = 0; field < 6; ++field) {
-                auto end = wcschr(start, L'\n');
-                text[field] = end ? std::wstring(start, end) : std::wstring(start);
-                if (!end) break; start = end + 1;
+        if (!d->FastView()) {
+            auto pos = d->Send(SCI_GETCURRENTPOS), line = d->Send(SCI_LINEFROMPOSITION, pos);
+            auto& stats = d->statusStatistics;
+            bool pending = stats.Update(*d);
+            if (pending) SetTimer(2, 30); else KillTimer(2);
+            auto column = stats.Ready(0) ? StatusNumber(stats.Column(0) + 1) : L"...";
+            auto columns = stats.Ready(1) ? StatusNumber(stats.Column(1)) : L"...";
+            auto character = stats.Ready(0) ? StatusNumber(stats.Characters(0) + 1) : L"...";
+            auto characters = stats.Ready(1) ? StatusNumber(stats.Characters(1)) : L"...";
+            text[0] = L"Ln " + std::to_wstring(line + 1) + L" / " + std::to_wstring(d->Send(SCI_GETLINECOUNT));
+            text[1] = L"Col " + column + L" / " + columns;
+            text[2] = L"Ch " + character + L" / " + characters;
+            const bool rectangular = d->Send(SCI_SELECTIONISRECTANGLE) != 0;
+            const std::wstring selectionCharacters = rectangular ? L"--" : pending ? L"..." : StatusNumber(stats.SelectedCharacters());
+            const std::wstring selectionBytes = rectangular ? L"--" : StatusNumber(stats.selectedBytes);
+            text[3] = L"Sel " + selectionCharacters + L" / " + selectionBytes;
+            text[4] = L"SelLn " + std::to_wstring(stats.selectedLines);
+            text[5] = L"Fnd " + std::to_wstring(d->style.markOccurrences ? d->style.occurrences : d->search.matches)
+                + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"");
+            // Reuse the upstream localized six-field format instead of hard-coding
+            // English prefixes when the rest of the interface uses another locale.
+            wchar_t format[512]{}, formatted[1024]{};
+            std::array<std::wstring, 10> values{
+                StatusNumber(line + 1), StatusNumber(d->Send(SCI_GETLINECOUNT)),
+                column, columns, character, characters,
+                selectionCharacters, selectionBytes, StatusNumber(stats.selectedLines),
+                StatusNumber(d->style.markOccurrences ? d->style.occurrences : d->search.matches) + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"")};
+            if (LoadStringW(_Module.GetModuleInstance(), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
+                _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, format, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),
+                    values[4].c_str(), values[5].c_str(), values[6].c_str(), values[7].c_str(), values[8].c_str(), values[9].c_str()) >= 0) {
+                const wchar_t* start = formatted;
+                for (size_t field = 0; field < 6; ++field) {
+                    auto end = wcschr(start, L'\n');
+                    text[field] = end ? std::wstring(start, end) : std::wstring(start);
+                    if (!end) break; start = end + 1;
+                }
             }
-        }
+        } else KillTimer(2);
         text[7] = d->LargeFile() ? L"Large file (AutoSave off)" : d->language; text[8] = files::EncodingName(d->encoding);
         auto eol = d->Send(SCI_GETEOLMODE); text[9] = eol == SC_EOL_CRLF ? L"CR+LF" : eol == SC_EOL_LF ? L"LF" : L"CR";
         text[10] = d->Send(SCI_GETOVERTYPE) ? L"OVR" : L"INS";
@@ -242,6 +247,10 @@ void MainFrame::UpdateStatus() {
         }
     }
     RECT client{}; GetClientRect(&client);
+    auto currentDpi = GetDpiForWindow(m_hWnd);
+    auto currentFont = reinterpret_cast<HFONT>(::SendMessageW(m_hWndStatusBar, WM_GETFONT, 0, 0));
+    if (text == statusText && client.right == statusWidth && currentDpi == statusDpi && currentFont == statusFont) return;
+    statusText = text; statusWidth = client.right; statusDpi = currentDpi; statusFont = currentFont;
     std::array<int, 13> widths{}, edges{};
     HDC dc = ::GetDC(m_hWndStatusBar);
     HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWndStatusBar, WM_GETFONT, 0, 0));
@@ -283,7 +292,7 @@ LRESULT MainFrame::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
             info->tbButton = UpstreamToolbarButton(info->iItem);
             LoadStringW(_Module.GetModuleInstance(), info->tbButton.idCommand, info->pszText, info->cchText);
             return TRUE;
-        case TBN_RESET: ResetToolbar(m_hWndToolBar); UpdateCommandUI(); UpdateLayout(); return 0;
+        case TBN_RESET: ResetToolbar(m_hWndToolBar); toolbarState.clear(); UpdateCommandUI(); UpdateLayout(); return 0;
         case TBN_ENDADJUST: UpdateCommandUI(); UpdateLayout(); SaveFramePreferences(*this); return 0;
         case TBN_DROPDOWN: {
             HMENU root = nullptr, menu = nullptr;

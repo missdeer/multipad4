@@ -12,6 +12,7 @@ struct SearchHit {
     Position start = 0, end = 0;
     struct Capture { Position start = 0, end = 0; bool matched = false; };
     std::vector<Capture> captures;
+    Position line = 0, lineStart = 0; // Optional precomputed coordinates for disk search pages.
 };
 // Fixed-size offsets are spooled to a temporary file; Find All/marking need
 // memory for one displayed page rather than one object per match.
