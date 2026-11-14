@@ -16,13 +16,14 @@ string(REPLACE "} // IEnumIDList::Next()" "\tCoTaskMemFree(pidlEntry);\n\t\t\t\t
 string(REPLACE "IShellIcon *lpshi;" "IShellIcon *lpshi = nullptr;" matepath_api "${matepath_api}")
 string(REPLACE "WIN32_FIND_DATA fd;" "WIN32_FIND_DATA fd{};" matepath_api "${matepath_api}")
 if(MINGW)
-  # MinGW uses ITEMIDLIST aliases rather than the SDK's distinct child PIDL types.
-  # Pass const pointer values in a temporary array instead of casting pointers.
+  # STRICT_TYPED_ITEMIDS gives MinGW distinct child PIDL types, while the
+  # imported item data stores generic LPITEMIDLIST values. Convert each PIDL
+  # value before building the const array; do not cast a pointer-to-pointer.
   string(REPLACE "#include \"MatepathCompat.h\""
     "#include \"MatepathCompat.h\"\nnamespace { struct ChildPidlArray { PCUITEMID_CHILD data[1]; }; }" matepath_api "${matepath_api}")
   foreach(pidl pidlEntry "lplvid->pidl" "lpdcid->pidl")
     string(REPLACE "reinterpret_cast<PCUITEMID_CHILD_ARRAY>(&${pidl})"
-      "ChildPidlArray{${pidl}}.data" matepath_api "${matepath_api}")
+      "ChildPidlArray{reinterpret_cast<PCUITEMID_CHILD>(${pidl})}.data" matepath_api "${matepath_api}")
   endforeach()
 endif()
 file(WRITE "${MATEPATH_COMPAT_DIR}/Dlapi.cpp" "${matepath_api}")
