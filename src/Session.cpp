@@ -215,7 +215,7 @@ void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path)
         auto eol = read(L"Eol", -1); if (eol >= SC_EOL_CRLF && eol <= SC_EOL_LF) d->Send(SCI_SETEOLMODE, eol);
         d->edgeMode = read(L"EdgeMode", EDGE_LINE) == EDGE_BACKGROUND ? EDGE_BACKGROUND : EDGE_LINE;
         d->Send(SCI_SETEDGECOLUMN, std::clamp(read(L"EdgeColumn", 80), 0LL, 1000000LL)); d->Send(SCI_SETEDGEMODE, read(L"EdgeVisible", 0) ? d->edgeMode : EDGE_NONE);
-        d->runtime.monitorMode = static_cast<int>(std::clamp(read(L"MonitorMode", 0), 0LL, 2LL)); d->runtime.monitorLog = read(L"MonitorLog", 0) != 0;
+        d->runtime.monitorMode = static_cast<int>(std::clamp(read(L"MonitorMode", d->runtime.monitorMode), 0LL, 2LL)); d->runtime.monitorLog = read(L"MonitorLog", 0) != 0;
         d->runtime.lineSelectionMode = static_cast<int>(std::clamp(read(L"LineSelectionMode", 1), 0LL, 2LL));
         d->runtime.timestampTemplate = profile.ReadString(section.c_str(), L"TimestampTemplate", d->runtime.timestampTemplate.c_str());
         d->runtime.dateTimeShort = profile.ReadString(section.c_str(), L"DateTimeShort", d->runtime.dateTimeShort.c_str());

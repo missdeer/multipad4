@@ -6,14 +6,14 @@
 #include <cstdint>
 #include <climits>
 #include <memory>
+#include "DirectoryWatch.h"
 struct AutoSaveTask;
 struct DocumentRuntime {
-    HANDLE changeNotification = INVALID_HANDLE_VALUE;
-    ~DocumentRuntime() { if (changeNotification != INVALID_HANDLE_VALUE) FindCloseChangeNotification(changeNotification); }
+    std::unique_ptr<DirectoryWatch> directoryWatch;
     FILETIME observedWriteTime{};
     ULONGLONG observedSize = 0, lastAutoSave = 0;
-    bool snapshotValid = false, externalChangePending = false;
-    int monitorMode = 0;
+    bool snapshotValid = false, externalChangePending = false, externalCheckPending = false;
+    int monitorMode = 2;
     int lineSelectionMode = 1;
     std::wstring timestampTemplate = L"\\$Date:[^\\$]+\\$ | $Date: %Y/%m/%d %H:%M:%S $";
     std::wstring dateTimeShort, dateTimeLong;
@@ -47,7 +47,9 @@ struct FrameOperation {
     HWND owner;
     FrameOperation(FrameRuntime& state, HWND window) : runtime(state), owner(window) { ++runtime.operationDepth; }
     ~FrameOperation() {
-        if (--runtime.operationDepth == 0 && (!runtime.pendingCommands.empty() || !runtime.pendingTabCloses.empty()))
-            PostMessageW(owner, WM_APP + 0x104, 0, 0);
+        if (--runtime.operationDepth == 0) {
+            PostMessageW(owner, WM_FILE_CHANGE, 0, 0);
+            if (!runtime.pendingCommands.empty() || !runtime.pendingTabCloses.empty()) PostMessageW(owner, WM_APP + 0x104, 0, 0);
+        }
     }
 };

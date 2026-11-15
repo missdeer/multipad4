@@ -4,19 +4,24 @@
 #include "StyleManager.h"
 #include "AutoSave.h"
 #include <chrono>
+#include <system_error>
 void SnapshotDocument(EditorDocument& document) {
     WIN32_FILE_ATTRIBUTE_DATA data{};
     auto& state = document.runtime;
+    if (document.path.empty() || !state.monitorMode) state.directoryWatch.reset();
+    else if (!state.directoryWatch || state.directoryWatch->path != document.path) {
+        state.directoryWatch.reset();
+        const auto owner = GetAncestor(document.hwnd, GA_ROOT);
+        state.directoryWatch = std::make_unique<DirectoryWatch>(owner, document.searchIdentity, document.path);
+        if (!state.directoryWatch->Arm()) PostMessageW(owner, WM_FILE_CHANGE, document.searchIdentity, state.directoryWatch->token);
+    }
     state.snapshotValid = !document.path.empty() && GetFileAttributesExW(document.path.c_str(), GetFileExInfoStandard, &data);
     if (state.snapshotValid) {
         state.observedWriteTime = data.ftLastWriteTime;
         state.observedSize = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
     }
     state.externalChangePending = false;
-    if (state.changeNotification != INVALID_HANDLE_VALUE) { FindCloseChangeNotification(state.changeNotification); state.changeNotification = INVALID_HANDLE_VALUE; }
-    if (state.snapshotValid && state.monitorMode && !state.monitorLog)
-        state.changeNotification = FindFirstChangeNotificationW(document.path.parent_path().c_str(), FALSE,
-            FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE);
+    state.externalCheckPending = false;
 }
 void RemoveDocumentRecovery(MainFrame& frame, EditorDocument& document, bool keepBackup) {
     RemoveDocumentRecoveries(frame, document, keepBackup);
@@ -61,26 +66,29 @@ void BackupDocuments(MainFrame& frame, bool force) {
     }
 }
 void TickBackgroundWork(MainFrame& frame) {
+    if (!frame.IsWindowEnabled() || frame.runtime.operationDepth || frame.runtime.inBackgroundWork) return;
+    if (frame.settings.Get(IDM_SET_FILE_AUTOSAVE, 6) & 1) QueueDocumentBackups(frame);
+}
+void CheckExternalChanges(MainFrame& frame) {
     if (frame.runtime.inBackgroundWork) return;
     frame.runtime.inBackgroundWork = true;
     struct Reset { MainFrame& frame; ~Reset() {
         frame.runtime.inBackgroundWork = false;
         if (!frame.runtime.pendingCommands.empty() || !frame.runtime.pendingTabCloses.empty()) frame.PostMessage(WM_APP + 0x104);
+        if (frame.IsWindowEnabled() && !frame.runtime.operationDepth && std::any_of(frame.documents.begin(), frame.documents.end(),
+            [](const auto& d) { return d->runtime.externalCheckPending; })) frame.PostMessage(WM_FILE_CHANGE);
     } } reset{frame};
-    // Modal commands own a stable document snapshot until OK/Cancel. A timer
+    // Modal commands own a stable document snapshot until OK/Cancel. A notification
     // must not reload that buffer underneath a pending edit or settings dialog.
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth) return;
-    if (frame.settings.Get(IDM_SET_FILE_AUTOSAVE, 6) & 1) QueueDocumentBackups(frame);
     std::vector<HWND> windows; for (const auto& document : frame.documents) windows.push_back(document->hwnd);
     for (HWND window : windows) {
         auto found = std::find_if(frame.documents.begin(), frame.documents.end(), [&](const auto& d) { return d->hwnd == window; });
         if (found == frame.documents.end()) continue;
         auto& d = **found; auto& state = d.runtime;
-        if (!state.monitorMode || d.path.empty()) continue;
-        if (!state.monitorLog && state.changeNotification != INVALID_HANDLE_VALUE && !state.externalChangePending) {
-            if (WaitForSingleObject(state.changeNotification, 0) != WAIT_OBJECT_0) continue;
-            FindNextChangeNotification(state.changeNotification);
-        }
+        if (!state.monitorMode || d.path.empty()) { state.externalCheckPending = false; continue; }
+        if (!state.externalCheckPending && !state.externalChangePending) continue;
+        state.externalCheckPending = false;
         WIN32_FILE_ATTRIBUTE_DATA data{};
         if (!GetFileAttributesExW(d.path.c_str(), GetFileExInfoStandard, &data)) continue;
         ULONGLONG size = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
@@ -102,6 +110,28 @@ void TickBackgroundWork(MainFrame& frame) {
             if (frame.Reload(d) && state.keepAtEnd) d.Send(SCI_GOTOPOS, d.Send(SCI_GETLENGTH));
         }
     }
+}
+LRESULT MainFrame::OnFileChange(UINT, WPARAM identity, LPARAM token, BOOL&) {
+    if (identity) {
+        const auto found = std::find_if(documents.begin(), documents.end(), [&](const auto& d) { return d->searchIdentity == identity; });
+        if (found == documents.end()) return 0;
+        auto& state = (*found)->runtime;
+        auto* watch = state.directoryWatch.get();
+        if (!watch || watch->token != static_cast<UINT_PTR>(token)) return 0;
+        if (!watch->Arm()) {
+            const auto error = watch->error.load();
+            state.directoryWatch.reset();
+            Error(std::system_error(error, std::system_category(), "Cannot monitor external file changes"));
+            return 0;
+        }
+        state.externalCheckPending = true;
+    }
+    CheckExternalChanges(*this);
+    return 0;
+}
+LRESULT MainFrame::OnWatchEnable(UINT, WPARAM enabled, LPARAM, BOOL& handled) {
+    if (enabled) PostMessage(WM_FILE_CHANGE);
+    handled = FALSE; return 0;
 }
 LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
     if (id == 3) {
@@ -128,7 +158,7 @@ LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
     TickBackgroundWork(*this); return 0;
 }
 LRESULT MainFrame::OnActivateApp(UINT, WPARAM active, LPARAM, BOOL& handled) {
-    SetFrameTransparency(*this, active != 0); if (active) TickBackgroundWork(*this);
+    SetFrameTransparency(*this, active != 0); if (active) { TickBackgroundWork(*this); CheckExternalChanges(*this); }
     handled = FALSE; return 0;
 }
 LRESULT MainFrame::OnPower(UINT, WPARAM event, LPARAM, BOOL& handled) {

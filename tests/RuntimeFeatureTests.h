@@ -11,6 +11,21 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
     std::filesystem::create_directories(directory);
     AppSettings original = frame.settings;
     frame.settings.path = directory / L"Settings.ini"; frame.settings.persistent = false;
+    frame.KillTimer(1);
+    struct RestoreTimer { MainFrame& frame; ~RestoreTimer() { frame.SetTimer(1, 1000); } } restoreTimer{frame};
+    auto waitFor = [&](const auto& done) {
+        const auto deadline = GetTickCount64() + 3000;
+        while (!done()) {
+            MSG message{};
+            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+                TranslateMessage(&message); DispatchMessageW(&message);
+            }
+            if (done()) break;
+            const auto now = GetTickCount64();
+            require(now < deadline);
+            MsgWaitForMultipleObjectsEx(0, nullptr, static_cast<DWORD>(deadline - now), QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+        }
+    };
     try {
         // INI keeps Unicode, booleans and independent caller sections across instances.
         AppSettings settings; settings.Initialize(true); settings.path = directory / L"Unicode.ini"; settings.persistent = true;
@@ -45,10 +60,31 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
         require(frame.SaveTo(*first, first->path)); require(!std::filesystem::exists(recovery));
         require(!first->Modified() && second->Modified());
         // A background document watches its own path even when another is active.
-        first->runtime.monitorMode = 2;
+        require(first->runtime.monitorMode == 2 && second->runtime.monitorMode == 2);
         files::WriteAtomic(first->path, {"disk replacement"});
-        TickBackgroundWork(frame);
-        require(first->Text() == "disk replacement" && second->Text() == "second?");
+        waitFor([&] { return first->Text() == "disk replacement"; });
+        require(first->Text() == "disk replacement" && !first->Modified() && second->Text() == "second?");
+        // Opening an existing file also enables automatic reload without configuration.
+        const auto openedPath = directory / L"opened.txt";
+        files::WriteAtomic(openedPath, {"before"});
+        require(frame.Open(openedPath)); auto* opened = frame.Active();
+        require(opened->runtime.monitorMode == 2);
+        opened->Send(SCI_GOTOPOS, 3);
+        files::WriteAtomic(openedPath, {"after external edit"});
+        waitFor([&] { return opened->Text() == "after external edit"; });
+        require(opened->Text() == "after external edit" && !opened->Modified());
+        require(opened->Send(SCI_GETCURRENTPOS) == 3 && first->Text() == "disk replacement");
+        // Changes received during modal operations wait until the operation ends.
+        {
+            FrameOperation operation(frame.runtime, frame);
+            files::WriteAtomic(openedPath, {"deferred replacement"});
+            waitFor([&] { return opened->runtime.externalCheckPending; });
+            require(opened->Text() == "after external edit");
+        }
+        waitFor([&] { return opened->Text() == "deferred replacement"; });
+        // An outstanding read can be cancelled when its tab closes.
+        files::WriteAtomic(openedPath, {"closing replacement"});
+        require(frame.Close(frame.tabs.GetActivePage()));
         // A dirty document is never overwritten by automatic reload.
         first->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
         files::WriteAtomic(first->path, {"next disk version"});
@@ -61,7 +97,8 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
                 return TRUE;
             }, 0);
         });
-        TickBackgroundWork(frame); KillTimer(nullptr, timer);
+        waitFor([&] { return first->runtime.observedSize == std::string("next disk version").size(); });
+        KillTimer(nullptr, timer);
         require(first->Text() == "disk replacement!"); first->runtime.monitorMode = 0;
         // WM_QUERYENDSESSION may be followed by a cancelled shutdown. Declining
         // save during the query must never destroy the editor or clear dirty state.

@@ -131,7 +131,7 @@ void ApplyCommandLine(MainFrame& frame,const ParsedCommandLine& options){
             d->Send(SCI_ENSUREVISIBLE,d->Send(SCI_LINEFROMPOSITION,position));d->Send(SCI_GOTOPOS,position);d->Send(SCI_SCROLLCARET);
         }
         if(!options.match.empty()){d->search.findText=options.match;d->search.regex=options.matchRegex;d->search.wildcard=false;d->search.flags&=SCFIND_REGEXP-1;d->search.transformBackslashes=options.matchBackslash;if(!options.jump&&!options.line)d->Send(SCI_GOTOPOS,options.matchBackwards?d->Send(SCI_GETLENGTH):0);d->FindNext(options.matchBackwards);}
-        if(options.readOnly)d->Send(SCI_SETREADONLY,TRUE);if(options.changeNotify>=0)d->runtime.monitorMode=options.changeNotify;if(options.print)PrintDocument(frame.m_hWnd,*d,&frame.settings,!options.printDialog);
+        if(options.readOnly)d->Send(SCI_SETREADONLY,TRUE);if(options.changeNotify>=0){d->runtime.monitorMode=options.changeNotify;SnapshotDocument(*d);}if(options.print)PrintDocument(frame.m_hWnd,*d,&frame.settings,!options.printDialog);
     };
     for(const auto& input:options.files){
         auto path=std::filesystem::weakly_canonical(std::filesystem::absolute(input));

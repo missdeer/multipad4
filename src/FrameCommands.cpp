@@ -406,7 +406,7 @@ void ApplyDocumentPreferences(MainFrame& frame, EditorDocument& d) {
     for (const auto& preference : preferences) d.Send(preference.set, frame.settings.Get(preference.id, preference.fallback));
     d.Send(SCI_SETWRAPMODE, frame.settings.Get(IDM_VIEW_WORDWRAP, SC_WRAP_AUTO) ? d.style.wrapMode : SC_WRAP_NONE);
     ApplyDocumentWrapSettings(d);
-    d.runtime.monitorMode = frame.settings.Get(IDM_VIEW_CHANGENOTIFY);
+    d.runtime.monitorMode = frame.settings.Get(IDM_VIEW_CHANGENOTIFY, d.runtime.monitorMode);
     int watch = frame.settings.Get(60110);
     d.runtime.monitorLog = (watch & 1) != 0; d.runtime.keepAtEnd = (watch & 2) != 0; d.runtime.resetWatch = (watch & 4) != 0;
     if (d.runtime.resetWatch) d.runtime.monitorMode = 0;
