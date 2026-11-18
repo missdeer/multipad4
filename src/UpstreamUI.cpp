@@ -110,6 +110,8 @@ void MainFrame::CreateUpstreamUI() {
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_LOAD_FOR_EDITING, L"Open in full editor...");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSE, L"Close Document\tCtrl+W");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSEALL, L"Close All Documents");
+    InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
+        ID_FILE_ASSOCIATIONS, PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE ? L"文件关联(&F)..." : L"&File Associations...");
     windowMenu = CreatePopupMenu();
     AppendMenuW(windowMenu, MF_STRING, ID_NEXTTAB, L"Next Tab\tCtrl+Tab");
     AppendMenuW(windowMenu, MF_STRING, ID_PREVTAB, L"Previous Tab\tCtrl+Shift+Tab");

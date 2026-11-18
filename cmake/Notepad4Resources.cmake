@@ -19,7 +19,8 @@ string(REPLACE "..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/"
   NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
 string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
 multipad4_brand_resources(NOTEPAD4_RESOURCES)
-file(WRITE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc" "${NOTEPAD4_RESOURCES}")
+file(WRITE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc"
+  "${NOTEPAD4_RESOURCES}\nLANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n#include \"${PROJECT_BINARY_DIR}/FileIconResources.rcinc\"\n")
 
 # The same pinned revision supplies all language resources; build resource-only
 # translation units into the executable so dialogs and menus follow UI language.

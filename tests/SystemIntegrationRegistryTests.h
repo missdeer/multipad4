@@ -1,7 +1,87 @@
 #pragma once
 #include "../src/SystemIntegration.h"
+#include "../src/FileAssociations.h"
+#include "../src/resource.h"
+#include <shellapi.h>
+#include <cstring>
 #include <stdexcept>
 #include <source_location>
+
+inline void RunFileAssociationRegistryTests() {
+    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
+        if (!ok) throw std::runtime_error("File association assertion failed at line " + std::to_string(where.line()));
+    };
+    struct Fixture {
+        std::wstring path = L"Software\\MultiPad4-FileAssociationTests-" + std::to_wstring(GetCurrentProcessId());
+        HKEY key = nullptr;
+        ~Fixture() {
+            if (key) RegCloseKey(key);
+            RegDeleteTreeW(HKEY_CURRENT_USER, path.c_str());
+        }
+    } fixture;
+    require(RegCreateKeyExW(HKEY_CURRENT_USER, fixture.path.c_str(), 0, nullptr, 0, KEY_ALL_ACCESS,
+        nullptr, &fixture.key, nullptr) == ERROR_SUCCESS);
+    auto read = [&](const wchar_t* key, const wchar_t* name, const wchar_t* expected) {
+        wchar_t value[1024]{};
+        DWORD bytes = sizeof(value);
+        const auto status = RegGetValueW(fixture.key, key, name, RRF_RT_REG_SZ, nullptr, value, &bytes);
+        if (expected) require(status == ERROR_SUCCESS && wcscmp(value, expected) == 0);
+        else require(status == ERROR_FILE_NOT_FOUND || status == ERROR_PATH_NOT_FOUND);
+    };
+    const wchar_t* extension = L"Software\\Classes\\.cpp";
+    const wchar_t* openWith = L"Software\\Classes\\.cpp\\OpenWithProgids";
+    const wchar_t* choices = L"Software\\MultiPad4\\Capabilities\\FileAssociations";
+    const wchar_t* apps = L"Software\\RegisteredApplications";
+    const wchar_t* progId = L"MultiPad4.File.cpp";
+    const wchar_t other[] = L"Other.Editor";
+    require(RegSetKeyValueW(fixture.key, extension, nullptr, REG_SZ, other, sizeof(other)) == ERROR_SUCCESS);
+    require(RegSetKeyValueW(fixture.key, openWith, other, REG_SZ, L"", sizeof(wchar_t)) == ERROR_SUCCESS);
+    wchar_t filename[32768]{};
+    require(GetModuleFileNameW(nullptr, filename, _countof(filename)) != 0);
+    const std::filesystem::path executable = filename;
+    const auto module = GetModuleHandleW(nullptr);
+    const auto group = FindResourceW(module, MAKEINTRESOURCEW(IDR_MAINFRAME), RT_GROUP_ICON);
+    require(group != nullptr);
+    const auto directory = LockResource(LoadResource(module, group));
+    require(directory != nullptr);
+    for (const int size : {16, 32}) {
+        const int id = LookupIconIdFromDirectoryEx(static_cast<PBYTE>(directory), TRUE, size, size, LR_DEFAULTCOLOR);
+        require(id != 0);
+        const auto frame = FindResourceW(module, MAKEINTRESOURCEW(id), RT_ICON);
+        const auto english = FindResourceExW(module, RT_ICON, MAKEINTRESOURCEW(id), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US));
+        require(frame && english);
+        const auto bytes = SizeofResource(module, english);
+        require(bytes && SizeofResource(module, frame) == bytes);
+        require(std::memcmp(LockResource(LoadResource(module, frame)), LockResource(LoadResource(module, english)), bytes) == 0);
+    }
+    HICON icon = nullptr;
+    require(ExtractIconExW(filename, -46061, nullptr, &icon, 1) == 1 && icon != nullptr);
+    DestroyIcon(icon);
+    require(SetFileAssociation(fixture.key, L".cpp\\bad", executable, true) == ERROR_INVALID_PARAMETER);
+    require(SetFileAssociation(fixture.key, L".cpp", executable, true) == ERROR_SUCCESS);
+    require(SetFileAssociation(fixture.key, L".py", executable, true) == ERROR_SUCCESS);
+    read(choices, L".cpp", progId);
+    read(openWith, progId, L"");
+    read(apps, L"MultiPad4", L"Software\\MultiPad4\\Capabilities");
+    const wchar_t* iconKey = L"Software\\Classes\\MultiPad4.File.cpp\\DefaultIcon";
+    const auto embeddedIcon = L"\"" + executable.wstring() + L"\",-46061";
+    read(iconKey, nullptr, embeddedIcon.c_str());
+    constexpr wchar_t looseIcon[] = L"\"C:\\MultiPad4\\res\\icons\\file-cpp.ico\",0";
+    require(RegSetKeyValueW(fixture.key, iconKey, nullptr, REG_SZ, looseIcon, sizeof(looseIcon)) == ERROR_SUCCESS);
+    require(SetFileAssociation(fixture.key, L".cpp", executable, true) == ERROR_SUCCESS);
+    read(iconKey, nullptr, embeddedIcon.c_str());
+    read(L"Software\\Classes\\MultiPad4.File.cpp\\shell\\open\\command", nullptr, (L"\"" + executable.wstring() + L"\" \"%1\"").c_str());
+    require(SetFileAssociation(fixture.key, L".cpp", executable, false) == ERROR_SUCCESS);
+    read(choices, L".cpp", nullptr);
+    read(openWith, progId, nullptr);
+    read(openWith, other, L"");
+    read(extension, nullptr, other);
+    read(L"Software\\Classes\\MultiPad4.File.cpp\\shell\\open\\command", nullptr, (L"\"" + executable.wstring() + L"\" \"%1\"").c_str());
+    read(apps, L"MultiPad4", L"Software\\MultiPad4\\Capabilities");
+    require(SetFileAssociation(fixture.key, L".py", executable, false) == ERROR_SUCCESS);
+    require(SetFileAssociation(fixture.key, L".py", executable, false) == ERROR_SUCCESS);
+    read(apps, L"MultiPad4", nullptr);
+}
 
 // Uses only a disposable HKCU branch. Never invokes the dialog or touches IFEO.
 inline void RunSystemIntegrationRegistryTests() {

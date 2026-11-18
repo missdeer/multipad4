@@ -108,6 +108,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunSystemMRUPolicyTests(frame);
         RunLanguagePreferenceTests(frame);
         RunSystemIntegrationRegistryTests();
+        RunFileAssociationRegistryTests();
         frame.MDIMaximize(frame.tabs.GetPageHWND(frame.tabs.GetActivePage()));
         frame.UpdateLayout(); frame.Refresh(); CaptureQAWindow(frame, L"MDI-frame");
         RunOpenDocumentsPaneTests(frame);

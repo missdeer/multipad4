@@ -6,6 +6,7 @@
 #include <fstream>
 #include "StyleManager.h"
 #include "SystemIntegration.h"
+#include "FileAssociations.h"
 #include "Localization.h"
 #include "EditAdvanced.h"
 #include "AutoSave.h"
@@ -161,7 +162,7 @@ CommandState FrameCommandState(MainFrame& frame, UINT id) {
     case BME_EDIT_BOOKMARKPREV: case BME_EDIT_BOOKMARKSELECT: return {true, frame.Active() != nullptr, false};
     case IDM_VIEW_TOGGLE_FULLSCREEN: return {true, true, frame.runtime.fullScreen};
     case IDM_VIEW_MENU: return {true, true, frame.runtime.menuVisible};
-    case IDM_SET_SYSTEM_INTEGRATION: case IDM_TRAY_RESTORE: case IDM_TRAY_EXIT:
+    case ID_FILE_ASSOCIATIONS: case IDM_SET_SYSTEM_INTEGRATION: case IDM_TRAY_RESTORE: case IDM_TRAY_EXIT:
     case IDM_EDIT_CLEARCLIPBOARD:
     case IDM_VIEW_SAVESETTINGSNOW: case IDM_VIEW_CLEARWINPOS:
     case CMD_DEFAULTWINPOS: case CMD_COPYWINPOS: case CMD_OPENINIFILE: case CMD_ESCAPE: case CMD_SHIFTESC:
@@ -252,6 +253,7 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
         }
         break;
     }
+    case ID_FILE_ASSOCIATIONS: ShowFileAssociations(frame); break;
     case IDM_SET_SYSTEM_INTEGRATION: ShowSystemIntegration(frame); break;
     case IDM_TRAY_RESTORE: SetTrayVisible(frame, false); frame.ShowWindow(SW_RESTORE); SetForegroundWindow(frame); break;
     case IDM_TRAY_EXIT: frame.PostMessage(WM_CLOSE); break;

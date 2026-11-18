@@ -4817,6 +4817,17 @@
       ]
     },
     {
+      "path": "src/FileAssociations.cpp",
+      "references": [
+        {
+          "line": 106,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        }
+      ]
+    },
+    {
       "path": "src/LanguageConfiguration.cpp",
       "references": [
         {
@@ -5577,7 +5588,7 @@
       "path": "src/UpstreamUI.cpp",
       "references": [
         {
-          "line": 336,
+          "line": 338,
           "symbols": [
             "GetDocumentLexer"
           ]
