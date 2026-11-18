@@ -35,12 +35,16 @@ void SearchDialog::Open(MainFrame& frame, EditorDocument& target, bool replace) 
     if (hwnd && document == &target) {
         SetPage(replace ? 1 : 0);
         SetDlgItemTextW(hwnd, IDC_FINDTEXT, target.search.findText.c_str());
-        ShowWindow(hwnd, SW_SHOW); SetForegroundWindow(hwnd); SetFocus(GetDlgItem(hwnd, IDC_FINDTEXT)); return;
+    } else {
+        Close(); owner = &frame; document = &target; replacing = replace; page = replace ? 1 : 0;
+        accelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
+        hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_SEARCH), frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
     }
-    Close(); owner = &frame; document = &target; replacing = replace; page = replace ? 1 : 0;
-    accelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
-    hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_SEARCH), frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
-    if (hwnd) ShowWindow(hwnd, SW_SHOW);
+    if (hwnd) {
+        ShowWindow(hwnd, SW_SHOW);
+        SetForegroundWindow(hwnd);
+        SetFocus(GetDlgItem(hwnd, IDC_FINDTEXT));
+    }
 }
 void SearchDialog::Close() {
     if (hwnd && IsWindow(hwnd)) {
@@ -570,7 +574,12 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
                 } picker->Release();
             } return TRUE;
         }
-        if (id == IDACC_FIND || id == IDACC_REPLACE) { dialog->ReadFields(); dialog->SetPage(id == IDACC_REPLACE ? 1 : 0); return TRUE; }
+        if (id == IDACC_FIND || id == IDACC_REPLACE) {
+            dialog->ReadFields();
+            dialog->SetPage(id == IDACC_REPLACE ? 1 : 0);
+            SetFocus(GetDlgItem(window, IDC_FINDTEXT));
+            return TRUE;
+        }
         if (id == IDACC_FINDNEXT) id = IDOK;
         if (id == IDACC_FINDPREV) id = IDC_FINDPREV;
         if (id == IDACC_REPLACENEXT) id = IDC_REPLACE;

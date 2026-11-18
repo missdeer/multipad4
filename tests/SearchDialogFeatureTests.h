@@ -113,8 +113,14 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     };
     auto* d = frame.NewDocument(); require(d != nullptr);
     d->Load({"中文😀 alpha alpha\nsecond alpha\n"}); d->search = {};
-    d->Send(SCI_SETSEL, 0, 10); frame.ShowSearch(false);
+    d->Send(SCI_SETSEL, 0, 10); frame.SendMessage(WM_COMMAND, ID_FIND);
     auto& dialog = frame.searchDialog; require(dialog.hwnd && dialog.document == d);
+    COMBOBOXINFO findCombo{}; findCombo.cbSize = sizeof(findCombo);
+    require(GetComboBoxInfo(GetDlgItem(dialog.hwnd, IDC_FINDTEXT), &findCombo));
+    require(GetFocus() == findCombo.hwndItem);
+    SetFocus(GetDlgItem(dialog.hwnd, IDC_SEARCH_TABS));
+    SendMessageW(dialog.hwnd, WM_COMMAND, MAKEWPARAM(IDACC_FIND, 1), 0);
+    require(GetFocus() == findCombo.hwndItem);
     require(TabCtrl_GetItemCount(GetDlgItem(dialog.hwnd, IDC_SEARCH_TABS)) == 4);
     wchar_t selection[32]{}; GetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, selection, 32); require(std::wstring(selection) == L"中文😀");
     SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"alpha");
