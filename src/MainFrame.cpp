@@ -46,7 +46,8 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();
     searchResults.CreatePane(*this);
     InitializeFramePreferences(*this);
-    UpdateLayout();
+    ApplyTabTitleFont();
+    ApplyTabWidth();
     DragAcceptFiles(TRUE);
     _Module.GetMessageLoop()->AddMessageFilter(this);
     SetTimer(1, 1000);
@@ -448,9 +449,29 @@ LRESULT MainFrame::OnMenu(UINT, WPARAM menu, LPARAM, BOOL&) {
     UpdateMenuCommands(*this, reinterpret_cast<HMENU>(menu));
     UpdateCommandUI(); return 0;
 }
+void MainFrame::ApplyTabTitleFont() {
+    const auto size = settings.ReadString(L"Tab Bar", L"FontSize");
+    wchar_t* end = nullptr;
+    const auto points = wcstol(size.c_str(), &end, 10);
+    GetMDITabCtrl().SetTitleFont(settings.ReadString(L"Tab Bar", L"Font"), end == size.data() + size.size() ? points : 0);
+    m_tabbedClient.GetTabOwner().CalcTabAreaHeight();
+    UpdateLayout();
+}
+int MainFrame::TabWidthPreference() const {
+    const auto text = settings.ReadString(L"Tab Bar", L"Width");
+    wchar_t* end = nullptr;
+    const auto width = wcstol(text.c_str(), &end, 10);
+    return end == text.data() + text.size() && width >= EditorTabCtrl::minTabWidth && width <= EditorTabCtrl::maxTabWidth
+        ? static_cast<int>(width) : EditorTabCtrl::defaultTabWidth;
+}
+void MainFrame::ApplyTabWidth() {
+    GetMDITabCtrl().SetFixedTabWidth(settings.ReadString(L"Tab Bar", L"FixedWidth") == L"1" ? TabWidthPreference() : 0);
+}
 LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     auto* r = reinterpret_cast<RECT*>(l);
     SetWindowPos(nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
+    if (GetMDITabCtrl().HasTitleFont()) ApplyTabTitleFont();
+    if (GetMDITabCtrl().HasFixedTabWidth()) ApplyTabWidth();
     for (auto& d : documents) if (d->Send(SCI_GETMARGINWIDTHN, 0)) d->Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(m_hWnd), 96));
     UpdateToolbarImages(*this);
     return 0;

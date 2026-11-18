@@ -2,6 +2,7 @@
 #include "MainFrame.h"
 #include "UpstreamUI.h"
 #include <shellapi.h>
+#include <dlgs.h>
 #include <array>
 #include <fstream>
 #include "StyleManager.h"
@@ -13,6 +14,125 @@
 #include <cmath>
 #include <cwctype>
 namespace {
+UINT_PTR CALLBACK TabTitleFontHook(HWND dialog, UINT message, WPARAM, LPARAM) {
+    if (message == WM_INITDIALOG) {
+        ::SetWindowTextW(dialog, PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE ? L"标签标题字体" : L"Tab Title Font");
+        ::EnableWindow(::GetDlgItem(dialog, cmb2), FALSE);
+    }
+    return 0;
+}
+struct TabSettingsDialog {
+    LOGFONTW font{};
+    int points = 0;
+    int width = EditorTabCtrl::defaultTabWidth;
+    bool fixed = false;
+    WTL::CFont preview;
+};
+void UpdateTabFontPreview(HWND dialog, TabSettingsDialog& context) {
+    LOGFONTW font{};
+    if (context.points) {
+        wcscpy_s(font.lfFaceName, context.font.lfFaceName);
+        font.lfHeight = -MulDiv(context.points, GetDpiForWindow(dialog), 72);
+        font.lfWeight = FW_NORMAL;
+        font.lfCharSet = DEFAULT_CHARSET;
+    } else {
+        SystemParametersInfoW(SPI_GETICONTITLELOGFONT, sizeof(font), &font, 0);
+    }
+    WTL::CFont preview;
+    preview.CreateFontIndirect(&font);
+    SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, WM_SETFONT,
+        preview.m_hFont ? reinterpret_cast<WPARAM>(preview.m_hFont) : SendMessageW(dialog, WM_GETFONT, 0, 0), TRUE);
+    context.preview.Attach(preview.Detach());
+    EnableWindow(GetDlgItem(dialog, IDC_TAB_FONT_RESET), context.points != 0);
+}
+void ChooseTabTitleFont(HWND dialog, TabSettingsDialog& context) {
+    LOGFONTW font{};
+    const auto preview = SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, WM_GETFONT, 0, 0);
+    GetObjectW(reinterpret_cast<HFONT>(preview), sizeof(font), &font);
+    CHOOSEFONTW choose{sizeof(choose)};
+    choose.hwndOwner = dialog;
+    choose.lpLogFont = &font;
+    choose.lpfnHook = TabTitleFontHook;
+    choose.Flags = CF_SCREENFONTS | CF_SCALABLEONLY | CF_INITTOLOGFONTSTRUCT | CF_LIMITSIZE |
+        CF_FORCEFONTEXIST | CF_NOSCRIPTSEL | CF_ENABLEHOOK;
+    choose.nSizeMin = EditorTabCtrl::titleMinPoints;
+    choose.nSizeMax = EditorTabCtrl::titleMaxPoints;
+    if (ChooseFontW(&choose)) {
+        context.font = font;
+        context.points = choose.iPointSize / 10;
+        UpdateTabFontPreview(dialog, context);
+    } else if (CommDlgExtendedError()) {
+        MessageBoxW(dialog, PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE ?
+            L"无法打开标签标题字体对话框。" : L"Cannot open the tab title font dialog.", L"MultiPad4", MB_OK | MB_ICONERROR);
+    }
+}
+void EnableTabWidth(HWND dialog, bool fixed) {
+    EnableWindow(GetDlgItem(dialog, IDC_TAB_WIDTH_PIXELS), fixed);
+    EnableWindow(GetDlgItem(dialog, IDC_TAB_WIDTH_SPIN), fixed);
+}
+INT_PTR CALLBACK TabSettingsDialogProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_INITDIALOG) {
+        SetWindowLongPtrW(dialog, DWLP_USER, lParam);
+        auto& context = *reinterpret_cast<TabSettingsDialog*>(lParam);
+        if (PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE) {
+            SetWindowTextW(dialog, L"文档标签设置");
+            SetDlgItemTextW(dialog, IDC_TAB_FONT_LABEL, L"标签标题字体：");
+            SetDlgItemTextW(dialog, IDC_TAB_FONT_RESET, L"使用系统字体(&S)");
+            SetDlgItemTextW(dialog, IDC_TAB_FIXED_WIDTH, L"固定标签宽度(&X)");
+            SetDlgItemTextW(dialog, IDC_TAB_WIDTH_LABEL, L"宽度（逻辑像素）(&W)：");
+            SetDlgItemTextW(dialog, IDOK, L"确定");
+            SetDlgItemTextW(dialog, IDCANCEL, L"取消");
+        }
+        UpdateTabFontPreview(dialog, context);
+        CheckDlgButton(dialog, IDC_TAB_FIXED_WIDTH, context.fixed ? BST_CHECKED : BST_UNCHECKED);
+        SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_PIXELS, EM_SETLIMITTEXT, 4, 0);
+        SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_SPIN, UDM_SETRANGE32, EditorTabCtrl::minTabWidth, EditorTabCtrl::maxTabWidth);
+        SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_SPIN, UDM_SETPOS32, 0, context.width);
+        EnableTabWidth(dialog, context.fixed);
+        return TRUE;
+    }
+    auto* context = reinterpret_cast<TabSettingsDialog*>(GetWindowLongPtrW(dialog, DWLP_USER));
+    if (!context) return FALSE;
+    if (message == WM_DPICHANGED) UpdateTabFontPreview(dialog, *context);
+    if (message != WM_COMMAND) return FALSE;
+    const bool fixed = IsDlgButtonChecked(dialog, IDC_TAB_FIXED_WIDTH) == BST_CHECKED;
+    switch (LOWORD(wParam)) {
+    case IDC_TAB_FONT_PREVIEW:
+        ChooseTabTitleFont(dialog, *context);
+        return TRUE;
+    case IDC_TAB_FONT_RESET:
+        context->points = 0;
+        SendMessageW(dialog, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(GetDlgItem(dialog, IDC_TAB_FONT_PREVIEW)), TRUE);
+        UpdateTabFontPreview(dialog, *context);
+        return TRUE;
+    case IDC_TAB_FIXED_WIDTH:
+        EnableTabWidth(dialog, fixed);
+        return TRUE;
+    case IDOK: {
+        const auto input = GetDlgItem(dialog, IDC_TAB_WIDTH_PIXELS);
+        wchar_t text[5]{};
+        GetWindowTextW(input, text, _countof(text));
+        const auto width = wcstol(text, nullptr, 10);
+        const bool valid = GetWindowTextLengthW(input) < static_cast<int>(_countof(text)) &&
+            std::wstring_view(text).find_first_not_of(L"0123456789") == std::wstring_view::npos &&
+            width >= EditorTabCtrl::minTabWidth && width <= EditorTabCtrl::maxTabWidth;
+        if (fixed && !valid) {
+            const auto range = std::to_wstring(EditorTabCtrl::minTabWidth) + L"–" + std::to_wstring(EditorTabCtrl::maxTabWidth);
+            const auto hint = PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE ? L"请输入此范围内的整数：" + range : L"Enter a whole number in this range: " + range;
+            MessageBoxW(dialog, hint.c_str(), L"MultiPad4", MB_OK | MB_ICONWARNING);
+            SetFocus(input);
+            SendMessageW(input, EM_SETSEL, 0, -1);
+            return TRUE;
+        }
+        if (valid) context->width = static_cast<int>(width);
+        context->fixed = fixed;
+        EndDialog(dialog, IDOK);
+        return TRUE;
+    }
+    case IDCANCEL: EndDialog(dialog, IDCANCEL); return TRUE;
+    }
+    return FALSE;
+}
 struct Option { UINT id; int initial; };
 constexpr Option toggles[] = {
     {IDM_VIEW_REUSEWINDOW, 0}, {IDM_VIEW_SINGLEFILEINSTANCE, 1}, {IDM_VIEW_STICKY_WINDOW_POSITION, 0},
@@ -162,7 +282,7 @@ CommandState FrameCommandState(MainFrame& frame, UINT id) {
     case BME_EDIT_BOOKMARKPREV: case BME_EDIT_BOOKMARKSELECT: return {true, frame.Active() != nullptr, false};
     case IDM_VIEW_TOGGLE_FULLSCREEN: return {true, true, frame.runtime.fullScreen};
     case IDM_VIEW_MENU: return {true, true, frame.runtime.menuVisible};
-    case ID_FILE_ASSOCIATIONS: case IDM_SET_SYSTEM_INTEGRATION: case IDM_TRAY_RESTORE: case IDM_TRAY_EXIT:
+    case ID_TAB_SETTINGS: case ID_FILE_ASSOCIATIONS: case IDM_SET_SYSTEM_INTEGRATION: case IDM_TRAY_RESTORE: case IDM_TRAY_EXIT:
     case IDM_EDIT_CLEARCLIPBOARD:
     case IDM_VIEW_SAVESETTINGSNOW: case IDM_VIEW_CLEARWINPOS:
     case CMD_DEFAULTWINPOS: case CMD_COPYWINPOS: case CMD_OPENINIFILE: case CMD_ESCAPE: case CMD_SHIFTESC:
@@ -254,6 +374,26 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
         break;
     }
     case ID_FILE_ASSOCIATIONS: ShowFileAssociations(frame); break;
+    case ID_TAB_SETTINGS: {
+        auto& tabs = frame.GetMDITabCtrl();
+        TabSettingsDialog context{};
+        context.points = tabs.TitleFontPoints();
+        context.width = frame.TabWidthPreference();
+        context.fixed = tabs.HasFixedTabWidth();
+        GetObjectW(tabs.GetFont(), sizeof(context.font), &context.font);
+        const auto result = DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_TAB_SETTINGS), frame,
+            TabSettingsDialogProc, reinterpret_cast<LPARAM>(&context));
+        if (result == -1) throw std::runtime_error("Cannot open the document tab settings dialog.");
+        if (result == IDOK) {
+            frame.settings.WriteString(L"Tab Bar", L"Font", context.points ? context.font.lfFaceName : L"");
+            frame.settings.WriteString(L"Tab Bar", L"FontSize", context.points ? std::to_wstring(context.points) : L"");
+            frame.settings.WriteString(L"Tab Bar", L"Width", std::to_wstring(context.width));
+            frame.settings.WriteString(L"Tab Bar", L"FixedWidth", context.fixed ? L"1" : L"0");
+            frame.ApplyTabTitleFont();
+            frame.ApplyTabWidth();
+        }
+        break;
+    }
     case IDM_SET_SYSTEM_INTEGRATION: ShowSystemIntegration(frame); break;
     case IDM_TRAY_RESTORE: SetTrayVisible(frame, false); frame.ShowWindow(SW_RESTORE); SetForegroundWindow(frame); break;
     case IDM_TRAY_EXIT: frame.PostMessage(WM_CLOSE); break;

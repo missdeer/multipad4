@@ -1,4 +1,6 @@
 #pragma once
+#include <dlgs.h>
+#include "StyleDialogTests.h"
 #include "../src/MainFrame.h"
 #include "QAArtifacts.h"
 #include <source_location>
@@ -41,6 +43,140 @@ inline void RunMDILayoutTests(MainFrame& frame) {
         require(::EqualRect(&editor, &scintilla) != FALSE);
         checkTabs();
     };
+    auto& control = frame.GetMDITabCtrl();
+    const auto savedSettings = frame.settings;
+    const auto defaultTabs = rectangle(control);
+    const auto editorFontSize = frame.Active()->Send(SCI_STYLEGETSIZE, STYLE_DEFAULT);
+    wchar_t menuLabel[64]{};
+    require(GetMenuStringW(frame.GetMenu(), IDM_VIEW_TABSETTINGS, menuLabel, _countof(menuLabel), MF_BYCOMMAND) != 0 &&
+        std::wstring_view(menuLabel) == L"&Tabs and Indentation...\tCtrl+T");
+    require(GetMenuStringW(frame.GetMenu(), ID_TAB_SETTINGS, menuLabel, _countof(menuLabel), MF_BYCOMMAND) != 0 &&
+        std::wstring_view(menuLabel) == L"&Document Tab Settings...");
+    require(!control.HasTitleFont() && frame.State(ID_TAB_SETTINGS).enabled);
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [&](HWND dialog) {
+        require(!IsWindowEnabled(GetDlgItem(dialog, IDC_TAB_FONT_RESET)));
+        wchar_t sample[64]{};
+        GetDlgItemTextW(dialog, IDC_TAB_FONT_PREVIEW, sample, _countof(sample));
+        require(std::wstring_view(sample) == L"中文 かな 한글 &Font…");
+        const auto timer = SetTimer(dialog, 1, 10, [](HWND owner, UINT, UINT_PTR id, DWORD) {
+            const HWND chooser = GetWindow(owner, GW_ENABLEDPOPUP);
+            const HWND face = GetDlgItem(chooser, cmb1);
+            if (chooser == owner || !face) return;
+            KillTimer(owner, id);
+            SendMessageW(face, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"Courier New"));
+            SendMessageW(chooser, WM_COMMAND, MAKEWPARAM(cmb1, CBN_SELCHANGE), reinterpret_cast<LPARAM>(face));
+            SetDlgItemInt(chooser, cmb3, EditorTabCtrl::titleMaxPoints, FALSE);
+            PostMessageW(chooser, WM_COMMAND, IDOK, 0);
+        });
+        require(timer != 0);
+        SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, BM_CLICK, 0, 0);
+        KillTimer(dialog, timer);
+        LOGFONTW font{};
+        const auto preview = SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, WM_GETFONT, 0, 0);
+        require(GetObjectW(reinterpret_cast<HFONT>(preview), sizeof(font), &font) == sizeof(font));
+        require(std::wstring_view(font.lfFaceName) == L"Courier New");
+        require(font.lfHeight == -MulDiv(EditorTabCtrl::titleMaxPoints, GetDpiForWindow(dialog), 72));
+        require(IsWindowEnabled(GetDlgItem(dialog, IDC_TAB_FONT_RESET)) && !control.HasTitleFont());
+    });
+    const auto checkTitleFont = [&] {
+        NMCTCCUSTOMDRAW draw{};
+        control.InitializeDrawStruct(&draw);
+        for (HFONT handle : {draw.hFontInactive, draw.hFontSelected}) {
+            LOGFONTW font{};
+            require(GetObjectW(handle, sizeof(font), &font) == sizeof(font));
+            require(std::wstring_view(font.lfFaceName) == L"Courier New");
+            require(font.lfHeight == -MulDiv(EditorTabCtrl::titleMaxPoints, control.TitleDpi(), 72));
+            require(font.lfWeight == (handle == draw.hFontSelected && (control.GetStyle() & CTCS_BOLDSELECTEDTAB) ? FW_BOLD : FW_NORMAL));
+        }
+        const auto customTabs = rectangle(control);
+        require(customTabs.bottom - customTabs.top >= control.TitleFontHeight());
+        require(customTabs.bottom - customTabs.top > defaultTabs.bottom - defaultTabs.top);
+        require(frame.Active()->Send(SCI_STYLEGETSIZE, STYLE_DEFAULT) == editorFontSize);
+        checkTabs();
+    };
+    checkTitleFont();
+    control.SendMessage(WM_THEMECHANGED);
+    checkTitleFont();
+    CaptureQAWindow(frame, L"MDI-tab-title-font");
+    require(!control.HasFixedTabWidth());
+    auto* longTitle = frame.NewDocument();
+    require(longTitle != nullptr);
+    longTitle->untitled = L"A rather long document title for checking truncation.txt";
+    frame.Refresh();
+    const int longTab = frame.tabs.GetActivePage();
+    require(longTab == 2);
+    const auto tabWidth = [&](int index) {
+        RECT item{};
+        require(control.GetItemRect(index, &item) != FALSE);
+        return item.right - item.left;
+    };
+    const auto autoWidth = tabWidth(longTab);
+    const auto checkFixedWidth = [&](int width) {
+        require(control.HasFixedTabWidth());
+        for (int index = 0; index < frame.tabs.GetPageCount(); ++index)
+            require(tabWidth(index) == MulDiv(width, control.TitleDpi(), 96));
+    };
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [&](HWND dialog) {
+        const auto input = GetDlgItem(dialog, IDC_TAB_WIDTH_PIXELS);
+        const auto spin = GetDlgItem(dialog, IDC_TAB_WIDTH_SPIN);
+        require(!IsWindowEnabled(input) && !IsWindowEnabled(spin));
+        require(GetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, nullptr, FALSE) == 100);
+        SendDlgItemMessageW(dialog, IDC_TAB_FIXED_WIDTH, BM_CLICK, 0, 0);
+        require(IsWindowEnabled(input) && IsWindowEnabled(spin));
+        require(reinterpret_cast<HWND>(SendMessageW(spin, UDM_GETBUDDY, 0, 0)) == input);
+        int minWidth = 0, maxWidth = 0;
+        SendMessageW(spin, UDM_GETRANGE32, reinterpret_cast<WPARAM>(&minWidth), reinterpret_cast<LPARAM>(&maxWidth));
+        require(minWidth == EditorTabCtrl::minTabWidth && maxWidth == EditorTabCtrl::maxTabWidth);
+        SendMessageW(input, WM_KEYDOWN, VK_UP, 0);
+        require(GetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, nullptr, FALSE) == 101);
+        SendMessageW(input, WM_KEYDOWN, VK_DOWN, 0);
+    });
+    checkFixedWidth(100);
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [](HWND dialog) {
+        SetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, 160, FALSE);
+        CaptureQAWindow(dialog, L"Tab-settings");
+    });
+    checkFixedWidth(160);
+    require(autoWidth > tabWidth(longTab) && frame.tabs.GetPageTitle(longTab) == longTitle->untitled);
+    CaptureQAWindow(frame, L"MDI-fixed-tab-width");
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [](HWND dialog) {
+        SendDlgItemMessageW(dialog, IDC_TAB_FONT_RESET, BM_CLICK, 0, 0);
+        SetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, 200, FALSE);
+    }, IDCANCEL);
+    checkFixedWidth(160);
+    checkTitleFont();
+    AppSettings persisted = frame.settings;
+    persisted.path.replace_filename(L"tab-title-font.ini");
+    persisted.persistent = true;
+    require(persisted.Save());
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [&](HWND dialog) {
+        SendDlgItemMessageW(dialog, IDC_TAB_FIXED_WIDTH, BM_CLICK, 0, 0);
+        require(!IsWindowEnabled(GetDlgItem(dialog, IDC_TAB_WIDTH_PIXELS)));
+        require(!IsWindowEnabled(GetDlgItem(dialog, IDC_TAB_WIDTH_SPIN)));
+        require(GetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, nullptr, FALSE) == 160);
+    });
+    require(!control.HasFixedTabWidth() && tabWidth(longTab) == autoWidth);
+    CaptureQAWindow(frame, L"MDI-auto-tab-width");
+    require(frame.Close(longTab));
+    StyleDialogTest::RunCommand(frame, ID_TAB_SETTINGS, [](HWND dialog) {
+        SendDlgItemMessageW(dialog, IDC_TAB_FONT_RESET, BM_CLICK, 0, 0);
+    });
+    require(!control.HasTitleFont());
+    const auto resetTabs = rectangle(control);
+    require(resetTabs.bottom - resetTabs.top == defaultTabs.bottom - defaultTabs.top);
+    frame.settings = {};
+    frame.settings.path = persisted.path;
+    frame.ApplyTabTitleFont();
+    frame.ApplyTabWidth();
+    checkFixedWidth(160);
+    checkTitleFont();
+    frame.settings.WriteString(L"Tab Bar", L"FontSize", L"24pt");
+    frame.ApplyTabTitleFont();
+    require(!control.HasTitleFont());
+    frame.settings = savedSettings;
+    frame.ApplyTabTitleFont();
+    frame.ApplyTabWidth();
+    std::filesystem::remove(persisted.path);
     for (HWND child : {first, second}) {
         const auto style = ::GetWindowLongPtrW(child, GWL_STYLE);
         require((style & WS_OVERLAPPEDWINDOW) == WS_OVERLAPPEDWINDOW);

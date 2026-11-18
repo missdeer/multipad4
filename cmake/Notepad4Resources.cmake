@@ -10,6 +10,8 @@ function(multipad4_adapt_resources variable)
   string(REPLACE "Customize Schemes" "Language and Style" content "${content}")
   string(REPLACE "自定义语法高亮" "语言与样式" content "${content}")
   string(REPLACE "自訂語法高亮" "語言與樣式" content "${content}")
+  string(REPLACE "MENUITEM \"&Tab Settings..." "MENUITEM \"&Tabs and Indentation..." content "${content}")
+  string(REPLACE "CAPTION \"Tab Settings\"" "CAPTION \"Tabs and Indentation\"" content "${content}")
   set(${variable} "${content}" PARENT_SCOPE)
 endfunction()
 

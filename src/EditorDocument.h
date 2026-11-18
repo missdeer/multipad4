@@ -122,7 +122,7 @@ public:
 class EditorTabs {
 public:
     HWND owner = nullptr, m_hWnd = nullptr;
-    CDotNetTabCtrl<CTabViewTabItem>* control = nullptr;
+    EditorTabCtrl* control = nullptr;
     std::vector<std::unique_ptr<EditorChild>> children;
     std::unordered_map<HWND, EditorChild*> childrenByWindow;
     std::unordered_map<UINT_PTR, EditorDocument*> documentsById;

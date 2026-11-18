@@ -12,7 +12,7 @@
 #include "PluginAdmin.h"
 class MainFrame;
 enum class SaveMode { Normal, As, Copy };
-using MainFrameBase = dockwins::CDockingFrameImplBase<MainFrame, CTabbedMDIFrameWindowImpl<MainFrame>>;
+using MainFrameBase = dockwins::CDockingFrameImplBase<MainFrame, CTabbedMDIFrameWindowImpl<MainFrame, CTabbedMDIClient<EditorTabCtrl, EditorTabOwner>>>;
 class MainFrame : public MainFrameBase, public CMessageFilter {
 public:
     DECLARE_FRAME_WND_CLASS(L"MultiPad4.MainFrame", IDR_MAINFRAME)
@@ -53,6 +53,9 @@ public:
     bool ConfirmSearchWrap(bool backwards);
     void ShowSearch(bool replace);
     void CreateUpstreamUI();
+    void ApplyTabTitleFont();
+    int TabWidthPreference() const;
+    void ApplyTabWidth();
     void UpdateCommandUI();
     void UpdateStatus();
     CommandState State(UINT id);

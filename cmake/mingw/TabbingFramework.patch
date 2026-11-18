@@ -623,7 +623,8 @@
 +			::InflateRect(&rcText, -this->m_settings.iPadding, 0);
  
  			_CSTRING_NS::CString sText = pItem->GetText();
- 			dc.DrawText(sText, sText.GetLength(), &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_NOPREFIX);
+-			dc.DrawText(sText, sText.GetLength(), &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS | DT_NOPREFIX);
++			dc.DrawText(sText, sText.GetLength(), &rcText, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 @@ -636,11 +636,11 @@
  		WTL::CPenHandle penOld = dc.SelectPen(penButtons);
  		WTL::CBrushHandle brushOld = dc.SelectBrush(brushArrow);
