@@ -4,4 +4,5 @@
 #include <string>
 
 void ShowFileAssociations(HWND owner);
+int DocumentIconResourceId(const std::filesystem::path& path);
 LSTATUS SetFileAssociation(HKEY root, const std::wstring& extension, const std::filesystem::path& executable, bool enable);

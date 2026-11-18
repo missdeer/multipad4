@@ -335,6 +335,17 @@ INT_PTR CALLBACK Procedure(HWND window, UINT message, WPARAM wParam, LPARAM lPar
 }
 }
 
+int DocumentIconResourceId(const std::filesystem::path& path) {
+    auto extension = path.extension().wstring();
+    if (extension.empty()) {
+        auto filename = path.filename().wstring();
+        if (filename.starts_with(L'.')) extension = std::move(filename);
+    }
+    Lower(extension);
+    const int id = IconResourceId(extension);
+    return id ? id : IDR_MAINFRAME;
+}
+
 LSTATUS SetFileAssociation(HKEY root, const std::wstring& extension, const std::filesystem::path& executable, bool enable) {
     if (!ValidExtension(extension) || !executable.is_absolute()) return ERROR_INVALID_PARAMETER;
     const auto progId = ProgId(extension);

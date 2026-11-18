@@ -473,6 +473,7 @@ LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     if (GetMDITabCtrl().HasTitleFont()) ApplyTabTitleFont();
     if (GetMDITabCtrl().HasFixedTabWidth()) ApplyTabWidth();
     for (auto& d : documents) if (d->Send(SCI_GETMARGINWIDTHN, 0)) d->Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(m_hWnd), 96));
+    for (auto& child : tabs.children) child->UpdateFileIcon();
     UpdateToolbarImages(*this);
     return 0;
 }

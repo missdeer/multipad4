@@ -95,6 +95,7 @@ public:
     DECLARE_FRAME_WND_CLASS(L"MultiPad4.MdiDocument", 0)
     HWND owner = nullptr;
     EditorDocument* document = nullptr;
+    void UpdateFileIcon();
     BEGIN_MSG_MAP(EditorChild)
         MESSAGE_HANDLER(WM_CLOSE, OnClose)
         MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
@@ -117,6 +118,10 @@ public:
     LRESULT OnActivate(UINT, WPARAM, LPARAM, BOOL& handled) {
         ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0); handled = FALSE; return 0;
     }
+private:
+    CIcon fileIcon;
+    int fileIconResource = 0;
+    UINT fileIconDpi = 0;
 };
 // Document lookup follows the framework tab order, including drag reordering.
 class EditorTabs {
@@ -141,7 +146,9 @@ public:
         ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
     }
     std::wstring GetPageTitle(int i) const { return control->GetItem(i)->GetText().GetString(); }
-    void SetPageTitle(int i, const wchar_t* title) { if (auto* child = Child(i)) child->SetTitle(title); }
+    void SetPageTitle(int i, const wchar_t* title) {
+        if (auto* child = Child(i)) { child->SetTitle(title); child->UpdateFileIcon(); }
+    }
     bool AddPage(HWND editor, const wchar_t* title, int, void* data) {
         auto child = std::make_unique<EditorChild>(); child->owner = owner;
         child->document = static_cast<EditorDocument*>(data);
@@ -149,6 +156,7 @@ public:
         // Keep the caption and sizing frame so Win32 can maximize, restore,
         // cascade and tile this real MDI child.
         if (!child->Create(m_hWnd, CWindow::rcDefault, title, EditorChild::GetWndStyle(0) | WS_MAXIMIZE)) return false;
+        child->UpdateFileIcon();
         ::SetParent(editor, child->m_hWnd); child->m_hWndClient = editor;
         ::ShowWindow(editor, SW_SHOW); child->UpdateLayout(); child->SetTitle(title);
         childrenByWindow.emplace(child->m_hWnd, child.get());

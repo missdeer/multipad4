@@ -1,4 +1,5 @@
 #include "EditorDocument.h"
+#include "FileAssociations.h"
 #include "SimdText.h"
 #include "StyleManager.h"
 #include <cwctype>
@@ -7,6 +8,18 @@
 namespace {
 using LoadClock = std::chrono::steady_clock;
 double LoadElapsed(LoadClock::time_point start) { return std::chrono::duration<double, std::milli>(LoadClock::now() - start).count(); }
+}
+void EditorChild::UpdateFileIcon() {
+    const int resource = DocumentIconResourceId(document->path);
+    const UINT dpi = GetDpiForWindow(owner);
+    if (resource == fileIconResource && dpi == fileIconDpi) return;
+    CIcon icon;
+    if (!icon.LoadIcon(resource, GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi))) return;
+    SetIcon(icon, FALSE);
+    fileIcon.Attach(icon.Detach());
+    fileIconResource = resource;
+    fileIconDpi = dpi;
+    ::DrawMenuBar(owner);
 }
 std::wstring EditorDocument::Title() const {
     return (Modified() ? L"* " : L"") + (path.empty() ? untitled : path.filename().wstring());
