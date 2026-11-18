@@ -84,8 +84,6 @@ set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
   "${PROJECT_SOURCE_DIR}/config/themes/dark.xml")
 set(MULTIPAD4_OUTPUT_NAME "multipad4" CACHE STRING "Executable basename for local validation builds")
 set_target_properties(multipad4 PROPERTIES OUTPUT_NAME "${MULTIPAD4_OUTPUT_NAME}")
-configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/doc/Notepad4 DarkTheme.ini"
-  "${PROJECT_BINARY_DIR}/MultiPad4 DarkTheme.ini" COPYONLY)
 target_include_directories(multipad4 PRIVATE src "${MULTIPAD4_WTL_INCLUDE_DIR}" "${FRAMEWORK_COMPAT_DIR}/TabbingFramework" "${FRAMEWORK_COMPAT_DIR}/DockingFramework")
 target_include_directories(multipad4 PRIVATE "${NOTEPAD4_SOURCE_DIR}" "${NOTEPAD4_SOURCE_DIR}/EditLexers")
 set_source_files_properties("${PROJECT_BINARY_DIR}/Notepad4Resources.rc" PROPERTIES

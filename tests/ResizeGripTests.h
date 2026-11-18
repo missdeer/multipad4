@@ -129,7 +129,7 @@ inline void RunResizeGripTests(MainFrame& frame) {
             document->Send(SCI_SELECTALL);
             Run(frame, IDC_RESIZEGRIP2, [&] { ExecuteEditorCommand(*document, command); });
         }
-        for (UINT command : {IDM_VIEW_SCHEME, IDM_VIEW_SCHEME_CONFIG, IDM_VIEW_SCHEME_FAVORITE})
+        for (UINT command : {IDM_VIEW_SCHEME, IDM_VIEW_SCHEME_FAVORITE})
             Run(frame, IDC_RESIZEGRIP3, [&] { ExecuteStyleCommand(frame, *document, command); });
         if (!frame.Close(frame.tabs.GetActivePage())) throw std::runtime_error("Sizing grip test document did not close.");
         restore();

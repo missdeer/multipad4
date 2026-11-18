@@ -92,19 +92,31 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
     {std::ofstream file(overlay);file<<"<language-overrides version='1'><language id='cpp'><slot index='0' mode='inherit'/></language></language-overrides>";}
     require(ReloadLanguageConfiguration());require(std::string(Language("cpp").pszKeyWords[0])==previous->languages[3]->pszKeyWords[0]);
     SetConfigurationUserDirectory(directory);require(ReloadLanguageConfiguration());
+    frame.tabs.SetActivePage(frame.tabs.GetPageCount()-2);require(frame.Active()==first);
+    using StyleDialogTest::RunCommand;
+    auto preferences=write(L"Settings.ini","[Language Styles.cpp]\ncpp.number=fore:#010203\n");
+    std::string darkIni="[C/C++ Source]\nNumber=fore:#010203\n";
+    auto darkProfile=write(L"MultiPad4 DarkTheme.ini",darkIni);
+    LoadStylePreferences(preferences);
+    first->style.theme.reset();first->style.themePath.clear();
+    for(bool dark:{false,true}){
+        first->style.dark=dark;ConfigureDocumentStyle(*first);
+        require(first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER)!=RGB(1,2,3));
+    }
+    first->style.dark=false;ConfigureDocumentStyle(*first);
     // The real modal UI previews one document and restores it on Cancel.
-    LoadThemePreferences(directory/L"Settings.ini");first->style.theme.reset();ConfigureDocumentStyle(*first);auto originalColor=first->Send(SCI_STYLEGETBACK,STYLE_DEFAULT);
+    auto originalColor=first->Send(SCI_STYLEGETBACK,STYLE_DEFAULT);
     qaArtifactDirectory=directory/L"visual";
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+    RunCommand(frame,IDT_VIEW_SCHEMECONFIG,[&](HWND dialog){
         auto index=SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"MultiPad4 Dark"));require(index>=0);
         SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_SETCURSEL,index,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(IDC_THEME_LIST,CBN_SELCHANGE),0);
         require(first->Send(SCI_STYLEGETBACK,STYLE_DEFAULT)!=originalColor);require(second->Send(SCI_STYLEGETFORE,SCE_PY_NUMBER)==secondColor);
-    },IDCANCEL,ID_THEME_CONFIG);
+    },IDCANCEL);
     require(!first->style.theme&&first->Send(SCI_STYLEGETBACK,STYLE_DEFAULT)==originalColor);
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){
         auto index=SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"MultiPad4 Dark"));require(index>=0);
         SendDlgItemMessageW(dialog,IDC_THEME_LIST,CB_SETCURSEL,index,0);SendMessageW(dialog,WM_COMMAND,MAKEWPARAM(IDC_THEME_LIST,CBN_SELCHANGE),0);CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);
-    },IDOK,ID_THEME_CONFIG);
+    });
     require(first->style.theme&&std::filesystem::exists(first->style.themePath));require(!second->style.theme);
     // Exercise actual configurator controls, scoped preview, persistence and re-opening.
     auto select=[&](HWND dialog,int control,int index,UINT notification){
@@ -130,14 +142,14 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
         CaptureQAWindow(dialog,L"language-style-configurator");
     };
     auto savedTheme=first->style.theme;auto savedThemePath=first->style.themePath;auto savedNumber=first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER);
-    StyleDialogTest::RunScheme(frame,*first,true,editStyle,IDCANCEL,ID_THEME_CONFIG);
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,editStyle,IDCANCEL);
     require(first->style.theme==savedTheme&&first->style.themePath==savedThemePath&&first->Send(SCI_STYLEGETFORE,SCE_C_NUMBER)==savedNumber);
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){editStyle(dialog);CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);},IDOK,ID_THEME_CONFIG);
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){editStyle(dialog);CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);});
     require(!ThemeScopeAll());auto editedTheme=LoadTheme(first->style.themePath);
     require(editedTheme->styles.at("cpp.number").foreground==0x2468AC&&editedTheme->styles.at("cpp.number").decorations==3);
     require(editedTheme->extensions.at("cpp")==L"multipad_style_test");
     first->style.theme=editedTheme;first->style.scheme=0;first->path=L"example.multipad_style_test";ConfigureDocumentStyle(*first);require(GetDocumentLexer(*first)->id=="cpp");
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){
         select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
         auto index=SendDlgItemMessageW(dialog,IDC_THEME_STYLES,LB_FINDSTRINGEXACT,static_cast<WPARAM>(-1),reinterpret_cast<LPARAM>(L"Number"));require(index>=0);
         select(dialog,IDC_THEME_STYLES,static_cast<int>(index),LBN_SELCHANGE);
@@ -145,9 +157,9 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
         // Invalid edits never publish a partial candidate; a corrected edit can be retried.
         auto valid=first->style.theme;SetDlgItemTextW(dialog,IDC_THEME_FOREGROUND,L"#XYZ");SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);require(first->style.theme==valid);
         SendMessageW(dialog,WM_COMMAND,IDC_THEME_STYLE_RESET,0);require(!first->style.theme->styles.contains("cpp.number"));
-    },IDCANCEL,ID_THEME_CONFIG);
+    },IDCANCEL);
     require(first->style.theme==editedTheme);
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){
         select(dialog,IDC_THEME_LANGUAGE,LanguageIndex("cpp"),CBN_SELCHANGE);
         select(dialog,IDC_THEME_KEYWORD_MODE,2,CBN_SELCHANGE);SetDlgItemTextW(dialog,IDC_THEME_KEYWORDS,L"only_keyword");
         SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);
@@ -160,13 +172,17 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
         SendMessageW(dialog,WM_COMMAND,IDC_THEME_PREVIEW,0);
         require(std::string(GetDocumentLexer(*first)->pszKeyWords[0])==Language("cpp").pszKeyWords[0]);
         CheckDlgButton(dialog,IDC_THEME_ALL,BST_CHECKED);
-    },IDOK,ID_THEME_CONFIG);
-    require(ThemeScopeAll());SaveThemePreferences(directory/L"Settings.ini");LoadThemePreferences(directory/L"Settings.ini");
+    });
+    require(ThemeScopeAll()&&second->style.theme==first->style.theme);
+    SaveStylePreferences(preferences);LoadThemePreferences(preferences);
+    wchar_t ignored[32]{};
+    GetPrivateProfileStringW(L"Language Styles.cpp",L"cpp.number",L"",ignored,_countof(ignored),preferences.c_str());
+    require(wcscmp(ignored,L"fore:#010203")==0&&files::Read(darkProfile).utf8==darkIni);
     EditorDocument future;ApplyDefaultDocumentTheme(future);require(future.style.theme&&future.style.theme->extensions.at("cpp")==L"multipad_style_test");
     first->style.theme=editedTheme;
 
     // Product UI: effective values, compact layout, reversible live edits and disclosure.
-    StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
+    RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){
         require(!IsWindowEnabled(GetDlgItem(dialog,IDOK)));
         require(!IsWindowVisible(GetDlgItem(dialog,IDC_THEME_KEYWORDS)));
         CheckDlgButton(dialog,IDC_THEME_ALL,BST_UNCHECKED);SendMessageW(dialog,WM_COMMAND,IDC_THEME_ALL,0);
@@ -194,15 +210,15 @@ inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem:
         CaptureQAWindow(dialog,L"language-style-advanced");
         SendMessageW(dialog,WM_COMMAND,IDC_THEME_ADVANCED,0);GetWindowRect(dialog,&expanded);
         require(expanded.bottom-expanded.top==compact.bottom-compact.top&&!IsWindowVisible(GetDlgItem(dialog,IDC_THEME_KEYWORDS)));
-    },IDCANCEL,ID_THEME_CONFIG);
+    },IDCANCEL);
     {
         struct RestoreLanguage{LANGID saved=GetThreadUILanguage();~RestoreLanguage(){SetThreadUILanguage(saved);}} restoreLanguage;
         SetThreadUILanguage(MAKELANGID(LANG_CHINESE,SUBLANG_CHINESE_SIMPLIFIED));
-        StyleDialogTest::RunScheme(frame,*first,true,[&](HWND dialog){
-            wchar_t caption[128]{};GetWindowTextW(dialog,caption,128);require(wcscmp(caption,L"语言样式配置器")==0);
+        RunCommand(frame,IDM_VIEW_SCHEME_CONFIG,[&](HWND dialog){
+            wchar_t caption[128]{};GetWindowTextW(dialog,caption,128);require(wcscmp(caption,L"语言与样式")==0);
             select(dialog,IDC_THEME_LANGUAGE,0,CBN_SELCHANGE);
             CaptureQAWindow(dialog,L"language-style-chinese");
-        },IDCANCEL,ID_THEME_CONFIG);
+        },IDCANCEL);
     }
     require(rejects("<theme version='1'><extensions language='global'>bad</extensions></theme>"));
     require(rejects("<theme version='1'><extensions language='cpp'>bad/path</extensions></theme>"));

@@ -27,7 +27,6 @@
 
 #include "SearchResources.h"
 
-#define ID_THEME_CONFIG 45030
 #define ID_RELOAD_CONFIGURATION 45031
 #define IDD_THEME_CONFIG 45032
 #define IDC_THEME_LIST 45033

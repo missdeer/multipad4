@@ -197,6 +197,10 @@ inline void RunUIRoutingTests(MainFrame& frame) {
         const int count = CopyAcceleratorTableW(table, nullptr, 0); require(count > 0);
         std::vector<ACCEL> entries(static_cast<size_t>(count));
         require(CopyAcceleratorTableW(table, entries.data(), count) == count);
+        if (resource == IDR_MAINWND) require(std::any_of(entries.begin(), entries.end(), [](const ACCEL& entry) {
+            return entry.cmd == IDM_VIEW_SCHEME_CONFIG && entry.key == VK_F12 &&
+                (entry.fVirt & (FVIRTKEY | FCONTROL | FSHIFT | FALT)) == (FVIRTKEY | FCONTROL);
+        }));
         for (const auto& entry : entries) {
             // Modeless search accelerators are handled by SearchDialog,
             // while Ctrl+Tab is intentionally overridden by the MDI table.

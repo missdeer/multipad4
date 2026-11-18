@@ -30,12 +30,12 @@ inline void Run(HWND frame,EditorDocument& d,UINT resource,std::function<void(HW
     if(callbackError)std::rethrow_exception(callbackError);
     if(!activated||result!=IDOK)throw std::runtime_error("Style dialog could not apply resource "+std::to_string(resource));
 }
-inline void RunScheme(HWND frame,EditorDocument& d,bool customize,std::function<void(HWND)> callback,UINT finish=IDOK,UINT command=0){
+inline void RunCommand(HWND frame,UINT command,std::function<void(HWND)> callback,UINT finish=IDOK){
     owner=frame;fill=std::move(callback);activated=false;ticks=0;callbackError=nullptr;finishCommand=finish;
     UINT_PTR timer=SetTimer(nullptr,0,10,Timer);if(!timer)throw std::runtime_error("Cannot create scheme test timer");
-    ExecuteStyleCommand(frame,d,command?command:customize?IDM_VIEW_SCHEME_CONFIG:IDM_VIEW_SCHEME);KillTimer(nullptr,timer);fill={};owner=nullptr;finishCommand=IDOK;
+    SendMessageW(frame,WM_COMMAND,command,0);KillTimer(nullptr,timer);fill={};owner=nullptr;finishCommand=IDOK;
     if(callbackError)std::rethrow_exception(callbackError);
-    if(!activated)throw std::runtime_error("Scheme dialog did not open");
+    if(!activated)throw std::runtime_error("Dialog did not open for command "+std::to_string(command));
 }
 }
 inline void RunStyleDialogTests(HWND owner,EditorDocument& d){
@@ -79,40 +79,25 @@ inline void RunStyleDialogTests(HWND owner,EditorDocument& d){
     });
     require((d.style.csvOptions&255)=='\t' && ((d.style.csvOptions>>8)&127)=='\'');
     require(d.style.csvOptions&(1<<16));
-    require(SelectDocumentScheme(d,L"cpp"));
-    auto prior=d.Send(SCI_STYLEGETFORE,SCE_C_NUMBER);
-    StyleDialogTest::RunScheme(owner,d,true,[](HWND dialog){
-        CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));
-        RECT before{},outer{},after{};GetWindowRect(tree,&before);GetWindowRect(dialog,&outer);SetWindowPos(dialog,nullptr,0,0,outer.right-outer.left+160,outer.bottom-outer.top+100,SWP_NOMOVE|SWP_NOZORDER);GetWindowRect(tree,&after);
-        if(after.bottom-after.top<=before.bottom-before.top)throw std::runtime_error("Scheme dialog tree did not resize.");
-        for(auto root=tree.GetRootItem();root;root=tree.GetNextSiblingItem(root)){
-            wchar_t name[128]{};tree.GetItemText(root,name,128);
-            if(wcscmp(name,L"C/C++ Source"))continue;
-            for(auto child=tree.GetChildItem(root);child;child=tree.GetNextSiblingItem(child)){
-                tree.GetItemText(child,name,128);if(wcscmp(name,L"Number"))continue;
-                tree.SelectItem(child);SetDlgItemTextW(dialog,IDC_STYLEEDIT,L"fore:#123456");SendMessageW(dialog,WM_COMMAND,IDC_PREVIEW,0);return;
-            }
-        }
-    },IDCANCEL);
-    require(d.Send(SCI_STYLEGETFORE,SCE_C_NUMBER)==prior);
+    using StyleDialogTest::RunCommand;
     auto oldCodeFont=d.style.codeFont,oldTextFont=d.style.textFont;auto oldCodeSize=d.style.codeFontSize,oldTextSize=d.style.textFontSize;
-    StyleDialogTest::RunScheme(owner,d,false,[](HWND){},IDCANCEL,IDM_VIEW_DEFAULT_CODE_FONT);
+    RunCommand(owner,IDM_VIEW_DEFAULT_CODE_FONT,[](HWND){},IDCANCEL);
     require(d.style.codeFont==oldCodeFont && d.style.codeFontSize==oldCodeSize);
-    StyleDialogTest::RunScheme(owner,d,false,[](HWND){},IDCANCEL,IDM_VIEW_DEFAULT_TEXT_FONT);
+    RunCommand(owner,IDM_VIEW_DEFAULT_TEXT_FONT,[](HWND){},IDCANCEL);
     require(d.style.textFont==oldTextFont && d.style.textFontSize==oldTextSize);
     auto oldScheme=d.style.scheme;
     auto choosePython=[](HWND dialog){CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)){wchar_t name[128]{};tree.GetItemText(item,name,128);if(wcscmp(name,L"Python Script")==0){tree.SelectItem(item);return;}}};
-    StyleDialogTest::RunScheme(owner,d,false,choosePython,IDCANCEL);require(d.style.scheme==oldScheme);
-    StyleDialogTest::RunScheme(owner,d,false,choosePython);require(d.Send(SCI_GETLEXER)==SCLEX_PYTHON);
-    StyleDialogTest::RunScheme(owner,d,false,[](HWND dialog){
+    RunCommand(owner,IDM_VIEW_SCHEME,choosePython,IDCANCEL);require(d.style.scheme==oldScheme);
+    RunCommand(owner,IDM_VIEW_SCHEME,choosePython);require(d.Send(SCI_GETLEXER)==SCLEX_PYTHON);
+    RunCommand(owner,IDM_VIEW_SCHEME_FAVORITE,[](HWND dialog){
         CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));HTREEITEM selected=nullptr;
         for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)){wchar_t name[128]{};tree.GetItemText(item,name,128);bool keep=wcscmp(name,L"Python Script")==0 || wcscmp(name,L"C/C++ Source")==0;tree.SetCheckState(item,keep);if(wcscmp(name,L"Python Script")==0)selected=item;}
         tree.SelectItem(selected);
         for(unsigned count=0;count<100 && tree.GetSelectedItem()!=tree.GetRootItem();++count)SendMessageW(dialog,WM_COMMAND,IDC_DEFAULTSCHEME,0);
-    },IDOK,IDM_VIEW_SCHEME_FAVORITE);
+    });
     auto profile=std::filesystem::temp_directory_path()/(L"MultiPad4-favorite-test-"+std::to_wstring(GetCurrentProcessId()))/L"Settings.ini";SaveStylePreferences(profile);
     wchar_t order[1024]{};GetPrivateProfileStringW(L"Style Preferences",L"Favorites",L"",order,1024,profile.c_str());std::wistringstream entries(order);int first=-1,second=-1;entries>>first>>second;
     require(first>0 && second>0 && first!=second);
-    StyleDialogTest::RunScheme(owner,d,false,[&](HWND dialog){CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));wchar_t name[128]{};tree.GetItemText(tree.GetRootItem(),name,128);require(wcscmp(name,L"Python Script")==0);},IDCANCEL);
+    RunCommand(owner,IDM_VIEW_SCHEME,[&](HWND dialog){CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));wchar_t name[128]{};tree.GetItemText(tree.GetRootItem(),name,128);require(wcscmp(name,L"Python Script")==0);},IDCANCEL);
     std::error_code cleanup;std::filesystem::remove_all(profile.parent_path(),cleanup);
 }

@@ -36,7 +36,9 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_FILES, L"Find in Files...\tCtrl+Shift+F");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_MARK, L"Mark...\tCtrl+M");
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_RESULTS, L"Search results\tF7");
-    auto themeMenu=GetSubMenu(GetMenu(),3);AppendMenuW(themeMenu,MF_SEPARATOR,0,nullptr);AppendMenuW(themeMenu,MF_STRING,ID_THEME_CONFIG,PRIMARYLANGID(GetThreadUILanguage())==LANG_CHINESE?L"语言样式配置器...":L"Language Style Configurator...");AppendMenuW(themeMenu,MF_STRING,ID_RELOAD_CONFIGURATION,L"Reload language configuration");
+    auto schemeMenu = GetSubMenu(GetMenu(), 3);
+    AppendMenuW(schemeMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(schemeMenu, MF_STRING, ID_RELOAD_CONFIGURATION, L"Reload language configuration");
     InitializeDockingFrame();
     SetTabOwnerParent(m_hWnd);
     CreateMDIClient(windowMenu);
@@ -317,7 +319,17 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     if (!State(id).enabled) return 0;
     auto* d = Active();
     if (ExecuteFileCommand(*this, id) || ExecuteFrameCommand(*this, id)) { Refresh(); return 0; }
-    if(id==ID_THEME_CONFIG&&d){if(ShowThemeDialog(m_hWnd,*d)&&ThemeScopeAll())for(auto& document:documents){ApplyDefaultDocumentTheme(*document);document->ConfigureLexer();}Refresh();return 0;}
+    if (id == IDM_VIEW_SCHEME_CONFIG && d) {
+        if (ShowThemeDialog(m_hWnd, *d) && ThemeScopeAll()) {
+            for (auto& document : documents) {
+                if (document.get() == d) continue;
+                ApplyDefaultDocumentTheme(*document);
+                document->ConfigureLexer();
+            }
+        }
+        Refresh();
+        return 0;
+    }
     if(id==ID_RELOAD_CONFIGURATION){if(!ReloadLanguageConfiguration())throw std::runtime_error("Language reload rejected; previous snapshot retained. See configuration diagnostics.");for(auto& document:documents)document->ConfigureLexer();Refresh();return 0;}
     if (d && (ExecuteStyleCommand(m_hWnd, *d, id) || ExecuteEditorCommand(*d, id, [&](bool previous) { return ConfirmSearchWrap(previous); }))) {
         RememberDocumentPreferences(*this, *d, id); Refresh(); return 0;

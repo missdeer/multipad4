@@ -21,29 +21,12 @@
 #include <cwctype>
 #include <sstream>
 namespace {
-void EnsureUnicodeProfile(const std::filesystem::path&);
-void WriteStyleProfile(const wchar_t*,const wchar_t*,const wchar_t*,const wchar_t*);
 COLORREF customColors[16]{};
 constexpr size_t Count = sizeof(lexerCatalog) / sizeof(lexerCatalog[0]);
-std::map<std::pair<int,unsigned>, std::wstring> sharedOverrides;
 int defaultScheme = 1;
 bool autoSelectScheme = true;
 std::vector<int> favoriteSchemes;
 bool FavoriteContains(int id){return std::find(favoriteSchemes.begin(),favoriteSchemes.end(),id)!=favoriteSchemes.end();}
-std::map<int,std::wstring> sharedExtensions;
-std::map<std::pair<int,unsigned>,std::wstring> darkOverrides;
-struct StylePreviewState {
-    const EditorDocument* document=nullptr;
-    const std::map<std::pair<int,unsigned>,std::wstring>* shared=nullptr;
-    const std::map<std::pair<int,unsigned>,std::wstring>* dark=nullptr;
-    const std::map<int,std::wstring>* extensions=nullptr;
-};
-StylePreviewState stylePreview;
-const auto& SharedFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.shared:sharedOverrides;}
-const auto& DarkFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.dark:darkOverrides;}
-const auto& ExtensionsFor(const EditorDocument& d){return stylePreview.document&&stylePreview.document!=&d?*stylePreview.extensions:sharedExtensions;}
-
-
 std::wstring LocalizedLabel(UINT id,const wchar_t* fallback){
     auto instance=_Module.GetModuleInstance();auto resource=FindResourceExW(instance,RT_STRING,MAKEINTRESOURCEW((id>>4)+1),GetThreadUILanguage());
     if(!resource)return fallback;auto loaded=LoadResource(instance,resource);auto* cursor=static_cast<const wchar_t*>(LockResource(loaded));if(!cursor)return fallback;
@@ -201,7 +184,7 @@ int ResolveScheme(const EditorDocument& d) {
     for (size_t i = 1; i < Count; ++i) {
         if(matched)break;
         if (!lexerCatalog[i]->pszDefExt) continue;
-        std::wstring associations=ExtensionsFor(d).contains(lexerCatalog[i]->rid)?ExtensionsFor(d).at(lexerCatalog[i]->rid):lexerCatalog[i]->pszDefExt;
+        std::wstring associations=lexerCatalog[i]->pszDefExt;
         if(d.style.theme){auto extra=d.style.theme->extensions.find(lexerCatalog[i]->id);if(extra!=d.style.theme->extensions.end())associations+=L";"+extra->second;}
         std::wistringstream fields(associations); std::wstring entry;
         while (std::getline(fields, entry, L';')) {
@@ -232,8 +215,6 @@ std::wstring ResolveStyleValue(const EditorDocument& d, const LanguageDefinition
     auto id=ConfigurationUtf8(lexer.Styles[index].id);
     value+=L"; "+ThemeStyleValue(*DefaultTheme(d.style.paletteDark),id);
     if(d.style.theme)value+=L"; "+ThemeStyleValue(*d.style.theme,id);
-    auto shared=SharedFor(d).find({lexer.rid,index});if(shared!=SharedFor(d).end())value+=L"; "+shared->second;
-    if(d.style.dark){auto found=DarkFor(d).find({lexer.rid,index});if(found!=DarkFor(d).end())value+=L"; "+found->second;}
     auto local=d.style.overrides.find((static_cast<unsigned>(lexer.rid)<<8)|index);
     if(local!=d.style.overrides.end())value+=L"; "+local->second;
     auto semantic=d.style.semanticOverrides.find(id);if(semantic!=d.style.semanticOverrides.end())value+=L"; "+semantic->second;
@@ -244,10 +225,8 @@ std::wstring Value(const EditorDocument& d,const LanguageDefinition& lexer,unsig
     return ResolveStyleValue(d,lexer,index);
 }
 std::wstring UserStyleValue(const EditorDocument& d,const LanguageDefinition& language,unsigned index){
-    std::wstring value;auto shared=SharedFor(d).find({language.rid,index});if(shared!=SharedFor(d).end())value+=L"; "+shared->second;
-    if(d.style.dark){auto dark=DarkFor(d).find({language.rid,index});if(dark!=DarkFor(d).end())value+=L"; "+dark->second;}
-    auto local=d.style.overrides.find((static_cast<unsigned>(language.rid)<<8)|index);if(local!=d.style.overrides.end())value+=L"; "+local->second;
-    return value;
+    auto local=d.style.overrides.find((static_cast<unsigned>(language.rid)<<8)|index);
+    return local!=d.style.overrides.end()?local->second:std::wstring{};
 }
 unsigned StyleProperty(const std::wstring& value,const wchar_t* name,unsigned fallback){
     auto at=value.rfind(name);if(at==std::wstring::npos)return fallback;auto* first=value.c_str()+at+wcslen(name);
@@ -735,44 +714,12 @@ void ConfigureDocumentStyle(EditorDocument& d) {
 namespace {
 struct SchemeDialogContext {
     EditorDocument& document;
-    bool customize;
-    int scheme = 1;
-    unsigned style = 0;
-    std::map<std::pair<int,unsigned>,std::wstring> saved;
-    bool changing = true;
-    bool favorites = false;
-    bool extension = false;
-    std::map<int,std::wstring> savedExtensions;
-    std::map<std::pair<int,unsigned>,std::wstring> savedDark;
+    int scheme;
+    bool favorites;
     struct Layout {HWND window;RECT rectangle;};
     std::vector<Layout> controls;
     int clientWidth=0,clientHeight=0;
 };
-void SaveStyleField(HWND window, SchemeDialogContext& context) {
-    if(!context.customize || context.changing) return;
-    int length=GetWindowTextLengthW(GetDlgItem(window,IDC_STYLEEDIT));
-    std::wstring value(static_cast<size_t>(length)+1,L'\0');
-    GetDlgItemTextW(window,IDC_STYLEEDIT,value.data(),length+1);value.resize(length);
-    if(context.extension)sharedExtensions[lexerCatalog[context.scheme]->rid]=std::move(value);
-    else if(context.document.style.dark)darkOverrides[{lexerCatalog[context.scheme]->rid,context.style}]=std::move(value);
-    else sharedOverrides[{lexerCatalog[context.scheme]->rid,context.style}]=std::move(value);
-}
-void ShowStyleField(HWND window, SchemeDialogContext& context) {
-    context.changing=true;
-    const auto& lexer=*lexerCatalog[context.scheme];
-    for(int control : {IDC_STYLEFORE,IDC_STYLEBACK,IDC_STYLEFONT})EnableWindow(GetDlgItem(window,control),!context.extension);
-    if(context.extension){
-        SetDlgItemTextW(window,IDC_STYLELABEL,L"Associated filename extensions:");
-        SetDlgItemTextW(window,IDC_STYLEVALUE_DEFAULT,lexer.pszDefExt?lexer.pszDefExt:L"");
-        SetDlgItemTextW(window,IDC_STYLEEDIT,sharedExtensions.contains(lexer.rid)?sharedExtensions[lexer.rid].c_str():lexer.pszDefExt?lexer.pszDefExt:L"");context.changing=false;return;
-    }
-    auto styleLabel=LocalizedLabel(lexer.Styles[context.style].rid,lexer.Styles[context.style].pszName);SetDlgItemTextW(window,IDC_STYLELABEL,styleLabel.c_str());
-    SetDlgItemTextW(window,IDC_STYLEVALUE_DEFAULT,lexer.Styles[context.style].pszDefault);
-    auto& definitions=context.document.style.dark?darkOverrides:sharedOverrides;
-    auto found=definitions.find({lexer.rid,context.style});
-    auto value=found==definitions.end()?lexer.Styles[context.style].pszDefault:found->second.c_str();
-    SetDlgItemTextW(window,IDC_STYLEEDIT,value);context.changing=false;
-}
 void MoveFavoriteItem(HWND window,int direction){
     CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));auto selected=tree.GetSelectedItem();if(!selected)return;
     auto neighbor=direction<0?tree.GetPrevSiblingItem(selected):tree.GetNextSiblingItem(selected);if(!neighbor)return;
@@ -790,22 +737,15 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         if(c->favorites){tree.ModifyStyle(0,TVS_CHECKBOXES);SetWindowTextW(window,L"Favorite Schemes (Ctrl+Up/Down reorders)");
             for(int control:{IDC_DEFAULTSCHEME,IDC_AUTOSELECT}){auto button=GetDlgItem(window,control);auto style=GetWindowLongPtrW(button,GWL_STYLE);SetWindowLongPtrW(button,GWL_STYLE,(style&~BS_TYPEMASK)|BS_PUSHBUTTON);SetWindowTextW(button,control==IDC_DEFAULTSCHEME?L"Move Up":L"Move Down");RECT placement{control==IDC_DEFAULTSCHEME?7:86,171,control==IDC_DEFAULTSCHEME?79:158,191};MapDialogRect(window,&placement);SetWindowPos(button,nullptr,placement.left,placement.top,placement.right-placement.left,placement.bottom-placement.top,SWP_NOZORDER);ShowWindow(button,SW_SHOW);}}
         std::vector<size_t> order;
-        if(!c->customize)for(int i:favoriteSchemes)if(i>0 && i<static_cast<int>(Count))order.push_back(static_cast<size_t>(i));
-        for(size_t i=c->customize?0:1;i<Count;++i)if(c->customize || !FavoriteContains(static_cast<int>(i)))order.push_back(i);
+        for(int i:favoriteSchemes)if(i>0 && i<static_cast<int>(Count))order.push_back(static_cast<size_t>(i));
+        for(size_t i=1;i<Count;++i)if(!FavoriteContains(static_cast<int>(i)))order.push_back(i);
         for(size_t i:order) {
-            auto name=LocalizedLabel(lexerCatalog[i]->rid,lexerCatalog[i]->pszName);auto root=tree.InsertItem(name.c_str(),TVI_ROOT,TVI_LAST);tree.SetItemData(root,(i<<16));
+            auto name=LocalizedLabel(lexerCatalog[i]->rid,lexerCatalog[i]->pszName);auto root=tree.InsertItem(name.c_str(),TVI_ROOT,TVI_LAST);tree.SetItemData(root,i);
             if(static_cast<int>(i)==c->scheme)selected=root;
             if(c->favorites)tree.SetCheckState(root,FavoriteContains(static_cast<int>(i)));
-            if(c->customize)for(unsigned j=0;j<lexerCatalog[i]->iStyleCount;++j) {
-                auto label=LocalizedLabel(lexerCatalog[i]->Styles[j].rid,lexerCatalog[i]->Styles[j].pszName);auto item=tree.InsertItem(label.c_str(),root,TVI_LAST);tree.SetItemData(item,(i<<16)|(j+1));
-            }
         }
         tree.SelectItem(selected);
-        if(c->customize) {
-            SetDlgItemTextW(window,IDC_PREVSTYLE,L"<");SetDlgItemTextW(window,IDC_NEXTSTYLE,L">");
-            SetDlgItemTextW(window,IDC_STYLEEDIT_HELP,L"Use upstream style definitions: font:Consolas; size:11; fore:#RRGGBB; back:#RRGGBB; bold; italic; underline; eolfilled. Select a scheme and style at left. Preview applies to the target document; Cancel restores prior definitions.");
-            ShowStyleField(window,*c);
-        } else {
+        if(!c->favorites) {
             CheckDlgButton(window,IDC_AUTOSELECT,autoSelectScheme?BST_CHECKED:BST_UNCHECKED);
             CheckDlgButton(window,IDC_DEFAULTSCHEME,c->scheme==defaultScheme?BST_CHECKED:BST_UNCHECKED);
         }
@@ -821,12 +761,8 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
     if(message==WM_SIZE && c->clientWidth){
         int dx=LOWORD(l)-c->clientWidth,dy=HIWORD(l)-c->clientHeight;
         for(const auto& item:c->controls){RECT r=item.rectangle;int id=GetDlgCtrlID(item.window);
-            if(id==IDC_STYLELIST){r.bottom+=dy;if(!c->customize)r.right+=dx;}
-            else if(!c->customize){r.top+=dy;r.bottom+=dy;if(id==IDOK||id==IDCANCEL){r.left+=dx;r.right+=dx;}else if(c->favorites && (id==IDC_DEFAULTSCHEME||id==IDC_AUTOSELECT)){if(id==IDC_AUTOSELECT){r.left+=dx/2;r.right+=dx;}else r.right+=dx/2;}else if(id!=IDC_RESIZEGRIP3)r.right+=dx;}
-            else if(id==IDC_INFO_GROUPBOX || id==IDC_STYLEEDIT_HELP){r.right+=dx;r.bottom+=dy;}
-            else if(id==IDC_TITLE){r.right+=dx;}
-            else if(id==IDC_RESIZEGRIP3){r.top+=dy;r.bottom+=dy;}
-            else if(id!=-1 && id!=65535){r.top+=dy;r.bottom+=dy;if(id==IDC_STYLEEDIT || id==IDC_STYLEVALUE_DEFAULT || id==IDC_STYLELABEL || id==IDC_STYLELABEL_DEFAULT)r.right+=dx;else if(id==IDOK || id==IDCANCEL || id==IDC_PREVIEW || id==IDC_STYLEDEFAULT || id==IDC_PREVSTYLE || id==IDC_NEXTSTYLE){r.left+=dx;r.right+=dx;}}
+            if(id==IDC_STYLELIST){r.bottom+=dy;r.right+=dx;}
+            else {r.top+=dy;r.bottom+=dy;if(id==IDOK||id==IDCANCEL){r.left+=dx;r.right+=dx;}else if(c->favorites && (id==IDC_DEFAULTSCHEME||id==IDC_AUTOSELECT)){if(id==IDC_AUTOSELECT){r.left+=dx/2;r.right+=dx;}else r.right+=dx/2;}else if(id!=IDC_RESIZEGRIP3)r.right+=dx;}
             SetWindowPos(item.window,nullptr,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);
         }PositionDialogResizeGrip(window,IDC_RESIZEGRIP3);return TRUE;
     }
@@ -841,69 +777,27 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         }
         if(n->idFrom==IDC_STYLELIST && n->code==TVN_SELCHANGEDW) {
             auto* change=reinterpret_cast<NMTREEVIEWW*>(l);
-            SaveStyleField(window,*c);c->scheme=static_cast<int>(change->itemNew.lParam>>16);c->extension=(change->itemNew.lParam&65535)==0;c->style=c->extension?0:static_cast<unsigned>((change->itemNew.lParam&65535)-1);
-            if(c->customize)ShowStyleField(window,*c);return TRUE;
+            c->scheme=static_cast<int>(change->itemNew.lParam);return TRUE;
         }
-        if(n->idFrom==IDC_STYLELIST && n->code==NM_DBLCLK && !c->customize)SendMessageW(window,WM_COMMAND,IDOK,0);
+        if(n->idFrom==IDC_STYLELIST && n->code==NM_DBLCLK)SendMessageW(window,WM_COMMAND,IDOK,0);
     }
     if(message==WM_CLOSE || (message==WM_COMMAND && LOWORD(w)==IDCANCEL)) {
-        if(c->customize){sharedOverrides=c->saved;sharedExtensions=c->savedExtensions;darkOverrides=c->savedDark;ConfigureDocumentStyle(c->document);}EndDialog(window,IDCANCEL);return TRUE;
+        EndDialog(window,IDCANCEL);return TRUE;
     }
     if(message!=WM_COMMAND)return FALSE;
     UINT id=LOWORD(w);
     if(c->favorites && (id==IDC_DEFAULTSCHEME || id==IDC_AUTOSELECT)){MoveFavoriteItem(window,id==IDC_DEFAULTSCHEME?-1:1);return TRUE;}
-    if(c->customize && id==IDC_STYLEEDIT && HIWORD(w)==EN_CHANGE){SaveStyleField(window,*c);return TRUE;}
     if(id==IDOK) {
-        if(c->favorites){favoriteSchemes.clear();CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item))if(tree.GetCheckState(item) && favoriteSchemes.size()<31)favoriteSchemes.push_back(static_cast<int>(tree.GetItemData(item)>>16));EndDialog(window,IDOK);return TRUE;}
-        if(c->customize)SaveStyleField(window,*c);
-        else {c->document.style.scheme=c->scheme;autoSelectScheme=IsDlgButtonChecked(window,IDC_AUTOSELECT)!=0;if(IsDlgButtonChecked(window,IDC_DEFAULTSCHEME))defaultScheme=c->scheme;}
+        if(c->favorites){favoriteSchemes.clear();CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item))if(tree.GetCheckState(item) && favoriteSchemes.size()<31)favoriteSchemes.push_back(static_cast<int>(tree.GetItemData(item)));EndDialog(window,IDOK);return TRUE;}
+        c->document.style.scheme=c->scheme;autoSelectScheme=IsDlgButtonChecked(window,IDC_AUTOSELECT)!=0;if(IsDlgButtonChecked(window,IDC_DEFAULTSCHEME))defaultScheme=c->scheme;
         ConfigureDocumentStyle(c->document);EndDialog(window,IDOK);return TRUE;
-    }
-    if(!c->customize)return FALSE;
-    if(id==IDC_PREVIEW){SaveStyleField(window,*c);ConfigureDocumentStyle(c->document);return TRUE;}
-    if(id==IDC_STYLEDEFAULT){
-        if(c->extension)sharedExtensions.erase(lexerCatalog[c->scheme]->rid);
-        else if(c->document.style.dark){auto key=std::make_pair(lexerCatalog[c->scheme]->rid,c->style);auto saved=c->savedDark.find(key);if(saved!=c->savedDark.end())darkOverrides[key]=saved->second;else darkOverrides.erase(key);}
-        else sharedOverrides.erase({lexerCatalog[c->scheme]->rid,c->style});
-        ShowStyleField(window,*c);return TRUE;
-    }
-    if(id==IDC_RESETALL){if(c->document.style.dark)darkOverrides=c->savedDark;else sharedOverrides.clear();sharedExtensions.clear();ShowStyleField(window,*c);return TRUE;}
-    if(id==IDC_PREVSTYLE || id==IDC_NEXTSTYLE){SaveStyleField(window,*c);c->extension=false;auto count=lexerCatalog[c->scheme]->iStyleCount;c->style=(c->style+count+(id==IDC_NEXTSTYLE?1:-1))%count;ShowStyleField(window,*c);return TRUE;}
-    if(id==IDC_STYLEFORE || id==IDC_STYLEBACK) {
-        CHOOSECOLORW choose{sizeof(choose)};choose.hwndOwner=window;choose.Flags=CC_FULLOPEN|CC_RGBINIT;choose.lpCustColors=customColors;
-        if(ChooseColorW(&choose)){
-            wchar_t color[48]{};swprintf_s(color,L"; %s:#%02X%02X%02X",id==IDC_STYLEFORE?L"fore":L"back",GetRValue(choose.rgbResult),GetGValue(choose.rgbResult),GetBValue(choose.rgbResult));
-            auto& value=(c->document.style.dark?darkOverrides:sharedOverrides)[{lexerCatalog[c->scheme]->rid,c->style}];value+=color;ShowStyleField(window,*c);
-        }return TRUE;
-    }
-    if(id==IDC_STYLEFONT) {
-        LOGFONTW font{};wcsncpy_s(font.lfFaceName,c->document.style.font.c_str(),_TRUNCATE);font.lfHeight=-MulDiv(c->document.style.fontSize,GetDpiForWindow(window),72);
-        CHOOSEFONTW choose{sizeof(choose)};choose.hwndOwner=window;choose.lpLogFont=&font;choose.Flags=CF_SCREENFONTS|CF_INITTOLOGFONTSTRUCT;
-        if(ChooseFontW(&choose)){auto& value=(c->document.style.dark?darkOverrides:sharedOverrides)[{lexerCatalog[c->scheme]->rid,c->style}];value+=L"; font:"+std::wstring(font.lfFaceName)+L"; size:"+std::to_wstring(choose.iPointSize/10);ShowStyleField(window,*c);}return TRUE;
-    }
-    if(id==IDC_IMPORT || id==IDC_EXPORT) {
-        CFileDialog file(id==IDC_IMPORT,L"ini",nullptr,OFN_NOCHANGEDIR|(id==IDC_IMPORT?OFN_FILEMUSTEXIST:OFN_OVERWRITEPROMPT),L"Scheme settings (*.ini)\0*.ini\0\0",window);
-        if(file.DoModal()!=IDOK)return TRUE;
-        if(id==IDC_EXPORT)EnsureUnicodeProfile(file.m_szFileName);
-        for(size_t i=0;i<Count;++i)for(unsigned j=0;j<lexerCatalog[i]->iStyleCount;++j){
-            const auto& lexer=*lexerCatalog[i];const auto& legacy=BuiltinLanguage(lexer.id);std::wstring key=legacy.Styles[j].pszName;
-            if(id==IDC_EXPORT){auto& definitions=c->document.style.dark?darkOverrides:sharedOverrides;auto found=definitions.find({lexer.rid,j});WriteStyleProfile(legacy.pszName,key.c_str(),found==definitions.end()?lexer.Styles[j].pszDefault:found->second.c_str(),file.m_szFileName);}
-            else{wchar_t value[2048]{};if(GetPrivateProfileStringW(legacy.pszName,key.c_str(),nullptr,value,2048,file.m_szFileName))(c->document.style.dark?darkOverrides:sharedOverrides)[{lexer.rid,j}]=value;}
-        }
-        for(auto lexer:lexerCatalog)if(lexer->pszDefExt){
-            if(id==IDC_EXPORT)WriteStyleProfile(L"File Extensions",BuiltinLanguage(lexer->id).pszName,sharedExtensions.contains(lexer->rid)?sharedExtensions[lexer->rid].c_str():lexer->pszDefExt,file.m_szFileName);
-            else {wchar_t extension[2048]{};if(GetPrivateProfileStringW(L"File Extensions",BuiltinLanguage(lexer->id).pszName,nullptr,extension,2048,file.m_szFileName))sharedExtensions[lexer->rid]=extension;}
-        }
-        ShowStyleField(window,*c);return TRUE;
     }
     return FALSE;
     }catch(const std::exception& error){OutputDebugStringA(error.what());MessageBeep(MB_ICONERROR);return TRUE;}
 }
-void SelectScheme(HWND owner,EditorDocument& document,bool customize,bool favorites=false) {
-    SchemeDialogContext c{document,customize,ActualScheme(document),0,sharedOverrides};c.favorites=favorites;c.savedExtensions=sharedExtensions;c.savedDark=darkOverrides;
-    struct PreviewGuard{~PreviewGuard(){stylePreview={};}} guard;
-    if(customize)stylePreview={&document,&c.saved,&c.savedDark,&c.savedExtensions};
-    DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(customize?IDD_STYLECONFIG:IDD_STYLESELECT),owner,SchemeProcedure,reinterpret_cast<LPARAM>(&c));
+void SelectScheme(HWND owner,EditorDocument& document,bool favorites=false) {
+    SchemeDialogContext c{document,ActualScheme(document),favorites};
+    DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_STYLESELECT),owner,SchemeProcedure,reinterpret_cast<LPARAM>(&c));
 }
 }
 namespace {
@@ -915,7 +809,7 @@ CommandState StyleCommandState(const EditorDocument* d,UINT id) {
     if(id>=IDM_EDIT_GOTO_BLOCK_START && id<=IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK)return {true,d!=nullptr,false};
     if(id>=IDM_VIEW_FOLD_LEVEL1 && id<=IDM_VIEW_FOLD_LEVEL10)return {true,d!=nullptr,false};
     switch(id){
-    case ID_THEME_CONFIG:case ID_RELOAD_CONFIGURATION:case IDM_VIEW_SCHEME:case IDM_VIEW_SCHEME_CONFIG:case IDM_VIEW_SCHEME_FAVORITE:case IDM_VIEW_DEFAULT_CODE_FONT:case IDM_VIEW_DEFAULT_TEXT_FONT:
+    case ID_RELOAD_CONFIGURATION:case IDM_VIEW_SCHEME:case IDM_VIEW_SCHEME_CONFIG:case IDM_VIEW_SCHEME_FAVORITE:case IDM_VIEW_DEFAULT_CODE_FONT:case IDM_VIEW_DEFAULT_TEXT_FONT:
     case IDM_VIEW_FOLD_CURRENT_LEVEL:case IDM_VIEW_FOLD_CURRENT_BLOCK:case IDM_VIEW_FOLD_DEFAULT:case IDM_VIEW_FOLD_ALL:
     case IDM_VIEW_TABSETTINGS:case IDM_VIEW_WORDWRAPSETTINGS:case IDM_VIEW_AUTOCOMPLETION_SETTINGS:
     case IDM_EDIT_COMPLETEWORD:return {true,d!=nullptr,false};
@@ -949,11 +843,9 @@ bool ExecuteStyleCommand(HWND owner,EditorDocument& d,UINT id) {
     if(id>=IDM_EDIT_GOTO_BLOCK_START && id<=IDM_EDIT_GOTO_NEXT_SIBLING_BLOCK){GotoBlock(d,id);return true;}
     if(id>=IDM_VIEW_FOLD_LEVEL1 && id<=IDM_VIEW_FOLD_LEVEL10){ToggleFoldLevels(d,static_cast<int>(id-IDM_VIEW_FOLD_LEVEL1),false);return true;}
     switch(id){
-    case ID_THEME_CONFIG:ShowThemeDialog(owner,d);break;
     case ID_RELOAD_CONFIGURATION:if(!ReloadLanguageConfiguration())throw std::runtime_error("Configuration reload failed; previous snapshot retained. See theme diagnostics.");ConfigureDocumentStyle(d);break;
-    case IDM_VIEW_SCHEME:SelectScheme(owner,d,false);break;
-    case IDM_VIEW_SCHEME_CONFIG:SelectScheme(owner,d,true);break;
-    case IDM_VIEW_SCHEME_FAVORITE:SelectScheme(owner,d,false,true);break;
+    case IDM_VIEW_SCHEME:SelectScheme(owner,d);break;
+    case IDM_VIEW_SCHEME_FAVORITE:SelectScheme(owner,d,true);break;
     case IDM_VIEW_USEDEFAULT_CODESTYLE:d.style.fontKind=StyleCommandState(&d,id).checked?1:0;ConfigureDocumentStyle(d);break;
     case IDM_VIEW_DEFAULT_CODE_FONT:case IDM_VIEW_DEFAULT_TEXT_FONT:{
         LOGFONTW font{};const auto& selected=id==IDM_VIEW_DEFAULT_CODE_FONT?d.style.codeFont:d.style.textFont;
@@ -1108,33 +1000,14 @@ void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
 }
 void LoadStyleDialogPreferences(const std::filesystem::path&);
 void LoadStylePreferences(const std::filesystem::path& path){
-    auto previousShared=sharedOverrides,previousDark=darkOverrides;
     SetConfigurationUserDirectory(path.parent_path());ReloadLanguageConfiguration();LoadThemePreferences(path);
-    darkOverrides.clear();
     for(unsigned i=0;i<16;++i){wchar_t key[4]{};swprintf_s(key,L"%02u",i+1);wchar_t color[32]{};GetPrivateProfileStringW(L"Custom Colors",key,L"#FFFFFF",color,32,path.c_str());unsigned value=0xFFFFFF;swscanf_s(color,L"#%x",&value);customColors[i]=RGB((value>>16)&255,(value>>8)&255,value&255);}
-    auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
-    // Keep existing user overrides from profiles written before the brand rename.
-    if(!std::filesystem::exists(theme))theme=path.parent_path()/L"Notepad4 DarkTheme.ini";
-
-    if(std::filesystem::exists(theme))for(auto lexer:lexerCatalog)for(unsigned index=0;index<lexer->iStyleCount;++index){wchar_t value[2048]{};if(GetPrivateProfileStringW(BuiltinLanguage(lexer->id).pszName,BuiltinLanguage(lexer->id).Styles[index].pszName,nullptr,value,2048,theme.c_str()))darkOverrides[{lexer->rid,index}]=value;}
     defaultScheme=std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Style Preferences",L"DefaultScheme",1,path.c_str())),1,static_cast<int>(Count)-1);
     autoSelectScheme=GetPrivateProfileIntW(L"Style Preferences",L"AutoSelect",1,path.c_str())!=0;
     favoriteSchemes.clear();wchar_t favorites[1024]{};GetPrivateProfileStringW(L"Style Preferences",L"Favorites",L"",favorites,1024,path.c_str());std::wistringstream list(favorites);int favorite=0;while(list>>favorite)if(favorite>0&&favorite<static_cast<int>(Count)&&!FavoriteContains(favorite)&&favoriteSchemes.size()<31)favoriteSchemes.push_back(favorite);
-    sharedExtensions.clear();for(auto lexer:lexerCatalog){auto key=std::to_wstring(lexer->rid);wchar_t extensions[2048]{};if(GetPrivateProfileStringW(L"File Extensions",key.c_str(),nullptr,extensions,2048,path.c_str()))sharedExtensions[lexer->rid]=extensions;}
-    sharedOverrides.clear();
-    for(auto lexer:lexerCatalog)for(unsigned index=0;index<lexer->iStyleCount;++index){
-        auto section=L"Styles."+std::to_wstring(lexer->rid),key=std::to_wstring(index);wchar_t value[2048]{};
-        if(GetPrivateProfileStringW(section.c_str(),key.c_str(),nullptr,value,2048,path.c_str()))sharedOverrides[{lexer->rid,index}]=value;
-    }
     auto readStable=[&](const std::wstring& section,const std::wstring& key)->std::optional<std::wstring>{wchar_t value[32768]{};constexpr wchar_t missing[]=L"{MultiPad4-missing-configuration-field}";GetPrivateProfileStringW(section.c_str(),key.c_str(),missing,value,32768,path.c_str());if(value==std::wstring(missing))return {};return std::wstring(value);};
     if(auto stable=readStable(L"Language Preferences",L"Default")){int index=LanguageIndex(ConfigurationUtf8(*stable));if(index>0)defaultScheme=index;}
     if(auto stable=readStable(L"Language Preferences",L"Favorites")){favoriteSchemes.clear();std::wistringstream stableList(*stable);std::wstring id;while(stableList>>id){int index=LanguageIndex(ConfigurationUtf8(id));if(index>0&&!FavoriteContains(index)&&favoriteSchemes.size()<31)favoriteSchemes.push_back(index);}}
-    for(auto language:lexerCatalog){auto id=ConfigurationWide(language->id);
-        if(auto value=readStable(L"Language Extensions",id))sharedExtensions[language->rid]=*value;
-        for(unsigned i=0;i<language->iStyleCount;++i)if(auto value=readStable(L"Language Styles."+id,language->Styles[i].id))sharedOverrides[{language->rid,i}]=*value;
-    }
-    auto validate=[&](auto& values,const auto& previous){for(auto item=values.begin();item!=values.end();){try{ValidateLegacyStyle(item->second);++item;}catch(const std::exception& error){RecordConfigurationDiagnostic(path,error);auto old=previous.find(item->first);if(old!=previous.end()){item->second=old->second;++item;}else item=values.erase(item);}}};
-    validate(sharedOverrides,previousShared);validate(darkOverrides,previousDark);
     LoadStyleDialogPreferences(path);
 }
 void WriteStyleDialogPreferencesChecked(const std::filesystem::path&);
@@ -1157,27 +1030,9 @@ void SaveStylePreferences(const std::filesystem::path& path){
     auto scheme=std::to_wstring(defaultScheme);std::wstring favorites;for(int favorite:favoriteSchemes){favorites+=std::to_wstring(favorite)+L" ";}WriteStyleProfile(L"Style Preferences",L"Favorites",favorites.c_str(),path.c_str());
     WriteStyleProfile(L"Style Preferences",L"DefaultScheme",scheme.c_str(),path.c_str());
     WriteStyleProfile(L"Style Preferences",L"AutoSelect",autoSelectScheme?L"1":L"0",path.c_str());
-    WriteStyleProfile(L"File Extensions",nullptr,nullptr,path.c_str());for(auto& [rid,extensions]:sharedExtensions){auto key=std::to_wstring(rid);WriteStyleProfile(L"File Extensions",key.c_str(),extensions.c_str(),path.c_str());}
-    for(auto lexer:lexerCatalog){auto section=L"Styles."+std::to_wstring(lexer->rid);WriteStyleProfile(section.c_str(),nullptr,nullptr,path.c_str());}
-    for(auto& [entry,value]:sharedOverrides){auto section=L"Styles."+std::to_wstring(entry.first),key=std::to_wstring(entry.second);WriteStyleProfile(section.c_str(),key.c_str(),value.c_str(),path.c_str());}
     WriteStyleProfile(L"Language Preferences",L"Default",ConfigurationWide(lexerCatalog[defaultScheme]->id).c_str(),path.c_str());
     std::wstring stableFavorites;for(int index:favoriteSchemes)stableFavorites+=ConfigurationWide(lexerCatalog[index]->id)+L" ";
     WriteStyleProfile(L"Language Preferences",L"Favorites",stableFavorites.c_str(),path.c_str());
-    WriteStyleProfile(L"Language Extensions",nullptr,nullptr,path.c_str());
-    for(auto language:lexerCatalog){auto id=ConfigurationWide(language->id);auto section=L"Language Styles."+id;WriteStyleProfile(section.c_str(),nullptr,nullptr,path.c_str());
-        auto ext=sharedExtensions.find(language->rid);if(ext!=sharedExtensions.end())WriteStyleProfile(L"Language Extensions",id.c_str(),ext->second.c_str(),path.c_str());
-        for(unsigned i=0;i<language->iStyleCount;++i){auto value=sharedOverrides.find({language->rid,i});if(value!=sharedOverrides.end())WriteStyleProfile(section.c_str(),language->Styles[i].id.c_str(),value->second.c_str(),path.c_str());}
-    }
-    auto theme=path.parent_path()/L"MultiPad4 DarkTheme.ini";
-    if(!darkOverrides.empty() || std::filesystem::exists(theme)){
-        EnsureUnicodeProfile(theme);
-        for(auto lexer:lexerCatalog){
-            std::wstring section;
-            for(unsigned index=0;index<lexer->iStyleCount;++index){auto found=darkOverrides.find({lexer->rid,index});if(found!=darkOverrides.end()){section+=BuiltinLanguage(lexer->id).Styles[index].pszName;section+=L'=';section+=found->second;section+=L'\0';}}
-            section+=L'\0';if(section.size()==1)section+=L'\0';
-            if(!WritePrivateProfileSectionW(BuiltinLanguage(lexer->id).pszName,section.c_str(),theme.c_str()))throw std::runtime_error("Cannot write dark style theme.");
-        }
-    }
     WriteStyleDialogPreferencesChecked(path);
 }
 

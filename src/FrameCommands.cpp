@@ -554,13 +554,11 @@ void RememberDocumentPreferences(MainFrame& frame, EditorDocument& d, UINT comma
             ConfigureDocumentStyle(*other);
         }
     }
-    if (command == IDM_VIEW_SCHEME_CONFIG || command == IDM_VIEW_DEFAULT_CODE_FONT || command == IDM_VIEW_DEFAULT_TEXT_FONT) {
+    if (command == IDM_VIEW_DEFAULT_CODE_FONT || command == IDM_VIEW_DEFAULT_TEXT_FONT) {
         for (auto& other : frame.documents) {
-            if (command != IDM_VIEW_SCHEME_CONFIG) {
-                other->style.font = style.font; other->style.fontSize = style.fontSize;
-                other->style.codeFont = style.codeFont; other->style.textFont = style.textFont;
-                other->style.codeFontSize = style.codeFontSize; other->style.textFontSize = style.textFontSize;
-            }
+            other->style.font = style.font; other->style.fontSize = style.fontSize;
+            other->style.codeFont = style.codeFont; other->style.textFont = style.textFont;
+            other->style.codeFontSize = style.codeFontSize; other->style.textFontSize = style.textFontSize;
             ConfigureDocumentStyle(*other);
         }
     }

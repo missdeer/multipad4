@@ -101,7 +101,6 @@ jobs:
           name: multipad4-${{ matrix.toolchain.id }}-x64-${{ matrix.simd }}
           path: |
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
-            cmake-${{ matrix.toolchain.id }}-build/MultiPad4 DarkTheme.ini
             cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/OpenDocuments.dll
@@ -178,7 +177,7 @@ jobs:
           mkdir -p "$build_dir/package/plugins/OpenDocuments"
           cp "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
           mkdir -p "$build_dir/package/plugins/Matepath"
-          cp "$build_dir/multipad4.exe" "$build_dir/MultiPad4 DarkTheme.ini" "$build_dir/package/"
+          cp "$build_dir/multipad4.exe" "$build_dir/package/"
           cp -R "$build_dir/config" "$build_dir/package/"
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"

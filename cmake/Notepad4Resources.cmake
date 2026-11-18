@@ -1,11 +1,15 @@
 # Adapt the pinned UI at configure time; preserve the vendored resources.
 # Asset filenames and upstream download URLs retain their original identity.
-function(multipad4_brand_resources variable)
+function(multipad4_adapt_resources variable)
   string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
   foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
     string(REPLACE "Notepad4" "MultiPad4" branded_asset "${asset}")
     string(REPLACE "${branded_asset}" "${asset}" content "${content}")
   endforeach()
+  string(REGEX REPLACE "IDD_STYLECONFIG DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" content "${content}")
+  string(REPLACE "Customize Schemes" "Language and Style" content "${content}")
+  string(REPLACE "自定义语法高亮" "语言与样式" content "${content}")
+  string(REPLACE "自訂語法高亮" "語言與樣式" content "${content}")
   set(${variable} "${content}" PARENT_SCOPE)
 endfunction()
 
@@ -18,7 +22,7 @@ string(REPLACE "#include \"Notepad4.ver\"" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RES
 string(REPLACE "..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/"
   NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
 string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
-multipad4_brand_resources(NOTEPAD4_RESOURCES)
+multipad4_adapt_resources(NOTEPAD4_RESOURCES)
 file(WRITE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc"
   "${NOTEPAD4_RESOURCES}\nLANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n#include \"${PROJECT_BINARY_DIR}/FileIconResources.rcinc\"\n")
 
@@ -40,7 +44,7 @@ foreach(locale de fr it ja ko pl pt-BR ru sl zh-Hans zh-Hant)
     # GNU windres and llvm-rc require the documented MENUITEM separator.
     string(REGEX REPLACE "(MENUITEM [^\n]*\")[ \t]+((IDM_|CMD_)[A-Z0-9_]+)" "\\1, \\2" content "${content}")
   endif()
-  multipad4_brand_resources(content)
+  multipad4_adapt_resources(content)
   file(WRITE "${output}" "${content}")
   list(APPEND NOTEPAD4_LOCALE_RESOURCES "${output}")
 endforeach()
