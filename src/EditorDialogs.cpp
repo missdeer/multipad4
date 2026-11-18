@@ -107,11 +107,12 @@ const std::wstring BuildDetails = [] {
 #endif
     return std::wstring(L"Built with ") + compiler + L"\r\nWindows / C++20 / WTL / Scintilla";
 }();
-const std::wstring BuildInfo = L"MultiPad4 0.1\r\n" + BuildDetails;
+constexpr wchar_t AppVersion[] = L"MultiPad4 " MULTIPAD4_DISPLAY_VERSION;
+const std::wstring BuildInfo = std::wstring(AppVersion) + L"\r\n" + BuildDetails;
 INT_PTR CALLBACK AboutProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
     if (message == WM_INITDIALOG) {
         SetWindowTextW(window, L"About MultiPad4");
-        SetDlgItemTextW(window, IDC_VERSION, L"MultiPad4 0.1");
+        SetDlgItemTextW(window, IDC_VERSION, AppVersion);
         SetDlgItemTextW(window, IDC_BUILD_INFO, BuildDetails.c_str());
         SetDlgItemTextW(window, IDC_NEW_PAGE_LINK, L"<a href=\"https://github.com/zufuliu/notepad4\">notepad4 upstream</a> | <a href=\"https://github.com/missdeer/multipad4\">MultiPad4</a>");
         SetDlgItemTextW(window, IDC_MOD_PAGE_LINK, L"<a href=\"https://github.com/XhmikosR/notepad2-mod\">Notepad2-mod</a>");

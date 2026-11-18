@@ -1,0 +1,36 @@
+#include <windows.h>
+#include <winver.h>
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+1 VERSIONINFO
+FILEVERSION @multipad4_windows_version_commas@
+PRODUCTVERSION @multipad4_windows_version_commas@
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+FILEFLAGS VS_FF_DEBUG
+#else
+FILEFLAGS 0
+#endif
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "MultiPad4 contributors"
+            VALUE "FileDescription", "MultiPad4 Text Editor"
+            VALUE "FileVersion", "@multipad4_windows_version@"
+            VALUE "InternalName", "MultiPad4"
+            VALUE "OriginalFilename", "multipad4.exe"
+            VALUE "ProductName", "MultiPad4"
+            VALUE "ProductVersion", "@multipad4_windows_version@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

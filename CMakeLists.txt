@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(MultiPad4 VERSION 0.1.0 LANGUAGES CXX RC)
+project(MultiPad4 VERSION 0.2.0 LANGUAGES CXX RC)
 # The local wrapper fixes RelWithDebInfo; allow an explicit build configuration
 # for reproducible Release measurements without bypassing that wrapper.
 if(DEFINED ENV{MULTIPAD4_BUILD_CONFIGURATION})
@@ -77,7 +77,15 @@ if(MSVC)
 else()
   set_source_files_properties(${LEXER_CONFIGS} PROPERTIES COMPILE_OPTIONS "-include;cstdint")
 endif()
-add_executable(multipad4 WIN32 ${APP_SOURCES} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/SearchDialog.rc src/ThemeDialog.rc src/MultiPad4.manifest "${PROJECT_BINARY_DIR}/Notepad4Resources.rc")
+set(multipad4_windows_version "${PROJECT_VERSION}.0")
+string(REPLACE "." "," multipad4_windows_version_commas "${multipad4_windows_version}")
+configure_file(src/MultiPad4.manifest.in "${PROJECT_BINARY_DIR}/MultiPad4.manifest" @ONLY)
+configure_file(src/MultiPad4Version.rc.in "${PROJECT_BINARY_DIR}/MultiPad4Version.rc" @ONLY)
+string(REGEX REPLACE "^([0-9]+\\.[0-9]+)\\.0$" "\\1" multipad4_display_version "${PROJECT_VERSION}")
+set_source_files_properties(src/EditorDialogs.cpp PROPERTIES
+  COMPILE_DEFINITIONS "MULTIPAD4_DISPLAY_VERSION=L\"v${multipad4_display_version}\"")
+add_executable(multipad4 WIN32 ${APP_SOURCES} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/SearchDialog.rc src/ThemeDialog.rc
+  "${PROJECT_BINARY_DIR}/MultiPad4.manifest" "${PROJECT_BINARY_DIR}/MultiPad4Version.rc" "${PROJECT_BINARY_DIR}/Notepad4Resources.rc")
 set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
   "${PROJECT_SOURCE_DIR}/config/languages/default.xml"
   "${PROJECT_SOURCE_DIR}/config/themes/light.xml"
@@ -93,6 +101,8 @@ target_compile_options(multipad4 PRIVATE ${MULTIPAD4_WARNINGS})
 if(MSVC)
   target_compile_options(multipad4 PRIVATE /permissive /Zc:twoPhase- /wd4996)
 else()
+  set_property(SOURCE src/MultiPad4.rc PROPERTY INCLUDE_DIRECTORIES "${PROJECT_BINARY_DIR}")
+  set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS "${PROJECT_BINARY_DIR}/MultiPad4.manifest")
   target_include_directories(multipad4 BEFORE PRIVATE "${OPENATL_COMPAT_DIR}" "${PROJECT_SOURCE_DIR}/cmake/openatl")
   target_precompile_headers(multipad4 PRIVATE src/App.h)
   target_compile_options(multipad4 PRIVATE -Wno-unknown-pragmas)
