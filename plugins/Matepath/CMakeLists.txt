@@ -3,7 +3,7 @@ include("${PROJECT_SOURCE_DIR}/cmake/Matepath.cmake")
 set(MATEPATH_VERSION "0.1.0.0")
 string(REPLACE "." "," MATEPATH_VERSION_COMMAS "${MATEPATH_VERSION}")
 configure_file(MatepathVersion.rc.in "${CMAKE_CURRENT_BINARY_DIR}/MatepathVersion.rc" @ONLY)
-add_library(Matepath SHARED Plugin.cpp MatepathPane.cpp
+add_library(Matepath SHARED Plugin.cpp MatepathPane.cpp MenuStrings.rc
   "${CMAKE_CURRENT_BINARY_DIR}/MatepathVersion.rc"
   "${MATEPATH_COMPAT_DIR}/Dlapi.cpp" "${MATEPATH_SOURCE_DIR}/DropSource.cpp")
 target_include_directories(Matepath PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"

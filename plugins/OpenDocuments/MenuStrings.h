@@ -1,0 +1,6 @@
+#pragma once
+#define IDS_OPEN_DOCUMENTS 100
+#define IDS_DOCK_LEFT 101
+#define IDS_DOCK_RIGHT 102
+#define IDS_DOCK_BOTTOM 103
+#define IDS_FLOAT 104

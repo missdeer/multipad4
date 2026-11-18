@@ -81,9 +81,14 @@ void PluginHost::Initialize(MainFrame& owner) {
     proxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     secondProxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     menu = CreatePopupMenu();
-    InsertMenuW(owner.GetMenu(), GetMenuItemCount(owner.GetMenu()) - 1, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), L"插件(&P)");
-    AppendMenuW(menu, MF_STRING, IDM_SETTING_PLUGINADM, L"插件管理...");
-    AppendMenuW(menu, MF_STRING, IDM_SETTING_OPENPLUGINSDIR, L"打开插件文件夹...");
+    wchar_t label[128]{};
+    const auto instance = _Module.GetModuleInstance();
+    LoadStringW(instance, IDS_PLUGIN_MENU, label, _countof(label));
+    InsertMenuW(owner.GetMenu(), GetMenuItemCount(owner.GetMenu()) - 1, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), label);
+    LoadStringW(instance, IDS_PLUGIN_ADMIN, label, _countof(label));
+    AppendMenuW(menu, MF_STRING, IDM_SETTING_PLUGINADM, label);
+    LoadStringW(instance, IDS_PLUGIN_OPEN_FOLDER, label, _countof(label));
+    AppendMenuW(menu, MF_STRING, IDM_SETTING_OPENPLUGINSDIR, label);
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     std::vector<std::filesystem::path> candidates;
     for (auto& entry : std::filesystem::directory_iterator(home, directoryError)) {
@@ -126,7 +131,10 @@ void PluginHost::Initialize(MainFrame& owner) {
         AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(submenu), plugin.name.c_str()); plugins.push_back(std::move(plugin));
     }
     if (!keys.empty()) accelerators = CreateAcceleratorTableW(keys.data(), static_cast<int>(keys.size()));
-    if (plugins.empty()) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"No compatible plugins loaded");
+    if (plugins.empty()) {
+        LoadStringW(instance, IDS_PLUGIN_NONE_LOADED, label, _countof(label));
+        AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, label);
+    }
     std::ofstream log(config / L"MultiPad4-plugin-load.log");
     for (auto& p : plugins) log << "Loaded " << files::ToUtf8(p.module) << " (" << p.count << " commands)\n";
     for (auto& e : errors) log << files::ToUtf8(e) << '\n';

@@ -1,0 +1,111 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include "resource.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "&Plugins"
+    IDS_PLUGIN_ADMIN          "Plugins Admin..."
+    IDS_PLUGIN_OPEN_FOLDER    "Open Plugins Folder..."
+    IDS_PLUGIN_NONE_LOADED    "No compatible plugins loaded"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "插件(&P)"
+    IDS_PLUGIN_ADMIN          "插件管理..."
+    IDS_PLUGIN_OPEN_FOLDER    "打开插件文件夹..."
+    IDS_PLUGIN_NONE_LOADED    "未加载兼容的插件"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "外掛(&P)"
+    IDS_PLUGIN_ADMIN          "外掛管理..."
+    IDS_PLUGIN_OPEN_FOLDER    "開啟外掛資料夾..."
+    IDS_PLUGIN_NONE_LOADED    "未載入相容的外掛"
+END
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "プラグイン(&P)"
+    IDS_PLUGIN_ADMIN          "プラグイン管理..."
+    IDS_PLUGIN_OPEN_FOLDER    "プラグインフォルダーを開く..."
+    IDS_PLUGIN_NONE_LOADED    "互換性のあるプラグインが読み込まれていません"
+END
+
+LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "&Plugins"
+    IDS_PLUGIN_ADMIN          "Plugins verwalten..."
+    IDS_PLUGIN_OPEN_FOLDER    "Plugin-Ordner öffnen..."
+    IDS_PLUGIN_NONE_LOADED    "Keine kompatiblen Plugins geladen"
+END
+
+LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "&Plugin"
+    IDS_PLUGIN_ADMIN          "Gestione plugin..."
+    IDS_PLUGIN_OPEN_FOLDER    "Apri cartella dei plugin..."
+    IDS_PLUGIN_NONE_LOADED    "Nessun plugin compatibile caricato"
+END
+
+LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "플러그인(&P)"
+    IDS_PLUGIN_ADMIN          "플러그인 관리..."
+    IDS_PLUGIN_OPEN_FOLDER    "플러그인 폴더 열기..."
+    IDS_PLUGIN_NONE_LOADED    "호환되는 플러그인이 로드되지 않았습니다"
+END
+
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "P&lugins"
+    IDS_PLUGIN_ADMIN          "Gerenciar plugins..."
+    IDS_PLUGIN_OPEN_FOLDER    "Abrir pasta de plugins..."
+    IDS_PLUGIN_NONE_LOADED    "Nenhum plugin compatível carregado"
+END
+
+LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "E&xtensions"
+    IDS_PLUGIN_ADMIN          "Gérer les extensions..."
+    IDS_PLUGIN_OPEN_FOLDER    "Ouvrir le dossier des extensions..."
+    IDS_PLUGIN_NONE_LOADED    "Aucune extension compatible chargée"
+END
+
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "П&лагины"
+    IDS_PLUGIN_ADMIN          "Управление плагинами..."
+    IDS_PLUGIN_OPEN_FOLDER    "Открыть папку плагинов..."
+    IDS_PLUGIN_NONE_LOADED    "Совместимые плагины не загружены"
+END
+
+LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "W&tyczki"
+    IDS_PLUGIN_ADMIN          "Zarządzaj wtyczkami..."
+    IDS_PLUGIN_OPEN_FOLDER    "Otwórz folder wtyczek..."
+    IDS_PLUGIN_NONE_LOADED    "Nie wczytano zgodnych wtyczek"
+END
+
+LANGUAGE LANG_SLOVENIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_MENU           "&Vtičniki"
+    IDS_PLUGIN_ADMIN          "Upravljanje vtičnikov..."
+    IDS_PLUGIN_OPEN_FOLDER    "Odpri mapo z vtičniki..."
+    IDS_PLUGIN_NONE_LOADED    "Ni naloženih združljivih vtičnikov"
+END

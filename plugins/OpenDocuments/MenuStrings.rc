@@ -1,0 +1,123 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include "MenuStrings.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Open Documents"
+    IDS_DOCK_LEFT             "Dock Left"
+    IDS_DOCK_RIGHT            "Dock Right"
+    IDS_DOCK_BOTTOM           "Dock Bottom"
+    IDS_FLOAT                 "Float"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "打开的文档"
+    IDS_DOCK_LEFT             "停靠到左侧"
+    IDS_DOCK_RIGHT            "停靠到右侧"
+    IDS_DOCK_BOTTOM           "停靠到底部"
+    IDS_FLOAT                 "浮动"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "已開啟的文件"
+    IDS_DOCK_LEFT             "停駐於左側"
+    IDS_DOCK_RIGHT            "停駐於右側"
+    IDS_DOCK_BOTTOM           "停駐於底部"
+    IDS_FLOAT                 "浮動"
+END
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "開いている文書"
+    IDS_DOCK_LEFT             "左にドッキング"
+    IDS_DOCK_RIGHT            "右にドッキング"
+    IDS_DOCK_BOTTOM           "下にドッキング"
+    IDS_FLOAT                 "フローティング"
+END
+
+LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Geöffnete Dokumente"
+    IDS_DOCK_LEFT             "Links andocken"
+    IDS_DOCK_RIGHT            "Rechts andocken"
+    IDS_DOCK_BOTTOM           "Unten andocken"
+    IDS_FLOAT                 "Schwebend"
+END
+
+LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Documenti aperti"
+    IDS_DOCK_LEFT             "Ancora a sinistra"
+    IDS_DOCK_RIGHT            "Ancora a destra"
+    IDS_DOCK_BOTTOM           "Ancora in basso"
+    IDS_FLOAT                 "Rendi mobile"
+END
+
+LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "열린 문서"
+    IDS_DOCK_LEFT             "왼쪽에 고정"
+    IDS_DOCK_RIGHT            "오른쪽에 고정"
+    IDS_DOCK_BOTTOM           "아래쪽에 고정"
+    IDS_FLOAT                 "띄우기"
+END
+
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Documentos abertos"
+    IDS_DOCK_LEFT             "Encaixar à esquerda"
+    IDS_DOCK_RIGHT            "Encaixar à direita"
+    IDS_DOCK_BOTTOM           "Encaixar embaixo"
+    IDS_FLOAT                 "Flutuar"
+END
+
+LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Documents ouverts"
+    IDS_DOCK_LEFT             "Ancrer à gauche"
+    IDS_DOCK_RIGHT            "Ancrer à droite"
+    IDS_DOCK_BOTTOM           "Ancrer en bas"
+    IDS_FLOAT                 "Détacher"
+END
+
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Открытые документы"
+    IDS_DOCK_LEFT             "Закрепить слева"
+    IDS_DOCK_RIGHT            "Закрепить справа"
+    IDS_DOCK_BOTTOM           "Закрепить снизу"
+    IDS_FLOAT                 "Сделать плавающим"
+END
+
+LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Otwarte dokumenty"
+    IDS_DOCK_LEFT             "Zadokuj po lewej"
+    IDS_DOCK_RIGHT            "Zadokuj po prawej"
+    IDS_DOCK_BOTTOM           "Zadokuj na dole"
+    IDS_FLOAT                 "Odłącz"
+END
+
+LANGUAGE LANG_SLOVENIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_OPEN_DOCUMENTS        "Odprti dokumenti"
+    IDS_DOCK_LEFT             "Zasidraj levo"
+    IDS_DOCK_RIGHT            "Zasidraj desno"
+    IDS_DOCK_BOTTOM           "Zasidraj spodaj"
+    IDS_FLOAT                 "Plavajoče okno"
+END

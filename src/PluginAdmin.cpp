@@ -10,11 +10,16 @@
 #include <cwctype>
 using nlohmann::json;
 namespace {
+std::wstring AdminText(UINT id) {
+    wchar_t text[256]{};
+    LoadStringW(_Module.GetModuleInstance(), id, text, _countof(text));
+    return text;
+}
 std::string Resource(UINT id) {
     auto instance = _Module.GetModuleInstance();
     auto resource = FindResourceW(instance, MAKEINTRESOURCEW(id), RT_RCDATA);
     auto data = LoadResource(instance, resource);
-    if (!resource || !data) throw std::runtime_error("Plugin administration resource missing.");
+    if (!resource || !data) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_RESOURCE_MISSING)));
     return {static_cast<const char*>(LockResource(data)), SizeofResource(instance, resource)};
 }
 std::array<unsigned, 4> Version(const std::wstring& text) {
@@ -90,7 +95,7 @@ void PluginAdmin::Load() {
     // A locally supplied x64 catalogue can replace the bundled snapshot.
     auto local = frame->plugins.config / L"nppPluginList.json";
     if (std::filesystem::exists(local)) { std::ifstream input(local); input >> catalog; }
-    if (catalog.value("arch", "") != "64") throw std::runtime_error("Plugin catalogue must be x64.");
+    if (catalog.value("arch", "") != "64") throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_CATALOG_ARCH)));
     catalogVersion = files::FromUtf8(catalog.at("version").get<std::string>());
     std::set<std::wstring> seen;
     for (const auto& item : catalog.at("npp-plugins")) {
@@ -159,7 +164,7 @@ void PluginAdmin::Populate() {
     ShowWindow(GetDlgItem(hwnd, IDC_PLUGINADM_REMOVE), page >= 2 ? SW_SHOW : SW_HIDE);
     ShowWindow(GetDlgItem(hwnd, IDC_PLUGINADM_DEACTIVATE), page == 2 ? SW_SHOW : SW_HIDE);
     ShowWindow(GetDlgItem(hwnd, IDC_PLUGINADM_ACTIVATE), page == 4 ? SW_SHOW : SW_HIDE);
-    SetDlgItemTextW(hwnd, IDC_PLUGINADM_EDIT, L"请选择插件查看说明；勾选插件后可执行操作。");
+    SetDlgItemTextW(hwnd, IDC_PLUGINADM_EDIT, AdminText(IDS_PLUGINADM_SELECT_HINT).c_str());
     if (!visible.empty()) ListView_SetItemState(list, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 }
 void PluginAdmin::Describe() {
@@ -167,19 +172,19 @@ void PluginAdmin::Describe() {
     if (row < 0 || static_cast<size_t>(row) >= visible.size()) return;
     const auto& e = entries[visible[row]];
     auto text = e.description;
-    auto append = [&](const wchar_t* label, const std::wstring& value) {
+    auto append = [&](UINT label, const std::wstring& value) {
         if (value.empty()) return;
         if (!text.empty()) text += L"\r\n";
-        text += label; text += value;
+        text += AdminText(label); text += value;
     };
-    append(L"名称：", e.name);
-    append(L"版本：", e.present ? e.installed : e.version);
-    append(L"作者：", e.author);
-    append(L"主页：", e.homepage);
-    append(L"版权：", e.copyright);
-    append(L"许可：", e.license);
+    append(IDS_PLUGINADM_NAME_FIELD, e.name);
+    append(IDS_PLUGINADM_VERSION_FIELD, e.present ? e.installed : e.version);
+    append(IDS_PLUGINADM_AUTHOR_FIELD, e.author);
+    append(IDS_PLUGINADM_HOMEPAGE_FIELD, e.homepage);
+    append(IDS_PLUGINADM_COPYRIGHT_FIELD, e.copyright);
+    append(IDS_PLUGINADM_LICENSE_FIELD, e.license);
     if (e.present && !e.loaded && !e.disabled) {
-        text += L"\r\n未加载：";
+        text += L"\r\n"; text += AdminText(IDS_PLUGINADM_NOT_LOADED);
         for (auto& error : frame->plugins.errors) if (error.starts_with(e.folder + L".dll:")) text += error;
     }
     SetDlgItemTextW(hwnd, IDC_PLUGINADM_EDIT, text.c_str());
@@ -208,8 +213,13 @@ void PluginAdmin::Apply(int command) {
         if ((operation == "remove" || operation == "disable" || operation == "enable") && !e.present) continue;
         selected.push_back({{"folder", files::ToUtf8(e.folder)}, {"disabled", e.disabled}, {"url", files::ToUtf8(e.url)}, {"hash", files::ToUtf8(e.hash)}});
     }
-    if (selected.empty()) { MessageBoxW(hwnd, L"请先勾选要操作的插件。", L"插件管理", MB_OK | MB_ICONINFORMATION); return; }
-    if (MessageBoxW(hwnd, L"此操作需要退出并重新启动 MultiPad4。是否继续？", L"插件管理", MB_YESNO | MB_ICONQUESTION) != IDYES) return;
+    const auto title = AdminText(IDS_PLUGINADM_TITLE);
+    const auto language = GetThreadUILanguage();
+    if (selected.empty()) {
+        MessageBoxExW(hwnd, AdminText(IDS_PLUGINADM_CHECK_FIRST).c_str(), title.c_str(), MB_OK | MB_ICONINFORMATION, language);
+        return;
+    }
+    if (MessageBoxExW(hwnd, AdminText(IDS_PLUGINADM_RESTART).c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION, language) != IDYES) return;
     // Resolve all save/cancel decisions before handing work to another process.
     for (int i = 0; i < frame->tabs.GetPageCount(); ++i) {
         auto* doc = static_cast<EditorDocument*>(frame->tabs.GetPageData(i));
@@ -221,13 +231,13 @@ void PluginAdmin::Apply(int command) {
     SaveRelaunchSession(*frame, session, true);
     wchar_t exe[32768]{}; GetModuleFileNameW(nullptr, exe, _countof(exe));
     json plan{{"pid", GetCurrentProcessId()}, {"exe", files::ToUtf8(exe)}, {"root", files::ToUtf8(frame->plugins.home.wstring())}, {"session", files::ToUtf8(session.wstring())}, {"operation", operation}, {"plugins", selected}};
-    { std::ofstream output(task / L"plan.json", std::ios::binary); output << plan.dump(); if (!output) throw std::runtime_error("Cannot write plugin operation plan."); }
-    { std::ofstream output(task / L"worker.ps1", std::ios::binary); output << Resource(IDR_PLUGIN_WORKER); if (!output) throw std::runtime_error("Cannot write plugin worker."); }
+    { std::ofstream output(task / L"plan.json", std::ios::binary); output << plan.dump(); if (!output) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_WRITE_PLAN))); }
+    { std::ofstream output(task / L"worker.ps1", std::ios::binary); output << Resource(IDR_PLUGIN_WORKER); if (!output) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_WRITE_WORKER))); }
     wchar_t system[MAX_PATH]{}; GetSystemDirectoryW(system, _countof(system));
     auto powershell = std::filesystem::path(system) / L"WindowsPowerShell/v1.0/powershell.exe";
     auto args = L"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" + (task / L"worker.ps1").wstring() + L"\" -PlanPath \"" + (task / L"plan.json").wstring() + L"\"";
     auto result = ShellExecuteW(hwnd, L"open", powershell.c_str(), args.c_str(), task.c_str(), SW_HIDE);
-    if (reinterpret_cast<INT_PTR>(result) <= 32) throw std::runtime_error("Cannot start plugin worker.");
+    if (reinterpret_cast<INT_PTR>(result) <= 32) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_START_WORKER)));
     for (auto& doc : frame->documents) { doc->Send(SCI_SETSAVEPOINT); doc->encodingDirty = false; }
     ShowWindow(hwnd, SW_HIDE); frame->PostMessage(WM_CLOSE);
 }
@@ -237,27 +247,32 @@ INT_PTR CALLBACK PluginAdmin::DialogProc(HWND window, UINT message, WPARAM w, LP
     if (!self) return FALSE;
     try {
         if (message == WM_INITDIALOG) {
-            SetWindowTextW(window, L"插件管理");
-            const std::pair<int, const wchar_t*> labels[] = {
-                {IDC_PLUGINADM_SEARCH_STATIC, L"搜索(&S):"}, {IDC_PLUGINADM_RESEARCH_NEXT, L"下一个(&N)"},
-                {IDC_PLUGINADM_INSTALL, L"安装(&I)"}, {IDC_PLUGINADM_UPDATE, L"更新(&U)"},
-                {IDC_PLUGINADM_REMOVE, L"移除(&R)"}, {IDC_PLUGINADM_DEACTIVATE, L"禁用(&D)"},
-                {IDC_PLUGINADM_ACTIVATE, L"启用(&A)"}, {IDCANCEL, L"关闭"},
-                {IDC_PLUGINLIST_VERSION_STATIC, L"插件目录版本:"}, {IDC_PLUGINLIST_ADDR, L"插件目录仓库"}
+            SetWindowTextW(window, AdminText(IDS_PLUGINADM_TITLE).c_str());
+            constexpr std::pair<int, UINT> labels[] = {
+                {IDC_PLUGINADM_SEARCH_STATIC, IDS_PLUGINADM_SEARCH}, {IDC_PLUGINADM_RESEARCH_NEXT, IDS_PLUGINADM_NEXT},
+                {IDC_PLUGINADM_INSTALL, IDS_PLUGINADM_INSTALL}, {IDC_PLUGINADM_UPDATE, IDS_PLUGINADM_UPDATE},
+                {IDC_PLUGINADM_REMOVE, IDS_PLUGINADM_REMOVE}, {IDC_PLUGINADM_DEACTIVATE, IDS_PLUGINADM_DISABLE},
+                {IDC_PLUGINADM_ACTIVATE, IDS_PLUGINADM_ENABLE}, {IDCANCEL, IDS_PLUGINADM_CLOSE},
+                {IDC_PLUGINLIST_VERSION_STATIC, IDS_PLUGINADM_CATALOG_VERSION}, {IDC_PLUGINLIST_ADDR, IDS_PLUGINADM_CATALOG_LINK}
             };
-            for (const auto& label : labels) SetDlgItemTextW(window, label.first, label.second);
+            for (const auto& [control, label] : labels) SetDlgItemTextW(window, control, AdminText(label).c_str());
             auto link = GetDlgItem(window, IDC_PLUGINLIST_ADDR);
             SetWindowLongPtrW(link, GWL_STYLE, GetWindowLongPtrW(link, GWL_STYLE) | SS_NOTIFY);
             RECT rect{8, 40, 492, 160}; MapDialogRect(window, &rect);
             self->tab = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, window, reinterpret_cast<HMENU>(5514), _Module.GetModuleInstance(), nullptr);
-            const wchar_t* names[] = {L"可用", L"更新", L"已安装", L"不兼容 / 加载失败", L"已禁用"};
-            for (int i = 0; i < 5; ++i) { TCITEMW item{}; item.mask = TCIF_TEXT; item.pszText = const_cast<wchar_t*>(names[i]); TabCtrl_InsertItem(self->tab, i, &item); }
+            constexpr UINT tabs[] = {IDS_PLUGINADM_AVAILABLE, IDS_PLUGINADM_UPDATES, IDS_PLUGINADM_INSTALLED, IDS_PLUGINADM_INCOMPATIBLE, IDS_PLUGINADM_DISABLED};
+            for (int index = 0; index < static_cast<int>(_countof(tabs)); ++index) {
+                auto label = AdminText(tabs[index]);
+                TCITEMW item{}; item.mask = TCIF_TEXT; item.pszText = label.data();
+                TabCtrl_InsertItem(self->tab, index, &item);
+            }
             RECT body{}; GetClientRect(self->tab, &body); TabCtrl_AdjustRect(self->tab, FALSE, &body); MapWindowPoints(self->tab, window, reinterpret_cast<POINT*>(&body), 2);
             self->list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS, body.left, body.top, body.right - body.left, body.bottom - body.top, window, reinterpret_cast<HMENU>(IDC_PLUGINADM_LISTVIEW), _Module.GetModuleInstance(), nullptr);
             auto font = SendMessageW(window, WM_GETFONT, 0, 0); SendMessageW(self->tab, WM_SETFONT, font, TRUE); SendMessageW(self->list, WM_SETFONT, font, TRUE);
             ListView_SetExtendedListViewStyle(self->list, LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
-            LVCOLUMNW column{}; column.mask = LVCF_TEXT | LVCF_WIDTH; column.cx = (body.right - body.left) * 3 / 4; column.pszText = const_cast<wchar_t*>(L"插件"); ListView_InsertColumn(self->list, 0, &column);
-            column.cx = (body.right - body.left) / 4 - GetSystemMetrics(SM_CXVSCROLL); column.pszText = const_cast<wchar_t*>(L"版本"); ListView_InsertColumn(self->list, 1, &column);
+            auto pluginLabel = AdminText(IDS_PLUGINADM_PLUGIN), versionLabel = AdminText(IDS_PLUGINADM_VERSION);
+            LVCOLUMNW column{}; column.mask = LVCF_TEXT | LVCF_WIDTH; column.cx = (body.right - body.left) * 3 / 4; column.pszText = pluginLabel.data(); ListView_InsertColumn(self->list, 0, &column);
+            column.cx = (body.right - body.left) / 4 - GetSystemMetrics(SM_CXVSCROLL); column.pszText = versionLabel.data(); ListView_InsertColumn(self->list, 1, &column);
             SetDlgItemTextW(window, IDC_PLUGINLIST_VERSIONNUMBER_STATIC, self->catalogVersion.c_str());
             self->Populate(); return TRUE;
         }

@@ -2,7 +2,7 @@
 set(OPEN_DOCUMENTS_VERSION "0.1.0.0")
 string(REPLACE "." "," OPEN_DOCUMENTS_VERSION_COMMAS "${OPEN_DOCUMENTS_VERSION}")
 configure_file(OpenDocumentsVersion.rc.in "${CMAKE_CURRENT_BINARY_DIR}/OpenDocumentsVersion.rc" @ONLY)
-add_library(OpenDocuments SHARED Plugin.cpp DocumentsPane.cpp
+add_library(OpenDocuments SHARED Plugin.cpp DocumentsPane.cpp MenuStrings.rc
   "${CMAKE_CURRENT_BINARY_DIR}/OpenDocumentsVersion.rc"
 )
 target_include_directories(OpenDocuments PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"

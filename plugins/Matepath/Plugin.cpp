@@ -1,4 +1,5 @@
 #include "MatepathPane.h"
+#include "MenuStrings.h"
 #include "../DockPaneState.h"
 #include <memory>
 #include <DockImpl.cpp>
@@ -78,7 +79,7 @@ void Stop() {
 }
 void Toggle() { Start(); if (pane) pane->Toggle(); }
 void Follow() { Start(); if (pane) pane->FollowActive(); }
-FuncItem commands[]{ {L"文件浏览器", Toggle}, {L"定位活动文档", Follow} };
+FuncItem commands[]{ {{}, Toggle}, {{}, Follow} };
 }
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) { instance = module; DisableThreadLibraryCalls(module); }
@@ -90,7 +91,16 @@ extern "C" __declspec(dllexport) void setInfo(NppData data) {
     host = data;
     initialized = SUCCEEDED(_Module.Init(nullptr, instance));
 }
-extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) { *count = _countof(commands); return commands; }
+extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) {
+    constexpr UINT labels[]{IDS_FILE_BROWSER, IDS_FOLLOW_DOCUMENT};
+    static_assert(_countof(labels) == _countof(commands));
+    for (size_t index = 0; index < _countof(commands); ++index) {
+        auto& label = commands[index]._itemName;
+        LoadStringW(instance, labels[index], label, _countof(label));
+    }
+    *count = _countof(commands);
+    return commands;
+}
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
     if (notification->nmhdr.code == NPPN_READY) Start();
     else if (notification->nmhdr.code == NPPN_SHUTDOWN) Stop();

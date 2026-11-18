@@ -1,4 +1,5 @@
 #include "DocumentsPane.h"
+#include "MenuStrings.h"
 #include "../DockPaneState.h"
 #include <memory>
 #include <DockImpl.cpp>
@@ -38,8 +39,7 @@ void Left() { Start(); if (pane) pane->SetSide(DockSide::Left); }
 void Right() { Start(); if (pane) pane->SetSide(DockSide::Right); }
 void Bottom() { Start(); if (pane) pane->SetSide(DockSide::Bottom); }
 void Float() { Start(); if (pane) pane->SetSide(DockSide::Floating); }
-FuncItem commands[]{ {L"打开的文档", Toggle}, {L"停靠到左侧", Left},
-    {L"停靠到右侧", Right}, {L"停靠到底部", Bottom}, {L"浮动", Float} };
+FuncItem commands[]{ {{}, Toggle}, {{}, Left}, {{}, Right}, {{}, Bottom}, {{}, Float} };
 }
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) { instance = module; DisableThreadLibraryCalls(module); }
@@ -51,7 +51,16 @@ extern "C" __declspec(dllexport) void setInfo(NppData data) {
     host = data; initialized = SUCCEEDED(_Module.Init(nullptr, instance));
     configPath = pluginLayout::ConfigPath(host._nppHandle, L"OpenDocuments.ini");
 }
-extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) { *count = _countof(commands); return commands; }
+extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) {
+    constexpr UINT labels[]{IDS_OPEN_DOCUMENTS, IDS_DOCK_LEFT, IDS_DOCK_RIGHT, IDS_DOCK_BOTTOM, IDS_FLOAT};
+    static_assert(_countof(labels) == _countof(commands));
+    for (size_t index = 0; index < _countof(commands); ++index) {
+        auto& label = commands[index]._itemName;
+        LoadStringW(instance, labels[index], label, _countof(label));
+    }
+    *count = _countof(commands);
+    return commands;
+}
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
     if (notification->nmhdr.code == NPPN_READY && !pluginLayout::Read(configPath, L"OpenDocuments").empty()) Start();
     else if (notification->nmhdr.code == NPPN_SHUTDOWN) Stop();

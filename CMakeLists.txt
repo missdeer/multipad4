@@ -84,7 +84,7 @@ configure_file(src/MultiPad4Version.rc.in "${PROJECT_BINARY_DIR}/MultiPad4Versio
 string(REGEX REPLACE "^([0-9]+\\.[0-9]+)\\.0$" "\\1" multipad4_display_version "${PROJECT_VERSION}")
 set_source_files_properties(src/EditorDialogs.cpp PROPERTIES
   COMPILE_DEFINITIONS "MULTIPAD4_DISPLAY_VERSION=L\"v${multipad4_display_version}\"")
-add_executable(multipad4 WIN32 ${APP_SOURCES} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/SearchDialog.rc src/ThemeDialog.rc
+add_executable(multipad4 WIN32 ${APP_SOURCES} ${NOTEPAD4_LOCALE_RESOURCES} src/MultiPad4.rc src/PluginMenu.rc src/PluginAdminStrings.rc src/SearchDialog.rc src/ThemeDialog.rc
   "${PROJECT_BINARY_DIR}/MultiPad4.manifest" "${PROJECT_BINARY_DIR}/MultiPad4Version.rc" "${PROJECT_BINARY_DIR}/Notepad4Resources.rc")
 set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
   "${PROJECT_SOURCE_DIR}/config/languages/default.xml"

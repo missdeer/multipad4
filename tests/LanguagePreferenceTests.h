@@ -1,6 +1,7 @@
 #pragma once
 #include "../src/MainFrame.h"
 #include "../src/FrameCommands.h"
+#include "QAArtifacts.h"
 #include <functional>
 #include <source_location>
 #include <stdexcept>
@@ -49,6 +50,65 @@ inline void RunLanguagePreferenceTests(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Language preference assertion at line " + std::to_string(where.line()));
     };
+    auto menuText = [](HMENU menu, UINT item, UINT mode) {
+        wchar_t text[128]{};
+        GetMenuStringW(menu, item, text, _countof(text), mode);
+        return std::wstring(text);
+    };
+    const HMENU menuBar = frame.GetMenu(), pluginMenu = frame.plugins.menu;
+    int pluginPosition = 0;
+    while (pluginPosition < GetMenuItemCount(menuBar) && GetSubMenu(menuBar, pluginPosition) != pluginMenu) ++pluginPosition;
+    require(menuText(menuBar, pluginPosition, MF_BYPOSITION) == L"&Plugins");
+    require(menuText(pluginMenu, IDM_SETTING_PLUGINADM, MF_BYCOMMAND) == L"Plugins Admin...");
+    require(menuText(pluginMenu, IDM_SETTING_OPENPLUGINSDIR, MF_BYCOMMAND) == L"Open Plugins Folder...");
+    if (frame.plugins.plugins.empty()) {
+        require(menuText(pluginMenu, 3, MF_BYPOSITION) == L"No compatible plugins loaded");
+    } else {
+        for (int position = 3; position < GetMenuItemCount(pluginMenu); ++position) {
+            const auto name = menuText(pluginMenu, position, MF_BYPOSITION);
+            const auto submenu = GetSubMenu(pluginMenu, position);
+            if (name == L"Matepath") require(menuText(submenu, 0, MF_BYPOSITION) == L"File Browser");
+            if (name == L"OpenDocuments") require(menuText(submenu, 0, MF_BYPOSITION) == L"Open Documents");
+        }
+    }
+    {
+        PluginAdmin admin;
+        struct RestoreAdmin {
+            PluginAdmin& admin;
+            LANGID language;
+            ~RestoreAdmin() { admin.Close(); SetThreadUILanguage(language); }
+        } restoreAdmin{admin, GetThreadUILanguage()};
+        const struct {
+            LANGID language;
+            const wchar_t* title;
+            const wchar_t* install;
+            const wchar_t* incompatible;
+            const wchar_t* column;
+            const wchar_t* nameField;
+            const wchar_t* artifact;
+        } locales[] = {
+            {MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), L"Plugins Admin", L"&Install", L"Incompatible / Load Failed", L"Plugin", L"Name: ", L"PluginAdmin-English"},
+            {MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED), L"插件管理", L"安装(&I)", L"不兼容 / 加载失败", L"插件", L"名称：", L"PluginAdmin-Chinese"}
+        };
+        for (const auto& locale : locales) {
+            SetThreadUILanguage(locale.language);
+            admin.Show(frame);
+            require(IsWindow(admin.hwnd) && TabCtrl_GetItemCount(admin.tab) == 5);
+            wchar_t text[4096]{};
+            GetWindowTextW(admin.hwnd, text, _countof(text)); require(std::wstring_view(text) == locale.title);
+            GetDlgItemTextW(admin.hwnd, IDC_PLUGINADM_INSTALL, text, _countof(text)); require(std::wstring_view(text) == locale.install);
+            TCITEMW tab{}; tab.mask = TCIF_TEXT; tab.pszText = text; tab.cchTextMax = _countof(text);
+            require(TabCtrl_GetItem(admin.tab, 3, &tab) && std::wstring_view(text) == locale.incompatible);
+            LVCOLUMNW column{}; column.mask = LVCF_TEXT; column.pszText = text; column.cchTextMax = _countof(text);
+            require(ListView_GetColumn(admin.list, 0, &column) && std::wstring_view(text) == locale.column);
+            require(!admin.visible.empty());
+            admin.Describe();
+            GetDlgItemTextW(admin.hwnd, IDC_PLUGINADM_EDIT, text, _countof(text));
+            require(wcsstr(text, locale.nameField) != nullptr);
+            CaptureQAWindow(admin.hwnd, locale.artifact);
+            admin.Close();
+        }
+    }
     struct Restore {
         MainFrame& frame;
         AppSettings settings;

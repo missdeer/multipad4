@@ -1,0 +1,87 @@
+#pragma code_page(65001)
+#include <windows.h>
+#include "MenuStrings.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "File Browser"
+    IDS_FOLLOW_DOCUMENT       "Locate Active Document"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "文件浏览器"
+    IDS_FOLLOW_DOCUMENT       "定位活动文档"
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "檔案瀏覽器"
+    IDS_FOLLOW_DOCUMENT       "定位使用中的文件"
+END
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "ファイルブラウザー"
+    IDS_FOLLOW_DOCUMENT       "アクティブな文書の場所を開く"
+END
+
+LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Dateibrowser"
+    IDS_FOLLOW_DOCUMENT       "Aktives Dokument im Ordner anzeigen"
+END
+
+LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Esplora file"
+    IDS_FOLLOW_DOCUMENT       "Individua documento attivo"
+END
+
+LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "파일 탐색기"
+    IDS_FOLLOW_DOCUMENT       "활성 문서 위치 찾기"
+END
+
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Navegador de arquivos"
+    IDS_FOLLOW_DOCUMENT       "Localizar documento ativo"
+END
+
+LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Explorateur de fichiers"
+    IDS_FOLLOW_DOCUMENT       "Localiser le document actif"
+END
+
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Обозреватель файлов"
+    IDS_FOLLOW_DOCUMENT       "Найти активный документ"
+END
+
+LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Przeglądarka plików"
+    IDS_FOLLOW_DOCUMENT       "Zlokalizuj aktywny dokument"
+END
+
+LANGUAGE LANG_SLOVENIAN, SUBLANG_DEFAULT
+STRINGTABLE
+BEGIN
+    IDS_FILE_BROWSER          "Brskalnik datotek"
+    IDS_FOLLOW_DOCUMENT       "Poišči aktivni dokument"
+END
