@@ -26,6 +26,7 @@
 #include "SimdText.h"
 #include <windows.h>
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
@@ -1218,6 +1219,40 @@ bool IsAscii(std::string_view text) noexcept {
     char tail[64]{};
     if (!text.empty()) std::memcpy(tail, text.data(), text.size());
     return !CheckUTF7(tail, static_cast<DWORD>(text.size()));
+}
+Utf8Metrics MeasureUtf8(std::string_view text, size_t column, size_t tabWidth) noexcept {
+    Utf8Metrics result{0, column};
+    const auto highBits = _mm_set1_epi8(-64), continuation = _mm_set1_epi8(-128);
+    const auto tab = _mm_set1_epi8('\t'), cr = _mm_set1_epi8('\r'), lf = _mm_set1_epi8('\n');
+    while (text.size() >= sizeof(__m128i)) {
+        const auto bytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(text.data()));
+        const auto remaining = _mm_cmpeq_epi8(_mm_and_si128(bytes, highBits), continuation);
+        const unsigned leading = static_cast<unsigned>(_mm_movemask_epi8(remaining)) ^ 0xffffu;
+        result.characters += np2_popcount(leading);
+        if (tabWidth) {
+            unsigned tabs = static_cast<unsigned>(_mm_movemask_epi8(_mm_cmpeq_epi8(bytes, tab)));
+            const auto breaks = _mm_or_si128(_mm_cmpeq_epi8(bytes, cr), _mm_cmpeq_epi8(bytes, lf));
+            unsigned columns = leading & ~(tabs | static_cast<unsigned>(_mm_movemask_epi8(breaks)));
+            while (tabs) {
+                const unsigned beforeTab = (1u << std::countr_zero(tabs)) - 1;
+                result.column += np2_popcount(columns & beforeTab);
+                result.column += tabWidth - result.column % tabWidth;
+                columns &= ~beforeTab;
+                tabs &= tabs - 1;
+            }
+            result.column += np2_popcount(columns);
+        }
+        text.remove_prefix(sizeof(__m128i));
+    }
+    for (unsigned char byte : text) {
+        if ((byte & 0xC0) == 0x80) continue;
+        ++result.characters;
+        if (tabWidth) {
+            if (byte == '\t') result.column += tabWidth - result.column % tabWidth;
+            else if (byte != '\r' && byte != '\n') ++result.column;
+        }
+    }
+    return result;
 }
 int DetectUtf16(std::string_view text) noexcept {
     if (text.size() < 2 || text.size() % 2) return 0;

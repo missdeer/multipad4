@@ -42,6 +42,9 @@ inline void RunPerformanceFeatureTests(MainFrame& frame) {
         };
         checkStats();
         d->Send(SCI_SETTABWIDTH, 8); checkStats();
+        d->Load({std::string(16382, 'a') + "\xf0\x9f\x98\x80\t\xe4\xb8\xad\tend\r\nnext"});
+        d->Send(SCI_SETTABWIDTH, 5);
+        d->Send(SCI_SETSEL, d->Send(SCI_GETLENGTH), 16391); checkStats();
         d->Load({std::string(8 * 1024 * 1024, 'a') + "\t中文😀"});
         d->Send(SCI_SELECTALL); checkStats();
         d->Send(SCI_SETSEL, 0, 4); d->Send(SCI_SETMULTIPLESELECTION, TRUE); d->Send(SCI_ADDSELECTION, 16, 8); checkStats();

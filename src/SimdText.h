@@ -11,6 +11,11 @@ struct LineEndings {
 LineEndings AnalyzeLineEndings(std::string_view text, int preferred = 0) noexcept;
 bool IsValidUtf8(std::string_view text) noexcept;
 bool IsAscii(std::string_view text) noexcept;
+struct Utf8Metrics {
+    size_t characters;
+    size_t column;
+};
+Utf8Metrics MeasureUtf8(std::string_view text, size_t column = 0, size_t tabWidth = 0) noexcept;
 // Returns 0 (unknown), 1 (little endian), or 2 (big endian).
 int DetectUtf16(std::string_view text) noexcept;
 // 0: no recommendation; 1..8: spaces; 9: tabs.

@@ -1,4 +1,5 @@
 #include "EditorDocument.h"
+#include "SimdText.h"
 #include <chrono>
 bool StatusStatistics::Update(const EditorDocument& d) {
     auto pos = d.Send(SCI_GETCURRENTPOS), currentLine = d.Send(SCI_LINEFROMPOSITION, pos);
@@ -24,19 +25,17 @@ bool StatusStatistics::Update(const EditorDocument& d) {
     }
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2);
     bool pending = false;
-    for (auto& scan : scans) {
+    for (size_t index = 0; index < scans.size(); ++index) {
+        auto& scan = scans[index];
         while (scan.cursor < scan.last && std::chrono::steady_clock::now() < deadline) {
             auto end = (std::min)(scan.last, scan.cursor + 16384);
             // Keep UTF-8 characters together, including a character at the chunk boundary.
             if (end < scan.last) end = d.Send(SCI_POSITIONBEFORE, end + 1);
             if (end <= scan.cursor) end = d.Send(SCI_POSITIONAFTER, scan.cursor);
             const auto bytes = d.Range(scan.cursor, end - scan.cursor);
-            for (unsigned char c : bytes) {
-                if ((c & 0xC0) == 0x80) continue;
-                ++scan.characters;
-                if (c == '\t') scan.column += tab - scan.column % tab;
-                else if (c != '\r' && c != '\n') ++scan.column;
-            }
+            const auto measured = simd::MeasureUtf8(bytes, scan.column, index < 2 ? tab : 0);
+            scan.characters += measured.characters;
+            scan.column = measured.column;
             scan.cursor = end;
         }
         pending |= scan.cursor < scan.last;

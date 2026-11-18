@@ -5,30 +5,53 @@
 #include <stdexcept>
 
 namespace files {
+namespace {
+class LineLocations {
+    static constexpr size_t BlockBytes = 64 * 1024;
+    large::Document::ReadSession reader;
+    const std::atomic<bool>& cancel;
+    std::string block;
+    large::Position blockStart = 0, blockEnd = 0, cursor = 0, line = 0, lineStart = 0;
+public:
+    LineLocations(const large::Document::Snapshot& snapshot, const std::atomic<bool>& stop) : reader(snapshot), cancel(stop) {}
+    void Set(large::SearchHit& hit) {
+        while (cursor < hit.start) {
+            if (cursor >= blockEnd) {
+                if (cancel.load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+                blockStart = cursor;
+                block = reader.Read(cursor, BlockBytes + 1);
+                blockEnd = cursor + (std::min)(block.size(), BlockBytes);
+            }
+            const auto offset = static_cast<size_t>(cursor - blockStart);
+            const auto count = static_cast<size_t>((std::min)(hit.start, blockEnd) - cursor);
+            const auto newline = std::string_view(block.data() + offset, count).find_first_of("\r\n");
+            if (newline == std::string_view::npos) { cursor += count; continue; }
+            cursor += newline;
+            const auto index = offset + newline;
+            const bool crlf = block[index] == '\r' && index + 1 < block.size() && block[index + 1] == '\n';
+            if (crlf && cursor + 1 == hit.start) break;
+            cursor += crlf ? 2 : 1;
+            ++line;
+            lineStart = cursor;
+        }
+        hit.line = line;
+        hit.lineStart = lineStart;
+    }
+};
+}
 FileSearchResult SearchSnapshot(large::Document::Snapshot snapshot, large::SearchOptions pattern, const std::atomic<bool>& cancel) {
     FileSearchResult result;
     result.snapshot = std::make_shared<const large::Document::Snapshot>(snapshot);
     result.archive = std::make_shared<large::HitArchive>();
     pattern.workers = 1;
     large::Search matcher(snapshot, Encoding::Utf8, pattern, &cancel);
-    large::Document::ReadSession reader(snapshot);
+    LineLocations locations(snapshot, cancel);
     const auto size = large::Document::Size(snapshot);
-    large::Position position = 0, line = 0, lineStart = 0, scan = 0, blockStart = 0;
-    std::string block;
-    auto at = [&](large::Position offset) {
-        if (block.empty() || offset < blockStart || offset >= blockStart + block.size()) { blockStart = offset; block = reader.Read(offset, 64 * 1024); }
-        return block[static_cast<size_t>(offset - blockStart)];
-    };
+    large::Position position = 0;
     while (position <= size && !cancel.load()) {
         auto hit = matcher.Next(position, size); if (!hit) break;
-        while (scan < hit->start) {
-            if ((scan & 65535) == 0 && cancel.load()) throw std::runtime_error("Search cancelled.");
-            if (at(scan) == '\r' && scan + 1 == hit->start && scan + 1 < size && at(scan + 1) == '\n') break;
-            auto c = at(scan++);
-            if (c == '\r') { if (scan < size && at(scan) == '\n') ++scan; ++line; lineStart = scan; }
-            else if (c == '\n') { ++line; lineStart = scan; }
-        }
-        hit->line = line; hit->lineStart = lineStart; result.archive->Append(*hit);
+        locations.Set(*hit);
+        result.archive->Append(*hit);
         position = hit->end;
         if (hit->start == hit->end) { if (position == size) break; position = matcher.Advance(position); }
     }
@@ -168,28 +191,15 @@ void FileSearch::Run() {
                 const auto snapshot = document->Capture(); const auto size = document->Size();
                 matcher.Rebase(snapshot);
                 auto archive = std::make_shared<large::HitArchive>();
-                large::Document::ReadSession reader(snapshot);
-                size_t position = 0, line = 0, lineStart = 0, scan = 0;
-                std::string block; size_t blockStart = 0;
-                auto at = [&](size_t offset) {
-                    if (block.empty() || offset < blockStart || offset >= blockStart + block.size()) {
-                        blockStart = offset; block = reader.Read(offset, 64 * 1024);
-                    }
-                    return block[offset - blockStart];
-                };
+                LineLocations locations(snapshot, cancel);
+                large::Position position = 0;
                 while (position <= size && !cancel.load()) {
                     auto hit = matcher.Next(position, size);
                     if (!hit) break;
-                    while (scan < hit->start) {
-                        if ((scan & 65535) == 0 && cancel.load()) throw std::runtime_error("Search cancelled.");
-                        if (at(scan) == '\r' && scan + 1 == hit->start && scan + 1 < size && at(scan + 1) == '\n') break;
-                        const char c = at(scan++);
-                        if (c == '\r') { if (scan < size && at(scan) == '\n') ++scan; ++line; lineStart = scan; }
-                        else if (c == '\n') { ++line; lineStart = scan; }
-                    }
-                    hit->line = line; hit->lineStart = lineStart; archive->Append(*hit);
-                    if (spool.path.empty() && archive->Count() <= 4096) result.matches.push_back({static_cast<size_t>(hit->start), static_cast<size_t>(hit->end), line, lineStart});
-                    position = static_cast<size_t>(hit->end);
+                    locations.Set(*hit);
+                    archive->Append(*hit);
+                    if (spool.path.empty() && archive->Count() <= 4096) result.matches.push_back({hit->start, hit->end, hit->line, hit->lineStart});
+                    position = hit->end;
                     if (hit->start == hit->end) { if (position == size) break; position = static_cast<size_t>(matcher.Advance(position)); }
                 }
                 if (archive->Count() && !cancel.load()) {

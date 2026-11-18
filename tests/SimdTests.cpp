@@ -27,6 +27,18 @@ void Check(std::string_view text) {
         Require(actual.totalLineCount == counts[0] + counts[1] + counts[2] + 1, "Line allocation count differs");
         Require(actual.bInconsistent == ((counts[0] != 0) + (counts[1] != 0) + (counts[2] != 0) > 1), "Mixed EOL detection differs");
     }
+    const size_t initialColumn = 3, tabWidth = 5;
+    size_t characters = 0, column = initialColumn;
+    for (unsigned char byte : text) {
+        if ((byte & 0xC0) == 0x80) continue;
+        ++characters;
+        if (byte == '\t') column += tabWidth - column % tabWidth;
+        else if (byte != '\r' && byte != '\n') ++column;
+    }
+    const auto measured = simd::MeasureUtf8(text, initialColumn, tabWidth);
+    Require(measured.characters == characters && measured.column == column, "SIMD UTF-8 measurements differ");
+    const auto countOnly = simd::MeasureUtf8(text, initialColumn);
+    Require(countOnly.characters == characters && countOnly.column == initialColumn, "SIMD UTF-8 character count differs");
     bool ascii = std::all_of(text.begin(), text.end(), [](unsigned char c) { return c < 128; });
     Require(simd::IsAscii(text) == ascii, "SIMD ASCII detection differs");
     bool utf8 = text.empty() || MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), static_cast<int>(text.size()), nullptr, 0) != 0;

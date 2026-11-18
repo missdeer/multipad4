@@ -79,6 +79,30 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(50)); stopped.Stop();
         files::FileSearchResult result; while (stopped.Poll(result)) {}
         Check(stopped.Done());
+        constexpr size_t blockBytes = 64 * 1024;
+        const auto boundaryText = std::make_shared<const std::string>(std::string(blockBytes - 1, 'x') + "\r\nneedle\rneedle\nneedle");
+        const auto boundaryPath = root / L"boundary.test";
+        files::WriteAtomic(boundaryPath, {*boundaryText});
+        options.filter = L"*.test"; pattern = {L"\\n|needle", true, true};
+        const auto boundary = Collect(options, pattern).at(boundaryPath);
+        const auto snapshot = large::Document::FromUtf8(boundaryText)->Capture();
+        std::atomic<bool> active{false};
+        const auto hits = files::SearchSnapshot(snapshot, pattern, active).archive->Page(0, 6);
+        const files::FileSearchMatch expected[] = {
+            {blockBytes, blockBytes + 1, 0, 0},
+            {blockBytes + 1, blockBytes + 7, 1, blockBytes + 1},
+            {blockBytes + 8, blockBytes + 14, 2, blockBytes + 8},
+            {blockBytes + 14, blockBytes + 15, 2, blockBytes + 8},
+            {blockBytes + 15, blockBytes + 21, 3, blockBytes + 15},
+        };
+        Check(boundary.matches.size() == std::size(expected) && hits.size() == std::size(expected));
+        for (size_t index = 0; index < std::size(expected); ++index) {
+            const auto& match = expected[index];
+            const auto& disk = boundary.matches[index];
+            const auto& openHit = hits[index];
+            Check(disk.start == match.start && disk.end == match.end && disk.line == match.line && disk.lineStart == match.lineStart);
+            Check(openHit.start == match.start && openHit.end == match.end && openHit.line == match.line && openHit.lineStart == match.lineStart);
+        }
         // Large files and dense hits retain disk archives, not one allocation per hit or full file.
         files::WriteAtomic(root / L"large.archive", {std::string(2 * 1024 * 1024, 'x') + "\r\nneedle\rneedle\n"});
         options.filter = L"*.archive"; pattern = {L"needle", false, true};
