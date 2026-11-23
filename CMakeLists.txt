@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(MultiPad4 VERSION 0.2.0 LANGUAGES CXX RC)
+project(MultiPad4 VERSION 0.3.0 LANGUAGES CXX RC)
 # The local wrapper fixes RelWithDebInfo; allow an explicit build configuration
 # for reproducible Release measurements without bypassing that wrapper.
 if(DEFINED ENV{MULTIPAD4_BUILD_CONFIGURATION})

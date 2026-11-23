@@ -4,7 +4,7 @@
 
 **MultiPad4** 是面向 Windows x64 的标签式 MDI 文本编辑器，使用 C++20、WTL 和 notepad4 优化版 Scintilla。它将 notepad4 的编辑功能扩展到多文档工作流，支持按需大文件编辑、Notepad++ 风格的查找界面和可停靠插件面板。
 
-本文对应 Git 标签 `v0.3`。该标签下，“关于”对话框仍显示 `v0.2`，Windows 可执行文件的版本信息为 `0.2.0.0`。
+“关于”对话框显示 `v0.3`，Windows 可执行文件的版本信息为 `0.3.0.0`。
 
 与 notepad4 的行为一致性仍在逐项验收。参见[项目范围](docs/PROJECT_SCOPE.md)、[迁移记录](docs/MIGRATION_STATUS.md)和[验收清单](docs/MIGRATION_ACCEPTANCE.md)。
 
