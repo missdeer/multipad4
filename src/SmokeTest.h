@@ -36,6 +36,7 @@
 #include "../tests/PluginPaneStateTests.h"
 // Runs against actual WTL and Scintilla windows on the application's UI thread.
 inline void RunSmokeTest(MainFrame& frame) {
+    RunWindowMenuTests(frame);
     RunFrameworkCompatibilityTests();
     RunFloatingMoveTests(frame);
     RunDragDockTests(frame);

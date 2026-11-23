@@ -1,0 +1,10 @@
+	POPUP "&Okno"
+	BEGIN
+		MENUITEM "Naslednji zavihek\tCtrl+Tab", ID_NEXTTAB
+		MENUITEM "Prejšnji zavihek\tCtrl+Shift+Tab", ID_PREVTAB
+		MENUITEM SEPARATOR
+		MENUITEM "Razporedi kaskadno", ID_WINDOW_CASCADE
+		MENUITEM "Razporedi vodoravno", ID_WINDOW_TILE_HORZ
+		MENUITEM "Razporedi navpično", ID_WINDOW_TILE_VERT
+		MENUITEM "Razporedi ikone", ID_WINDOW_ARRANGE
+	END

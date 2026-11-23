@@ -115,16 +115,6 @@ void MainFrame::CreateUpstreamUI() {
         ID_FILE_ASSOCIATIONS, chinese ? L"文件关联(&F)..." : L"&File Associations...");
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
         ID_TAB_SETTINGS, chinese ? L"文档标签设置(&D)..." : L"&Document Tab Settings...");
-    windowMenu = CreatePopupMenu();
-    AppendMenuW(windowMenu, MF_STRING, ID_NEXTTAB, L"Next Tab\tCtrl+Tab");
-    AppendMenuW(windowMenu, MF_STRING, ID_PREVTAB, L"Previous Tab\tCtrl+Shift+Tab");
-    AppendMenuW(windowMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_CASCADE, L"Cascade");
-    AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_TILE_HORZ, L"Tile Horizontally");
-    AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_TILE_VERT, L"Tile Vertically");
-    AppendMenuW(windowMenu, MF_STRING, ID_WINDOW_ARRANGE, L"Arrange Icons");
-    InsertMenuW(GetMenu(), GetMenuItemCount(GetMenu()) - 1, MF_BYPOSITION | MF_POPUP,
-        reinterpret_cast<UINT_PTR>(windowMenu), L"&Window");
     mdiAccelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_MDIACCEL));
 }
 CommandState MainFrame::State(UINT input) {

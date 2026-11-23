@@ -1,6 +1,6 @@
 # Adapt the pinned UI at configure time; preserve the vendored resources.
 # Asset filenames and upstream download URLs retain their original identity.
-function(multipad4_adapt_resources variable)
+function(multipad4_adapt_resources variable locale)
   string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
   foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
     string(REPLACE "Notepad4" "MultiPad4" branded_asset "${asset}")
@@ -12,6 +12,18 @@ function(multipad4_adapt_resources variable)
   string(REPLACE "自訂語法高亮" "語言與樣式" content "${content}")
   string(REPLACE "MENUITEM \"&Tab Settings..." "MENUITEM \"&Tabs and Indentation..." content "${content}")
   string(REPLACE "CAPTION \"Tab Settings\"" "CAPTION \"Tabs and Indentation\"" content "${content}")
+
+  # Insert the MDI menu before Help in the localized main menu WTL loads.
+  set(window_menu_file "${PROJECT_SOURCE_DIR}/res/locale/${locale}/WindowMenu.rcinc")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${window_menu_file}")
+  file(READ "${window_menu_file}" window_menu)
+  string(REGEX MATCH "\n\tPOPUP [^\n]*\n\tBEGIN\n\t\tMENUITEM [^\n]*IDM_HELP_PROJECT_HOME" help_menu "${content}")
+  if(NOT help_menu)
+    message(FATAL_ERROR "Cannot locate the Help menu in the ${locale} resources")
+  endif()
+  string(REPLACE "${help_menu}" "\n${window_menu}${help_menu}" content "${content}")
+  string(REGEX REPLACE "#include \"[^\"\n]*resource\\.h\""
+    "#include <atlres.h>\n#include \"${PROJECT_SOURCE_DIR}/src/resource.h\"" content "${content}")
   set(${variable} "${content}" PARENT_SCOPE)
 endfunction()
 
@@ -24,7 +36,7 @@ string(REPLACE "#include \"Notepad4.ver\"" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RES
 string(REPLACE "..\\\\res\\\\" "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/"
   NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
 string(REGEX REPLACE "IDD_(FIND|REPLACE) DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" NOTEPAD4_RESOURCES "${NOTEPAD4_RESOURCES}")
-multipad4_adapt_resources(NOTEPAD4_RESOURCES)
+multipad4_adapt_resources(NOTEPAD4_RESOURCES en-US)
 file(WRITE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc"
   "${NOTEPAD4_RESOURCES}\nLANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n#include \"${PROJECT_BINARY_DIR}/FileIconResources.rcinc\"\n")
 
@@ -46,7 +58,7 @@ foreach(locale de fr it ja ko pl pt-BR ru sl zh-Hans zh-Hant)
     # GNU windres and llvm-rc require the documented MENUITEM separator.
     string(REGEX REPLACE "(MENUITEM [^\n]*\")[ \t]+((IDM_|CMD_)[A-Z0-9_]+)" "\\1, \\2" content "${content}")
   endif()
-  multipad4_adapt_resources(content)
+  multipad4_adapt_resources(content "${locale}")
   file(WRITE "${output}" "${content}")
   list(APPEND NOTEPAD4_LOCALE_RESOURCES "${output}")
 endforeach()

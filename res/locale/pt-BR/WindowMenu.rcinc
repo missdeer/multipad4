@@ -1,0 +1,10 @@
+	POPUP "&Janela"
+	BEGIN
+		MENUITEM "Próxima aba\tCtrl+Tab", ID_NEXTTAB
+		MENUITEM "Aba anterior\tCtrl+Shift+Tab", ID_PREVTAB
+		MENUITEM SEPARATOR
+		MENUITEM "Organizar em cascata", ID_WINDOW_CASCADE
+		MENUITEM "Organizar horizontalmente", ID_WINDOW_TILE_HORZ
+		MENUITEM "Organizar verticalmente", ID_WINDOW_TILE_VERT
+		MENUITEM "Organizar ícones", ID_WINDOW_ARRANGE
+	END

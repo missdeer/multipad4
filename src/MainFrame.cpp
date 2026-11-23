@@ -41,6 +41,8 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     AppendMenuW(schemeMenu, MF_STRING, ID_RELOAD_CONFIGURATION, L"Reload language configuration");
     InitializeDockingFrame();
     SetTabOwnerParent(m_hWnd);
+    // The localized main menu places Window immediately before Help.
+    windowMenu = GetSubMenu(GetMenu(), GetMenuItemCount(GetMenu()) - 2);
     CreateMDIClient(windowMenu);
     m_tabbedClient.HideMDITabsWhenMDIChildNotMaximized(FALSE);
     tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();

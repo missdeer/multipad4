@@ -43,18 +43,40 @@ inline int TakeRestarts(HWND frame) {
     for (const auto& item : other) PostMessageW(item.hwnd, item.message, item.wParam, item.lParam);
     return count;
 }
+inline void require(bool ok, std::source_location where = std::source_location::current()) {
+    if (!ok) throw std::runtime_error("Language preference assertion at line " + std::to_string(where.line()));
+}
+inline std::wstring menuText(HMENU menu, UINT item, UINT mode) {
+    wchar_t text[128]{};
+    GetMenuStringW(menu, item, text, _countof(text), mode);
+    return text;
+}
+}
+
+inline void RunWindowMenuTests(MainFrame& frame) {
+    using namespace languagepreferencetest;
+    const HMENU menuBar = frame.GetMenu();
+    int windowPosition = 0;
+    while (windowPosition < GetMenuItemCount(menuBar) && GetSubMenu(menuBar, windowPosition) != frame.windowMenu) ++windowPosition;
+    require(menuText(menuBar, windowPosition, MF_BYPOSITION) == L"&Window");
+    require(menuText(frame.windowMenu, ID_NEXTTAB, MF_BYCOMMAND) == L"Next Tab\tCtrl+Tab");
+    require(menuText(frame.windowMenu, ID_PREVTAB, MF_BYCOMMAND) == L"Previous Tab\tCtrl+Shift+Tab");
+
+    const auto language = GetThreadUILanguage();
+    SetThreadUILanguage(MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED));
+    CMenu chineseMenu(LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME)));
+    SetThreadUILanguage(language);
+    require(chineseMenu.m_hMenu != nullptr);
+    require(menuText(chineseMenu, 0, MF_BYPOSITION) == L"文件(&F)");
+    const int position = chineseMenu.GetMenuItemCount() - 2;
+    require(menuText(chineseMenu, position, MF_BYPOSITION) == L"窗口(&W)");
+    const auto popup = GetSubMenu(chineseMenu, position);
+    require(menuText(popup, ID_NEXTTAB, MF_BYCOMMAND) == L"下一个标签页\tCtrl+Tab");
+    require(menuText(popup, ID_WINDOW_TILE_VERT, MF_BYCOMMAND) == L"垂直平铺");
 }
 
 inline void RunLanguagePreferenceTests(MainFrame& frame) {
     using namespace languagepreferencetest;
-    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
-        if (!ok) throw std::runtime_error("Language preference assertion at line " + std::to_string(where.line()));
-    };
-    auto menuText = [](HMENU menu, UINT item, UINT mode) {
-        wchar_t text[128]{};
-        GetMenuStringW(menu, item, text, _countof(text), mode);
-        return std::wstring(text);
-    };
     const HMENU menuBar = frame.GetMenu(), pluginMenu = frame.plugins.menu;
     int pluginPosition = 0;
     while (pluginPosition < GetMenuItemCount(menuBar) && GetSubMenu(menuBar, pluginPosition) != pluginMenu) ++pluginPosition;

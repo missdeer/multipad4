@@ -5456,7 +5456,7 @@
       "path": "src/UpstreamUI.cpp",
       "references": [
         {
-          "line": 341,
+          "line": 331,
           "symbols": [
             "GetDocumentLexer"
           ]
