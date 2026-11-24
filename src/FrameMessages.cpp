@@ -1,6 +1,7 @@
 #include "MainFrame.h"
 #include "CommandLine.h"
 #include "FrameCommands.h"
+#include "ShellContextMenu.h"
 #include "UpstreamUI.h"
 #include <windowsx.h>
 LRESULT MainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&) {
@@ -102,12 +103,12 @@ LRESULT MainFrame::OnTabContextMenu(UINT, WPARAM target, LPARAM coordinates, BOO
     if (tabs.GetPageCount() == 1) EnableMenuItem(menu, ID_CLOSE_OTHER_TABS, MF_BYCOMMAND | MF_GRAYED);
 
     FrameOperation operation(runtime, m_hWnd);
-    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
-        GET_X_LPARAM(coordinates), GET_Y_LPARAM(coordinates), 0, m_hWnd, nullptr);
-    if (command) {
-        try { CloseTabs(findAnchor(), command); }
-        catch (const std::exception& error) { Error(error); }
-    }
+    try {
+        const auto path = static_cast<EditorDocument*>(tabs.GetPageData(anchor))->path;
+        const UINT command = TrackTabContextMenu(m_hWnd, menu,
+            {GET_X_LPARAM(coordinates), GET_Y_LPARAM(coordinates)}, path);
+        if (command) CloseTabs(findAnchor(), command);
+    } catch (const std::exception& error) { Error(error); }
     return 0;
 }
 LRESULT MainFrame::OnContextMenu(UINT, WPARAM source, LPARAM coordinates, BOOL&) {

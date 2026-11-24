@@ -133,7 +133,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunOpenDocumentsPaneTests(frame);
         RunMatepathPaneTests(frame, dir);
         while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1));
-        RunTabCloseTests(frame);
+        RunTabCloseTests(frame, dir);
         require(frame.documents.empty());
         auto text = files::Read(dir / L"中文.cpp");
         require(text.utf8 == "int value = 42; // comment\n");

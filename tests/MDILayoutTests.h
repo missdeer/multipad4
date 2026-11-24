@@ -264,7 +264,7 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }
-inline void RunTabCloseTests(MainFrame& frame) {
+inline void RunTabCloseTests(MainFrame& frame, const std::filesystem::path& dir) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Tab close assertion at line " + std::to_string(where.line()));
     };
@@ -290,35 +290,54 @@ inline void RunTabCloseTests(MainFrame& frame) {
             control.EnsureVisible(2, false, true);
             RECT tab{};
             require(control.GetItemRect(2, &tab) != FALSE);
-            control.SendMessage(WM_RBUTTONUP, 0, MAKELPARAM((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2));
-            MSG message{};
-            require(PeekMessageW(&message, frame, UWM_MDICHILDSHOWTABCONTEXTMENU, UWM_MDICHILDSHOWTABCONTEXTMENU, PM_REMOVE) != FALSE);
-            require(reinterpret_cast<HWND>(message.wParam) == frame.tabs.GetPageHWND(2));
+            const auto rightClick = [&] {
+                control.SendMessage(WM_RBUTTONUP, 0, MAKELPARAM((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2));
+                MSG message{};
+                require(PeekMessageW(&message, frame, UWM_MDICHILDSHOWTABCONTEXTMENU, UWM_MDICHILDSHOWTABCONTEXTMENU, PM_REMOVE) != FALSE);
+                require(reinterpret_cast<HWND>(message.wParam) == frame.tabs.GetPageHWND(2));
+                return message;
+            };
+            MSG message = rightClick();
             if (!qaArtifactDirectory.empty()) {
                 struct PopupCapture {
                     unsigned ticks = 0;
-                    HWND window = nullptr;
+                    int count = -1;
+                    const wchar_t* label = nullptr;
                 };
                 static PopupCapture capture;
-                capture = {};
-                const auto timer = SetTimer(nullptr, 0, 30, [](HWND, UINT, UINT_PTR id, DWORD) {
-                    EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
-                        wchar_t type[16]{};
-                        GetClassNameW(window, type, _countof(type));
-                        if (wcscmp(type, L"#32768") != 0 || !IsWindowVisible(window)) return TRUE;
-                        capture.window = window;
-                        CaptureQAWindow(window, L"MDI-tab-context-menu");
-                        return FALSE;
-                    }, 0);
-                    if (capture.window || ++capture.ticks >= 30) {
-                        KillTimer(nullptr, id);
-                        EndMenu();
-                    }
-                });
-                require(timer != 0);
-                DispatchMessageW(&message);
-                KillTimer(nullptr, timer);
-                require(capture.window != nullptr);
+                const auto inspectPopup = [&](const wchar_t* label) {
+                    capture = {0, -1, label};
+                    const auto timer = SetTimer(nullptr, 0, 30, [](HWND, UINT, UINT_PTR id, DWORD) {
+                        EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+                            wchar_t type[16]{};
+                            GetClassNameW(window, type, _countof(type));
+                            MENUBARINFO info{};
+                            info.cbSize = sizeof(info);
+                            if (wcscmp(type, L"#32768") != 0 || !IsWindowVisible(window) ||
+                                !GetMenuBarInfo(window, OBJID_CLIENT, 0, &info)) return TRUE;
+                            capture.count = GetMenuItemCount(info.hMenu);
+                            if (capture.label) CaptureQAWindow(window, capture.label);
+                            return FALSE;
+                        }, 0);
+                        if (capture.count >= 0 || ++capture.ticks >= 30) {
+                            KillTimer(nullptr, id);
+                            EndMenu();
+                        }
+                    });
+                    require(timer != 0);
+                    DispatchMessageW(&message);
+                    KillTimer(nullptr, timer);
+                    return capture.count;
+                };
+                const int tabCommands = inspectPopup(L"MDI-tab-context-menu");
+                require(tabCommands == 5);
+                auto* clicked = static_cast<EditorDocument*>(frame.tabs.GetPageData(2));
+                clicked->path = dir / L"标签页.txt";
+                message = rightClick();
+                require(inspectPopup(nullptr) == tabCommands);
+                require(frame.Save(*clicked));
+                message = rightClick();
+                require(inspectPopup(L"MDI-tab-shell-context-menu") > tabCommands + 1);
             }
         }
         frame.CloseTabs(2, test.command);
