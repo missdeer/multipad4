@@ -35,9 +35,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "This operation requires restarting MultiPad4. Continue?"
     IDS_PLUGINADM_RESOURCE_MISSING    "A plugin administration resource is missing."
     IDS_PLUGINADM_CATALOG_ARCH        "The plugin catalog must be for x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Could not write the plugin operation plan."
-    IDS_PLUGINADM_WRITE_WORKER        "Could not write the plugin worker script."
-    IDS_PLUGINADM_START_WORKER        "Could not start the plugin worker."
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
@@ -73,9 +70,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "此操作需要退出并重新启动 MultiPad4。是否继续？"
     IDS_PLUGINADM_RESOURCE_MISSING    "缺少插件管理资源。"
     IDS_PLUGINADM_CATALOG_ARCH        "插件目录必须适用于 x64。"
-    IDS_PLUGINADM_WRITE_PLAN          "无法写入插件操作计划。"
-    IDS_PLUGINADM_WRITE_WORKER        "无法写入插件操作脚本。"
-    IDS_PLUGINADM_START_WORKER        "无法启动插件操作程序。"
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
@@ -111,9 +105,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "此操作需要結束並重新啟動 MultiPad4。要繼續嗎？"
     IDS_PLUGINADM_RESOURCE_MISSING    "缺少外掛管理資源。"
     IDS_PLUGINADM_CATALOG_ARCH        "外掛目錄必須適用於 x64。"
-    IDS_PLUGINADM_WRITE_PLAN          "無法寫入外掛操作計畫。"
-    IDS_PLUGINADM_WRITE_WORKER        "無法寫入外掛操作指令碼。"
-    IDS_PLUGINADM_START_WORKER        "無法啟動外掛操作程式。"
 END
 
 LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
@@ -149,9 +140,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "この操作には MultiPad4 の再起動が必要です。続行しますか？"
     IDS_PLUGINADM_RESOURCE_MISSING    "プラグイン管理用のリソースが見つかりません。"
     IDS_PLUGINADM_CATALOG_ARCH        "x64 用のプラグイン一覧が必要です。"
-    IDS_PLUGINADM_WRITE_PLAN          "プラグインの処理計画を書き込めませんでした。"
-    IDS_PLUGINADM_WRITE_WORKER        "プラグイン処理用のスクリプトを書き込めませんでした。"
-    IDS_PLUGINADM_START_WORKER        "プラグイン処理を開始できませんでした。"
 END
 
 LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
@@ -187,9 +175,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Für diesen Vorgang muss MultiPad4 neu gestartet werden. Fortfahren?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Eine Ressource für die Plugin-Verwaltung fehlt."
     IDS_PLUGINADM_CATALOG_ARCH        "Der Plugin-Katalog muss für x64 sein."
-    IDS_PLUGINADM_WRITE_PLAN          "Der Plan für den Plugin-Vorgang konnte nicht geschrieben werden."
-    IDS_PLUGINADM_WRITE_WORKER        "Das Skript für den Plugin-Vorgang konnte nicht geschrieben werden."
-    IDS_PLUGINADM_START_WORKER        "Der Plugin-Vorgang konnte nicht gestartet werden."
 END
 
 LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
@@ -225,9 +210,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Questa operazione richiede il riavvio di MultiPad4. Continuare?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Manca una risorsa per la gestione dei plugin."
     IDS_PLUGINADM_CATALOG_ARCH        "Il catalogo dei plugin deve essere per x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Impossibile scrivere il piano dell’operazione sui plugin."
-    IDS_PLUGINADM_WRITE_WORKER        "Impossibile scrivere lo script per l’operazione sui plugin."
-    IDS_PLUGINADM_START_WORKER        "Impossibile avviare l’operazione sui plugin."
 END
 
 LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
@@ -263,9 +245,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "이 작업을 하려면 MultiPad4를 다시 시작해야 합니다. 계속하시겠습니까?"
     IDS_PLUGINADM_RESOURCE_MISSING    "플러그인 관리 리소스가 없습니다."
     IDS_PLUGINADM_CATALOG_ARCH        "x64용 플러그인 목록이 필요합니다."
-    IDS_PLUGINADM_WRITE_PLAN          "플러그인 작업 계획을 기록할 수 없습니다."
-    IDS_PLUGINADM_WRITE_WORKER        "플러그인 작업 스크립트를 기록할 수 없습니다."
-    IDS_PLUGINADM_START_WORKER        "플러그인 작업을 시작할 수 없습니다."
 END
 
 LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
@@ -301,9 +280,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Esta operação requer a reinicialização do MultiPad4. Continuar?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Falta um recurso de gerenciamento de plugins."
     IDS_PLUGINADM_CATALOG_ARCH        "O catálogo de plugins deve ser para x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Não foi possível gravar o plano da operação de plugins."
-    IDS_PLUGINADM_WRITE_WORKER        "Não foi possível gravar o script da operação de plugins."
-    IDS_PLUGINADM_START_WORKER        "Não foi possível iniciar a operação de plugins."
 END
 
 LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
@@ -339,9 +315,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Cette opération nécessite de redémarrer MultiPad4. Continuer ?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Une ressource de gestion des extensions est manquante."
     IDS_PLUGINADM_CATALOG_ARCH        "Le catalogue des extensions doit être destiné à x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Impossible d’écrire le plan de l’opération sur les extensions."
-    IDS_PLUGINADM_WRITE_WORKER        "Impossible d’écrire le script de l’opération sur les extensions."
-    IDS_PLUGINADM_START_WORKER        "Impossible de lancer l’opération sur les extensions."
 END
 
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
@@ -377,9 +350,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Для этой операции требуется перезапустить MultiPad4. Продолжить?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Отсутствует ресурс для управления плагинами."
     IDS_PLUGINADM_CATALOG_ARCH        "Требуется каталог плагинов для x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Не удалось записать план операции с плагинами."
-    IDS_PLUGINADM_WRITE_WORKER        "Не удалось записать сценарий операции с плагинами."
-    IDS_PLUGINADM_START_WORKER        "Не удалось запустить операцию с плагинами."
 END
 
 LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
@@ -415,9 +385,6 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Ta operacja wymaga ponownego uruchomienia MultiPad4. Kontynuować?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Brakuje zasobu do zarządzania wtyczkami."
     IDS_PLUGINADM_CATALOG_ARCH        "Wymagany jest katalog wtyczek dla x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Nie można zapisać planu operacji na wtyczkach."
-    IDS_PLUGINADM_WRITE_WORKER        "Nie można zapisać skryptu operacji na wtyczkach."
-    IDS_PLUGINADM_START_WORKER        "Nie można uruchomić operacji na wtyczkach."
 END
 
 LANGUAGE LANG_SLOVENIAN, SUBLANG_DEFAULT
@@ -453,7 +420,4 @@ BEGIN
     IDS_PLUGINADM_RESTART             "Za to dejanje morate znova zagnati MultiPad4. Želite nadaljevati?"
     IDS_PLUGINADM_RESOURCE_MISSING    "Manjka vir za upravljanje vtičnikov."
     IDS_PLUGINADM_CATALOG_ARCH        "Katalog vtičnikov mora biti namenjen za x64."
-    IDS_PLUGINADM_WRITE_PLAN          "Načrta postopka za vtičnike ni bilo mogoče zapisati."
-    IDS_PLUGINADM_WRITE_WORKER        "Skripta za postopek z vtičniki ni bilo mogoče zapisati."
-    IDS_PLUGINADM_START_WORKER        "Postopka za vtičnike ni bilo mogoče zagnati."
 END

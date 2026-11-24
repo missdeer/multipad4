@@ -101,6 +101,7 @@ jobs:
           name: multipad4-${{ matrix.toolchain.id }}-x64-${{ matrix.simd }}
           path: |
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
+            cmake-${{ matrix.toolchain.id }}-build/Miniz.License.txt
             cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Base64.dll
@@ -201,6 +202,7 @@ jobs:
           mkdir -p "$build_dir/package/plugins/Matepath"
           mkdir -p "$build_dir/package/plugins/Project"
           cp "$build_dir/multipad4.exe" "$build_dir/package/"
+          cp "$build_dir/Miniz.License.txt" "$build_dir/package/"
           cp -R "$build_dir/config" "$build_dir/package/"
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"

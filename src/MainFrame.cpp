@@ -428,7 +428,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     plugins.Notify(NPPN_BEFORESHUTDOWN);
     bool savedSession = false;
     try {
-        savedSession = SaveExitSession(*this);
+        if (!pendingPluginMaintenance) savedSession = SaveExitSession(*this);
     } catch (const std::exception& error) {
         Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
         runtime.pendingTabCloses.clear();
@@ -436,7 +436,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
         return 0;
     }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
-    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
+    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession && !pendingPluginMaintenance)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
         settings.Save();
     }

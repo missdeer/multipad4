@@ -10,6 +10,7 @@
 #include <array>
 #include "PluginHost.h"
 #include "PluginAdmin.h"
+#include "PluginMaintenance.h"
 class MainFrame;
 enum class SaveMode { Normal, As, Copy };
 using MainFrameBase = dockwins::CDockingFrameImplBase<MainFrame, CTabbedMDIFrameWindowImpl<MainFrame, CTabbedMDIClient<EditorTabCtrl, EditorTabOwner>>>;
@@ -18,6 +19,7 @@ public:
     DECLARE_FRAME_WND_CLASS(L"MultiPad4.MainFrame", IDR_MAINFRAME)
     PluginHost plugins;
     PluginAdmin pluginAdmin;
+    std::optional<PluginMaintenance> pendingPluginMaintenance;
     EditorTabs tabs;
     std::vector<std::unique_ptr<EditorDocument>> documents;
     unsigned untitledCount = 0;

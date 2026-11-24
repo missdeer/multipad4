@@ -189,3 +189,10 @@ this project.
 Windows XmlLite is an operating-system component, not a bundled parser library.
 `cmake/ScintillaInstrumentation.cmake` generates optional instrumentation copies
 under the build directory and preserves the upstream Scintilla source originals.
+
+## miniz
+
+Plugin management uses the ZIP reader from the [miniz 3.1.2 release](https://github.com/richgel999/miniz/releases/tag/3.1.2).
+The upstream amalgamated sources and MIT license are preserved in
+`3rdparty/miniz/`. The build links the reader statically and ships the
+license as `Miniz.License.txt`.
