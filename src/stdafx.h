@@ -1,0 +1,22 @@
+#pragma once
+#include <atlbase.h>
+#include <atlstr.h>
+#include <atlapp.h>
+extern WTL::CAppModule _Module;
+#include <atlwin.h>
+#include <atlframe.h>
+#include <atlctrls.h>
+#include <atlctrlx.h>
+#include <atlmisc.h>
+#include <atldlgs.h>
+#include <atlctrlw.h>
+#include <atltheme.h>
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
+#include <list>
+#include <map>
+#include <iterator>
+#include "Scintilla.h"
+#include "SciLexer.h"
