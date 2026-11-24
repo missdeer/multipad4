@@ -23,6 +23,7 @@
 #include "../tests/SystemMRUPolicyTests.h"
 #include "../tests/LanguagePreferenceTests.h"
 #include "../tests/Base64PluginTests.h"
+#include "../tests/WebToolsPluginTests.h"
 #include "../tests/SystemIntegrationRegistryTests.h"
 #include "../tests/CloseReentrancyTests.h"
 #include "../tests/ResizeGripTests.h"
@@ -105,6 +106,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunMDIShortcutTests(frame);
         frame.NewDocument(); auto* featureDocument = frame.Active();
         RunBase64PluginTests(frame, *featureDocument);
+        RunWebToolsPluginTests(frame, *featureDocument);
         RunEditorFeatureTests(*featureDocument);
         RunEditDialogTests(*featureDocument);
         RunStyleFeatureTests(*featureDocument);

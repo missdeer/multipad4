@@ -1,9 +1,12 @@
-#include "LanguageConfiguration.h"
 // Original notepad4 Bridge.cpp code pretty/compress algorithms, adapted to an
 // explicit MDI document. Authors and license are recorded in THIRD_PARTY.md.
 #include "EditCodeFormat.h"
-#include "../3rdparty/notepad4/src/EditLexer.h"
-#include "StyleManager.h"
+#include "Scintilla.h"
+#include "SciLexer.h"
+#include <cstdint>
+#include <cstring>
+#include <string>
+#include <vector>
 #include <string_view>
 namespace {
 constexpr uint32_t DefaultWordCharSet[8] = {0x00000000U, 0x03ff0000U, 0x87fffffeU, 0x07fffffeU,
@@ -26,7 +29,7 @@ enum {
     SpaceOption_PopBrace = 128,
 };
 
-int AddStyleSeparator(const LanguageDefinition* pLex, int ch, int chPrev, int style) noexcept {
+int AddStyleSeparator(const MultiPadCodeFormatStyles* pLex, int ch, int chPrev, int style) noexcept {
     if ((style >= pLex->stringStyleFirst && style <= pLex->stringStyleLast) ||
         (pLex->iLexer == SCLEX_JSON && (style == SCE_JSON_PROPERTYNAME)) ||
         (pLex->iLexer == SCLEX_JAVASCRIPT && (style == SCE_JS_KEY || style == SCE_JS_OPERATOR_PF))) {
@@ -55,8 +58,8 @@ int AddStyleSeparator(const LanguageDefinition* pLex, int ch, int chPrev, int st
     return SpaceOption_None;
 }
 
-void CodePretty(EditorDocument &document, std::string &output, const LanguageDefinition* pLex, const char *styledText,
-                size_t textLength) {
+void CodePretty(std::string &output, const MultiPadCodeFormatStyles* pLex, const char *styledText,
+                size_t textLength, unsigned eolMode, bool useTabs, unsigned tabWidth) {
     char fmtbuf[128];
     std::string braceStack(1, '\0'); // sentinel
     memset(fmtbuf, 0, 4);
@@ -70,7 +73,7 @@ void CodePretty(EditorDocument &document, std::string &output, const LanguageDef
     bool defaultCase = false;
 
     unsigned eol = '\r' | ('\n' << 8);
-    unsigned eolWidth = static_cast<unsigned>(document.Send(SCI_GETEOLMODE));
+    unsigned eolWidth = eolMode;
     eol >>= 8 * (eolWidth >> 1);
     eolWidth = (eolWidth == SC_EOL_CRLF) ? 2 : 1;
 
@@ -309,9 +312,9 @@ void CodePretty(EditorDocument &document, std::string &output, const LanguageDef
             uint32_t count = (spaceOption & SpaceOption_DanglingStmt) ? indentPrev : blockLevel;
             indentPrev = count;
             char indent = '\t';
-            if (!document.Send(SCI_GETUSETABS)) {
+            if (!useTabs) {
                 indent = ' ';
-                count *= static_cast<uint32_t>(document.Send(SCI_GETTABWIDTH));
+                count *= tabWidth;
             }
             if (count != 0) {
                 output += std::string_view{fmtbuf, fmtlen};
@@ -364,39 +367,41 @@ void CodePretty(EditorDocument &document, std::string &output, const LanguageDef
 
 } // namespace
 
-bool CanFormatDocumentCode(const EditorDocument &document) {
-    const auto *lexer = GetDocumentLexer(document);
-    return lexer && (lexer->lexerAttr & LexerAttr_CodePretty) != 0;
-}
-void FormatDocumentCode(EditorDocument &document, bool pretty) {
-    const auto *lexer = GetDocumentLexer(document);
-    if (!lexer || !CanFormatDocumentCode(document) || document.Send(SCI_GETREADONLY))
-        return;
-    auto start = document.Send(SCI_GETSELECTIONSTART), end = document.Send(SCI_GETSELECTIONEND);
+void FormatDocumentCode(HWND editor, const MultiPadCodeFormatStyles &styles, bool pretty) {
+    const auto *lexer = &styles;
+    const auto send = [editor](UINT message, WPARAM w = 0, LPARAM l = 0) {
+        return SendMessageW(editor, message, w, l);
+    };
+    auto start = send(SCI_GETSELECTIONSTART), end = send(SCI_GETSELECTIONEND);
     if (start == end) {
         start = 0;
-        end = document.Send(SCI_GETLENGTH);
+        end = send(SCI_GETLENGTH);
     }
     if (start == end)
         return;
-    document.Send(SCI_COLOURISE, 0, end);
-    auto text = document.Range(start, end - start);
-    std::vector<char> styled(text.size() * 2 + 2, '\0');
-    for (size_t i = 0; i < text.size(); ++i)
-        styled[i] = static_cast<char>(document.Send(SCI_GETSTYLEINDEXAT, start + i));
-    memcpy(styled.data() + text.size() + 1, text.data(), text.size());
+    send(SCI_COLOURISE, 0, end);
+    const auto length = static_cast<size_t>(end - start);
+    std::vector<char> styled(length * 2 + 2, '\0');
+    char* text = styled.data() + length + 1;
+    Sci_TextRangeFull range{{start, end}, text};
+    send(SCI_GETTEXTRANGEFULL, 0, reinterpret_cast<LPARAM>(&range));
+    const auto direct = reinterpret_cast<SciFnDirect>(send(SCI_GETDIRECTFUNCTION));
+    const auto pointer = send(SCI_GETDIRECTPOINTER);
+    for (size_t i = 0; i < length; ++i)
+        styled[i] = static_cast<char>(direct(pointer, SCI_GETSTYLEINDEXAT, start + i, 0));
     std::string output;
     if (pretty)
-        CodePretty(document, output, lexer, styled.data(), text.size());
+        CodePretty(output, lexer, styled.data(), length, static_cast<unsigned>(send(SCI_GETEOLMODE)),
+                   send(SCI_GETUSETABS) != 0, static_cast<unsigned>(send(SCI_GETTABWIDTH)));
     else {
         int previous = 0, previousStyle = static_cast<uint8_t>(styled[0]);
-        for (size_t i = 0; i < text.size(); ++i) {
+        for (size_t i = 0; i < length; ++i) {
             const auto style = static_cast<uint8_t>(styled[i]);
             if (style > lexer->commentStyleMarker) {
                 unsigned char character = text[i];
-                if (character == '\\' && style != lexer->escapeCharacterStyle && i + 1 < text.size() &&
+                if (character == '\\' && style != lexer->escapeCharacterStyle && i + 1 < length &&
                     (text[i + 1] == '\n' || text[i + 1] == '\r')) {
-                    i += (text[i + 1] == '\r' && i + 2 < text.size() && text[i + 2] == '\n') ? 2 : 1;
+                    i += (text[i + 1] == '\r' && i + 2 < length && text[i + 2] == '\n') ? 2 : 1;
                     continue;
                 }
                 int spacing = style != previousStyle ? AddStyleSeparator(lexer, character, previous, style) : 0;
@@ -412,11 +417,11 @@ void FormatDocumentCode(EditorDocument &document, bool pretty) {
             previousStyle = style;
         }
     }
-    if (output == text)
+    if (output == std::string_view(text, length))
         return;
-    document.Send(SCI_BEGINUNDOACTION);
-    document.Send(SCI_SETTARGETRANGE, start, end);
-    document.Send(SCI_REPLACETARGET, output.size(), reinterpret_cast<LPARAM>(output.data()));
-    document.Send(SCI_SETSEL, start, start + output.size());
-    document.Send(SCI_ENDUNDOACTION);
+    send(SCI_BEGINUNDOACTION);
+    send(SCI_SETTARGETRANGE, start, end);
+    send(SCI_REPLACETARGET, output.size(), reinterpret_cast<LPARAM>(output.data()));
+    send(SCI_SETSEL, start, start + output.size());
+    send(SCI_ENDUNDOACTION);
 }

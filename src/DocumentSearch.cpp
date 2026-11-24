@@ -240,7 +240,7 @@ bool EditorDocument::ReplaceOne() {
 }
 size_t EditorDocument::ReplaceAll(bool selectionOnly) {
     if (FastView()) return fastView->ReplaceEvery(MappedSearchOptions(), Replacement(*this), (search.regex || search.wildcard) && search.replaceText != L"^c", selectionOnly);
-    if (selectionOnly && RejectRectangularEdit(*this))
+    if (selectionOnly && RejectRectangularEdit(hwnd))
         return 0;
     if (Send(SCI_GETREADONLY) || search.findText.empty())
         return 0;

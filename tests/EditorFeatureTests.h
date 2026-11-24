@@ -1,6 +1,5 @@
 #pragma once
 #include "../src/EditClipboard.h"
-#include "../src/EditExpression.h"
 #include "../src/EditorCommands.h"
 #include "../src/resource.h"
 #include "EditScopeTests.h"
@@ -36,11 +35,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     load("one\ntwo\none");
     ExecuteEditorCommand(document, IDM_EDIT_REMOVEDUPLICATELINE);
     require(document.Text() == "two");
-    load("中文 /?");
-    ExecuteEditorCommand(document, IDM_EDIT_URLCOMPONENTENCODE);
-    require(document.Text() == "%E4%B8%AD%E6%96%87%20%2F%3F");
-    ExecuteEditorCommand(document, IDM_EDIT_URLDECODE);
-    require(document.Text() == "中文 /?");
     load("a\n");
     ExecuteEditorCommand(document, IDM_EDIT_ESCAPECCHARS);
     require(document.Text() == "a\\n");
@@ -266,21 +260,10 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     CLSID scriptClass{};
     if (SUCCEEDED(CLSIDFromProgID(L"JavaScript", &scriptClass))) {
         load("sqrt(9)+1");
-        EvaluateDocumentExpression(document, true);
+        require(ExecuteEditorCommand(document, CMD_CALCULATE_EXPR));
         require(document.Text() == "sqrt(9)+1 4");
         document.Send(SCI_UNDO);
         require(document.Text() == "sqrt(9)+1");
-        load("({toString:function(){return '中文';}})");
-        EvaluateDocumentExpression(document, false);
-        require(document.Text().ends_with(" 中文"));
-        load("(()");
-        bool failed = false;
-        try {
-            EvaluateDocumentExpression(document, false);
-        } catch (const std::exception &) {
-            failed = true;
-        }
-        require(failed && document.Text() == "(()");
     }
     RunEditScopeTests(document);
     document.Send(SCI_SETSAVEPOINT);

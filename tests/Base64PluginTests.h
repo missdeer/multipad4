@@ -46,24 +46,7 @@ inline void RunBase64PluginTests(MainFrame& frame, EditorDocument& document) {
     };
     load("中文 hello");
     require(enabled());
-    if (!qaArtifactDirectory.empty()) {
-        const auto timer = SetTimer(nullptr, 0, 50, [](HWND, UINT, UINT_PTR id, DWORD) {
-            KillTimer(nullptr, id);
-            EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
-                wchar_t type[16]{};
-                GetClassNameW(window, type, _countof(type));
-                if (!IsWindowVisible(window) || wcscmp(type, L"#32768") != 0) return TRUE;
-                CaptureQAWindow(window, L"Base64-plugin-menu");
-                return FALSE;
-            }, 0);
-            EndMenu();
-        });
-        require(timer != 0);
-        RECT bounds{};
-        GetWindowRect(frame, &bounds);
-        TrackPopupMenuEx(plugin->submenu, TPM_RETURNCMD, bounds.left + 240, bounds.top + 55, frame, nullptr);
-        KillTimer(nullptr, timer);
-    }
+    CaptureQAPopup(frame, plugin->submenu, L"Base64-plugin-menu");
     run(0);
     require(document.Text() == "5Lit5paHIGhlbGxv");
     run(3);

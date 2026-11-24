@@ -11,6 +11,8 @@
 #include <string_view>
 namespace {
 thread_local const EditorDocument *mappingDocument = nullptr;
+thread_local MultiPadSelectionMapper selectionMapper = nullptr;
+constexpr int pluginCaseMapping = 4; // Reserved custom mapping value below the editor command IDs.
 
 void *Allocate(size_t size) {
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
@@ -179,49 +181,14 @@ std::wstring Escape(const std::wstring &text, int menu, bool resourceScript) {
                 }
             }
             out += c;
-        } else if (menu == IDM_EDIT_XHTML_ESCAPE_CHAR) {
-            switch (c) {
-            case L'&':
-                out += L"&amp;";
-                break;
-            case L'<':
-                out += L"&lt;";
-                break;
-            case L'>':
-                out += L"&gt;";
-                break;
-            case L'\"':
-                out += L"&quot;";
-                break;
-            case L'\'':
-                out += L"&apos;";
-                break;
-            default:
-                out += c;
-            }
-        } else {
-            bool found = false;
-            for (const auto &entity : {std::pair{L"&amp;", L'&'},
-                                       {L"&lt;", L'<'},
-                                       {L"&gt;", L'>'},
-                                       {L"&quot;", L'\"'},
-                                       {L"&apos;", L'\''}}) {
-                size_t length = wcslen(entity.first);
-                if (text.compare(i, length, entity.first) == 0) {
-                    out += entity.second;
-                    i += length - 1;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                out += c;
         }
     }
     return out;
 }
 } // namespace
 char *EditMapTextCase(int menu, const char *text, size_t &length, UINT codePage) noexcept {
+    if (menu == pluginCaseMapping)
+        return selectionMapper ? selectionMapper(text, length, codePage) : nullptr;
     try {
         int count = MultiByteToWideChar(codePage, 0, text, static_cast<int>(length), nullptr, 0);
         if (!count)
@@ -251,8 +218,6 @@ char *EditMapTextCase(int menu, const char *text, size_t &length, UINT codePage)
             break;
         case IDM_EDIT_ESCAPECCHARS:
         case IDM_EDIT_UNESCAPECCHARS:
-        case IDM_EDIT_XHTML_ESCAPE_CHAR:
-        case IDM_EDIT_XHTML_UNESCAPE_CHAR:
             mapped =
                 Escape(wide, menu, mappingDocument && GetDocumentLexer(*mappingDocument)->rid == NP2LEX_RESOURCESCRIPT);
             break;
@@ -358,4 +323,13 @@ void ApplyDocumentCaseMapping(EditorDocument &document, UINT command) {
     } restore{previous};
     mappingDocument = &document;
     document.Send(SCI_CUSTOMCASEMAPPING, command);
+}
+
+void ApplyDocumentCaseMapping(EditorDocument &document, MultiPadSelectionMapper mapper) {
+    struct Restore {
+        MultiPadSelectionMapper previous;
+        ~Restore() { selectionMapper = previous; }
+    } restore{selectionMapper};
+    selectionMapper = mapper;
+    document.Send(SCI_CUSTOMCASEMAPPING, pluginCaseMapping);
 }

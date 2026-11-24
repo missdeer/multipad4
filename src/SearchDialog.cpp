@@ -216,7 +216,7 @@ void SearchDialog::Execute(int command) {
     if (!ReadFields()) { Status(L"Enter text to find."); return; }
     auto& target = *document;
     bool selection = IsDlgButtonChecked(hwnd, IDC_SEARCH_SELECTION) == BST_CHECKED;
-    if (selection && RejectRectangularEdit(target)) return;
+    if (selection && RejectRectangularEdit(target.hwnd)) return;
     if (command == IDC_SEARCH_FILES || command == IDC_SEARCH_REPLACE_FILES) { StartFiles(command == IDC_SEARCH_REPLACE_FILES); return; }
     if (target.FastView() && (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_MARK)) {
         auto* view = target.fastView.get(); auto* targetDocument = &target; auto* frame = owner;

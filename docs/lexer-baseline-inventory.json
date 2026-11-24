@@ -3814,20 +3814,20 @@
       "path": "src/EditAdvanced.cpp",
       "references": [
         {
-          "line": 446,
+          "line": 439,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_XML"
           ]
         },
         {
-          "line": 656,
+          "line": 649,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 777,
+          "line": 765,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -3838,39 +3838,10 @@
       "path": "src/EditCaseMapping.cpp",
       "references": [
         {
-          "line": 257,
+          "line": 222,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_RESOURCESCRIPT"
-          ]
-        }
-      ]
-    },
-    {
-      "path": "src/EditCodeFormat.cpp",
-      "references": [
-        {
-          "line": 29,
-          "symbols": [
-            "LanguageDefinition"
-          ]
-        },
-        {
-          "line": 58,
-          "symbols": [
-            "LanguageDefinition"
-          ]
-        },
-        {
-          "line": 368,
-          "symbols": [
-            "GetDocumentLexer"
-          ]
-        },
-        {
-          "line": 372,
-          "symbols": [
-            "GetDocumentLexer"
           ]
         }
       ]
@@ -4731,85 +4702,85 @@
       "path": "src/EditExtra.cpp",
       "references": [
         {
-          "line": 20,
+          "line": 21,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 23,
+          "line": 24,
           "symbols": [
             "NP2LEX_AWK"
           ]
         },
         {
-          "line": 26,
+          "line": 27,
           "symbols": [
             "NP2LEX_ERLANG"
           ]
         },
         {
-          "line": 29,
+          "line": 30,
           "symbols": [
             "NP2LEX_GROOVY"
           ]
         },
         {
-          "line": 32,
+          "line": 33,
           "symbols": [
             "NP2LEX_JAVASCRIPT"
           ]
         },
         {
-          "line": 35,
+          "line": 36,
           "symbols": [
             "NP2LEX_LUA"
           ]
         },
         {
-          "line": 38,
+          "line": 39,
           "symbols": [
             "NP2LEX_PERL"
           ]
         },
         {
-          "line": 41,
+          "line": 42,
           "symbols": [
             "NP2LEX_PHP"
           ]
         },
         {
-          "line": 44,
+          "line": 45,
           "symbols": [
             "NP2LEX_PYTHON"
           ]
         },
         {
-          "line": 47,
+          "line": 48,
           "symbols": [
             "NP2LEX_RLANG"
           ]
         },
         {
-          "line": 50,
+          "line": 51,
           "symbols": [
             "NP2LEX_RUBY"
           ]
         },
         {
-          "line": 53,
+          "line": 54,
           "symbols": [
             "NP2LEX_SCALA"
           ]
         },
         {
-          "line": 56,
+          "line": 57,
           "symbols": [
             "NP2LEX_TCL"
           ]
         },
         {
-          "line": 61,
+          "line": 62,
           "symbols": [
             "NP2LEX_BASH"
           ]
@@ -4995,6 +4966,17 @@
           "line": 27,
           "symbols": [
             "lexMilliseconds"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/PluginHost.cpp",
+      "references": [
+        {
+          "line": 220,
+          "symbols": [
+            "GetDocumentLexer"
           ]
         }
       ]

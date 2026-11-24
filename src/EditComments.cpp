@@ -383,7 +383,7 @@ Block BlockMarker(EditorDocument &d) {
 }
 } // namespace
 void ToggleDocumentComment(EditorDocument &d, bool block) {
-    if (RejectRectangularEdit(d))
+    if (RejectRectangularEdit(d.hwnd))
         return;
     if (d.Send(SCI_GETREADONLY))
         return;

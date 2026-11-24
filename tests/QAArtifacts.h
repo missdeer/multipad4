@@ -62,3 +62,26 @@ inline void CaptureQAWindow(HWND window, const wchar_t* label) {
     }
     if (memory) DeleteDC(memory); ReleaseDC(window, screen);
 }
+
+inline void CaptureQAPopup(HWND owner, HMENU menu, const wchar_t* label) {
+    if (qaArtifactDirectory.empty()) return;
+    static const wchar_t* popupLabel = nullptr;
+    popupLabel = label;
+    const auto popupTimer = SetTimer(nullptr, 0, 50, [](HWND, UINT, UINT_PTR id, DWORD) {
+        KillTimer(nullptr, id);
+        EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM parameter) -> BOOL {
+            wchar_t type[16]{};
+            GetClassNameW(window, type, _countof(type));
+            if (!IsWindowVisible(window) || wcscmp(type, L"#32768") != 0) return TRUE;
+            CaptureQAWindow(window, reinterpret_cast<const wchar_t*>(parameter));
+            return FALSE;
+        }, reinterpret_cast<LPARAM>(popupLabel));
+        EndMenu();
+    });
+    if (!popupTimer) throw std::runtime_error("Cannot start QA popup timer");
+    RECT bounds{};
+    GetWindowRect(owner, &bounds);
+    TrackPopupMenuEx(menu, TPM_RETURNCMD, bounds.left + 240, bounds.top + 55, owner, nullptr);
+    KillTimer(nullptr, popupTimer);
+    popupLabel = nullptr;
+}

@@ -1,5 +1,6 @@
 #include "MainFrame.h"
 #include "../plugins/PluginApi.h"
+#include "EditCaseMapping.h"
 #include <fstream>
 #include "StyleManager.h"
 
@@ -96,7 +97,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
         if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments" &&
-            name != L"Base64") continue;
+            name != L"Base64" && name != L"WebTools") continue;
         if (onlyModule != L"__bundled__" && !onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }
@@ -214,6 +215,19 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     auto path = [](EditorDocument* doc) { return doc->path.empty() ? doc->untitled : doc->path.wstring(); };
     auto language = [](EditorDocument* doc) { return !doc ? L_TEXT : doc->language == L"JSON" ? L_JSON : doc->language == L"XML" ? L_XML : doc->language == L"HTML" ? L_HTML : doc->language == L"C/C++" ? L_CPP : L_TEXT; };
     switch (msg) {
+    case MPM_GETCODEFORMATSTYLES: {
+        if (!d || d->FastView() || !l) return FALSE;
+        const auto* lexer = GetDocumentLexer(*d);
+        if (!lexer || !(lexer->lexerAttr & LexerAttr_CodePretty)) return FALSE;
+        *reinterpret_cast<MultiPadCodeFormatStyles*>(l) = {
+            lexer->iLexer, lexer->commentStyleMarker, lexer->escapeCharacterStyle,
+            lexer->operatorStyle, lexer->operatorStyle2, lexer->stringStyleFirst, lexer->stringStyleLast};
+        return TRUE;
+    }
+    case MPM_MAPSELECTION:
+        if (!d || d->FastView() || d->Send(SCI_GETREADONLY) || !l) return FALSE;
+        ApplyDocumentCaseMapping(*d, reinterpret_cast<MultiPadSelectionMapper>(l));
+        return TRUE;
     case MPM_GETBUFFERFILEENCODING: {
         auto* doc = Document(w);
         return doc ? static_cast<LRESULT>(doc->encoding) : -1;

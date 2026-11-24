@@ -6,7 +6,6 @@
 #include "../3rdparty/notepad4/src/EditLexer.h"
 #include "EditCaseMapping.h"
 #include "EditClipboard.h"
-#include "EditCodeFormat.h"
 #include "EditComments.h"
 #include "EditEncodingName.h"
 #include "EditNumbers.h"
@@ -23,7 +22,6 @@
 #include <cwctype>
 #include <random>
 #include <set>
-#include <shlwapi.h>
 #include <stdexcept>
 #include <string_view>
 #include <unordered_map>
@@ -179,8 +177,6 @@ constexpr UINT cases[] = {IDM_EDIT_CHAR2HEX,
                           IDM_EDIT_HEX2CHAR,
                           IDM_EDIT_ESCAPECCHARS,
                           IDM_EDIT_UNESCAPECCHARS,
-                          IDM_EDIT_XHTML_ESCAPE_CHAR,
-                          IDM_EDIT_XHTML_UNESCAPE_CHAR,
                           IDM_EDIT_INVERTCASE,
                           IDM_EDIT_SENTENCECASE,
                           IDM_EDIT_TITLECASE,
@@ -222,9 +218,6 @@ constexpr UINT transformations[] = {IDM_EDIT_TRIMLINES,
                                     IDM_EDIT_SWAP,
                                     IDM_EDIT_LINECOMMENT,
                                     IDM_EDIT_STREAMCOMMENT,
-                                    IDM_EDIT_URLENCODE,
-                                    IDM_EDIT_URLCOMPONENTENCODE,
-                                    IDM_EDIT_URLDECODE,
                                     IDM_EDIT_NUM2BIN,
                                     IDM_EDIT_NUM2OCT,
                                     IDM_EDIT_NUM2DEC,
@@ -657,8 +650,6 @@ CommandState AdvancedEditState(const EditorDocument *d, UINT id) {
         const auto mask = id == IDM_EDIT_LINECOMMENT ? LexerAttr_NoLineComment : LexerAttr_NoBlockComment;
         return {true, d && !d->Send(SCI_GETREADONLY) && lexer && !(lexer->lexerAttr & mask), false};
     }
-    if (id == IDM_EDIT_CODE_PRETTY || id == IDM_EDIT_CODE_COMPRESS)
-        return {true, d && !d->Send(SCI_GETREADONLY) && CanFormatDocumentCode(*d), false};
     if (!supported)
         return {};
     return {true, d && (!modifies || !d->Send(SCI_GETREADONLY)), false};
@@ -691,16 +682,13 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     case IDM_EDIT_MERGEBLANKLINES:
     case IDM_EDIT_REMOVEBLANKLINES:
     case IDM_EDIT_JOINLINESEX:
-    case IDM_EDIT_URLENCODE:
-    case IDM_EDIT_URLCOMPONENTENCODE:
-    case IDM_EDIT_URLDECODE:
     case IDM_EDIT_NUM2BIN:
     case IDM_EDIT_NUM2OCT:
     case IDM_EDIT_NUM2DEC:
     case IDM_EDIT_NUM2HEX:
     case CMD_INCREASENUM:
     case CMD_DECREASENUM:
-        if (RejectRectangularEdit(d))
+        if (RejectRectangularEdit(d.hwnd))
             return true;
         break;
     }
@@ -893,10 +881,6 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
                     std::to_string(rect.right - rect.left) + "," + std::to_string(rect.bottom - rect.top));
         return true;
     }
-    case IDM_EDIT_CODE_PRETTY:
-    case IDM_EDIT_CODE_COMPRESS:
-        FormatDocumentCode(d, id == IDM_EDIT_CODE_PRETTY);
-        return true;
     case IDM_EDIT_COPYRTF:
         CopyRichText(d);
         return true;
@@ -973,37 +957,6 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             out = text.substr(start.size(), text.size() - start.size() - end.size());
         else
             out = start + text + end;
-        break;
-    }
-    case IDM_EDIT_URLENCODE:
-    case IDM_EDIT_URLCOMPONENTENCODE: {
-        auto wide = files::FromUtf8(text);
-        auto first = wide.find_first_not_of(L" \a\b\f\n\r\t\v");
-        if (first == std::wstring::npos)
-            return true;
-        auto last = wide.find_last_not_of(L" \a\b\f\n\r\t\v");
-        wide = wide.substr(first, last - first + 1);
-        DWORD capacity = static_cast<DWORD>(min<size_t>(MAXDWORD, wide.size() * 12 + 16));
-        std::wstring escaped(capacity, L'\0');
-        DWORD flags = URL_ESCAPE_AS_UTF8;
-        if (id == IDM_EDIT_URLCOMPONENTENCODE)
-            flags |= URL_ESCAPE_ASCII_URI_COMPONENT | URL_ESCAPE_SEGMENT_ONLY;
-        auto status = UrlEscapeW(wide.c_str(), escaped.data(), &capacity, flags);
-        if (FAILED(status))
-            throw std::runtime_error("Cannot URL-encode the selected text.");
-        escaped.resize(capacity);
-        out = files::ToUtf8(escaped);
-        break;
-    }
-    case IDM_EDIT_URLDECODE: {
-        auto wide = files::FromUtf8(text);
-        DWORD capacity = static_cast<DWORD>(wide.size() + 1);
-        std::wstring unescaped(capacity, L'\0');
-        auto status = UrlUnescapeW(wide.data(), unescaped.data(), &capacity, URL_UNESCAPE_AS_UTF8);
-        if (FAILED(status))
-            throw std::runtime_error("Cannot URL-decode the selected text.");
-        unescaped.resize(capacity);
-        out = files::ToUtf8(unescaped);
         break;
     }
     case IDM_EDIT_NUM2BIN:

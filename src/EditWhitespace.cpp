@@ -35,7 +35,7 @@ bool ExecuteWhitespaceEdit(EditorDocument &d, UINT id) {
         d.ReplaceAll(selection);
         return true;
     }
-    if (RejectRectangularEdit(d))
+    if (RejectRectangularEdit(d.hwnd))
         return true;
     const auto total = d.Send(SCI_GETLENGTH);
     auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);

@@ -1,5 +1,6 @@
 # Adapt the pinned UI at configure time; preserve the vendored resources.
 # Asset filenames and upstream download URLs retain their original identity.
+set(WEB_TOOLS_MENU_STRINGS "#include <windows.h>\n#include \"resource.h\"\n#pragma code_page(65001)\n")
 function(multipad4_adapt_resources variable locale)
   string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
   foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
@@ -18,6 +19,28 @@ function(multipad4_adapt_resources variable locale)
   if(content MATCHES "MENUITEM[^\n]*IDM_EDIT_BASE64_")
     message(FATAL_ERROR "Cannot remove the old Base64 menu from the ${locale} resources")
   endif()
+
+  # Reuse the pinned translations in the Web Tools DLL and remove the host menu and shortcuts.
+  string(REGEX MATCH "\n\t\tPOPUP \"([^\n]*)\"\n\t\tBEGIN\n\t\t\tMENUITEM [^\n]*IDM_EDIT_CODE_COMPRESS[^\n]*\n(\t\t\tMENUITEM[^\n]*\n)+\t\tEND" web_menu "${content}")
+  set(web_title "${CMAKE_MATCH_1}")
+  string(REGEX MATCH "\nLANGUAGE [^\n]+" web_language "${content}")
+  if(NOT web_menu OR NOT web_language)
+    message(FATAL_ERROR "Cannot locate the Web Tools resources for ${locale}")
+  endif()
+  string(APPEND WEB_TOOLS_MENU_STRINGS "${web_language}\nSTRINGTABLE\nBEGIN\n    1 \"${web_title}\"\n")
+  foreach(command IDM_EDIT_CODE_COMPRESS IDM_EDIT_CODE_PRETTY CMD_EVALUATE_JS_EXPR
+      IDM_EDIT_XHTML_ESCAPE_CHAR IDM_EDIT_XHTML_UNESCAPE_CHAR
+      IDM_EDIT_URLENCODE IDM_EDIT_URLCOMPONENTENCODE IDM_EDIT_URLDECODE)
+    string(REGEX MATCH "MENUITEM \"([^\n]*)\",?[ \t]*${command}[\r\n]" item "${web_menu}")
+    if(NOT item)
+      message(FATAL_ERROR "Cannot locate the Web Tools command ${command} for ${locale}")
+    endif()
+    string(APPEND WEB_TOOLS_MENU_STRINGS "    ${command} \"${CMAKE_MATCH_1}\"\n")
+    string(REGEX REPLACE "\n[ \t]+\"[^\n]+\",[ \t]+${command},[^\n]*" "" content "${content}")
+  endforeach()
+  string(APPEND WEB_TOOLS_MENU_STRINGS "END\n")
+  set(WEB_TOOLS_MENU_STRINGS "${WEB_TOOLS_MENU_STRINGS}" PARENT_SCOPE)
+  string(REPLACE "${web_menu}" "" content "${content}")
 
   # Insert the MDI menu before Help in the localized main menu WTL loads.
   set(window_menu_file "${PROJECT_SOURCE_DIR}/res/locale/${locale}/WindowMenu.rcinc")
