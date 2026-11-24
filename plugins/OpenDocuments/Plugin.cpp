@@ -16,7 +16,8 @@ void Start() {
     pane->Create(host._nppHandle);
     if (!pane->pane.IsWindow()) pane.reset();
     if (pane) {
-        pluginLayout::Restore(configPath, L"OpenDocuments", pane->pane, host._nppHandle, pane->visible);
+        if (!pluginLayout::Restore(configPath, L"OpenDocuments", pane->pane, host._nppHandle, pane->visible))
+            pane->pane.Show();
         pane->Layout();
     }
 }

@@ -1,11 +1,26 @@
 param([Parameter(Mandatory=$true)][string]$Executable)
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
 Add-Type @'
+using System.Collections.Generic;
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
 public static class PaneRestartWindows {
     public delegate bool Callback(IntPtr window, IntPtr parameter);
+    delegate void WinEvent(IntPtr hook, uint kind, IntPtr window, int objectId, int childId, uint thread, uint time);
+    const uint ObjectShow = 0x8002;
+    static readonly WinEvent onShow = (hook, kind, window, objectId, childId, thread, time) => {
+        if (objectId == 0 && childId == 0) shown.Add(window);
+    };
+    static readonly HashSet<IntPtr> shown = new HashSet<IntPtr>();
+    [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint first, uint last, IntPtr module, WinEvent callback, uint process, uint thread, uint flags);
+    [DllImport("user32.dll")] public static extern bool UnhookWinEvent(IntPtr hook);
+    public static IntPtr WatchShows() {
+        shown.Clear();
+        return SetWinEventHook(ObjectShow, ObjectShow, IntPtr.Zero, onShow, 0, 0, 0);
+    }
+    public static bool WasShown(IntPtr window) { return shown.Contains(window); }
     [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr parameter);
     [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr window, Callback callback, IntPtr parameter);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int count);
@@ -29,6 +44,7 @@ public static class PaneRestartWindows {
 $source = Split-Path (Resolve-Path $Executable) -Parent
 $root = Join-Path ([IO.Path]::GetTempPath()) ('MultiPad4-pane-restart-' + [Guid]::NewGuid().ToString('N'))
 $process = $null
+$showHook = [IntPtr]::Zero
 New-Item -ItemType Directory -Path (Join-Path $root 'plugins/Config') -Force | Out-Null
 try {
     Copy-Item -LiteralPath $Executable -Destination (Join-Path $root 'multipad4.exe')
@@ -53,15 +69,25 @@ try {
             $info.UseShellExecute = $false
             $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
             $info.EnvironmentVariables['MULTIPAD4_SETTINGS'] = Join-Path $root 'settings.ini'
+            $showHook = [PaneRestartWindows]::WatchShows()
+            if ($showHook -eq [IntPtr]::Zero) { throw 'Cannot monitor pane visibility' }
             $process = [Diagnostics.Process]::Start($info)
             $timer = [Diagnostics.Stopwatch]::StartNew()
             do {
                 $main = [PaneRestartWindows]::Find($process.Id, 'MultiPad4.MainFrame')
                 $matepath = [PaneRestartWindows]::Find($process.Id, 'MultiPad4.MatepathPane')
                 $documents = [PaneRestartWindows]::Find($process.Id, 'MultiPad4.OpenDocumentsPane')
+                $results = [PaneRestartWindows]::Find($process.Id, 'MultiPad4.SearchResults')
                 if ($process.HasExited -or $timer.ElapsedMilliseconds -gt 15000) { throw 'Bundled pane startup failed' }
                 Start-Sleep -Milliseconds 50
-            } until ($main -ne [IntPtr]::Zero -and $matepath -ne [IntPtr]::Zero -and $documents -ne [IntPtr]::Zero)
+            } until ($main -ne [IntPtr]::Zero -and $matepath -ne [IntPtr]::Zero -and $documents -ne [IntPtr]::Zero -and $results -ne [IntPtr]::Zero)
+            [System.Windows.Forms.Application]::DoEvents()
+            if ([PaneRestartWindows]::WasShown($results)) { throw 'Search results pane was shown at startup' }
+            if ($visible -eq 0 -and ([PaneRestartWindows]::WasShown($matepath) -or [PaneRestartWindows]::WasShown($documents))) {
+                throw 'A bundled pane with a hidden layout was shown at startup'
+            }
+            [PaneRestartWindows]::UnhookWinEvent($showHook) | Out-Null
+            $showHook = [IntPtr]::Zero
             foreach ($pane in @($matepath, $documents)) {
                 $style = [PaneRestartWindows]::GetWindowLong($pane, -16)
                 if ((($style -band 0x10000000) -ne 0) -ne ($visible -eq 1)) { throw 'Pane visibility was not restored' }
@@ -82,6 +108,7 @@ try {
     } }
     Write-Output 'PASS: both bundled plugins retained visible/hidden, docked/floating, side and rectangle across process restarts.'
 } finally {
+    if ($showHook -ne [IntPtr]::Zero) { [PaneRestartWindows]::UnhookWinEvent($showHook) | Out-Null }
     if ($null -ne $process) { if (!$process.HasExited) { $process.Kill(); $process.WaitForExit() }; $process.Dispose() }
     # The target is a directly-created, uniquely named directory under TEMP.
     Remove-Item -LiteralPath $root -Recurse -Force

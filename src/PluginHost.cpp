@@ -372,15 +372,18 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
         auto* data = reinterpret_cast<tTbData*>(l); if (!data || !::IsWindow(data->hClient)) return FALSE;
         for (auto& pane : panes) if (pane->client == data->hClient) return TRUE;
         auto pane = std::make_unique<PluginPane>(); pane->owner = *frame; pane->client = data->hClient; pane->dialogId = data->dlgID; pane->module = data->pszModuleName ? data->pszModuleName : L"";
-        RECT rect{100, 100, 500, 600}; if (!pane->Create(*frame, rect, data->pszName)) return FALSE;
+        dockwins::DFDOCKPOSEX placement{};
+        placement.rect = {100, 100, 500, 600};
+        if (!pane->Create(*frame, placement.rect, data->pszName, PluginPane::GetWndStyle(0) & ~WS_VISIBLE)) return FALSE;
         ::SetParent(data->hClient, *pane); SetWindowLongPtrW(data->hClient, GWL_STYLE, (GetWindowLongPtrW(data->hClient, GWL_STYLE) & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)) | WS_CHILD);
         ::SetWindowPos(data->hClient, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-        dockwins::DFDOCKPOS pos{}; pos.hdr.hWnd = *pane; pos.hdr.hBar = *frame;
+        auto& pos = placement.dockPos;
+        pos.hdr.hBar = (data->uMask & DWS_DF_FLOATING) ? HNONDOCKBAR : frame->m_hWnd;
         auto side = (data->uMask >> 28) & 3;
         pos.dwDockSide = side == 0 ? dockwins::CDockingSide::sLeft : side == 1 ? dockwins::CDockingSide::sRight : side == 2 ? dockwins::CDockingSide::sTop : dockwins::CDockingSide::sBottom;
         pos.nWidth = MulDiv(440, GetDpiForWindow(*frame), 96); pos.nHeight = MulDiv(520, GetDpiForWindow(*frame), 96); pos.fPctPos = 0;
-        if (!(data->uMask & DWS_DF_FLOATING)) pane->SetDockingPosition(&pos);
-        ::ShowWindow(data->hClient, SW_HIDE); pane->SendMessage(WM_SIZE); pane->Hide(); panes.push_back(std::move(pane)); return TRUE;
+        pane->SetDockingWindowPlacement(&placement);
+        ::ShowWindow(data->hClient, SW_HIDE); pane->SendMessage(WM_SIZE); panes.push_back(std::move(pane)); return TRUE;
     }
     case NPPM_DMMSHOW: case NPPM_DMMHIDE: case NPPM_DMMUPDATEDISPINFO:
         for (auto& pane : panes) if (pane->client == reinterpret_cast<HWND>(l)) {

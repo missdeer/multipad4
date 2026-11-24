@@ -46,8 +46,9 @@ void Start() {
     if (folder.empty() || !pane->Navigate(folder)) pane->RefreshItems();
     if (!pluginLayout::Restore(configPath, L"Matepath", *pane, host._nppHandle, pane->visible)) {
         const auto side = Read(L"Side", L"1");
-        if (side.size() == 1 && side[0] >= L'0' && side[0] <= L'3') pane->SetSide(static_cast<DockSide>(side[0] - L'0'));
-        if (Read(L"Visible", L"1") == L"0") pane->Toggle();
+        const auto dockSide = side.size() == 1 && side[0] >= L'0' && side[0] <= L'3'
+            ? static_cast<DockSide>(side[0] - L'0') : DockSide::Right;
+        pane->SetSide(dockSide, Read(L"Visible", L"1") != L"0");
     } else {
         // CurrentSide() uses the cached side while hidden.
         dockwins::DFDOCKPOSEX state{}; pane->GetDockingWindowPlacement(&state);

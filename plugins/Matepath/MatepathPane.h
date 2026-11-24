@@ -26,7 +26,7 @@ public:
     size_t historyIndex = 0;
     void CreatePane(HWND frame);
     void DestroyPane();
-    void SetSide(DockSide value);
+    void SetSide(DockSide value, bool show = true);
     void Toggle();
     void Layout();
     bool Navigate(const std::filesystem::path& path, bool remember = true);

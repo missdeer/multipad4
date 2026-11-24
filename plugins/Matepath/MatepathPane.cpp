@@ -15,28 +15,35 @@ std::wstring ControlText(HWND window) {
 void MatepathPane::CreatePane(HWND frame) {
     owner = frame;
     RECT rect{100, 100, 460, 650};
-    Create(frame, rect, L"Matepath — 文件浏览器");
-    SetSide(DockSide::Right);
+    Create(frame, rect, L"Matepath — 文件浏览器", GetWndStyle(0) & ~WS_VISIBLE);
 }
 void MatepathPane::DestroyPane() {
     if (IsWindow()) { if (IsDocking()) Undock(); DestroyWindow(); }
 }
-void MatepathPane::SetSide(DockSide value) {
-    if (!visible) Show();
+void MatepathPane::SetSide(DockSide value, bool show) {
+    dockwins::DFDOCKPOSEX placement{};
+    GetWindowRect(&placement.rect);
+    auto& pos = placement.dockPos;
+    pos.hdr.hBar = HNONDOCKBAR;
     if (value == DockSide::Floating) {
         RECT rect{}; ::GetWindowRect(owner, &rect);
-        rect = {rect.left + 80, rect.top + 110, rect.left + 480, rect.top + 660};
-        if (IsDocking()) Float(&rect);
-        else SetWindowPos(HWND_TOP, &rect, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        placement.rect = {rect.left + 80, rect.top + 110, rect.left + 480, rect.top + 660};
     } else {
-        dockwins::DFDOCKPOS pos{};
         pos.hdr.hWnd = m_hWnd; pos.hdr.hBar = owner;
         pos.dwDockSide = value == DockSide::Left ? dockwins::CDockingSide::sLeft
             : value == DockSide::Right ? dockwins::CDockingSide::sRight : dockwins::CDockingSide::sBottom;
         pos.nWidth = MulDiv(300, GetDpiForWindow(owner), 96); pos.nHeight = pos.nWidth;
-        SetDockingPosition(&pos);
     }
-    side = value; visible = true; Layout();
+    if (!IsDocking()) {
+        placement.bDocking = value != DockSide::Floating;
+        placement.bVisible = show;
+        SetDockingWindowPlacement(&placement);
+    } else if (value != DockSide::Floating) {
+        SetDockingPosition(&pos);
+    } else {
+        Float(&placement.rect);
+    }
+    side = value; visible = show; Layout();
 }
 void MatepathPane::Toggle() {
     if (visible) { side = CurrentSide(); Hide(); } else Show();

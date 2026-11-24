@@ -23,11 +23,17 @@ LRESULT DockPane::OnSelect(WORD, WORD, HWND, BOOL&) {
     ActivateSelection(); return 0;
 }
 void DockHost::Create(HWND frame) {
-    owner = frame; pane.owner = frame; RECT rect{100, 100, 420, 520};
-    pane.Create(frame, rect, L"打开的文档");
-    if (!pane.IsWindow()) return;
+    owner = frame; pane.owner = frame;
+    dockwins::DFDOCKPOSEX placement{};
+    placement.rect = {100, 100, 420, 520};
+    if (!pane.Create(frame, placement.rect, L"打开的文档", DockPane::GetWndStyle(0) & ~WS_VISIBLE)) return;
     SetWindowLongPtrW(pane, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-    SetSide(DockSide::Left); pane.Refresh();
+    auto& pos = placement.dockPos;
+    pos.hdr.hBar = frame;
+    pos.dwDockSide = dockwins::CDockingSide::sLeft;
+    pos.nWidth = MulDiv(extent, GetDpiForWindow(frame), 96); pos.nHeight = pos.nWidth;
+    pane.SetDockingWindowPlacement(&placement);
+    pane.Refresh();
 }
 void DockHost::SetSide(DockSide value) {
     if (!visible) { pane.Show(); visible = true; }

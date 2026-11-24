@@ -1,13 +1,15 @@
 #include "SearchResultsPane.h"
 #include "MainFrame.h"
 void SearchResultsPane::CreatePane(MainFrame& frame) {
-    owner = &frame; RECT rectangle{100, 100, 800, 340};
-    Create(frame.m_hWnd, rectangle, L"Search results");
-    dockwins::DFDOCKPOS position{};
-    position.hdr.hWnd = m_hWnd; position.hdr.hBar = frame.m_hWnd;
+    owner = &frame;
+    dockwins::DFDOCKPOSEX placement{};
+    placement.rect = {100, 100, 800, 340};
+    if (!Create(frame.m_hWnd, placement.rect, L"Search results", GetWndStyle(0) & ~WS_VISIBLE)) return;
+    auto& position = placement.dockPos;
+    position.hdr.hBar = frame.m_hWnd;
     position.dwDockSide = dockwins::CDockingSide::sBottom;
     position.nWidth = MulDiv(210, GetDpiForWindow(frame.m_hWnd), 96); position.nHeight = 700;
-    SetDockingPosition(&position); Hide();
+    SetDockingWindowPlacement(&placement);
 }
 LRESULT SearchResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     editor = CreateWindowExW(0, L"Scintilla", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPCHILDREN,
