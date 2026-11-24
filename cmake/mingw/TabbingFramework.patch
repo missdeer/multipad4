@@ -33,7 +33,7 @@
  
 -		NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_ACCEPTITEMDRAG }, m_iDragItemOriginal, m_iDragItem, {-1,-1}};
 -		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+		NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_ACCEPTITEMDRAG }, m_iDragItemOriginal, m_iDragItem, {-1,-1}};
++		NMCTC2ITEMS nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_ACCEPTITEMDRAG }, m_iDragItemOriginal, m_iDragItem, {-1,-1}};
 +		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  
  		// In this implementation, the tab is moved as they drag.
@@ -44,7 +44,7 @@
  
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_CANCELITEMDRAG }, m_iDragItemOriginal, {-1,-1}};
 -		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_CANCELITEMDRAG }, m_iDragItemOriginal, {-1,-1}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_CANCELITEMDRAG }, m_iDragItemOriginal, {-1,-1}};
 +		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  
  		pT->StopItemDrag(bRedrawEffectedArea);
@@ -64,7 +64,7 @@
  			{
 -				NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_BEGINITEMDRAG }, index, {ptDragOrigin.x, ptDragOrigin.y} };
 -				if(FALSE != ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+				NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_BEGINITEMDRAG }, index, {ptDragOrigin.x, ptDragOrigin.y} };
++				NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_BEGINITEMDRAG }, index, {ptDragOrigin.x, ptDragOrigin.y} };
 +				if(FALSE != ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  				{
  					// Returning non-zero prevents our default handling.
@@ -111,7 +111,7 @@
  
 -			NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_CLICK }, nIndex, {ptCursor.x, ptCursor.y} };
 -			if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+			NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_CLICK }, nIndex, {ptCursor.x, ptCursor.y} };
++			NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), NM_CLICK }, nIndex, {ptCursor.x, ptCursor.y} };
 +			if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  			{
  				// returning FALSE let's us do our default handling
@@ -131,7 +131,7 @@
  				// Close Button
 -				NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_CLOSE }, m_iCurSel, {ptCursor.x, ptCursor.y}};
 -				::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+				NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_CLOSE }, m_iCurSel, {ptCursor.x, ptCursor.y}};
++				NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_CLOSE }, m_iCurSel, {ptCursor.x, ptCursor.y}};
 +				::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  			}
  
@@ -142,7 +142,7 @@
  		// returning TRUE tells us not to do our default handling
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_DBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 -		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_DBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), NM_DBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 +		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  		{
  			// returning FALSE let's us do our default handling
@@ -153,7 +153,7 @@
  		// returning TRUE tells us not to do our default handling
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_RCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
 -		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_RCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), NM_RCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
 +		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  		{
  			// returning FALSE let's us do our default handling
@@ -164,7 +164,7 @@
  		// returning TRUE tells us not to do our default handling
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), NM_RDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 -		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), NM_RDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), NM_RDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 +		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  		{
  			// returning FALSE let's us do our default handling
@@ -175,7 +175,7 @@
  		// returning TRUE tells us not to do our default handling
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
 -		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_MCLICK }, nIndex, {ptCursor.x, ptCursor.y}};
 +		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  		{
  			// returning FALSE let's us do our default handling
@@ -186,7 +186,7 @@
  		// returning TRUE tells us not to do our default handling
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 -		if(FALSE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_MDBLCLK }, nIndex, {ptCursor.x, ptCursor.y}};
 +		if(FALSE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh))
  		{
  			// returning FALSE let's us do our default handling
@@ -366,7 +366,7 @@
  		// Send notification
 -		NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_INSERTITEM }, nItem, {-1,-1}};
 -		::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+		NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_INSERTITEM }, nItem, {-1,-1}};
++		NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_INSERTITEM }, nItem, {-1,-1}};
 +		::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  		// Select if first tab
  		if( nNewCount==1 )
@@ -395,7 +395,7 @@
  		{
 -			NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_MOVEITEM }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
 -			::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+			NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_MOVEITEM }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
++			NMCTC2ITEMS nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_MOVEITEM }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
 +			::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  		}
  
@@ -415,7 +415,7 @@
  		{
 -			NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_SWAPITEMPOSITIONS }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
 -			::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
-+			NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_SWAPITEMPOSITIONS }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
++			NMCTC2ITEMS nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_SWAPITEMPOSITIONS }, (int)nFromIndex, (int)nToIndex, {-1,-1}};
 +			::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh);
  		}
  
@@ -426,7 +426,7 @@
  			// Returning TRUE tells us not to delete the item
 -			NMCTCITEM nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_DELETEITEM }, (int)nItem, {-1,-1}};
 -			if( TRUE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
-+			NMCTCITEM nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_DELETEITEM }, (int)nItem, {-1,-1}};
++			NMCTCITEM nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_DELETEITEM }, (int)nItem, {-1,-1}};
 +			if( TRUE == ::SendMessage(this->GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
  			{
  				// Cancel the attempt
@@ -445,7 +445,7 @@
  		int iOldSel = m_iCurSel;
  		// Send notification
 -		NMCTC2ITEMS nmh = {{ m_hWnd, this->GetDlgCtrlID(), CTCN_SELCHANGING }, iOldSel, nItem, {-1,-1}};
-+		NMCTC2ITEMS nmh = {{ this->m_hWnd, this->GetDlgCtrlID(), CTCN_SELCHANGING }, iOldSel, nItem, {-1,-1}};
++		NMCTC2ITEMS nmh = {{ this->m_hWnd, static_cast<UINT_PTR>(this->GetDlgCtrlID()), CTCN_SELCHANGING }, iOldSel, nItem, {-1,-1}};
  		if(bNotify)
  		{
 -			if( TRUE == ::SendMessage(GetParent(), WM_NOTIFY, nmh.hdr.idFrom, (LPARAM)&nmh) )
