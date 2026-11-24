@@ -264,3 +264,66 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }
+inline void RunTabCloseTests(MainFrame& frame) {
+    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
+        if (!ok) throw std::runtime_error("Tab close assertion at line " + std::to_string(where.line()));
+    };
+    const struct {
+        UINT command;
+        std::vector<int> remaining;
+    } cases[] = {
+        {ID_CLOSE, {0, 1, 3, 4}},
+        {ID_CLOSE_LEFT_TABS, {2, 3, 4}},
+        {ID_CLOSE_RIGHT_TABS, {0, 1, 2}},
+        {ID_CLOSE_OTHER_TABS, {2}},
+        {ID_CLOSEALL, {}},
+    };
+    for (const auto& test : cases) {
+        require(frame.tabs.GetPageCount() == 0);
+        for (int i = 0; i < 5; ++i) require(frame.NewDocument() != nullptr);
+        require(frame.GetMDITabCtrl().MoveItem(0, 4));
+        std::vector<HWND> remaining;
+        for (int i : test.remaining) remaining.push_back(frame.tabs.GetPageHWND(i));
+        frame.tabs.SetActivePage(0);
+        if (test.command == ID_CLOSE) {
+            auto& control = frame.GetMDITabCtrl();
+            control.EnsureVisible(2, false, true);
+            RECT tab{};
+            require(control.GetItemRect(2, &tab) != FALSE);
+            control.SendMessage(WM_RBUTTONUP, 0, MAKELPARAM((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2));
+            MSG message{};
+            require(PeekMessageW(&message, frame, UWM_MDICHILDSHOWTABCONTEXTMENU, UWM_MDICHILDSHOWTABCONTEXTMENU, PM_REMOVE) != FALSE);
+            require(reinterpret_cast<HWND>(message.wParam) == frame.tabs.GetPageHWND(2));
+            if (!qaArtifactDirectory.empty()) {
+                struct PopupCapture {
+                    unsigned ticks = 0;
+                    HWND window = nullptr;
+                };
+                static PopupCapture capture;
+                capture = {};
+                const auto timer = SetTimer(nullptr, 0, 30, [](HWND, UINT, UINT_PTR id, DWORD) {
+                    EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+                        wchar_t type[16]{};
+                        GetClassNameW(window, type, _countof(type));
+                        if (wcscmp(type, L"#32768") != 0 || !IsWindowVisible(window)) return TRUE;
+                        capture.window = window;
+                        CaptureQAWindow(window, L"MDI-tab-context-menu");
+                        return FALSE;
+                    }, 0);
+                    if (capture.window || ++capture.ticks >= 30) {
+                        KillTimer(nullptr, id);
+                        EndMenu();
+                    }
+                });
+                require(timer != 0);
+                DispatchMessageW(&message);
+                KillTimer(nullptr, timer);
+                require(capture.window != nullptr);
+            }
+        }
+        frame.CloseTabs(2, test.command);
+        require(frame.tabs.GetPageCount() == static_cast<int>(remaining.size()));
+        for (int i = 0; i < frame.tabs.GetPageCount(); ++i) require(frame.tabs.GetPageHWND(i) == remaining[i]);
+        while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1));
+    }
+}

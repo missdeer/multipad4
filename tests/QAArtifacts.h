@@ -28,6 +28,18 @@ inline void CaptureQAWindow(HWND window, const wchar_t* label) {
         // Classic controls support synchronous WM_PRINT even when the desktop
         // compositor has no current surface for a newly opened modal dialog.
         SendMessageW(window, WM_PRINT, reinterpret_cast<WPARAM>(memory), PRF_CLIENT | PRF_NONCLIENT | PRF_ERASEBKGND | PRF_CHILDREN);
+        if (!rendered) {
+            wchar_t type[16]{};
+            GetClassNameW(window, type, _countof(type));
+            if (wcscmp(type, L"#32768") == 0) {
+                // Native popup menus can reject PrintWindow.
+                HDC popup = GetWindowDC(window);
+                if (popup) {
+                    rendered = BitBlt(memory, 0, 0, width, height, popup, 0, 0, SRCCOPY);
+                    ReleaseDC(window, popup);
+                }
+            }
+        }
         if (rendered) {
             std::filesystem::create_directories(qaArtifactDirectory);
             BITMAPFILEHEADER header{}; header.bfType = 0x4D42;

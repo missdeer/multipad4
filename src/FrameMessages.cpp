@@ -83,6 +83,33 @@ LRESULT MainFrame::OnDeferredCommand(UINT, WPARAM, LPARAM, BOOL&) {
     COPYDATASTRUCT data{pending.first, static_cast<DWORD>((pending.second.size() + 1) * sizeof(wchar_t)), pending.second.data()};
     BOOL handled = TRUE; OnCopyData(WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data), handled); return 0;
 }
+LRESULT MainFrame::OnTabContextMenu(UINT, WPARAM target, LPARAM coordinates, BOOL&) {
+    if (runtime.operationDepth || runtime.inBackgroundWork || !IsWindowEnabled()) return 0;
+    const HWND child = reinterpret_cast<HWND>(target);
+    auto findAnchor = [&] {
+        for (int i = 0; i < tabs.GetPageCount(); ++i)
+            if (tabs.GetPageHWND(i) == child) return i;
+        return -1;
+    };
+    const int anchor = findAnchor();
+    if (anchor < 0) return 0;
+
+    CMenu root(LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_TAB_POPUP)));
+    if (!root) return 0;
+    const HMENU menu = ::GetSubMenu(root, 0);
+    if (anchor == 0) EnableMenuItem(menu, ID_CLOSE_LEFT_TABS, MF_BYCOMMAND | MF_GRAYED);
+    if (anchor == tabs.GetPageCount() - 1) EnableMenuItem(menu, ID_CLOSE_RIGHT_TABS, MF_BYCOMMAND | MF_GRAYED);
+    if (tabs.GetPageCount() == 1) EnableMenuItem(menu, ID_CLOSE_OTHER_TABS, MF_BYCOMMAND | MF_GRAYED);
+
+    FrameOperation operation(runtime, m_hWnd);
+    const UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+        GET_X_LPARAM(coordinates), GET_Y_LPARAM(coordinates), 0, m_hWnd, nullptr);
+    if (command) {
+        try { CloseTabs(findAnchor(), command); }
+        catch (const std::exception& error) { Error(error); }
+    }
+    return 0;
+}
 LRESULT MainFrame::OnContextMenu(UINT, WPARAM source, LPARAM coordinates, BOOL&) {
     HWND target = reinterpret_cast<HWND>(source);
     int popup = 1;

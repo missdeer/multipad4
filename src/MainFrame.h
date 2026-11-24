@@ -46,6 +46,7 @@ public:
     bool SaveTo(EditorDocument& document, const std::filesystem::path& path, bool copy = false, bool keepBackup = false);
     bool Reload(EditorDocument& document);
     bool Close(int index);
+    void CloseTabs(int anchor, UINT command);
     bool ConfirmClose(EditorDocument& document, bool keepBackup = true);
     bool Relaunch(bool elevated = false, bool empty = false, bool closeCurrent = true);
     void Refresh();
@@ -74,6 +75,7 @@ public:
         MESSAGE_HANDLER(WM_DROPFILES, OnDrop)
         MESSAGE_HANDLER(WM_DOCUMENT_CHANGED, OnChanged)
         MESSAGE_HANDLER(WM_CLOSE_TAB, OnCloseTab)
+        MESSAGE_HANDLER(UWM_MDICHILDSHOWTABCONTEXTMENU, OnTabContextMenu)
         MESSAGE_HANDLER(WM_INITMENUPOPUP, OnMenu)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpi)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
@@ -118,6 +120,7 @@ public:
     LRESULT OnDrop(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnChanged(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnCloseTab(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnTabContextMenu(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnMenu(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDpi(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);

@@ -196,6 +196,32 @@ bool MainFrame::Close(int i) {
     if (notifyPlugins) plugins.Notify(NPPN_FILECLOSED, buffer);
     Refresh(); return true;
 }
+void MainFrame::CloseTabs(int anchor, UINT command) {
+    const int count = tabs.GetPageCount();
+    if (anchor < 0 || anchor >= count) return;
+    int first = 0, last = count;
+    switch (command) {
+    case ID_CLOSE: Close(anchor); return;
+    case ID_CLOSE_LEFT_TABS: last = anchor; break;
+    case ID_CLOSE_RIGHT_TABS: first = anchor + 1; break;
+    case ID_CLOSE_OTHER_TABS: case ID_CLOSEALL: break;
+    default: return;
+    }
+
+    // A save prompt can pump messages that reorder the remaining tabs.
+    std::vector<unsigned long long> targets;
+    for (int i = last - 1; i >= first; --i) {
+        if (command == ID_CLOSE_OTHER_TABS && i == anchor) continue;
+        targets.push_back(tabs.Child(i)->document->searchIdentity);
+    }
+    for (auto identity : targets) {
+        for (int i = tabs.GetPageCount() - 1; i >= 0; --i) {
+            if (tabs.Child(i)->document->searchIdentity != identity) continue;
+            if (!Close(i)) return;
+            break;
+        }
+    }
+}
 bool MainFrame::ConfirmClose(EditorDocument& document, bool keepBackup) {
     if (!document.Modified()) return true;
     for (int i = 0; i < tabs.GetPageCount(); ++i) if (tabs.GetPageData(i) == &document) { tabs.SetActivePage(i); break; }

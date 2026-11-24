@@ -98,12 +98,18 @@ public:
     void UpdateFileIcon();
     BEGIN_MSG_MAP(EditorChild)
         MESSAGE_HANDLER(WM_CLOSE, OnClose)
+        MESSAGE_HANDLER(UWM_MDICHILDSHOWTABCONTEXTMENU, OnTabContextMenu)
         MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
         MESSAGE_HANDLER(WM_MDIACTIVATE, OnActivate)
         CHAIN_MSG_MAP(CTabbedMDIChildWindowImpl<EditorChild>)
     END_MSG_MAP()
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) {
         ::PostMessageW(owner, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(m_hWnd), 0); return 0;
+    }
+    LRESULT OnTabContextMenu(UINT message, WPARAM, LPARAM coordinates, BOOL&) {
+        // A menu command may destroy this child after its message handler returns.
+        ::PostMessageW(owner, message, reinterpret_cast<WPARAM>(m_hWnd), coordinates);
+        return 0;
     }
     LRESULT OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
         auto* n = reinterpret_cast<NMHDR*>(l);
