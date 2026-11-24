@@ -4,6 +4,10 @@
 // Optional export BOOL multipadCommandEnabled(UINT commandId) controls menu and dispatch.
 // Optional export void multipadPopulateEditorContextMenu(HMENU) appends commands
 // using the IDs assigned to the plugin's FuncItem entries.
+// Optional export const wchar_t* multipadGetMainMenuLabel() runs after getFuncsArray.
+// Return a UTF-16 label in static storage to place the plugin's FuncItem menu on the
+// main menu bar. Return nullptr or an empty label to use the Plugins menu.
+
 // Sent synchronously after tab titles, order, selection or membership change.
 // idFrom is the active buffer id for selection-only updates, otherwise zero.
 constexpr UINT MPN_DOCUMENTSCHANGED = 0x4D500001;
@@ -37,6 +41,11 @@ struct MultiPadLexerMetadata {
 };
 // Returns the active full editor's native HWND, or zero if unavailable.
 constexpr UINT MPM_GETEDITORWINDOW = WM_USER + 1000 + 958;
+// Like NPPM_GETFULLPATHFROMBUFFERID, with an empty path for untitled buffers.
+// wParam is the buffer ID. Query length with lParam zero, or pass length + 1 wchar_t slots.
+constexpr UINT MPM_GETBUFFERFILEPATH = WM_USER + 1000 + 959;
+// Close the buffer in wParam using the host's normal save/discard/cancel flow.
+constexpr UINT MPM_CLOSEBUFFER = WM_USER + 1000 + 960;
 struct MultiPadBufferTitle {
     wchar_t* text;
     size_t capacity; // Includes the terminator; query with nullptr for required length.

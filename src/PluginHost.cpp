@@ -85,10 +85,12 @@ void PluginHost::Initialize(MainFrame& owner) {
     proxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     secondProxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     menu = CreatePopupMenu();
+    const HMENU mainMenu = owner.runtime.mainMenu;
+    int pluginMenuPosition = GetMenuItemCount(mainMenu) - 1;
     wchar_t label[128]{};
     const auto instance = _Module.GetModuleInstance();
     LoadStringW(instance, IDS_PLUGIN_MENU, label, _countof(label));
-    InsertMenuW(owner.GetMenu(), GetMenuItemCount(owner.GetMenu()) - 1, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), label);
+    InsertMenuW(mainMenu, pluginMenuPosition, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), label);
     LoadStringW(instance, IDS_PLUGIN_ADMIN, label, _countof(label));
     AppendMenuW(menu, MF_STRING, IDM_SETTING_PLUGINADM, label);
     LoadStringW(instance, IDS_PLUGIN_OPEN_FOLDER, label, _countof(label));
@@ -135,13 +137,22 @@ void PluginHost::Initialize(MainFrame& owner) {
             AppendMenuW(submenu, MF_STRING | (item._init2Check ? MF_CHECKED : 0), item._cmdID, item._itemName);
             if (auto* key = item._pShKey; key && key->_key) keys.push_back({static_cast<BYTE>(FVIRTKEY | (key->_isCtrl ? FCONTROL : 0) | (key->_isAlt ? FALT : 0) | (key->_isShift ? FSHIFT : 0)), key->_key, static_cast<WORD>(item._cmdID)});
         }
-        AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(submenu), plugin.name.c_str()); plugins.push_back(std::move(plugin));
+        const auto getMainMenuLabel = reinterpret_cast<const wchar_t* (__cdecl*)()>(
+            GetProcAddress(plugin.library, "multipadGetMainMenuLabel"));
+        const wchar_t* mainMenuLabel = getMainMenuLabel ? getMainMenuLabel() : nullptr;
+        if (mainMenuLabel && *mainMenuLabel && InsertMenuW(mainMenu, pluginMenuPosition, MF_BYPOSITION | MF_POPUP,
+            reinterpret_cast<UINT_PTR>(submenu), mainMenuLabel)) {
+            ++pluginMenuPosition;
+        } else {
+            AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(submenu), plugin.name.c_str());
+        }
+        plugins.push_back(std::move(plugin));
     }
     if (!keys.empty()) accelerators = CreateAcceleratorTableW(keys.data(), static_cast<int>(keys.size()));
     if (plugins.empty()) {
         LoadStringW(instance, IDS_PLUGIN_NONE_LOADED, label, _countof(label));
         AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, label);
-    }
+    } else if (GetMenuItemCount(menu) == 3) DeleteMenu(menu, 2, MF_BYPOSITION);
     std::ofstream log(config / L"MultiPad4-plugin-load.log");
     for (auto& p : plugins) log << "Loaded " << files::ToUtf8(p.module) << " (" << p.count << " commands)\n";
     for (auto& e : errors) log << files::ToUtf8(e) << '\n';
@@ -298,9 +309,17 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     case NPPM_GETPOSFROMBUFFERID:
         for (int i = 0; i < frame->tabs.GetPageCount(); ++i) if (Buffer(static_cast<EditorDocument*>(frame->tabs.GetPageData(i))) == w) return i;
         return -1;
+    case MPM_GETBUFFERFILEPATH:
     case NPPM_GETFULLPATHFROMBUFFERID: {
         auto* doc = Document(w); if (!doc) return -1;
-        auto name = path(doc); if (l) wcscpy_s(reinterpret_cast<wchar_t*>(l), name.size() + 1, name.c_str()); return name.size();
+        auto name = msg == MPM_GETBUFFERFILEPATH ? doc->path.wstring() : path(doc);
+        if (l) wcscpy_s(reinterpret_cast<wchar_t*>(l), name.size() + 1, name.c_str());
+        return name.size();
+    }
+    case MPM_CLOSEBUFFER: {
+        if (frame->runtime.operationDepth || frame->runtime.inBackgroundWork || !frame->IsWindowEnabled()) return FALSE;
+        const auto position = Message(NPPM_GETPOSFROMBUFFERID, w, 0);
+        return position < 0 || frame->Close(static_cast<int>(position));
     }
     case NPPM_GETOPENFILENAMES_DEPRECATED: case NPPM_GETOPENFILENAMESPRIMARY_DEPRECATED: {
         if (!w || l <= 0) return 0; int count = min(static_cast<int>(l), frame->tabs.GetPageCount());

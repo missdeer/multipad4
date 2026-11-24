@@ -9,6 +9,9 @@
 #ifdef MULTIPAD4_TEST_TEXT_TRANSLITERATION
 #include "TextTransliterationPluginTests.h"
 #endif
+#ifdef MULTIPAD4_TEST_PROJECT
+#include "ProjectPluginTests.h"
+#endif
 
 inline constexpr std::wstring_view bundledTestModules[] = {
     L"Matepath", L"OpenDocuments", L"Base64",
@@ -20,6 +23,9 @@ inline constexpr std::wstring_view bundledTestModules[] = {
 #endif
 #ifdef MULTIPAD4_TEST_WEB_TOOLS
     L"WebTools",
+#endif
+#ifdef MULTIPAD4_TEST_PROJECT
+    L"Project",
 #endif
 };
 
@@ -34,5 +40,8 @@ inline void RunBundledPluginSmokeTests(MainFrame& frame, EditorDocument& documen
 #endif
 #ifdef MULTIPAD4_TEST_TEXT_TRANSLITERATION
     RunTextTransliterationPluginTests(frame, document);
+#endif
+#ifdef MULTIPAD4_TEST_PROJECT
+    RunProjectPluginTests(frame, document, directory);
 #endif
 }

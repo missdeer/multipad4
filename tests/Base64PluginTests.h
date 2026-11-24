@@ -18,6 +18,10 @@ inline void RunBase64PluginTests(MainFrame& frame, EditorDocument& document) {
 #endif
     require((plugin != frame.plugins.plugins.end()) == installed);
     if (!installed) return;
+    bool inPluginsMenu = false;
+    for (int position = 0; position < GetMenuItemCount(frame.plugins.menu); ++position)
+        inPluginsMenu |= GetSubMenu(frame.plugins.menu, position) == plugin->submenu;
+    require(inPluginsMenu);
     require(plugin->count == 5 && GetMenuItemCount(plugin->submenu) == 5);
     const auto command = [&](int position) { return GetMenuItemID(plugin->submenu, position); };
     for (int position = 0; position < plugin->count; ++position)
