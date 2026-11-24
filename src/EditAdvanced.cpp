@@ -225,11 +225,6 @@ constexpr UINT transformations[] = {IDM_EDIT_TRIMLINES,
                                     IDM_EDIT_URLENCODE,
                                     IDM_EDIT_URLCOMPONENTENCODE,
                                     IDM_EDIT_URLDECODE,
-                                    IDM_EDIT_BASE64_ENCODE,
-                                    IDM_EDIT_BASE64_SAFE_ENCODE,
-                                    IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE,
-                                    IDM_EDIT_BASE64_DECODE,
-                                    IDM_EDIT_BASE64_DECODE_AS_HEX,
                                     IDM_EDIT_NUM2BIN,
                                     IDM_EDIT_NUM2OCT,
                                     IDM_EDIT_NUM2DEC,
@@ -476,64 +471,8 @@ bool Dialog(EditorDocument &d, Options &options) {
     return true;
 }
 
-std::string Base64(const std::string &input, bool safe) {
-    const char *abc = safe ? "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-                           : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    unsigned acc = 0;
-    int bits = 0;
-    for (unsigned char c : input) {
-        acc = (acc << 8) | c;
-        bits += 8;
-        while (bits >= 6) {
-            bits -= 6;
-            out += abc[(acc >> bits) & 63];
-        }
-    }
-    if (bits)
-        out += abc[(acc << (6 - bits)) & 63];
-    while (out.size() % 4)
-        out += '=';
-    return out;
-}
-std::string Unbase64(const std::string &input) {
-    std::string out;
-    unsigned acc = 0;
-    int bits = 0;
-    bool padded = false;
-    for (unsigned char c : input) {
-        if (isspace(c))
-            continue;
-        if (c == '=') {
-            padded = true;
-            continue;
-        }
-        if (padded)
-            throw std::runtime_error("Invalid Base64 padding.");
-        int value = c >= 'A' && c <= 'Z'   ? c - 'A'
-                    : c >= 'a' && c <= 'z' ? c - 'a' + 26
-                    : c >= '0' && c <= '9' ? c - '0' + 52
-                    : c == '+' || c == '-' ? 62
-                    : c == '/' || c == '_' ? 63
-                                           : -1;
-        if (value < 0)
-            throw std::runtime_error("Invalid Base64 text.");
-        acc = (acc << 6) | value;
-        bits += 6;
-        if (bits >= 8) {
-            bits -= 8;
-            out += static_cast<char>(acc >> bits);
-        }
-    }
-    if (bits == 6)
-        throw std::runtime_error("Invalid Base64 length.");
-    return out;
-}
 std::string SelectionBytes(const EditorDocument &document, const std::string &text) {
     return files::CodePage(document.encoding) == CP_UTF8 ? text : files::Encode({text, document.encoding});
-}
-std::string DecodedBytes(const EditorDocument &document, const std::string &text) {
-    return files::CodePage(document.encoding) == CP_UTF8 ? text : files::Decode(text, document.encoding).utf8;
 }
 std::string Hex(const std::string &text) {
     std::string out;
@@ -755,11 +694,6 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     case IDM_EDIT_URLENCODE:
     case IDM_EDIT_URLCOMPONENTENCODE:
     case IDM_EDIT_URLDECODE:
-    case IDM_EDIT_BASE64_ENCODE:
-    case IDM_EDIT_BASE64_SAFE_ENCODE:
-    case IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE:
-    case IDM_EDIT_BASE64_DECODE:
-    case IDM_EDIT_BASE64_DECODE_AS_HEX:
     case IDM_EDIT_NUM2BIN:
     case IDM_EDIT_NUM2OCT:
     case IDM_EDIT_NUM2DEC:
@@ -1041,29 +975,6 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             out = start + text + end;
         break;
     }
-    case IDM_EDIT_BASE64_ENCODE:
-    case IDM_EDIT_BASE64_SAFE_ENCODE:
-    case IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE:
-        out = Base64(SelectionBytes(d, text), id == IDM_EDIT_BASE64_SAFE_ENCODE);
-        if (id == IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE)
-            out = "<img src=\"data:image/" +
-                  files::ToUtf8(d.path.extension().wstring()).substr(d.path.has_extension() ? 1 : 0) + ";base64," +
-                  out + "\" />";
-        break;
-    case IDM_EDIT_BASE64_DECODE:
-    case IDM_EDIT_BASE64_DECODE_AS_HEX:
-        out = Unbase64(text);
-        if (id == IDM_EDIT_BASE64_DECODE_AS_HEX) {
-            std::string hex;
-            for (size_t i = 0; i < out.size(); i += 16) {
-                if (i)
-                    hex += Eol(d);
-                hex += Hex(out.substr(i, 16));
-            }
-            out = std::move(hex);
-        } else
-            out = DecodedBytes(d, out);
-        break;
     case IDM_EDIT_URLENCODE:
     case IDM_EDIT_URLCOMPONENTENCODE: {
         auto wide = files::FromUtf8(text);

@@ -95,7 +95,8 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!entry.is_directory()) continue;
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
-        if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments") continue;
+        if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments" &&
+            name != L"Base64") continue;
         if (onlyModule != L"__bundled__" && !onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }
@@ -114,13 +115,14 @@ void PluginHost::Initialize(MainFrame& owner) {
             errors.push_back(plugin.module + L": invalid Unicode plugin exports"); FreeLibrary(plugin.library); continue;
         }
         plugin.preTranslate = reinterpret_cast<BOOL(__cdecl*)(MSG*)>(GetProcAddress(plugin.library, "multipadPreTranslateMessage"));
+        plugin.commandEnabled = reinterpret_cast<BOOL(__cdecl*)(UINT)>(GetProcAddress(plugin.library, "multipadCommandEnabled"));
         auto supportsFastView = reinterpret_cast<BOOL(__cdecl*)()>(GetProcAddress(plugin.library, "multipadSupportsFastView"));
         plugin.supportsFastView = supportsFastView && supportsFastView();
         plugin.name = name(); info({owner, proxy, secondProxy}); plugin.items = funcs(&plugin.count);
         if (!plugin.items || plugin.count <= 0 || plugin.count > 4096 || nextCommand + plugin.count + 2 >= 56000) {
             errors.push_back(plugin.module + L": invalid command table"); FreeLibrary(plugin.library); continue;
         }
-        HMENU submenu = CreatePopupMenu();
+        HMENU submenu = plugin.submenu = CreatePopupMenu();
         for (int i = 0; i < plugin.count; ++i) {
             if (nextCommand == IDM_SETTING_OPENPLUGINSDIR) nextCommand += 2;
             auto& item = plugin.items[i]; item._cmdID = nextCommand++;
@@ -172,9 +174,26 @@ void PluginHost::Shutdown() {
     if (accelerators) { DestroyAcceleratorTable(accelerators); accelerators = nullptr; }
     if (::IsWindow(proxy)) ::DestroyWindow(proxy); if (::IsWindow(secondProxy)) ::DestroyWindow(secondProxy);
 }
+void PluginHost::UpdateMenu(HMENU submenu) {
+    const auto* document = frame->Active();
+    for (const auto& plugin : plugins) {
+        if (plugin.submenu != submenu || !plugin.commandEnabled) continue;
+        const bool available = !document || !document->FastView() || plugin.supportsFastView;
+        for (int i = 0; i < plugin.count; ++i) {
+            const auto& item = plugin.items[i];
+            if (item._pFunc)
+                EnableMenuItem(submenu, item._cmdID, MF_BYCOMMAND |
+                    (available && plugin.commandEnabled(item._cmdID) ? MF_ENABLED : MF_GRAYED));
+        }
+        break;
+    }
+}
 bool PluginHost::Execute(UINT id) {
     const bool fastView = frame->Active() && frame->Active()->FastView();
-    for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc && (!fastView || p.supportsFastView)) { p.items[i]._pFunc(); frame->Refresh(); return true; }
+    for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc && (!fastView || p.supportsFastView)) {
+        if (p.commandEnabled && !p.commandEnabled(id)) return false;
+        p.items[i]._pFunc(); frame->Refresh(); return true;
+    }
     return false;
 }
 bool PluginHost::PreTranslate(MSG* msg) {
@@ -195,6 +214,10 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     auto path = [](EditorDocument* doc) { return doc->path.empty() ? doc->untitled : doc->path.wstring(); };
     auto language = [](EditorDocument* doc) { return !doc ? L_TEXT : doc->language == L"JSON" ? L_JSON : doc->language == L"XML" ? L_XML : doc->language == L"HTML" ? L_HTML : doc->language == L"C/C++" ? L_CPP : L_TEXT; };
     switch (msg) {
+    case MPM_GETBUFFERFILEENCODING: {
+        auto* doc = Document(w);
+        return doc ? static_cast<LRESULT>(doc->encoding) : -1;
+    }
     case MPM_GETBUFFERTITLE: {
         auto* doc = Document(w); auto* request = reinterpret_cast<MultiPadBufferTitle*>(l);
         if (!doc || !request) return -1;

@@ -36,12 +36,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     load("one\ntwo\none");
     ExecuteEditorCommand(document, IDM_EDIT_REMOVEDUPLICATELINE);
     require(document.Text() == "two");
-    load("中文 hello");
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_ENCODE);
-    auto encoded = document.Text();
-    require(encoded == "5Lit5paHIGhlbGxv");
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_DECODE);
-    require(document.Text() == "中文 hello");
     load("中文 /?");
     ExecuteEditorCommand(document, IDM_EDIT_URLCOMPONENTENCODE);
     require(document.Text() == "%E4%B8%AD%E6%96%87%20%2F%3F");
@@ -62,10 +56,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     require(document.Text() == "中");
     load("é");
     document.encoding = files::FromCodePage(1252);
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_ENCODE);
-    require(document.Text() == "6Q==");
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_DECODE);
-    require(document.Text() == "é");
     ExecuteEditorCommand(document, IDM_EDIT_SHOW_HEX);
     require(document.Text() == "é[E9]");
     document.encoding = files::Encoding::Utf8;
@@ -247,9 +237,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
                                  " ends=" + std::to_string(selected0) + "," + std::to_string(selected1) + "," +
                                  std::to_string(selected2));
     require(document.Send(SCI_SELECTIONISRECTANGLE));
-    auto beforeRectangle = document.Text();
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_ENCODE);
-    require(document.Text() == beforeRectangle);
     document.Send(SCI_SETSELECTIONMODE, SC_SEL_STREAM);
     load("c\nb\nc");
     document.Send(SCI_GOTOPOS, 0);
@@ -263,11 +250,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     require(EditorCommandState(&document, IDM_EDIT_REMOVEDUPLICATELINE).enabled);
     ExecuteEditorCommand(document, IDM_EDIT_REMOVEDUPLICATELINE);
     require(document.Text() == "b");
-    load("abc");
-    document.Send(SCI_GOTOPOS, 0);
-    require(!EditorCommandState(&document, IDM_EDIT_BASE64_ENCODE).enabled);
-    ExecuteEditorCommand(document, IDM_EDIT_BASE64_ENCODE);
-    require(document.Text() == "abc");
     load("color\té");
     document.Send(SCI_STYLESETFORE, STYLE_DEFAULT, RGB(1, 2, 3));
     ExecuteEditorCommand(document, IDM_EDIT_COPYRTF);

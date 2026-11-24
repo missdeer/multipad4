@@ -474,8 +474,15 @@ LRESULT MainFrame::OnCloseTab(UINT, WPARAM w, LPARAM, BOOL&) {
     return 0;
 }
 LRESULT MainFrame::OnMenu(UINT, WPARAM menu, LPARAM, BOOL&) {
-    UpdateMenuCommands(*this, reinterpret_cast<HMENU>(menu));
+    const auto popup = reinterpret_cast<HMENU>(menu);
+    UpdateMenuCommands(*this, popup);
+    plugins.UpdateMenu(popup);
     UpdateCommandUI(); return 0;
+}
+LRESULT MainFrame::OnPluginCommand(WORD, WORD id, HWND, BOOL&) {
+    try { plugins.Execute(id); }
+    catch (const std::exception& error) { Error(error); }
+    return 0;
 }
 void MainFrame::ApplyTabTitleFont() {
     const auto size = settings.ReadString(L"Tab Bar", L"FontSize");

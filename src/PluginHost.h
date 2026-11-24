@@ -31,6 +31,8 @@ public:
         PMESSAGEPROC message = nullptr;
         // Optional MultiPad4 extensions; absent exports preserve N++ behavior.
         BOOL (__cdecl* preTranslate)(MSG*) = nullptr;
+        BOOL (__cdecl* commandEnabled)(UINT) = nullptr;
+        HMENU submenu = nullptr;
         bool supportsFastView = false;
     };
     MainFrame* frame = nullptr;
@@ -53,6 +55,7 @@ public:
     void Activated();
     void Notify(UINT code, UINT_PTR buffer = 0);
     void ScintillaNotification(const SCNotification& notification);
+    void UpdateMenu(HMENU submenu);
     bool Execute(UINT id);
     bool PreTranslate(MSG* message);
     LRESULT Message(UINT message, WPARAM w, LPARAM l);

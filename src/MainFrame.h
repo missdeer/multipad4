@@ -113,7 +113,7 @@ public:
         else ShellExecuteW(m_hWnd, L"open", plugins.home.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         return 0;
     }
-    LRESULT OnPluginCommand(WORD, WORD id, HWND, BOOL&) { plugins.Execute(id); return 0; }
+    LRESULT OnPluginCommand(WORD, WORD id, HWND, BOOL&);
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);

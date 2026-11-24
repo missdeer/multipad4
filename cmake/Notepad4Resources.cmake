@@ -13,6 +13,12 @@ function(multipad4_adapt_resources variable locale)
   string(REPLACE "MENUITEM \"&Tab Settings..." "MENUITEM \"&Tabs and Indentation..." content "${content}")
   string(REPLACE "CAPTION \"Tab Settings\"" "CAPTION \"Tabs and Indentation\"" content "${content}")
 
+  # Base64 registers its localized menu through the plugin host.
+  string(REGEX REPLACE "\n\t\tPOPUP [^\n]*\n\t\tBEGIN\n([^\n]*IDM_EDIT_BASE64_[^\n]*\n)+\t\tEND" "" content "${content}")
+  if(content MATCHES "MENUITEM[^\n]*IDM_EDIT_BASE64_")
+    message(FATAL_ERROR "Cannot remove the old Base64 menu from the ${locale} resources")
+  endif()
+
   # Insert the MDI menu before Help in the localized main menu WTL loads.
   set(window_menu_file "${PROJECT_SOURCE_DIR}/res/locale/${locale}/WindowMenu.rcinc")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${window_menu_file}")

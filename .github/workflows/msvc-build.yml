@@ -80,7 +80,7 @@ jobs:
 
       - name: Verify bundled plugins
         run: |
-          foreach ($name in @('Matepath', 'OpenDocuments')) {
+          foreach ($name in @('Base64', 'Matepath', 'OpenDocuments')) {
             $plugin = "cmake-${{ matrix.toolchain.id }}-build/plugins/$name/$name.dll"
             if (!(Test-Path -LiteralPath $plugin -PathType Leaf)) {
               throw "The bundled plugin is missing: $plugin"
@@ -103,6 +103,8 @@ jobs:
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
             cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Base64.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Notepad4.License.txt
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/OpenDocuments.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/THIRD_PARTY.md
             cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.dll
@@ -174,6 +176,9 @@ jobs:
           build_dir="cmake-${{ matrix.toolchain.id }}-build"
           plugin="$build_dir/plugins/Matepath/Matepath.dll"
           documents_plugin="$build_dir/plugins/OpenDocuments/OpenDocuments.dll"
+          base64_plugin="$build_dir/plugins/Base64/Base64.dll"
+          mkdir -p "$build_dir/package/plugins/Base64"
+          cp "$build_dir/plugins/Base64/Notepad4.License.txt" "$build_dir/package/plugins/Base64/"
           mkdir -p "$build_dir/package/plugins/OpenDocuments"
           cp "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
           mkdir -p "$build_dir/package/plugins/Matepath"
@@ -182,9 +187,9 @@ jobs:
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
           # Stage plugins beside the EXE so their runtime DLLs land in the same directory.
-          cp "$plugin" "$documents_plugin" "$build_dir/package/"
+          cp "$plugin" "$documents_plugin" "$base64_plugin" "$build_dir/package/"
           # Read PE imports without loading target code, including AVX512 builds.
-          # mingwdeployqt also scans DLLs beside the EXE, including both plugins.
+          # mingwdeployqt also scans DLLs beside the EXE.
           "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
             "$build_dir/package/multipad4.exe" 2>&1 | tee "$build_dir/runtime-dependencies.txt"
           # mingwdeployqt can return success for missing imports or failed copies.
@@ -201,6 +206,7 @@ jobs:
           done
           mv "$build_dir/package/Matepath.dll" "$build_dir/package/plugins/Matepath/"
           mv "$build_dir/package/OpenDocuments.dll" "$build_dir/package/plugins/OpenDocuments/"
+          mv "$build_dir/package/Base64.dll" "$build_dir/package/plugins/Base64/"
 
       - name: Verify packaged runtime configuration
         shell: pwsh

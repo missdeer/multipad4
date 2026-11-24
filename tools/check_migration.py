@@ -11,7 +11,9 @@ root = Path(__file__).resolve().parents[1]
 runtime_path = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "tmp/migration-runtime.json"
 runtime = json.loads(runtime_path.read_text(encoding="utf-8-sig"))
 inventory = json.loads((root / "docs/notepad4-ui-inventory.json").read_text(encoding="utf-8"))
-commands = {item["command"]: item["value"] for item in inventory["menu_entries"]}
+# Base64 commands have dynamic plugin IDs and are verified by editor_integration.
+commands = {item["command"]: item["value"] for item in inventory["menu_entries"]
+            if not item["command"].startswith("IDM_EDIT_BASE64_")}
 missing = {name: value for name, value in commands.items()
            if value is None or not runtime.get(str(value), {}).get("supported", False)}
 print(f"Menu commands routed: {len(commands) - len(missing)}/{len(commands)}")
