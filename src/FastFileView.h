@@ -53,7 +53,7 @@ class FastFileView {
     bool HandleMessage(UINT message, WPARAM w, LPARAM l, LRESULT& result);
 public:
     explicit FastFileView(EditorDocument& document, const std::filesystem::path& path,
-        const files::ReadOptions& options, std::optional<files::Encoding> forced);
+        const files::ReadOptions& options, std::optional<files::Encoding> forced, bool deleteOnClose = false);
     ~FastFileView();
     void Attach();
     void Seek(large::Position offset, bool bottom = false);

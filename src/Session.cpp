@@ -3,6 +3,7 @@
 #include "ConfigurationXml.h"
 #include "MainFrame.h"
 #include "FrameCommands.h"
+#include "ThemeDialog.h"
 #include <algorithm>
 #include <stdexcept>
 #include <sstream>
@@ -279,4 +280,182 @@ void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path)
         profile.path.parent_path() == std::filesystem::temp_directory_path()) {
         std::error_code error; std::filesystem::remove(profile.path, error);
     }
+}
+
+namespace {
+constexpr std::string_view ExitSessionVersion = "MultiPad4.ExitSession.1";
+enum ExitTabKind { CleanTab, EditedTab, EditedMappedTab };
+constexpr size_t SessionChunk = 1024 * 1024;
+
+std::filesystem::path ExitSessionPath(const MainFrame& frame) {
+    auto path = frame.settings.path;
+    path += L".session";
+    return path;
+}
+
+bool LockExitSession(MainFrame& frame) {
+    if (frame.exitSessionLock.m_h) return true;
+    auto path = ExitSessionPath(frame);
+    path += L".lock";
+    std::filesystem::create_directories(path.parent_path());
+    HANDLE lock = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (lock == INVALID_HANDLE_VALUE) {
+        if (GetLastError() == ERROR_SHARING_VIOLATION) {
+            frame.exitSessionEligible = false;
+            return false;
+        }
+        throw std::runtime_error("Cannot lock the session file.");
+    }
+    frame.exitSessionLock.Attach(lock);
+    return true;
+}
+
+// Keep lengths separate from the text so embedded NULs and original line endings survive.
+template<size_t N>
+void WriteFields(const files::ChunkConsumer& consume, const uint64_t (&fields)[N]) {
+    consume({reinterpret_cast<const char*>(fields), sizeof(fields)});
+}
+
+struct ExitTab {
+    std::filesystem::path path;
+    std::wstring title;
+    uint64_t offset, size, kind;
+    files::Encoding encoding;
+    int eol;
+    bool readOnly;
+};
+}
+
+bool SaveExitSession(MainFrame& frame) {
+    if (!frame.exitSessionEligible || !frame.settings.persistent || !frame.settings.Get(ID_RESTORE_EXIT_SESSION)) return false;
+    if (!LockExitSession(frame)) return false;
+    const int count = frame.tabs.GetPageCount();
+    files::WriteAtomicChunks(ExitSessionPath(frame), [&](const files::ChunkConsumer& consume) {
+        consume(ExitSessionVersion);
+        WriteFields(consume, {uint64_t(count), uint64_t(frame.tabs.GetActivePage() + 1), frame.untitledCount});
+        for (int i = 0; i < count; ++i) {
+            const auto& document = *static_cast<EditorDocument*>(frame.tabs.GetPageData(i));
+            const auto kind = !document.Modified() ? CleanTab : document.FastView() ? EditedMappedTab : EditedTab;
+            const uint64_t size = kind == EditedMappedTab ? document.fastView->Model().FileSize()
+                : kind == EditedTab ? static_cast<uint64_t>(document.Send(SCI_GETLENGTH)) : 0;
+            const auto& path = document.path.native();
+            const auto& title = document.untitled;
+            WriteFields(consume, {path.size(), title.size(), size, static_cast<uint64_t>(kind), static_cast<unsigned>(document.encoding),
+                static_cast<uint64_t>(document.Send(SCI_GETEOLMODE)), document.Send(SCI_GETREADONLY) != 0});
+            consume({reinterpret_cast<const char*>(path.data()), path.size() * sizeof(wchar_t)});
+            consume({reinterpret_cast<const char*>(title.data()), title.size() * sizeof(wchar_t)});
+            if (kind == EditedMappedTab) document.fastView->Model().Write(consume);
+            else for (uint64_t offset = 0; offset < size; offset += SessionChunk)
+                consume(document.Range(static_cast<size_t>(offset), SessionChunk));
+        }
+    });
+    return true;
+}
+
+void RestoreExitSession(MainFrame& frame) {
+    if (!frame.exitSessionEligible || !frame.settings.persistent || !frame.settings.Get(ID_RESTORE_EXIT_SESSION)) return;
+    // A failed restore must leave the previous snapshot available on disk.
+    frame.exitSessionEligible = false;
+    if (!LockExitSession(frame)) return;
+    const auto path = ExitSessionPath(frame);
+    if (!std::filesystem::exists(path)) { frame.exitSessionEligible = true; return; }
+    files::MappedFile snapshot(path);
+    uint64_t cursor = 0;
+    auto require = [](bool valid) {
+        if (!valid) throw std::runtime_error("The saved session is incomplete or invalid.");
+    };
+    auto read = [&](void* dest, size_t length) {
+        require(length <= snapshot.Size() - cursor);
+        snapshot.Visit(cursor, length, [&](std::string_view bytes) { std::memcpy(dest, bytes.data(), length); });
+        cursor += length;
+    };
+    std::string version(ExitSessionVersion.size(), '\0');
+    read(version.data(), version.size());
+    require(version == ExitSessionVersion);
+    uint64_t header[3]{};
+    read(header, sizeof(header));
+    const auto [count, active, untitledCount] = header;
+    require(count <= INT_MAX && active <= count && untitledCount <= UINT_MAX);
+    auto readString = [&](uint64_t size) {
+        require(size <= 32767);
+        std::wstring value(static_cast<size_t>(size), L'\0');
+        if (size) read(value.data(), value.size() * sizeof(wchar_t));
+        require(value.find(L'\0') == std::wstring::npos);
+        return value;
+    };
+
+    std::vector<ExitTab> entries;
+    for (uint64_t i = 0; i < count; ++i) {
+        uint64_t fields[7]{};
+        read(fields, sizeof(fields));
+        const auto [pathLength, titleLength, size, kind, encoding, eol, readOnly] = fields;
+        require(kind <= EditedMappedTab && (kind != CleanTab || !size) && encoding <= INT_MAX &&
+            ValidEncoding(static_cast<long long>(encoding)) && eol <= SC_EOL_LF && readOnly <= 1);
+        auto file = std::filesystem::path(readString(pathLength));
+        auto title = readString(titleLength);
+        require((file.empty() || file.is_absolute()) && size <= snapshot.Size() - cursor);
+        entries.push_back({std::move(file), std::move(title), cursor, size, kind,
+            static_cast<files::Encoding>(encoding), static_cast<int>(eol), readOnly != 0});
+        cursor += size;
+    }
+    require(cursor == snapshot.Size());
+
+    EditorDocument* activeDocument = nullptr;
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const auto& entry = entries[i];
+        if (entry.kind == CleanTab && !entry.path.empty()) {
+            std::error_code error;
+            if (!std::filesystem::is_regular_file(entry.path, error)) continue;
+            if (frame.Open(entry.path) && i + 1 == active) activeDocument = frame.Active();
+            continue;
+        }
+        auto document = std::make_unique<EditorDocument>();
+        document->path = entry.path;
+        document->untitled = entry.title;
+        if (!document->Create(frame.tabs)) throw std::runtime_error("Cannot create a restored editor.");
+        ApplyDocumentPreferences(frame, *document);
+        if (entry.path.empty()) ApplyDefaultDocumentTheme(*document);
+        auto body = [&](const files::ChunkConsumer& consume) {
+            for (uint64_t offset = 0; offset < entry.size;) {
+                const auto length = static_cast<size_t>((std::min)(entry.size - offset, uint64_t(SessionChunk)));
+                snapshot.Visit(entry.offset + offset, length, consume);
+                offset += length;
+            }
+        };
+        if (entry.kind == EditedMappedTab) {
+            wchar_t directory[MAX_PATH]{}, temporary[MAX_PATH]{};
+            const auto length = GetTempPathW(_countof(directory), directory);
+            if (!length || length >= _countof(directory) || !GetTempFileNameW(directory, L"MPE", 0, temporary))
+                throw std::runtime_error("Cannot create a temporary file for the restored mapped document.");
+            struct TemporaryFile { const wchar_t* path; ~TemporaryFile() { DeleteFileW(path); } } cleanup{temporary};
+            files::WriteAtomicChunks(temporary, body);
+            auto view = std::make_unique<FastFileView>(*document, temporary, files::ReadOptions{}, entry.encoding, true);
+            view->Attach();
+            view->SetReadOnly(entry.readOnly);
+            document->fastView = std::move(view);
+        } else if (entry.kind == EditedTab) {
+            require(entry.size <= PTRDIFF_MAX);
+            const auto options = entry.size >= files::LargeFileThreshold ? SC_DOCUMENTOPTION_TEXT_LARGE | SC_DOCUMENTOPTION_STYLES_NONE : 0;
+            document->LoadStream(static_cast<size_t>(entry.size), options, [&](const files::ChunkConsumer& consume) {
+                body(consume);
+                return entry.encoding;
+            });
+        } else document->ConfigureLexer();
+        document->encoding = entry.encoding;
+        document->encodingDirty = entry.kind != CleanTab;
+        document->Send(SCI_SETEOLMODE, entry.eol);
+        document->Send(SCI_SETREADONLY, entry.readOnly);
+        SnapshotDocument(*document);
+        auto* restored = frame.AddDocument(std::move(document));
+        if (!restored->path.empty() && !restored->FastView()) frame.plugins.Notify(NPPN_FILEOPENED, frame.plugins.Buffer(restored));
+        if (i + 1 == active) activeDocument = restored;
+    }
+    frame.untitledCount = (std::max)(frame.untitledCount, static_cast<unsigned>(untitledCount));
+    if (activeDocument) for (int i = 0; i < frame.tabs.GetPageCount(); ++i) {
+        if (frame.tabs.GetPageData(i) != activeDocument) continue;
+        frame.tabs.SetActivePage(i);
+        break;
+    }
+    frame.Refresh();
+    frame.exitSessionEligible = true;
 }

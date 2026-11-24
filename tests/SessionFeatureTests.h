@@ -1,6 +1,7 @@
 #pragma once
 #include "../src/MainFrame.h"
 #include "../src/Session.h"
+#include "QAArtifacts.h"
 #include <source_location>
 #include <stdexcept>
 
@@ -132,6 +133,99 @@ inline void RunSessionFeatureTests(MainFrame& frame) {
         });
         try { RestoreRelaunchSession(frame, bad.path); } catch (...) { KillTimer(nullptr, timer); throw; }
         KillTimer(nullptr, timer); require(frame.tabs.GetPageCount() == baseline + 3);
+        cleanup();
+    } catch (...) { cleanup(); throw; }
+}
+
+inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& directory) {
+    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
+        if (!ok) throw std::runtime_error("Exit session assertion at line " + std::to_string(where.line()));
+    };
+    const auto settings = frame.settings;
+    const auto untitledCount = frame.untitledCount;
+    frame.settings = AppSettings{};
+    frame.settings.path = directory / L"exit-settings.ini";
+    frame.exitSessionEligible = true;
+    auto cleanup = [&] {
+        while (frame.tabs.GetPageCount()) frame.Close(frame.tabs.GetPageCount() - 1, false);
+        frame.exitSessionLock.Close();
+        frame.exitSessionEligible = false;
+        frame.settings = settings;
+        frame.untitledCount = untitledCount;
+    };
+    try {
+        require(!SaveExitSession(frame));
+        frame.SendMessage(WM_COMMAND, ID_RESTORE_EXIT_SESSION);
+        require(frame.State(ID_RESTORE_EXIT_SESSION).checked);
+        require(GetPrivateProfileIntW(L"Options", L"Command45164", 0, frame.settings.path.c_str()) == 1);
+        const auto saved = directory / L"exit-saved.txt";
+        files::WriteAtomic(saved, {"on disk\n"});
+        require(frame.Open(saved));
+        const auto* named = frame.Active();
+        auto* untitled = frame.NewDocument();
+        require(untitled != nullptr);
+        const std::string body("汉字\r\nfirst\0second\n", 21);
+        untitled->Send(SCI_ADDTEXT, body.size(), reinterpret_cast<LPARAM>(body.data()));
+        untitled->SetEncoding(files::Encoding::Utf16LE);
+        untitled->Send(SCI_SETEOLMODE, SC_EOL_LF);
+        const auto title = untitled->untitled;
+        auto mapped = std::make_unique<EditorDocument>();
+        mapped->path = directory / L"exit-mapped.txt";
+        files::WriteAtomic(mapped->path, {"original", files::Encoding::Utf8Bom});
+        require(mapped->Create(frame.tabs));
+        mapped->OpenFastFile(mapped->path, {}, files::Encoding::Utf8Bom);
+        mapped->encoding = files::Encoding::Utf8Bom;
+        auto& model = mapped->fastView->Model();
+        model.Begin({});
+        model.Replace(0, model.Size(), "edited mapped");
+        model.End({});
+        frame.AddDocument(std::move(mapped));
+        require(frame.GetMDITabCtrl().MoveItem(0, 2));
+        frame.tabs.SetActivePage(0);
+        require(frame.Active() == untitled && frame.tabs.GetPageData(2) == named);
+
+        const auto session = directory / L"exit-settings.ini.session";
+        std::filesystem::create_directory(session);
+        bool errorShown = false;
+        const auto timer = SetTimer(nullptr, 0, 10, [](HWND, UINT, UINT_PTR, DWORD) {
+            EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+                wchar_t type[32]{}, title[128]{};
+                GetClassNameW(window, type, _countof(type));
+                GetWindowTextW(window, title, _countof(title));
+                auto* shown = static_cast<bool*>(GetPropW(GetWindow(window, GW_OWNER), L"ExitSessionTestError"));
+                if (shown && !wcscmp(type, L"#32770") && !wcscmp(title, L"MultiPad4")) {
+                    *shown = true;
+                    PostMessageW(window, WM_COMMAND, IDOK, 0);
+                }
+                return TRUE;
+            }, 0);
+        });
+        require(timer != 0);
+        SetPropW(frame, L"ExitSessionTestError", &errorShown);
+        frame.SendMessage(WM_CLOSE);
+        KillTimer(nullptr, timer);
+        RemovePropW(frame, L"ExitSessionTestError");
+        require(errorShown && frame.IsWindow() && frame.tabs.GetPageCount() == 3);
+        require(frame.Active() == untitled && untitled->Text() == body && untitled->Modified());
+        std::filesystem::remove(session);
+        require(SaveExitSession(frame));
+        while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1, false));
+        RestoreExitSession(frame);
+        require(frame.tabs.GetPageCount() == 3);
+        untitled = frame.Active();
+        require(untitled && frame.tabs.GetPageData(0) == untitled && untitled->untitled == title && untitled->path.empty());
+        require(untitled->Text() == body && untitled->Modified() && untitled->encoding == files::Encoding::Utf16LE);
+        require(untitled->Send(SCI_GETEOLMODE) == SC_EOL_LF);
+        auto* mappedTab = static_cast<EditorDocument*>(frame.tabs.GetPageData(1));
+        require(mappedTab->FastView() && mappedTab->Modified() && mappedTab->fastView->Model().Read(0, 100) == "edited mapped");
+        mappedTab->fastView->LoadForEditing();
+        require(mappedTab->Modified() && mappedTab->Text() == "edited mapped");
+        named = static_cast<EditorDocument*>(frame.tabs.GetPageData(2));
+        require(named->path == saved && named->Text() == "on disk\n" && !named->Modified());
+        CaptureQAWindow(frame, L"restored-exit-session");
+        untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
+        require(frame.SaveTo(*untitled, directory / L"exit-save-as.txt", false) && !untitled->Modified());
+        require(files::Read(directory / L"exit-save-as.txt").utf8 == body + "!");
         cleanup();
     } catch (...) { cleanup(); throw; }
 }

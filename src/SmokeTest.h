@@ -137,6 +137,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1));
         RunTabCloseTests(frame, dir);
         require(frame.documents.empty());
+        RunExitSessionTests(frame, dir);
         auto text = files::Read(dir / L"中文.cpp");
         require(text.utf8 == "int value = 42; // comment\n");
         std::filesystem::remove_all(dir);

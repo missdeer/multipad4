@@ -43,6 +43,8 @@ public:
     std::optional<Selection> Redo();
     bool Modified() const;
     void MarkSaved();
+    Position FileSize() const;
+    void Write(const files::ChunkConsumer& consume) const;
     std::shared_ptr<Document> Branch(const Snapshot& snapshot) const;
     void Commit(const Snapshot& expected, const Snapshot& changed, Selection before, Selection after);
     void Save(const std::filesystem::path& path, bool copy);
