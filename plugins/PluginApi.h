@@ -2,23 +2,41 @@
 #include <windows.h>
 // MultiPad4 extensions to the Unicode Notepad++ plugin protocol.
 // Optional export BOOL multipadCommandEnabled(UINT commandId) controls menu and dispatch.
+// Optional export void multipadPopulateEditorContextMenu(HMENU) appends commands
+// using the IDs assigned to the plugin's FuncItem entries.
 // Sent synchronously after tab titles, order, selection or membership change.
 // idFrom is the active buffer id for selection-only updates, otherwise zero.
 constexpr UINT MPN_DOCUMENTSCHANGED = 0x4D500001;
 constexpr UINT MPM_GETBUFFERTITLE = WM_USER + 1000 + 950; // NPPMSG + 950
 // wParam is the buffer id. Returns the native files::Encoding value or -1.
 constexpr UINT MPM_GETBUFFERFILEENCODING = WM_USER + 1000 + 951;
-// lParam receives the active buffer's formatting styles. Returns FALSE if unavailable.
-constexpr UINT MPM_GETCODEFORMATSTYLES = WM_USER + 1000 + 952;
-struct MultiPadCodeFormatStyles {
-    int iLexer;
-    unsigned commentStyleMarker, escapeCharacterStyle, operatorStyle, operatorStyle2;
-    unsigned stringStyleFirst, stringStyleLast;
-};
 // Apply the callback to each active selection using Scintilla's case-mapping edit.
 // The callback returns a process-heap buffer and sets length, or returns nullptr.
 constexpr UINT MPM_MAPSELECTION = WM_USER + 1000 + 953;
 using MultiPadSelectionMapper = char* (*)(const char* text, size_t& length, UINT codePage) noexcept;
+// lParam points to a request for a string from the host profile.
+constexpr UINT MPM_GETPROFILESTRING = WM_USER + 1000 + 954;
+struct MultiPadProfileString {
+    const wchar_t* section;
+    const wchar_t* key;
+    const wchar_t* fallback;
+    wchar_t* text;
+    size_t capacity; // Includes the terminator; query with nullptr for required length.
+};
+// Open a folder path in lParam. wParam selects the path in its containing folder.
+constexpr UINT MPM_OPENFOLDER = WM_USER + 1000 + 955;
+// Run the command line in lParam with the active document's working directory.
+constexpr UINT MPM_RUNCOMMAND = WM_USER + 1000 + 956;
+// lParam receives metadata from the active document's lexer configuration.
+constexpr UINT MPM_GETLEXERMETADATA = WM_USER + 1000 + 957;
+struct MultiPadLexerMetadata {
+    int iLexer;
+    unsigned lexerAttr;
+    unsigned commentStyleMarker, escapeCharacterStyle, operatorStyle, operatorStyle2;
+    unsigned stringStyleFirst, stringStyleLast;
+};
+// Returns the active full editor's native HWND, or zero if unavailable.
+constexpr UINT MPM_GETEDITORWINDOW = WM_USER + 1000 + 958;
 struct MultiPadBufferTitle {
     wchar_t* text;
     size_t capacity; // Includes the terminator; query with nullptr for required length.

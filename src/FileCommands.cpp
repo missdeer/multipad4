@@ -11,7 +11,6 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 #include <shlwapi.h>
-#include <regex>
 namespace {
 bool ReloadAs(MainFrame& frame, EditorDocument& document, files::Encoding encoding, bool autoDetect=false, bool variables=true){
     if(document.path.empty())return false;
@@ -39,8 +38,6 @@ CommandState FileCommandState(MainFrame& frame,UINT id){auto* d=frame.Active();b
     switch(id){
     case IDM_ENCODING_UTF8:case IDM_ENCODING_UTF8SIGN:case IDM_ENCODING_UNICODE:case IDM_ENCODING_UNICODEREV:return EditorCommandState(d,id);
     case IDM_FILE_NEWWINDOW2:case IDM_FILE_RELAUNCH_ELEVATED:case IDM_FILE_RESTART:return {true,true,false};
-    case CMD_OPEN_PATH_OR_LINK:case CMD_OPEN_CONTAINING_FOLDER:case CMD_ONLINE_SEARCH_GOOGLE:case CMD_ONLINE_SEARCH_BING:case CMD_ONLINE_SEARCH_WIKI:return {true,d!=nullptr,false};
-    case CMD_CUSTOM_ACTION1:case CMD_CUSTOM_ACTION2:return {true,d && !frame.settings.ReadString(L"Tools",id==CMD_CUSTOM_ACTION1?L"CustomAction1":L"CustomAction2").empty(),false};
     case IDM_FILE_LARGE_FILE_MODE:return {true,d && !(d->Send(SCI_GETDOCUMENTOPTIONS)&SC_DOCUMENTOPTION_TEXT_LARGE),d && (d->Send(SCI_GETDOCUMENTOPTIONS)&SC_DOCUMENTOPTION_TEXT_LARGE)!=0};
     case IDM_FILE_LARGE_FILE_MODE_RELOAD:return {true,path && !(d->Send(SCI_GETDOCUMENTOPTIONS)&SC_DOCUMENTOPTION_TEXT_LARGE),false};
     case IDM_ENCODING_ANSI:return {true,d && !d->Send(SCI_GETREADONLY),d && d->encoding==files::Encoding::Ansi};
@@ -68,39 +65,6 @@ bool ExecuteFileCommand(MainFrame& frame,UINT id){auto state=FileCommandState(fr
         case IDM_FILE_NEWWINDOW2:frame.Relaunch(false,false,false);break;
         case IDM_FILE_RELAUNCH_ELEVATED:frame.Relaunch(true,false);break;
         case IDM_FILE_RESTART:frame.Relaunch(false,false);break;
-        case CMD_OPEN_PATH_OR_LINK:case CMD_OPEN_CONTAINING_FOLDER:case CMD_ONLINE_SEARCH_GOOGLE:case CMD_ONLINE_SEARCH_BING:case CMD_ONLINE_SEARCH_WIKI:case CMD_CUSTOM_ACTION1:case CMD_CUSTOM_ACTION2:{
-            auto start=d->Send(SCI_GETSELECTIONSTART),end=d->Send(SCI_GETSELECTIONEND);if(start==end){auto pos=d->Send(SCI_GETCURRENTPOS);start=d->Send(SCI_WORDSTARTPOSITION,pos,TRUE);end=d->Send(SCI_WORDENDPOSITION,pos,TRUE);}
-            auto text=d->Text();
-            if(d->Send(SCI_GETSELECTIONEMPTY) && (id==CMD_OPEN_PATH_OR_LINK||id==CMD_OPEN_CONTAINING_FOLDER)){
-                const auto pos=static_cast<size_t>(d->Send(SCI_GETCURRENTPOS));auto left=pos,right=pos;
-                while(left>0 && !strchr("\r\n\t \"'<>|",text[left-1]))--left;
-                while(right<text.size() && !strchr("\r\n\t \"'<>|",text[right]))++right;
-                start=static_cast<LRESULT>(left);end=static_cast<LRESULT>(right);
-            }
-            std::string selection=text.substr(start,end-start);auto value=files::FromUtf8(selection);if(value.empty())break;
-            if(id==CMD_ONLINE_SEARCH_GOOGLE||id==CMD_ONLINE_SEARCH_BING||id==CMD_ONLINE_SEARCH_WIKI||id==CMD_CUSTOM_ACTION1||id==CMD_CUSTOM_ACTION2){std::wstring escaped;constexpr wchar_t hex[]=L"0123456789ABCDEF";for(unsigned char c:selection){if((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='-'||c=='_'||c=='.'||c=='~')escaped+=c;else{escaped+=L'%';escaped+=hex[c>>4];escaped+=hex[c&15];}}const wchar_t* key=id==CMD_ONLINE_SEARCH_GOOGLE?L"GoogleSearchUrl":id==CMD_ONLINE_SEARCH_BING?L"BingSearchUrl":id==CMD_ONLINE_SEARCH_WIKI?L"WikiSearchUrl":id==CMD_CUSTOM_ACTION1?L"CustomAction1":L"CustomAction2";
-                auto fallback=id==CMD_ONLINE_SEARCH_GOOGLE?L"https://www.google.com/search?q=%s":id==CMD_ONLINE_SEARCH_BING?L"https://www.bing.com/search?q=%s":id==CMD_ONLINE_SEARCH_WIKI?L"https://en.wikipedia.org/wiki/Special:Search?search=%s":L"";
-                auto pattern=frame.settings.ReadString(L"Tools",key,fallback);if(pattern.empty())break;size_t position=0;while((position=pattern.find(L"%s",position))!=std::wstring::npos){pattern.replace(position,2,escaped);position+=escaped.size();}ExecuteExternalCommand(frame,pattern);break;}
-
-            else{
-                while(!value.empty() && (iswspace(value.front())||value.front()==L'"'||value.front()==L'\''||value.front()==L'<'))value.erase(0,1);
-                while(!value.empty() && (iswspace(value.back())||value.back()==L'"'||value.back()==L'\''||value.back()==L'>'))value.pop_back();
-                if(value.starts_with(L"file://")){wchar_t path[32768]{};DWORD count=32768;if(SUCCEEDED(PathCreateFromUrlW(value.c_str(),path,&count,0)))value=path;}
-                if(value.find(L"://")==std::wstring::npos){
-                    std::wsmatch suffix;long long line=0,column=1;
-                    if(std::regex_search(value,suffix,std::wregex(LR"(:(\d+)(?::(\d+))?$)")) && suffix.position()>1){line=std::wcstoll(suffix[1].str().c_str(),nullptr,10);if(suffix[2].matched)column=std::wcstoll(suffix[2].str().c_str(),nullptr,10);value.erase(static_cast<size_t>(suffix.position()));while(!value.empty() && (value.back()==L'"'||value.back()==L'\''))value.pop_back();}
-                    auto expandedSize=ExpandEnvironmentStringsW(value.c_str(),nullptr,0);if(expandedSize){std::wstring expanded(expandedSize,L'\0');ExpandEnvironmentStringsW(value.c_str(),expanded.data(),expandedSize);expanded.resize(expandedSize-1);value=std::move(expanded);}
-                    auto path=std::filesystem::path(value);if(path.is_relative())path=d->path.parent_path()/path;
-                    if(id==CMD_OPEN_CONTAINING_FOLDER){OpenFolderRequest(frame,path,FolderOpenRequest::ContainingFolder);break;}
-                    if(std::filesystem::is_directory(path)){OpenFolderRequest(frame,path,FolderOpenRequest::OpenFolder);break;}
-                    value=path.wstring();
-                    if(id==CMD_OPEN_PATH_OR_LINK && std::filesystem::is_regular_file(path)){if(frame.Open(path)&&line>0){auto* target=frame.Active();auto index=(std::clamp)(static_cast<LRESULT>(line-1),LRESULT(0),target->Send(SCI_GETLINECOUNT)-1);target->Send(SCI_GOTOPOS,target->Send(SCI_FINDCOLUMN,index,(std::max)(0LL,column-1)));target->Send(SCI_SCROLLCARET);}break;}
-                }
-            }
-
-            if(reinterpret_cast<INT_PTR>(ShellExecuteW(frame.m_hWnd,L"open",value.c_str(),nullptr,nullptr,SW_SHOWNORMAL))<=32)throw std::runtime_error("Cannot open selected path or link.");break;
-        }
-
         case IDM_FILE_LARGE_FILE_MODE:case IDM_FILE_LARGE_FILE_MODE_RELOAD:{
             if(id==IDM_FILE_LARGE_FILE_MODE_RELOAD && !frame.Reload(*d))break;
             if (d->LargeFile()) break;

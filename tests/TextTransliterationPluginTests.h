@@ -73,7 +73,14 @@ inline void RunTextTransliterationPluginTests(MainFrame& frame, EditorDocument& 
     bool receivedHanja = false;
     document.Send(SCI_SELECTALL);
     require(SetWindowSubclass(document.hwnd, ImeProbe::Observe, 0, reinterpret_cast<DWORD_PTR>(&receivedHanja)));
+    ::SendMessageW(frame.plugins.proxy, WM_IME_KEYDOWN, VK_HANJA, 0);
+    require(!receivedHanja);
     run(9);
-    RemoveWindowSubclass(document.hwnd, ImeProbe::Observe, 0);
     require(receivedHanja);
+    receivedHanja = false;
+    document.Send(SCI_SETREADONLY, TRUE);
+    run(9);
+    document.Send(SCI_SETREADONLY, FALSE);
+    RemoveWindowSubclass(document.hwnd, ImeProbe::Observe, 0);
+    require(!receivedHanja);
 }

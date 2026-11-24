@@ -1,6 +1,7 @@
 // Windows ActiveScript evaluation follows notepad4 Bridge.cpp's engine order.
 #include "EditExpression.h"
 #include "FileIO.h"
+#include "EditSelection.h"
 #include <atlbase.h>
 #include <atlcomcli.h>
 #include <activscp.h>
@@ -60,7 +61,6 @@ class Site final : public IActiveScriptSite {
         return S_OK;
     }
 };
-} // namespace
 std::string EvaluateExpression(const std::string &text, bool math) {
     auto expression = files::FromUtf8(text);
     if (math)
@@ -111,4 +111,29 @@ std::string EvaluateExpression(const std::string &text, bool math) {
     if (FAILED(status))
         throw std::runtime_error("Expression result cannot be converted to text.");
     return files::ToUtf8(result.bstrVal ? std::wstring(result.bstrVal, SysStringLen(result.bstrVal)) : std::wstring{});
+}
+} // namespace
+
+void EvaluateSelectedExpression(HWND editor, bool math) {
+    if (RejectRectangularEdit(editor))
+        return;
+    const auto start = SendMessageW(editor, SCI_GETSELECTIONSTART, 0, 0);
+    const auto end = SendMessageW(editor, SCI_GETSELECTIONEND, 0, 0);
+    try {
+        std::string expression(end - start + 1, '\0');
+        Sci_TextRangeFull range{{start, end}, expression.data()};
+        SendMessageW(editor, SCI_GETTEXTRANGEFULL, 0, reinterpret_cast<LPARAM>(&range));
+        expression.resize(end - start);
+        const auto output = EvaluateExpression(expression, math);
+        if (output.empty())
+            return;
+        const auto insertion = ' ' + output;
+        SendMessageW(editor, SCI_BEGINUNDOACTION, 0, 0);
+        SendMessageW(editor, SCI_SETTARGETRANGE, end, end);
+        SendMessageW(editor, SCI_REPLACETARGET, insertion.size(), reinterpret_cast<LPARAM>(insertion.data()));
+        SendMessageW(editor, SCI_SETSEL, end, end + insertion.size());
+        SendMessageW(editor, SCI_ENDUNDOACTION, 0, 0);
+    } catch (const std::exception &error) {
+        SendMessageW(editor, SCI_SHOWNOTIFICATION, start << 2, reinterpret_cast<LPARAM>(error.what()));
+    }
 }

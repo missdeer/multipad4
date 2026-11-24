@@ -4702,85 +4702,85 @@
       "path": "src/EditExtra.cpp",
       "references": [
         {
-          "line": 21,
+          "line": 19,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 24,
+          "line": 22,
           "symbols": [
             "NP2LEX_AWK"
           ]
         },
         {
-          "line": 27,
+          "line": 25,
           "symbols": [
             "NP2LEX_ERLANG"
           ]
         },
         {
-          "line": 30,
+          "line": 28,
           "symbols": [
             "NP2LEX_GROOVY"
           ]
         },
         {
-          "line": 33,
+          "line": 31,
           "symbols": [
             "NP2LEX_JAVASCRIPT"
           ]
         },
         {
-          "line": 36,
+          "line": 34,
           "symbols": [
             "NP2LEX_LUA"
           ]
         },
         {
-          "line": 39,
+          "line": 37,
           "symbols": [
             "NP2LEX_PERL"
           ]
         },
         {
-          "line": 42,
+          "line": 40,
           "symbols": [
             "NP2LEX_PHP"
           ]
         },
         {
-          "line": 45,
+          "line": 43,
           "symbols": [
             "NP2LEX_PYTHON"
           ]
         },
         {
-          "line": 48,
+          "line": 46,
           "symbols": [
             "NP2LEX_RLANG"
           ]
         },
         {
-          "line": 51,
+          "line": 49,
           "symbols": [
             "NP2LEX_RUBY"
           ]
         },
         {
-          "line": 54,
+          "line": 52,
           "symbols": [
             "NP2LEX_SCALA"
           ]
         },
         {
-          "line": 57,
+          "line": 55,
           "symbols": [
             "NP2LEX_TCL"
           ]
         },
         {
-          "line": 62,
+          "line": 60,
           "symbols": [
             "NP2LEX_BASH"
           ]
@@ -4974,7 +4974,7 @@
       "path": "src/PluginHost.cpp",
       "references": [
         {
-          "line": 223,
+          "line": 253,
           "symbols": [
             "GetDocumentLexer"
           ]

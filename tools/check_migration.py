@@ -17,8 +17,14 @@ web_tools = {
     "IDM_EDIT_XHTML_ESCAPE_CHAR", "IDM_EDIT_XHTML_UNESCAPE_CHAR",
     "IDM_EDIT_URLENCODE", "IDM_EDIT_URLCOMPONENTENCODE", "IDM_EDIT_URLDECODE",
 }
+selection_actions = {
+    "CMD_OPEN_PATH_OR_LINK", "CMD_OPEN_CONTAINING_FOLDER", "CMD_CALCULATE_EXPR",
+    "CMD_ONLINE_SEARCH_GOOGLE", "CMD_ONLINE_SEARCH_BING", "CMD_ONLINE_SEARCH_WIKI",
+    "CMD_CUSTOM_ACTION1", "CMD_CUSTOM_ACTION2",
+}
 commands = {item["command"]: item["value"] for item in inventory["menu_entries"]
-            if not item["command"].startswith(("IDM_EDIT_BASE64_", "IDM_EDIT_MAP_")) and item["command"] not in web_tools}
+            if not item["command"].startswith(("IDM_EDIT_BASE64_", "IDM_EDIT_MAP_"))
+            and item["command"] not in web_tools | selection_actions}
 missing = {name: value for name, value in commands.items()
            if value is None or not runtime.get(str(value), {}).get("supported", False)}
 print(f"Menu commands routed: {len(commands) - len(missing)}/{len(commands)}")

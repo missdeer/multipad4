@@ -257,14 +257,6 @@ inline void RunEditorFeatureTests(EditorDocument &document) {
     CloseClipboard();
     require(richText.starts_with("{\\rtf1"));
     require(richText.find("\\u233?") != std::string::npos);
-    CLSID scriptClass{};
-    if (SUCCEEDED(CLSIDFromProgID(L"JavaScript", &scriptClass))) {
-        load("sqrt(9)+1");
-        require(ExecuteEditorCommand(document, CMD_CALCULATE_EXPR));
-        require(document.Text() == "sqrt(9)+1 4");
-        document.Send(SCI_UNDO);
-        require(document.Text() == "sqrt(9)+1");
-    }
     RunEditScopeTests(document);
     document.Send(SCI_SETSAVEPOINT);
     document.encodingDirty = false;

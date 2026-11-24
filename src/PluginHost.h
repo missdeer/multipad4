@@ -3,6 +3,7 @@
 #include "../3rdparty/notepad-plus-plus-plugin-api/PluginInterface.h"
 #include "../3rdparty/notepad-plus-plus-plugin-api/Docking.h"
 #include <filesystem>
+#include <span>
 class MainFrame;
 struct EditorDocument;
 class PluginPane : public dockwins::CTitleDockingWindowImpl<PluginPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
@@ -32,6 +33,7 @@ public:
         // Optional MultiPad4 extensions; absent exports preserve N++ behavior.
         BOOL (__cdecl* preTranslate)(MSG*) = nullptr;
         BOOL (__cdecl* commandEnabled)(UINT) = nullptr;
+        void (__cdecl* populateEditorContextMenu)(HMENU) = nullptr;
         HMENU submenu = nullptr;
         bool supportsFastView = false;
     };
@@ -48,6 +50,7 @@ public:
     int nextMarker = 20, nextIndicator = 20;
     UINT_PTR activeBuffer = 0;
     std::wstring onlyModule;
+    std::span<const std::wstring_view> bundledModules;
     bool enabled = true, ready = false, stopped = false;
     void Initialize(MainFrame& owner);
     void Ready();
@@ -56,6 +59,7 @@ public:
     void Notify(UINT code, UINT_PTR buffer = 0);
     void ScintillaNotification(const SCNotification& notification);
     void UpdateMenu(HMENU submenu);
+    void PopulateEditorContextMenu(HMENU submenu);
     bool Execute(UINT id);
     bool PreTranslate(MSG* message);
     LRESULT Message(UINT message, WPARAM w, LPARAM l);

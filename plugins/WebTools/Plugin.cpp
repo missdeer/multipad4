@@ -1,5 +1,6 @@
 #include "EditCodeFormat.h"
-#include "EditExpression.h"
+#include "../EditExpression.h"
+#include "../../3rdparty/notepad4/src/EditLexer.h"
 #include "EditSelection.h"
 #include "PluginInterface.h"
 #include <algorithm>
@@ -16,13 +17,14 @@ LRESULT Sci(UINT message, WPARAM w = 0, LPARAM l = 0) {
     return SendMessageW(host._scintillaMainHandle, message, w, l);
 }
 
-bool GetFormatStyles(MultiPadCodeFormatStyles& styles) {
-    return SendMessageW(host._nppHandle, MPM_GETCODEFORMATSTYLES, 0, reinterpret_cast<LPARAM>(&styles)) != 0;
+bool GetFormatStyles(MultiPadLexerMetadata& styles) {
+    return SendMessageW(host._nppHandle, MPM_GETLEXERMETADATA, 0, reinterpret_cast<LPARAM>(&styles)) &&
+        (styles.lexerAttr & LexerAttr_CodePretty);
 }
 
 template<bool Pretty>
 void Format() {
-    MultiPadCodeFormatStyles styles{};
+    MultiPadLexerMetadata styles{};
     if (GetFormatStyles(styles))
         FormatDocumentCode(host._scintillaMainHandle, styles, Pretty);
 }
@@ -125,16 +127,7 @@ void ConvertEntities() {
 }
 
 void EvaluateJavaScript() {
-    if (RejectRectangularEdit(host._scintillaMainHandle))
-        return;
-    const auto start = Sci(SCI_GETSELECTIONSTART), end = Sci(SCI_GETSELECTIONEND);
-    try {
-        const auto output = EvaluateExpression(ReadSelection(start, end), false);
-        if (!output.empty())
-            Replace(end, end, ' ' + output);
-    } catch (const std::exception& error) {
-        Sci(SCI_SHOWNOTIFICATION, start << 2, reinterpret_cast<LPARAM>(error.what()));
-    }
+    EvaluateSelectedExpression(host._scintillaMainHandle, false);
 }
 
 ShortcutKey escapeHtml{false, true, true, 'X'}, unescapeHtml{false, true, true, 'H'};
@@ -183,7 +176,7 @@ extern "C" __declspec(dllexport) BOOL multipadCommandEnabled(UINT id) {
     if (!SendMessageW(host._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0) || Sci(SCI_GETREADONLY))
         return FALSE;
     if (id == static_cast<UINT>(commands[0]._cmdID) || id == static_cast<UINT>(commands[1]._cmdID)) {
-        MultiPadCodeFormatStyles styles{};
+        MultiPadLexerMetadata styles{};
         return GetFormatStyles(styles);
     }
     return !Sci(SCI_GETSELECTIONEMPTY);

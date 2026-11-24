@@ -121,6 +121,7 @@ LRESULT MainFrame::OnContextMenu(UINT, WPARAM source, LPARAM coordinates, BOOL&)
     HMENU root = LoadMenuW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_POPUPMENU));
     HMENU menu = GetSubMenu(root, popup); UpdateCommandUI();
     UpdateMenuCommands(*this, menu);
+    if (popup == 0) plugins.PopulateEditorContextMenu(menu);
     POINT point{GET_X_LPARAM(coordinates), GET_Y_LPARAM(coordinates)};
     if (point.x == -1 && point.y == -1) {
         if (auto* d = Active()) {

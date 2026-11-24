@@ -80,7 +80,7 @@ jobs:
 
       - name: Verify bundled plugins
         run: |
-          foreach ($name in @('Base64', 'Matepath', 'OpenDocuments', 'TextTransliteration', 'WebTools')) {
+          foreach ($name in @('Base64', 'Matepath', 'OpenDocuments', 'SelectionActions', 'TextTransliteration', 'WebTools')) {
             $plugin = "cmake-${{ matrix.toolchain.id }}-build/plugins/$name/$name.dll"
             if (!(Test-Path -LiteralPath $plugin -PathType Leaf)) {
               throw "The bundled plugin is missing: $plugin"
@@ -105,6 +105,8 @@ jobs:
             cmake-${{ matrix.toolchain.id }}-build/*.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Base64.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Notepad4.License.txt
+            cmake-${{ matrix.toolchain.id }}-build/plugins/SelectionActions/SelectionActions.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/SelectionActions/Notepad4.License.txt
             cmake-${{ matrix.toolchain.id }}-build/plugins/TextTransliteration/TextTransliteration.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/TextTransliteration/Notepad4.License.txt
             cmake-${{ matrix.toolchain.id }}-build/plugins/WebTools/WebTools.dll
@@ -181,10 +183,13 @@ jobs:
           plugin="$build_dir/plugins/Matepath/Matepath.dll"
           documents_plugin="$build_dir/plugins/OpenDocuments/OpenDocuments.dll"
           base64_plugin="$build_dir/plugins/Base64/Base64.dll"
+          selection_actions_plugin="$build_dir/plugins/SelectionActions/SelectionActions.dll"
           transliteration_plugin="$build_dir/plugins/TextTransliteration/TextTransliteration.dll"
           web_tools_plugin="$build_dir/plugins/WebTools/WebTools.dll"
           mkdir -p "$build_dir/package/plugins/Base64"
           cp "$build_dir/plugins/Base64/Notepad4.License.txt" "$build_dir/package/plugins/Base64/"
+          mkdir -p "$build_dir/package/plugins/SelectionActions"
+          cp "$build_dir/plugins/SelectionActions/Notepad4.License.txt" "$build_dir/package/plugins/SelectionActions/"
           mkdir -p "$build_dir/package/plugins/TextTransliteration"
           cp "$build_dir/plugins/TextTransliteration/Notepad4.License.txt" "$build_dir/package/plugins/TextTransliteration/"
           mkdir -p "$build_dir/package/plugins/WebTools"
@@ -197,7 +202,7 @@ jobs:
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
           # Stage plugins beside the EXE so their runtime DLLs land in the same directory.
-          cp "$plugin" "$documents_plugin" "$base64_plugin" "$transliteration_plugin" "$web_tools_plugin" "$build_dir/package/"
+          cp "$plugin" "$documents_plugin" "$base64_plugin" "$selection_actions_plugin" "$transliteration_plugin" "$web_tools_plugin" "$build_dir/package/"
           # Read PE imports without loading target code, including AVX512 builds.
           # mingwdeployqt also scans DLLs beside the EXE.
           "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
@@ -217,6 +222,7 @@ jobs:
           mv "$build_dir/package/Matepath.dll" "$build_dir/package/plugins/Matepath/"
           mv "$build_dir/package/OpenDocuments.dll" "$build_dir/package/plugins/OpenDocuments/"
           mv "$build_dir/package/Base64.dll" "$build_dir/package/plugins/Base64/"
+          mv "$build_dir/package/SelectionActions.dll" "$build_dir/package/plugins/SelectionActions/"
           mv "$build_dir/package/TextTransliteration.dll" "$build_dir/package/plugins/TextTransliteration/"
           mv "$build_dir/package/WebTools.dll" "$build_dir/package/plugins/WebTools/"
 

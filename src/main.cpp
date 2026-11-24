@@ -63,7 +63,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
         frame.plugins.enabled = !(largeTest || report || lexerBaseline || configurationMode);
-        if (smoke || render) frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
+        if (smoke || render) {
+            frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
+            frame.plugins.bundledModules = bundledTestModules;
+        }
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         SetConfigurationUserDirectory(frame.settings.path.parent_path());

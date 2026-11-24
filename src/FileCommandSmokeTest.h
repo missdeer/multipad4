@@ -90,12 +90,6 @@ inline void RunFileCommandSmokeTest(MainFrame& frame) {
         require(backup.parent_path()==directory && backup.filename().wstring().starts_with(L"日本.txt "));
         require(files::Read(backup).utf8==opened->Text() && opened->encoding==files::FromCodePage(1252) && !opened->Modified());
         ApplyCommandLine(frame,command);require(frame.Active()==opened && frame.tabs.GetPageCount()==count+1);
-        auto* reference=frame.NewDocument();require(reference!=nullptr);reference->path=directory/L"reference.txt";
-        auto referenceText=files::ToUtf8(path.wstring()+L":2:2");reference->Load({referenceText});reference->Send(SCI_GOTOPOS,referenceText.size()/2);
-        auto referenceIndex=frame.tabs.GetActivePage();
-        ExecuteFileCommand(frame,CMD_OPEN_PATH_OR_LINK);
-        require(frame.Active()==opened && opened->Send(SCI_GETCURRENTPOS)==opened->Send(SCI_POSITIONFROMLINE,1)+1);
-        require(frame.Close(referenceIndex));
         require(frame.Open(path));
         require(frame.Close(frame.tabs.GetActivePage()));
         auto variablesPath=directory/L"variables.cpp";

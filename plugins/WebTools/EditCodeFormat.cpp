@@ -29,7 +29,7 @@ enum {
     SpaceOption_PopBrace = 128,
 };
 
-int AddStyleSeparator(const MultiPadCodeFormatStyles* pLex, int ch, int chPrev, int style) noexcept {
+int AddStyleSeparator(const MultiPadLexerMetadata* pLex, int ch, int chPrev, int style) noexcept {
     if ((style >= pLex->stringStyleFirst && style <= pLex->stringStyleLast) ||
         (pLex->iLexer == SCLEX_JSON && (style == SCE_JSON_PROPERTYNAME)) ||
         (pLex->iLexer == SCLEX_JAVASCRIPT && (style == SCE_JS_KEY || style == SCE_JS_OPERATOR_PF))) {
@@ -58,7 +58,7 @@ int AddStyleSeparator(const MultiPadCodeFormatStyles* pLex, int ch, int chPrev, 
     return SpaceOption_None;
 }
 
-void CodePretty(std::string &output, const MultiPadCodeFormatStyles* pLex, const char *styledText,
+void CodePretty(std::string &output, const MultiPadLexerMetadata* pLex, const char *styledText,
                 size_t textLength, unsigned eolMode, bool useTabs, unsigned tabWidth) {
     char fmtbuf[128];
     std::string braceStack(1, '\0'); // sentinel
@@ -367,7 +367,7 @@ void CodePretty(std::string &output, const MultiPadCodeFormatStyles* pLex, const
 
 } // namespace
 
-void FormatDocumentCode(HWND editor, const MultiPadCodeFormatStyles &styles, bool pretty) {
+void FormatDocumentCode(HWND editor, const MultiPadLexerMetadata &styles, bool pretty) {
     const auto *lexer = &styles;
     const auto send = [editor](UINT message, WPARAM w = 0, LPARAM l = 0) {
         return SendMessageW(editor, message, w, l);

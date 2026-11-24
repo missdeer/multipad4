@@ -1,6 +1,8 @@
 #include "MainFrame.h"
 #include "../plugins/PluginApi.h"
 #include "EditCaseMapping.h"
+#include "FileCommands.h"
+#include "FileDialogs.h"
 #include <fstream>
 #include "StyleManager.h"
 
@@ -27,7 +29,7 @@ LRESULT CALLBACK PluginHost::ProxyProc(HWND window, UINT msg, WPARAM w, LPARAM l
         host = static_cast<PluginHost*>(reinterpret_cast<CREATESTRUCTW*>(l)->lpCreateParams);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(host));
     }
-    if (host && ((msg >= 2000 && msg < 6000) || (msg == WM_IME_KEYDOWN && w == VK_HANJA)))
+    if (host && msg >= 2000 && msg < 6000)
         return host->SciMessage(msg, w, l);
     if (host && msg == WM_SETFOCUS) if (auto* d = host->frame->Active()) ::SetFocus(d->hwnd);
     return DefWindowProcW(window, msg, w, l);
@@ -43,8 +45,6 @@ LRESULT PluginHost::SciMessage(UINT msg, WPARAM w, LPARAM l) {
     if (msg == SCI_GETDIRECTSTATUSFUNCTION) return reinterpret_cast<LRESULT>(&DirectStatus);
     if (msg == SCI_GETDIRECTPOINTER) return reinterpret_cast<LRESULT>(this);
     auto* d = frame->Active(); if (!d || d->FastView()) return 0;
-    if (msg == WM_IME_KEYDOWN && w == VK_HANJA)
-        return d->Send(SCI_GETREADONLY) ? 0 : ::SendMessageW(d->hwnd, msg, w, l);
     // N++'s bundled fork returns text lengths excluding the terminator.
     if (msg == SCI_GETSELTEXT) return d->Send(msg, 0, l);
     if (msg == 2041 || msg == 2042 || msg == 2292) return d->Send(msg == 2041 ? SCI_MARKERSETFORETRANSLUCENT : msg == 2042 ? SCI_MARKERSETBACKTRANSLUCENT : SCI_MARKERSETBACKSELECTEDTRANSLUCENT, w, l | 0xFF000000u);
@@ -99,8 +99,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!entry.is_directory()) continue;
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
-        if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments" &&
-            name != L"Base64" && name != L"TextTransliteration" && name != L"WebTools") continue;
+        if (onlyModule == L"__bundled__" && std::find(bundledModules.begin(), bundledModules.end(), name) == bundledModules.end()) continue;
         if (onlyModule != L"__bundled__" && !onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }
@@ -120,6 +119,8 @@ void PluginHost::Initialize(MainFrame& owner) {
         }
         plugin.preTranslate = reinterpret_cast<BOOL(__cdecl*)(MSG*)>(GetProcAddress(plugin.library, "multipadPreTranslateMessage"));
         plugin.commandEnabled = reinterpret_cast<BOOL(__cdecl*)(UINT)>(GetProcAddress(plugin.library, "multipadCommandEnabled"));
+        plugin.populateEditorContextMenu = reinterpret_cast<void(__cdecl*)(HMENU)>(
+            GetProcAddress(plugin.library, "multipadPopulateEditorContextMenu"));
         auto supportsFastView = reinterpret_cast<BOOL(__cdecl*)()>(GetProcAddress(plugin.library, "multipadSupportsFastView"));
         plugin.supportsFastView = supportsFastView && supportsFastView();
         plugin.name = name(); info({owner, proxy, secondProxy}); plugin.items = funcs(&plugin.count);
@@ -192,6 +193,13 @@ void PluginHost::UpdateMenu(HMENU submenu) {
         break;
     }
 }
+void PluginHost::PopulateEditorContextMenu(HMENU submenu) {
+    if (!submenu) return;
+    const auto* document = frame->Active();
+    for (const auto& plugin : plugins)
+        if (plugin.populateEditorContextMenu && (!document || !document->FastView() || plugin.supportsFastView))
+            plugin.populateEditorContextMenu(submenu);
+}
 bool PluginHost::Execute(UINT id) {
     const bool fastView = frame->Active() && frame->Active()->FastView();
     for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc && (!fastView || p.supportsFastView)) {
@@ -218,12 +226,33 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     auto path = [](EditorDocument* doc) { return doc->path.empty() ? doc->untitled : doc->path.wstring(); };
     auto language = [](EditorDocument* doc) { return !doc ? L_TEXT : doc->language == L"JSON" ? L_JSON : doc->language == L"XML" ? L_XML : doc->language == L"HTML" ? L_HTML : doc->language == L"C/C++" ? L_CPP : L_TEXT; };
     switch (msg) {
-    case MPM_GETCODEFORMATSTYLES: {
+    case MPM_GETPROFILESTRING: {
+        const auto* request = reinterpret_cast<const MultiPadProfileString*>(l);
+        if (!request || !request->section || !request->key || !request->fallback) return -1;
+        const auto value = frame->settings.ReadString(request->section, request->key, request->fallback);
+        if (request->text) {
+            if (request->capacity <= value.size()) return -1;
+            wcscpy_s(request->text, request->capacity, value.c_str());
+        }
+        return static_cast<LRESULT>(value.size());
+    }
+    case MPM_OPENFOLDER:
+    case MPM_RUNCOMMAND:
+        if (!l || frame->runtime.operationDepth || frame->runtime.inBackgroundWork || !frame->IsWindowEnabled()) return FALSE;
+        try {
+            const auto* text = reinterpret_cast<const wchar_t*>(l);
+            if (msg == MPM_OPENFOLDER)
+                return OpenFolderRequest(*frame, text, w ? FolderOpenRequest::ContainingFolder : FolderOpenRequest::OpenFolder);
+            ExecuteExternalCommand(*frame, text);
+            return TRUE;
+        } catch (const std::exception& error) { frame->Error(error); return FALSE; }
+    case MPM_GETEDITORWINDOW:
+        return d && !d->FastView() ? reinterpret_cast<LRESULT>(d->hwnd) : 0;
+    case MPM_GETLEXERMETADATA: {
         if (!d || d->FastView() || !l) return FALSE;
         const auto* lexer = GetDocumentLexer(*d);
-        if (!lexer || !(lexer->lexerAttr & LexerAttr_CodePretty)) return FALSE;
-        *reinterpret_cast<MultiPadCodeFormatStyles*>(l) = {
-            lexer->iLexer, lexer->commentStyleMarker, lexer->escapeCharacterStyle,
+        *reinterpret_cast<MultiPadLexerMetadata*>(l) = {
+            lexer->iLexer, lexer->lexerAttr, lexer->commentStyleMarker, lexer->escapeCharacterStyle,
             lexer->operatorStyle, lexer->operatorStyle2, lexer->stringStyleFirst, lexer->stringStyleLast};
         return TRUE;
     }

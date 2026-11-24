@@ -99,6 +99,18 @@ inline void RunWebToolsPluginTests(MainFrame& frame, EditorDocument& document) {
     require(SelectDocumentScheme(document, L"JSON"));
     CaptureQAPopup(frame, plugin->submenu, L"Web-Tools-plugin-menu");
     document.Send(SCI_GOTOPOS, 0);
+    const auto originalConfiguration = document.style.configuration;
+    const int scheme = document.style.resolvedScheme;
+    auto alternateConfiguration = std::make_shared<ConfigurationSnapshot>(*originalConfiguration);
+    auto alternateLexer = std::make_shared<LanguageDefinition>(*originalConfiguration->catalog[scheme]);
+    alternateLexer->lexerAttr &= ~LexerAttr_CodePretty;
+    alternateConfiguration->languages[scheme] = alternateLexer;
+    alternateConfiguration->catalog[scheme] = alternateLexer.get();
+    document.style.configuration = alternateConfiguration;
+    require(!enabled(0) && !enabled(1));
+    run(0);
+    require(document.Text() == R"({ "x": [1, 2] })");
+    document.style.configuration = originalConfiguration;
     require(enabled(0) && !enabled(8));
     run(0);
     require(document.Text() == R"({"x":[1,2]})");

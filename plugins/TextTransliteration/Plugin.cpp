@@ -123,7 +123,9 @@ void ConvertSelection() {
 }
 
 void ConvertHanja() {
-    SendMessageW(host._scintillaMainHandle, WM_IME_KEYDOWN, VK_HANJA, 0);
+    const auto editor = reinterpret_cast<HWND>(SendMessageW(host._nppHandle, MPM_GETEDITORWINDOW, 0, 0));
+    if (editor && !SendMessageW(editor, SCI_GETREADONLY, 0, 0))
+        SendMessageW(editor, WM_IME_KEYDOWN, VK_HANJA, 0);
 }
 
 FuncItem commands[]{

@@ -1,7 +1,5 @@
 #include "EditExtra.h"
 #include "../3rdparty/notepad4/src/EditLexer.h"
-#include "EditExpression.h"
-#include "EditSelection.h"
 #include "StyleManager.h"
 #include "resource.h"
 #include <ctime>
@@ -93,7 +91,6 @@ CommandState ExtraEditState(const EditorDocument *d, UINT id) {
     case IDM_EDIT_REPLACENEXT:
     case IDM_EDIT_INSERT_SHEBANG:
     case CMD_TIMESTAMPS:
-    case CMD_CALCULATE_EXPR:
     case CMD_CTRLENTER:
         supported = true;
         break;
@@ -122,19 +119,6 @@ bool ExecuteExtraEdit(EditorDocument &d, UINT id, const std::function<bool(bool)
         return true;
     }
     switch (id) {
-    case CMD_CALCULATE_EXPR: {
-        if (RejectRectangularEdit(d.hwnd))
-            break;
-        const auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
-        try {
-            const auto output = EvaluateExpression(d.Range(start, end - start), true);
-            if (!output.empty())
-                Replace(d, end, end, ' ' + output);
-        } catch (const std::exception &error) {
-            d.Send(SCI_SHOWNOTIFICATION, start << 2, reinterpret_cast<LPARAM>(error.what()));
-        }
-        break;
-    }
     case CMD_JUMP2SELSTART:
     case CMD_JUMP2SELEND: {
         auto anchor = d.Send(SCI_GETANCHOR), caret = d.Send(SCI_GETCURRENTPOS);

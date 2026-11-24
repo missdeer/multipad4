@@ -1,5 +1,5 @@
 file(CONFIGURE OUTPUT MenuStrings.rc CONTENT "${WEB_TOOLS_MENU_STRINGS}" @ONLY)
-add_library(WebTools SHARED Plugin.cpp EditCodeFormat.cpp "${PROJECT_SOURCE_DIR}/src/EditExpression.cpp"
+add_library(WebTools SHARED Plugin.cpp EditCodeFormat.cpp ../EditExpression.cpp
   WebToolsVersion.rc "${CMAKE_CURRENT_BINARY_DIR}/MenuStrings.rc")
 target_include_directories(WebTools PRIVATE
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
