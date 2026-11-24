@@ -344,12 +344,14 @@ std::optional<Selection> Document::Redo() {
 }
 bool Document::Modified() const { return impl->root != impl->saved; }
 void Document::MarkSaved() { impl->saved = impl->root; }
-void Document::Save(const std::filesystem::path& path, bool copy) {
+Position Document::FileSize() const { return Size() + impl->signature.size(); }
+void Document::Write(const files::ChunkConsumer& consume) const {
     const auto snapshot = Capture();
-    files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) {
-        consume(impl->signature);
-        Impl::Stream(snapshot.root, consume);
-    });
+    consume(impl->signature);
+    Impl::Stream(snapshot.root, consume);
+}
+void Document::Save(const std::filesystem::path& path, bool copy) {
+    files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) { Write(consume); });
     if (!copy) MarkSaved();
 }
 Document::Metrics Document::Statistics() const { return {impl->counters->read.load(), impl->counters->added.load(), impl->counters->blocks.load(), impl->counters->nodes.load()}; }

@@ -10,6 +10,7 @@
 #include "StyleManager.h"
 #include "Localization.h"
 #include "CommandLine.h"
+#include "Session.h"
 #include "FrameCommands.h"
 #include "EditAdvanced.h"
 #include "../tests/QAArtifacts.h"
@@ -139,6 +140,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             frame.DestroyWindow();
         } else {
             frame.ShowWindow(frame.runtime.restoredShowCmd == SW_SHOWMAXIMIZED ? SW_SHOWMAXIMIZED : show); frame.UpdateWindow();
+            frame.exitSessionEligible = !options.print && !options.help && options.sessionFile.empty() && options.reuseWindow != 0;
+            try { RestoreExitSession(frame); } catch (const std::exception& error) { frame.Error(error); }
             try { ApplyCommandLine(frame, options); } catch (const std::exception& error) { frame.Error(error); }
             if (frame.documents.empty()) frame.NewDocument();
             frame.plugins.Ready();

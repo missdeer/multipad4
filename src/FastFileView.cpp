@@ -18,9 +18,9 @@ unsigned Unit(std::string_view bytes, size_t i, files::Encoding e) {
     return e == files::Encoding::Utf16LE || e == files::Encoding::Utf16LEPlain ? a | (b << 8) : (a << 8) | b;
 }
 }
-FastFileView::FastFileView(EditorDocument& d, const std::filesystem::path& path, const files::ReadOptions& readOptions, std::optional<files::Encoding> selected) :
+FastFileView::FastFileView(EditorDocument& d, const std::filesystem::path& path, const files::ReadOptions& readOptions, std::optional<files::Encoding> selected, bool deleteOnClose) :
     document(d), options(readOptions), forced(selected) {
-    auto file = std::make_shared<files::MappedFile>(path, nullptr, true);
+    auto file = std::make_shared<files::MappedFile>(path, nullptr, true, deleteOnClose);
     auto sample = file->Read(0, 4096);
     std::string signature;
     if (forced) encoding = *forced;
@@ -187,7 +187,7 @@ void FastFileView::ShowSelection(large::Position start, large::Position length) 
 }
 void FastFileView::LoadForEditing() {
     if (!model) return;
-    CancelTask(); const auto selection = Selection(); const bool modified = model->Modified();
+    CancelTask(); const auto selection = Selection(); const bool modified = document.Modified();
     const auto snapshot = model->Capture();
     loading = true;
     struct Reset { bool& value; ~Reset() { value = false; } } reset{loading};

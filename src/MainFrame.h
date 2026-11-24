@@ -24,6 +24,8 @@ public:
     SearchDialog searchDialog;
     SearchResultsPane searchResults;
     AppSettings settings;
+    CHandle exitSessionLock;
+    bool exitSessionEligible = false;
     DocumentStyleState defaultStyle;
     FrameRuntime runtime;
     HMENU windowMenu = nullptr;
@@ -45,7 +47,8 @@ public:
     bool Save(EditorDocument& document, SaveMode mode = SaveMode::Normal, bool keepBackup = false);
     bool SaveTo(EditorDocument& document, const std::filesystem::path& path, bool copy = false, bool keepBackup = false);
     bool Reload(EditorDocument& document);
-    bool Close(int index);
+    bool Close(int index, bool confirm = true);
+    EditorDocument* AddDocument(std::unique_ptr<EditorDocument> document);
     void CloseTabs(int anchor, UINT command);
     bool ConfirmClose(EditorDocument& document, bool keepBackup = true);
     bool Relaunch(bool elevated = false, bool empty = false, bool closeCurrent = true);

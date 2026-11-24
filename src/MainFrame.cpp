@@ -65,11 +65,18 @@ EditorDocument* MainFrame::NewDocument() {
     ApplyDocumentPreferences(*this, *document);
     ApplyDefaultDocumentTheme(*document);document->ConfigureLexer();
     document->encoding = static_cast<files::Encoding>(settings.Get(IDM_ENCODING_SETDEFAULT, static_cast<int>(files::Encoding::Ansi)));
-    auto* raw = document.get();
-    if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw)) { ::DestroyWindow(raw->hwnd); return nullptr; }
-    documents.push_back(std::move(document)); Refresh();
+        auto* raw = AddDocument(std::move(document));
+        Refresh();
     return raw;
     } catch (const std::exception& error) { Error(error); return nullptr; }
+}
+EditorDocument* MainFrame::AddDocument(std::unique_ptr<EditorDocument> document) {
+    auto* raw = document.get();
+    if (documents.size() == documents.capacity()) documents.reserve(documents.size() * 2 + 1);
+    if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw))
+        throw std::runtime_error("Cannot add document tab.");
+    documents.push_back(std::move(document));
+    return raw;
 }
 bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::Encoding> forcedEncoding) {
     try {
@@ -88,11 +95,8 @@ bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::En
             document->Load(forcedEncoding ? files::ReadWithEncoding(path, *forcedEncoding) : ReadFileForFrame(*this, path));
         InitializeFileDocument(*this, *document);
         SnapshotDocument(*document);
-        auto* raw = document.get();
-        if (!tabs.AddPage(raw->ViewWindow(), raw->Title().c_str(), -1, raw)) {
-            ::DestroyWindow(raw->hwnd); throw std::runtime_error("Cannot add document tab.");
-        }
-        documents.push_back(std::move(document)); RecordOpenedFile(*this, path); if (!raw->FastView()) plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(raw)); Refresh(); return true;
+        auto* raw = AddDocument(std::move(document));
+        RecordOpenedFile(*this, path); if (!raw->FastView()) plugins.Notify(NPPN_FILEOPENED, plugins.Buffer(raw)); Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }
 }
 bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
@@ -156,11 +160,11 @@ bool MainFrame::Reload(EditorDocument& document) {
         Refresh(); return true;
     } catch (const std::exception& error) { Error(error); return false; }
 }
-bool MainFrame::Close(int i) {
+bool MainFrame::Close(int i, bool confirm) {
     FrameOperation operation(runtime, m_hWnd);
     if (i < 0 || i >= tabs.GetPageCount()) return true;
     auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
-    if (!ConfirmClose(*d)) return false;
+    if (confirm && !ConfirmClose(*d)) return false;
     // A modal confirmation pumps messages; even a tab reorder invalidates i.
     for (i = 0; i < tabs.GetPageCount(); ++i) if (tabs.GetPageData(i) == d) break;
     if (i == tabs.GetPageCount()) return true;
@@ -261,6 +265,7 @@ bool MainFrame::Relaunch(bool elevated, bool empty, bool closeCurrent) {
         // Prompts were resolved before launching; no second prompt may cancel
         // after the replacement instance has already started.
         for (auto& d : documents) { d->Send(SCI_SETSAVEPOINT); d->encodingDirty = false; }
+        exitSessionEligible = false;
         PostMessage(WM_CLOSE);
     }
     return true;
@@ -418,10 +423,20 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     } catch (const std::exception& error) { Error(error); return 0; }
 }
 LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
+    if (runtime.operationDepth || runtime.inBackgroundWork) return 0;
     FrameOperation operation(runtime, m_hWnd);
     plugins.Notify(NPPN_BEFORESHUTDOWN);
+    bool savedSession = false;
+    try {
+        savedSession = SaveExitSession(*this);
+    } catch (const std::exception& error) {
+        Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
+        runtime.pendingTabCloses.clear();
+        plugins.Notify(NPPN_CANCELSHUTDOWN);
+        return 0;
+    }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
-    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
+    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
         settings.Save();
     }

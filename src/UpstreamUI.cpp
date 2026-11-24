@@ -112,6 +112,8 @@ void MainFrame::CreateUpstreamUI() {
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSEALL, L"Close All Documents");
     const bool chinese = PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE;
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
+        ID_RESTORE_EXIT_SESSION, chinese ? L"启动时恢复上次会话" : L"Restore Previous Session on Startup");
+    InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
         ID_FILE_ASSOCIATIONS, chinese ? L"文件关联(&F)..." : L"&File Associations...");
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
         ID_TAB_SETTINGS, chinese ? L"文档标签设置(&D)..." : L"&Document Tab Settings...");

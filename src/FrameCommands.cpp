@@ -268,6 +268,7 @@ INT_PTR CALLBACK RuntimeDialogProc(HWND window, UINT message, WPARAM w, LPARAM l
 }
 }
 CommandState FrameCommandState(MainFrame& frame, UINT id) {
+    if (id == ID_RESTORE_EXIT_SESSION) return {true, frame.settings.persistent, frame.settings.Get(id) != 0};
     if (id >= IDM_LANG_USER_DEFAULT && id <= IDM_LANG_LAST_LANGUAGE)
         return {true, true, static_cast<UINT>(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)) == id};
     for (const auto& option : toggles) if (id == option.id) return {true, true, frame.settings.Get(id, option.initial) != 0};
@@ -294,6 +295,15 @@ CommandState FrameCommandState(MainFrame& frame, UINT id) {
 }
 bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
     if (!FrameCommandState(frame, id).supported) return false;
+    if (id == ID_RESTORE_EXIT_SESSION) {
+        const int previous = frame.settings.Get(id);
+        frame.settings.Set(id, !previous);
+        if (!frame.settings.SaveOption(id)) {
+            frame.settings.Set(id, previous);
+            throw std::runtime_error("Cannot save the session restore setting.");
+        }
+        return true;
+    }
     if (id >= IDM_LANG_USER_DEFAULT && id <= IDM_LANG_LAST_LANGUAGE) {
         if (static_cast<UINT>(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)) == id) return true;
         wchar_t message[1024]{};
