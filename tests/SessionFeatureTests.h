@@ -165,7 +165,10 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         files::WriteAtomic(saved, {savedText, savedEncoding});
         require(ReadFileForFrame(frame, saved).encoding == files::Encoding::Utf8);
         require(frame.Open(saved, savedEncoding));
+        frame.SendMessage(WM_COMMAND, IDM_FILE_READONLY_MODE);
         const auto* named = frame.Active();
+        require(named->Send(SCI_GETREADONLY) && !named->Modified());
+        require(!(GetFileAttributesW(saved.c_str()) & FILE_ATTRIBUTE_READONLY));
         auto* untitled = frame.NewDocument();
         require(untitled != nullptr);
         const std::string body("汉字\r\nfirst\0second\n", 21);
@@ -227,6 +230,9 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         named = static_cast<EditorDocument*>(frame.tabs.GetPageData(2));
         require(named->path == saved && named->Text() == savedText && !named->Modified());
         require(named->encoding == savedEncoding);
+        require(named->Send(SCI_GETREADONLY) != 0);
+        named->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
+        require(named->Text() == savedText && !named->Modified());
         CaptureQAWindow(frame, L"restored-exit-session");
         untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
         require(frame.SaveTo(*untitled, directory / L"exit-save-as.txt", false) && !untitled->Modified());
