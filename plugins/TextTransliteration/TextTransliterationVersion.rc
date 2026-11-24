@@ -1,0 +1,24 @@
+#include <windows.h>
+
+1 VERSIONINFO
+FILEVERSION 0,1,0,0
+PRODUCTVERSION 0,1,0,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "PluginName", "Text Transliteration"
+            VALUE "FileDescription", "MultiPad4 Text Transliteration"
+            VALUE "Comments", "Script and character-width conversion for selected text."
+            VALUE "Author", "MultiPad4 contributors"
+            VALUE "FileVersion", "0.1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

@@ -1,6 +1,7 @@
 # Adapt the pinned UI at configure time; preserve the vendored resources.
 # Asset filenames and upstream download URLs retain their original identity.
 set(WEB_TOOLS_MENU_STRINGS "#include <windows.h>\n#include \"resource.h\"\n#pragma code_page(65001)\n")
+set(TEXT_TRANSLITERATION_MENU_STRINGS "${WEB_TOOLS_MENU_STRINGS}")
 function(multipad4_adapt_resources variable locale)
   string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
   foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
@@ -41,6 +42,22 @@ function(multipad4_adapt_resources variable locale)
   string(APPEND WEB_TOOLS_MENU_STRINGS "END\n")
   set(WEB_TOOLS_MENU_STRINGS "${WEB_TOOLS_MENU_STRINGS}" PARENT_SCOPE)
   string(REPLACE "${web_menu}" "" content "${content}")
+
+  string(REGEX MATCH "\n\t\tPOPUP \"([^\n]*)\"\n\t\tBEGIN\n\t\t\tMENUITEM [^\n]*IDM_EDIT_MAP_FULLWIDTH[^\n]*\n(\t\t\tMENUITEM[^\n]*\n)+\t\tEND" transliteration_menu "${content}")
+  set(transliteration_title "${CMAKE_MATCH_1}")
+  string(APPEND TEXT_TRANSLITERATION_MENU_STRINGS "${web_language}\nSTRINGTABLE\nBEGIN\n    1 \"${transliteration_title}\"\n")
+  string(REGEX MATCHALL "MENUITEM \"[^\n]*\",?[ \t]*IDM_EDIT_MAP_[A-Z_]+" transliteration_items "${transliteration_menu}")
+  list(LENGTH transliteration_items transliteration_count)
+  if(NOT transliteration_count EQUAL 12)
+    message(FATAL_ERROR "Cannot locate the twelve Text Transliteration commands for ${locale}")
+  endif()
+  foreach(item IN LISTS transliteration_items)
+    string(REGEX REPLACE "MENUITEM (\"[^\n]*\"),?[ \t]*(IDM_EDIT_MAP_[A-Z_]+)" "    \\2 \\1" label "${item}")
+    string(APPEND TEXT_TRANSLITERATION_MENU_STRINGS "${label}\n")
+  endforeach()
+  string(APPEND TEXT_TRANSLITERATION_MENU_STRINGS "END\n")
+  set(TEXT_TRANSLITERATION_MENU_STRINGS "${TEXT_TRANSLITERATION_MENU_STRINGS}" PARENT_SCOPE)
+  string(REPLACE "${transliteration_menu}" "" content "${content}")
 
   # Insert the MDI menu before Help in the localized main menu WTL loads.
   set(window_menu_file "${PROJECT_SOURCE_DIR}/res/locale/${locale}/WindowMenu.rcinc")

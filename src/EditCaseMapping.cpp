@@ -6,8 +6,6 @@
 #include "resource.h"
 #include <cstdio>
 #include <cwctype>
-#include <elscore.h>
-#include <elssrvc.h>
 #include <string_view>
 namespace {
 thread_local const EditorDocument *mappingDocument = nullptr;
@@ -17,83 +15,6 @@ constexpr int pluginCaseMapping = 4; // Reserved custom mapping value below the 
 void *Allocate(size_t size) {
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 }
-template <class T> T DLLFunction(HMODULE module, const char *name) {
-    return reinterpret_cast<T>(GetProcAddress(module, name));
-}
-const GUID WIN10_ELS_GUID_TRANSLITERATION_HANGUL_DECOMPOSITION = {
-    0x4BA2A721, 0xE43D, 0x41b7, {0xB3, 0x30, 0x53, 0x6A, 0xE1, 0xE4, 0x88, 0x63}};
-int TransliterateText(const GUID *pGuid, LPCWSTR pszTextW, int cchTextW, LPWSTR &pszMappedW) noexcept {
-    using MappingGetServicesSig = HRESULT(WINAPI *)(PMAPPING_ENUM_OPTIONS pOptions, PMAPPING_SERVICE_INFO * prgServices,
-                                                    DWORD * pdwServicesCount) noexcept;
-    using MappingFreeServicesSig = HRESULT(WINAPI *)(PMAPPING_SERVICE_INFO pServiceInfo) noexcept;
-    using MappingRecognizeTextSig =
-        HRESULT(WINAPI *)(PMAPPING_SERVICE_INFO pServiceInfo, LPCWSTR pszText, DWORD dwLength, DWORD dwIndex,
-                          PMAPPING_OPTIONS pOptions, PMAPPING_PROPERTY_BAG pbag) noexcept;
-    using MappingFreePropertyBagSig = HRESULT(WINAPI *)(PMAPPING_PROPERTY_BAG pBag) noexcept;
-
-    static uint8_t triedLoadingELSCore = 0;
-    static MappingGetServicesSig pfnMappingGetServices;
-    static MappingFreeServicesSig pfnMappingFreeServices;
-    static MappingRecognizeTextSig pfnMappingRecognizeText;
-    static MappingFreePropertyBagSig pfnMappingFreePropertyBag;
-
-    if (triedLoadingELSCore == 0) {
-        triedLoadingELSCore = 1;
-        HMODULE hDLL = LoadLibraryExW(L"elscore.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-        if (hDLL != nullptr) {
-            pfnMappingGetServices = DLLFunction<MappingGetServicesSig>(hDLL, "MappingGetServices");
-            pfnMappingFreeServices = DLLFunction<MappingFreeServicesSig>(hDLL, "MappingFreeServices");
-            pfnMappingRecognizeText = DLLFunction<MappingRecognizeTextSig>(hDLL, "MappingRecognizeText");
-            pfnMappingFreePropertyBag = DLLFunction<MappingFreePropertyBagSig>(hDLL, "MappingFreePropertyBag");
-            if (pfnMappingGetServices == nullptr || pfnMappingFreeServices == nullptr ||
-                pfnMappingRecognizeText == nullptr || pfnMappingFreePropertyBag == nullptr) {
-                FreeLibrary(hDLL);
-                return 0;
-            }
-            (void)hDLL; // Keep system service loaded for cached callbacks.
-            triedLoadingELSCore = 2;
-        }
-    }
-    if (triedLoadingELSCore != 2) {
-        return 0;
-    }
-
-    MAPPING_ENUM_OPTIONS enumOptions;
-    PMAPPING_SERVICE_INFO prgServices = nullptr;
-    DWORD dwServicesCount = 0;
-
-    memset(&enumOptions, 0, sizeof(MAPPING_ENUM_OPTIONS));
-    enumOptions.Size = sizeof(MAPPING_ENUM_OPTIONS);
-    enumOptions.pGuid = const_cast<GUID *>(pGuid);
-
-    HRESULT hr = pfnMappingGetServices(&enumOptions, &prgServices, &dwServicesCount);
-    const DWORD serviceCount = dwServicesCount;
-    dwServicesCount = 0;
-    if (SUCCEEDED(hr) && serviceCount && prgServices) {
-        MAPPING_PROPERTY_BAG bag;
-        memset(&bag, 0, sizeof(MAPPING_PROPERTY_BAG));
-        bag.Size = sizeof(MAPPING_PROPERTY_BAG);
-        hr = pfnMappingRecognizeText(prgServices, pszTextW, cchTextW, 0, nullptr, &bag);
-        if (SUCCEEDED(hr) && bag.dwRangesCount && bag.prgResultRanges) {
-            const DWORD dwDataSize = bag.prgResultRanges[0].dwDataSize;
-            dwServicesCount = dwDataSize / sizeof(WCHAR);
-            pszTextW = static_cast<LPCWSTR>(bag.prgResultRanges[0].pData);
-            if (dwServicesCount != 0 && pszTextW[0] != L'\0') {
-                LPWSTR pszConvW = static_cast<LPWSTR>(Allocate(dwDataSize + sizeof(WCHAR)));
-                if (pszConvW) {
-                    memcpy(pszConvW, pszTextW, dwDataSize);
-                    pszMappedW = pszConvW;
-                } else
-                    dwServicesCount = 0;
-            }
-            pfnMappingFreePropertyBag(&bag);
-        }
-        pfnMappingFreeServices(prgServices);
-    }
-
-    return dwServicesCount;
-}
-
 std::wstring Map(const std::wstring &text, DWORD flags) {
     int length = LCMapStringEx(LOCALE_NAME_USER_DEFAULT, flags, text.data(), static_cast<int>(text.size()), nullptr, 0,
                                nullptr, nullptr, 0);
@@ -196,8 +117,6 @@ char *EditMapTextCase(int menu, const char *text, size_t &length, UINT codePage)
         std::wstring wide(count, L'\0');
         MultiByteToWideChar(codePage, 0, text, static_cast<int>(length), wide.data(), count);
         std::wstring mapped = wide;
-        DWORD flags = 0;
-        const GUID *service = nullptr;
         switch (menu) {
         case IDM_EDIT_CHAR2HEX: {
             mapped.clear();
@@ -220,41 +139,6 @@ char *EditMapTextCase(int menu, const char *text, size_t &length, UINT codePage)
         case IDM_EDIT_UNESCAPECCHARS:
             mapped =
                 Escape(wide, menu, mappingDocument && GetDocumentLexer(*mappingDocument)->rid == NP2LEX_RESOURCESCRIPT);
-            break;
-        case IDM_EDIT_MAP_FULLWIDTH:
-            flags = LCMAP_FULLWIDTH;
-            break;
-        case IDM_EDIT_MAP_HALFWIDTH:
-            flags = LCMAP_HALFWIDTH;
-            break;
-        case IDM_EDIT_MAP_HIRAGANA:
-            flags = LCMAP_HIRAGANA;
-            break;
-        case IDM_EDIT_MAP_KATAKANA:
-            flags = LCMAP_KATAKANA;
-            break;
-        case IDM_EDIT_MAP_SIMPLIFIED_CHINESE:
-            flags = LCMAP_SIMPLIFIED_CHINESE;
-            service = &ELS_GUID_TRANSLITERATION_HANT_TO_HANS;
-            break;
-        case IDM_EDIT_MAP_TRADITIONAL_CHINESE:
-            flags = LCMAP_TRADITIONAL_CHINESE;
-            service = &ELS_GUID_TRANSLITERATION_HANS_TO_HANT;
-            break;
-        case IDM_EDIT_MAP_MALAYALAM_LATIN:
-            service = &ELS_GUID_TRANSLITERATION_MALAYALAM_TO_LATIN;
-            break;
-        case IDM_EDIT_MAP_DEVANAGARI_LATIN:
-            service = &ELS_GUID_TRANSLITERATION_DEVANAGARI_TO_LATIN;
-            break;
-        case IDM_EDIT_MAP_CYRILLIC_LATIN:
-            service = &ELS_GUID_TRANSLITERATION_CYRILLIC_TO_LATIN;
-            break;
-        case IDM_EDIT_MAP_BENGALI_LATIN:
-            service = &ELS_GUID_TRANSLITERATION_BENGALI_TO_LATIN;
-            break;
-        case IDM_EDIT_MAP_HANGUL_DECOMPOSITION:
-            service = &WIN10_ELS_GUID_TRANSLITERATION_HANGUL_DECOMPOSITION;
             break;
         case IDM_EDIT_TITLECASE:
             mapped =
@@ -283,20 +167,6 @@ char *EditMapTextCase(int menu, const char *text, size_t &length, UINT codePage)
                                       : c;
             break;
         }
-        bool transliterated = false;
-        if (service) {
-            LPWSTR result = nullptr;
-            int size = TransliterateText(service, wide.data(), static_cast<int>(wide.size()), result);
-            if (size && result) {
-                mapped.assign(result, size);
-                if (!mapped.empty() && mapped.back() == L'\0')
-                    mapped.pop_back();
-                HeapFree(GetProcessHeap(), 0, result);
-                transliterated = true;
-            }
-        }
-        if (flags && !transliterated)
-            mapped = Map(wide, flags);
         if (mapped == wide)
             return nullptr;
         int size = WideCharToMultiByte(codePage, 0, mapped.data(), static_cast<int>(mapped.size()), nullptr, 0, nullptr,

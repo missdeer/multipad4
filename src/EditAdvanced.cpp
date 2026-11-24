@@ -179,19 +179,7 @@ constexpr UINT cases[] = {IDM_EDIT_CHAR2HEX,
                           IDM_EDIT_UNESCAPECCHARS,
                           IDM_EDIT_INVERTCASE,
                           IDM_EDIT_SENTENCECASE,
-                          IDM_EDIT_TITLECASE,
-                          IDM_EDIT_MAP_FULLWIDTH,
-                          IDM_EDIT_MAP_HALFWIDTH,
-                          IDM_EDIT_MAP_SIMPLIFIED_CHINESE,
-                          IDM_EDIT_MAP_TRADITIONAL_CHINESE,
-                          IDM_EDIT_MAP_HIRAGANA,
-                          IDM_EDIT_MAP_KATAKANA,
-                          IDM_EDIT_MAP_MALAYALAM_LATIN,
-                          IDM_EDIT_MAP_DEVANAGARI_LATIN,
-                          IDM_EDIT_MAP_CYRILLIC_LATIN,
-                          IDM_EDIT_MAP_BENGALI_LATIN,
-                          IDM_EDIT_MAP_HANGUL_DECOMPOSITION,
-                          IDM_EDIT_MAP_HANJA_HANGUL};
+                          IDM_EDIT_TITLECASE};
 constexpr UINT transformations[] = {IDM_EDIT_TRIMLINES,
                                     IDM_EDIT_TRIMLEAD,
                                     IDM_EDIT_STRIP1STCHAR,
@@ -698,10 +686,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     }
     for (auto item : cases)
         if (item == id) {
-            if (id == IDM_EDIT_MAP_HANJA_HANGUL)
-                ::SendMessageW(d.hwnd, WM_IME_KEYDOWN, VK_HANJA, 0);
-            else
-                ApplyDocumentCaseMapping(d, id);
+            ApplyDocumentCaseMapping(d, id);
             return true;
         }
     if (id == IDM_EDIT_LINECOMMENT || id == IDM_EDIT_STREAMCOMMENT) {

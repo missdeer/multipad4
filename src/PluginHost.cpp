@@ -27,7 +27,8 @@ LRESULT CALLBACK PluginHost::ProxyProc(HWND window, UINT msg, WPARAM w, LPARAM l
         host = static_cast<PluginHost*>(reinterpret_cast<CREATESTRUCTW*>(l)->lpCreateParams);
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(host));
     }
-    if (host && msg >= 2000 && msg < 6000) return host->SciMessage(msg, w, l);
+    if (host && ((msg >= 2000 && msg < 6000) || (msg == WM_IME_KEYDOWN && w == VK_HANJA)))
+        return host->SciMessage(msg, w, l);
     if (host && msg == WM_SETFOCUS) if (auto* d = host->frame->Active()) ::SetFocus(d->hwnd);
     return DefWindowProcW(window, msg, w, l);
 }
@@ -42,6 +43,8 @@ LRESULT PluginHost::SciMessage(UINT msg, WPARAM w, LPARAM l) {
     if (msg == SCI_GETDIRECTSTATUSFUNCTION) return reinterpret_cast<LRESULT>(&DirectStatus);
     if (msg == SCI_GETDIRECTPOINTER) return reinterpret_cast<LRESULT>(this);
     auto* d = frame->Active(); if (!d || d->FastView()) return 0;
+    if (msg == WM_IME_KEYDOWN && w == VK_HANJA)
+        return d->Send(SCI_GETREADONLY) ? 0 : ::SendMessageW(d->hwnd, msg, w, l);
     // N++'s bundled fork returns text lengths excluding the terminator.
     if (msg == SCI_GETSELTEXT) return d->Send(msg, 0, l);
     if (msg == 2041 || msg == 2042 || msg == 2292) return d->Send(msg == 2041 ? SCI_MARKERSETFORETRANSLUCENT : msg == 2042 ? SCI_MARKERSETBACKTRANSLUCENT : SCI_MARKERSETBACKSELECTEDTRANSLUCENT, w, l | 0xFF000000u);
@@ -97,7 +100,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         auto name = entry.path().filename().wstring();
         if (_wcsicmp(name.c_str(), L"disabled") == 0 || _wcsicmp(name.c_str(), L"Config") == 0) continue;
         if (onlyModule == L"__bundled__" && name != L"Matepath" && name != L"OpenDocuments" &&
-            name != L"Base64" && name != L"WebTools") continue;
+            name != L"Base64" && name != L"TextTransliteration" && name != L"WebTools") continue;
         if (onlyModule != L"__bundled__" && !onlyModule.empty() && _wcsicmp((name + L".dll").c_str(), onlyModule.c_str()) != 0) continue;
         auto dll = entry.path() / (name + L".dll"); if (std::filesystem::is_regular_file(dll)) candidates.push_back(dll);
     }

@@ -3814,20 +3814,20 @@
       "path": "src/EditAdvanced.cpp",
       "references": [
         {
-          "line": 439,
+          "line": 427,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_XML"
           ]
         },
         {
-          "line": 649,
+          "line": 637,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 765,
+          "line": 750,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -3838,7 +3838,7 @@
       "path": "src/EditCaseMapping.cpp",
       "references": [
         {
-          "line": 222,
+          "line": 141,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_RESOURCESCRIPT"
@@ -4974,7 +4974,7 @@
       "path": "src/PluginHost.cpp",
       "references": [
         {
-          "line": 220,
+          "line": 223,
           "symbols": [
             "GetDocumentLexer"
           ]

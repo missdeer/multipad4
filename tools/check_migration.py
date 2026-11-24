@@ -18,7 +18,7 @@ web_tools = {
     "IDM_EDIT_URLENCODE", "IDM_EDIT_URLCOMPONENTENCODE", "IDM_EDIT_URLDECODE",
 }
 commands = {item["command"]: item["value"] for item in inventory["menu_entries"]
-            if not item["command"].startswith("IDM_EDIT_BASE64_") and item["command"] not in web_tools}
+            if not item["command"].startswith(("IDM_EDIT_BASE64_", "IDM_EDIT_MAP_")) and item["command"] not in web_tools}
 missing = {name: value for name, value in commands.items()
            if value is None or not runtime.get(str(value), {}).get("supported", False)}
 print(f"Menu commands routed: {len(commands) - len(missing)}/{len(commands)}")
