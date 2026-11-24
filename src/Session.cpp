@@ -406,7 +406,7 @@ void RestoreExitSession(MainFrame& frame) {
         if (entry.kind == CleanTab && !entry.path.empty()) {
             std::error_code error;
             if (!std::filesystem::is_regular_file(entry.path, error)) continue;
-            if (frame.Open(entry.path) && i + 1 == active) activeDocument = frame.Active();
+            if (frame.Open(entry.path, entry.encoding) && i + 1 == active) activeDocument = frame.Active();
             continue;
         }
         auto document = std::make_unique<EditorDocument>();

@@ -1,5 +1,6 @@
 #pragma once
 #include "../src/MainFrame.h"
+#include "../src/FileCommands.h"
 #include "../src/Session.h"
 #include "QAArtifacts.h"
 #include <source_location>
@@ -159,8 +160,11 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         require(frame.State(ID_RESTORE_EXIT_SESSION).checked);
         require(GetPrivateProfileIntW(L"Options", L"Command45164", 0, frame.settings.path.c_str()) == 1);
         const auto saved = directory / L"exit-saved.txt";
-        files::WriteAtomic(saved, {"on disk\n"});
-        require(frame.Open(saved));
+        const auto savedEncoding = files::FromCodePage(1252);
+        const std::string savedText = "caf\xC3\x83\xC2\xA9\n";
+        files::WriteAtomic(saved, {savedText, savedEncoding});
+        require(ReadFileForFrame(frame, saved).encoding == files::Encoding::Utf8);
+        require(frame.Open(saved, savedEncoding));
         const auto* named = frame.Active();
         auto* untitled = frame.NewDocument();
         require(untitled != nullptr);
@@ -221,7 +225,8 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         mappedTab->fastView->LoadForEditing();
         require(mappedTab->Modified() && mappedTab->Text() == "edited mapped");
         named = static_cast<EditorDocument*>(frame.tabs.GetPageData(2));
-        require(named->path == saved && named->Text() == "on disk\n" && !named->Modified());
+        require(named->path == saved && named->Text() == savedText && !named->Modified());
+        require(named->encoding == savedEncoding);
         CaptureQAWindow(frame, L"restored-exit-session");
         untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
         require(frame.SaveTo(*untitled, directory / L"exit-save-as.txt", false) && !untitled->Modified());
