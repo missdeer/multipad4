@@ -7,6 +7,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-msvc-build",
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "BUILD_TESTING": "ON"
@@ -18,6 +19,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-mingw64-build",
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_RC_COMPILER": "windres",
         "CMAKE_BUILD_TYPE": "Release",
