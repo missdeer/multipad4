@@ -20,9 +20,9 @@ jobs:
       matrix:
         simd: [SSE4.2, AVX2, AVX512]
         toolchain:
-          - { name: MSVC, id: msvc, cxx: cl, rc: rc }
-          - { name: Clang-CL, id: clang-cl, cxx: clang-cl, rc: llvm-rc }
-          - { name: oneAPI, id: oneapi, cxx: icx, rc: rc }
+          - { name: MSVC, id: msvc, cc: cl, cxx: cl, rc: rc }
+          - { name: Clang-CL, id: clang-cl, cc: clang-cl, cxx: clang-cl, rc: llvm-rc }
+          - { name: oneAPI, id: oneapi, cc: icx, cxx: icx, rc: rc }
 
     steps:
       - name: Check out source
@@ -67,7 +67,7 @@ jobs:
             call "C:\Program Files (x86)\Intel\oneAPI\compiler\latest\env\vars.bat" vs2022
             if errorlevel 1 exit /b 1
           )
-          cmake -S . -B cmake-${{ matrix.toolchain.id }}-build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=${{ matrix.toolchain.rc }} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DMULTIPAD4_SIMD=${{ matrix.simd }}"
+          cmake -S . -B cmake-${{ matrix.toolchain.id }}-build -G Ninja -DCMAKE_C_COMPILER=${{ matrix.toolchain.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=${{ matrix.toolchain.rc }} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DMULTIPAD4_SIMD=${{ matrix.simd }}"
           if errorlevel 1 exit /b 1
           cmake --build cmake-${{ matrix.toolchain.id }}-build --target multipad4 --parallel 2
           if errorlevel 1 exit /b 1
@@ -101,6 +101,7 @@ jobs:
           name: multipad4-${{ matrix.toolchain.id }}-x64-${{ matrix.simd }}
           path: |
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
+            cmake-${{ matrix.toolchain.id }}-build/Miniz.License.txt
             cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/Base64/Base64.dll
@@ -156,6 +157,7 @@ jobs:
       - name: Configure Release build
         run: >-
           cmake -S . -B cmake-${{ matrix.toolchain.id }}-build -G Ninja
+          -DCMAKE_C_COMPILER=${{ matrix.toolchain.compiler }}
           -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=windres
           -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
           -DMULTIPAD4_SIMD=${{ matrix.simd }}
@@ -201,6 +203,7 @@ jobs:
           mkdir -p "$build_dir/package/plugins/Matepath"
           mkdir -p "$build_dir/package/plugins/Project"
           cp "$build_dir/multipad4.exe" "$build_dir/package/"
+          cp "$build_dir/Miniz.License.txt" "$build_dir/package/"
           cp -R "$build_dir/config" "$build_dir/package/"
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"

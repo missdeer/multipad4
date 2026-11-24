@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "MainFrame.h"
 #include "PluginAdmin.h"
+#include "PluginMaintenance.h"
 #include "Session.h"
 #include "../3rdparty/nlohmann-json/json.hpp"
 #include <fstream>
@@ -35,12 +36,6 @@ bool Compatible(const std::wstring& interval) {
     if (comma == std::wstring::npos || interval.back() != L']') return false;
     auto first = interval.substr(1, comma - 1), last = interval.substr(comma + 1, interval.size() - comma - 2);
     return (first.empty() || Version(first) <= host) && (last.empty() || host <= Version(last));
-}
-bool ValidPluginFolder(const std::wstring& name) {
-    if (name.empty() || name == L"." || name == L".." || name.back() == L'.' || name.back() == L' ') return false;
-    if (name.find_first_of(L"\\/:*?\"<>|") != std::wstring::npos) return false;
-    for (auto ch : name) if (ch < 32) return false;
-    return _wcsicmp(name.c_str(), L"Config") && _wcsicmp(name.c_str(), L"disabled") && _wcsicmp(name.c_str(), L"APIs");
 }
 struct PluginFileInfo {
     std::wstring version, name, description, author, homepage, copyright, license;
@@ -204,14 +199,18 @@ void PluginAdmin::Search() {
     MessageBeep(MB_ICONINFORMATION);
 }
 void PluginAdmin::Apply(int command) {
-    if (frame->runtime.operationDepth) return;
+    if (frame->runtime.operationDepth || frame->pendingPluginMaintenance) return;
     FrameOperation operationGuard(frame->runtime, frame->m_hWnd);
-    std::string operation = command == IDC_PLUGINADM_INSTALL ? "install" : command == IDC_PLUGINADM_UPDATE ? "update" : command == IDC_PLUGINADM_REMOVE ? "remove" : command == IDC_PLUGINADM_DEACTIVATE ? "disable" : "enable";
-    json selected = json::array();
+    const auto operation = command == IDC_PLUGINADM_INSTALL ? PluginOperation::Install :
+        command == IDC_PLUGINADM_UPDATE ? PluginOperation::Update :
+        command == IDC_PLUGINADM_REMOVE ? PluginOperation::Remove :
+        command == IDC_PLUGINADM_DEACTIVATE ? PluginOperation::Disable : PluginOperation::Enable;
+    std::vector<PluginPackage> selected;
     for (size_t row = 0; row < visible.size(); ++row) if (ListView_GetCheckState(list, static_cast<int>(row))) {
         const auto& e = entries[visible[row]];
-        if ((operation == "remove" || operation == "disable" || operation == "enable") && !e.present) continue;
-        selected.push_back({{"folder", files::ToUtf8(e.folder)}, {"disabled", e.disabled}, {"url", files::ToUtf8(e.url)}, {"hash", files::ToUtf8(e.hash)}});
+        if ((operation == PluginOperation::Remove || operation == PluginOperation::Disable ||
+            operation == PluginOperation::Enable) && !e.present) continue;
+        selected.push_back({e.folder, e.url, e.hash, e.disabled});
     }
     const auto title = AdminText(IDS_PLUGINADM_TITLE);
     const auto language = GetThreadUILanguage();
@@ -220,26 +219,18 @@ void PluginAdmin::Apply(int command) {
         return;
     }
     if (MessageBoxExW(hwnd, AdminText(IDS_PLUGINADM_RESTART).c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION, language) != IDYES) return;
-    // Resolve all save/cancel decisions before handing work to another process.
+    // Resolve save/cancel decisions before scheduling plugin maintenance.
     for (int i = 0; i < frame->tabs.GetPageCount(); ++i) {
         auto* doc = static_cast<EditorDocument*>(frame->tabs.GetPageData(i));
         if (!frame->ConfirmClose(*doc)) return;
     }
-    auto task = std::filesystem::temp_directory_path() / (L"MultiPad4-plugins-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
-    std::filesystem::create_directory(task);
-    auto session = task / L"session.ini";
-    SaveRelaunchSession(*frame, session, true);
-    wchar_t exe[32768]{}; GetModuleFileNameW(nullptr, exe, _countof(exe));
-    json plan{{"pid", GetCurrentProcessId()}, {"exe", files::ToUtf8(exe)}, {"root", files::ToUtf8(frame->plugins.home.wstring())}, {"session", files::ToUtf8(session.wstring())}, {"operation", operation}, {"plugins", selected}};
-    { std::ofstream output(task / L"plan.json", std::ios::binary); output << plan.dump(); if (!output) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_WRITE_PLAN))); }
-    { std::ofstream output(task / L"worker.ps1", std::ios::binary); output << Resource(IDR_PLUGIN_WORKER); if (!output) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_WRITE_WORKER))); }
-    wchar_t system[MAX_PATH]{}; GetSystemDirectoryW(system, _countof(system));
-    auto powershell = std::filesystem::path(system) / L"WindowsPowerShell/v1.0/powershell.exe";
-    auto args = L"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" + (task / L"worker.ps1").wstring() + L"\" -PlanPath \"" + (task / L"plan.json").wstring() + L"\"";
-    auto result = ShellExecuteW(hwnd, L"open", powershell.c_str(), args.c_str(), task.c_str(), SW_HIDE);
-    if (reinterpret_cast<INT_PTR>(result) <= 32) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_START_WORKER)));
-    for (auto& doc : frame->documents) { doc->Send(SCI_SETSAVEPOINT); doc->encodingDirty = false; }
-    ShowWindow(hwnd, SW_HIDE); frame->PostMessage(WM_CLOSE);
+    auto task = CreatePluginTaskDirectory();
+    SaveRelaunchSession(*frame, task / L"session.ini", true);
+    frame->pendingPluginMaintenance.emplace(PluginMaintenance{operation, frame->plugins.home, task, std::move(selected)});
+    if (!frame->PostMessage(WM_CLOSE)) {
+        frame->pendingPluginMaintenance.reset();
+        throw std::runtime_error("Could not close MultiPad4 for plugin maintenance.");
+    }
 }
 INT_PTR CALLBACK PluginAdmin::DialogProc(HWND window, UINT message, WPARAM w, LPARAM l) {
     auto* self = reinterpret_cast<PluginAdmin*>(GetWindowLongPtrW(window, DWLP_USER));

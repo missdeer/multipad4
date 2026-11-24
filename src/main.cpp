@@ -34,6 +34,42 @@ public:
     }
     ~StartupLock() { Release(); if (mutex) CloseHandle(mutex); }
 };
+
+void FinishPluginMaintenance(const PluginMaintenance& task) {
+    std::string failure;
+    const auto log = task.directory / L"result.log";
+    try {
+        StartupLock lock;
+        if (!lock.Acquire()) throw std::runtime_error("Could not synchronize plugin maintenance with MultiPad4 startup.");
+        ExecutePluginMaintenance(task);
+    } catch (const std::exception& error) {
+        failure = error.what();
+    }
+    {
+        std::ofstream output(log, std::ios::binary);
+        output << (failure.empty() ? "Plugin operation completed." : failure) << '\n';
+    }
+    wchar_t title[256]{};
+    LoadStringW(GetModuleHandleW(nullptr), IDS_PLUGINADM_TITLE, title, _countof(title));
+    if (!failure.empty()) {
+        auto message = std::wstring(L"Plugin operation failed.");
+        try { message += L"\n\n" + files::FromUtf8(failure); } catch (const std::exception&) {}
+        message += L"\n\nLog: " + log.wstring();
+        MessageBoxW(nullptr, message.c_str(), title, MB_OK | MB_ICONERROR);
+    }
+    wchar_t exe[32768]{};
+    const auto length = GetModuleFileNameW(nullptr, exe, _countof(exe));
+    const auto session = task.directory / L"session.ini";
+    const auto args = L"/n /session \"" + session.wstring() + L"\"";
+    const auto hr = OleInitialize(nullptr);
+    const bool started = length && length < _countof(exe) &&
+        reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", exe, args.c_str(), nullptr, SW_SHOWNORMAL)) > 32;
+    if (SUCCEEDED(hr)) OleUninitialize();
+    if (!started) {
+        const auto message = L"Could not restart MultiPad4.\nSession: " + session.wstring();
+        MessageBoxW(nullptr, message.c_str(), title, MB_OK | MB_ICONERROR);
+    }
+}
 }
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     HRESULT hr = OleInitialize(nullptr);
@@ -58,6 +94,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
     int result = 0;
+    std::optional<PluginMaintenance> pendingPluginMaintenance;
     {
         CMessageLoop loop; _Module.AddMessageLoop(&loop);
         MainFrame frame;
@@ -149,9 +186,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (options.print) frame.PostMessage(WM_CLOSE);
             startupLock.Release();
             result = loop.Run();
+            if (!frame.IsWindow()) pendingPluginMaintenance = std::move(frame.pendingPluginMaintenance);
         }
         _Module.RemoveMessageLoop();
     }
     if (args) LocalFree(args);
-    Scintilla_ReleaseResources(); _Module.Term(); OleUninitialize(); return result;
+    Scintilla_ReleaseResources(); _Module.Term(); OleUninitialize();
+    if (pendingPluginMaintenance) FinishPluginMaintenance(*pendingPluginMaintenance);
+    return result;
 }

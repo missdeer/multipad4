@@ -6,7 +6,6 @@
 constexpr UINT IDM_SETTING_PLUGINADM = 48015;
 constexpr UINT IDM_SETTING_OPENPLUGINSDIR = 48014;
 constexpr UINT IDR_PLUGIN_CATALOG = 5515;
-constexpr UINT IDR_PLUGIN_WORKER = 5516;
 class MainFrame;
 class PluginAdmin {
 public:

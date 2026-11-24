@@ -6,14 +6,16 @@
 不兼容/加载失败、已禁用五页，支持按名称/说明搜索和勾选批量操作。
 
 安装、更新、移除、禁用、启用均先确认重启，再逐文档处理保存/放弃/取消。
-取消保存不会启动后台操作。操作脚本等待当前进程完全退出，处理文件后通过
-现有 /session 恢复标签/视图。禁用插件移到 plugins/disabled，启用时移回。
+取消保存会中止操作。编辑器关窗并卸载 DLL 后，宿主进程处理插件文件，再通过
+现有 /session 重新启动并恢复标签和视图。禁用插件移到 plugins/disabled，启用时移回。
 移除保留 plugins/Config 内的用户设置。
 
 下载使用 HTTPS，校验官方目录中的 SHA-256，拒绝 ZIP 路径逃逸、符号链接和
 非 x64 主 DLL。整批先准备，替换时备份，移动失败则逆序恢复。失败显示错误，
-日志及恢复资料保存在 %TEMP%/MultiPad4-plugins-*。需要 Windows PowerShell 5.1；
+日志保存在 %TEMP%/MultiPad4-plugins-*。若回滚失败，日志会给出插件目录内的备份路径。
 安装目录不可写时会报告权限错误，可将应用放在可写目录或以管理员身份运行。
+下载使用 WinHTTP，并沿用 Windows 的代理设置。下载失败时，弹窗和日志会列出
+插件文件夹名、下载主机和错误详情。
 
 目录为固定版本的官方 nppPluginList x64 快照，不会联网自动刷新。可将同格式
 x64 JSON 放到 plugins/Config/nppPluginList.json 替代内置快照；需信任该文件，
@@ -21,5 +23,6 @@ x64 JSON 放到 plugins/Config/nppPluginList.json 替代内置快照；需信任
 报告的 8.8.8 筛选；目录可用不等于完整 API 兼容，加载错误可在失败页查看。
 
 验证：插件集成测试覆盖入口、首次创建/重复打开、五页、已安装列表及搜索，
-并输出界面截图；plugin_admin_worker 测试在独立临时目录验证启停、移除、
-批处理预检查、重复项目及路径/校验元数据拒绝。
+并输出界面截图。plugin_maintenance 测试在独立临时目录验证启停、移除、
+批处理回滚、下载失败及无效元数据。向 plugin_maintenance_tests.exe 传入
+目录 JSON 路径可追加 NppExport 在线安装、更新和 SHA-256 校验测试。

@@ -7,5 +7,6 @@ struct EditorDocument;
 void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bool allDocuments, EditorDocument* active = nullptr);
 // Missing/unreadable files are reported and skipped, never recreated as blank files.
 void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path);
-bool SaveExitSession(MainFrame& frame);
+enum class ExitSessionContents { IncludeUnsaved, SavedOnly };
+bool SaveExitSession(MainFrame& frame, ExitSessionContents contents = ExitSessionContents::IncludeUnsaved);
 void RestoreExitSession(MainFrame& frame);

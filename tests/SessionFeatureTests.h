@@ -166,7 +166,7 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         require(ReadFileForFrame(frame, saved).encoding == files::Encoding::Utf8);
         require(frame.Open(saved, savedEncoding));
         frame.SendMessage(WM_COMMAND, IDM_FILE_READONLY_MODE);
-        const auto* named = frame.Active();
+        auto* named = frame.Active();
         require(named->Send(SCI_GETREADONLY) && !named->Modified());
         require(!(GetFileAttributesW(saved.c_str()) & FILE_ATTRIBUTE_READONLY));
         auto* untitled = frame.NewDocument();
@@ -237,6 +237,18 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
         require(frame.SaveTo(*untitled, directory / L"exit-save-as.txt", false) && !untitled->Modified());
         require(files::Read(directory / L"exit-save-as.txt").utf8 == body + "!");
+
+        untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("?"));
+        named->SetEncoding(files::Encoding::Utf16LE);
+        require(untitled->Modified() && mappedTab->Modified() && named->Modified());
+        require(SaveExitSession(frame, ExitSessionContents::SavedOnly));
+        while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1, false));
+        RestoreExitSession(frame);
+        require(frame.tabs.GetPageCount() == 3);
+        auto restored = [&](int i) { return static_cast<EditorDocument*>(frame.tabs.GetPageData(i)); };
+        require(restored(0)->Text() == body + "!" && !restored(0)->Modified());
+        require(restored(1)->Text() == "original" && !restored(1)->Modified());
+        require(restored(2)->encoding == files::Encoding::Utf8 && !restored(2)->Modified());
         cleanup();
     } catch (...) { cleanup(); throw; }
 }

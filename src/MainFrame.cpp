@@ -428,15 +428,17 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     plugins.Notify(NPPN_BEFORESHUTDOWN);
     bool savedSession = false;
     try {
-        savedSession = SaveExitSession(*this);
+        savedSession = SaveExitSession(*this, pendingPluginMaintenance ?
+            ExitSessionContents::SavedOnly : ExitSessionContents::IncludeUnsaved);
     } catch (const std::exception& error) {
+        pendingPluginMaintenance.reset();
         Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
         runtime.pendingTabCloses.clear();
         plugins.Notify(NPPN_CANCELSHUTDOWN);
         return 0;
     }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
-    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
+    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession && !pendingPluginMaintenance)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
         settings.Save();
     }
