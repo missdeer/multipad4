@@ -428,8 +428,10 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     plugins.Notify(NPPN_BEFORESHUTDOWN);
     bool savedSession = false;
     try {
-        if (!pendingPluginMaintenance) savedSession = SaveExitSession(*this);
+        savedSession = SaveExitSession(*this, pendingPluginMaintenance ?
+            ExitSessionContents::SavedOnly : ExitSessionContents::IncludeUnsaved);
     } catch (const std::exception& error) {
+        pendingPluginMaintenance.reset();
         Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
         runtime.pendingTabCloses.clear();
         plugins.Notify(NPPN_CANCELSHUTDOWN);

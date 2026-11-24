@@ -285,6 +285,7 @@ void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path)
 namespace {
 constexpr std::string_view ExitSessionVersion = "MultiPad4.ExitSession.1";
 enum ExitTabKind { CleanTab, EditedTab, EditedMappedTab };
+constexpr uint64_t DetectExitEncoding = UINT64_MAX;
 constexpr size_t SessionChunk = 1024 * 1024;
 
 std::filesystem::path ExitSessionPath(const MainFrame& frame) {
@@ -320,13 +321,13 @@ struct ExitTab {
     std::filesystem::path path;
     std::wstring title;
     uint64_t offset, size, kind;
-    files::Encoding encoding;
+    std::optional<files::Encoding> encoding;
     int eol;
     bool readOnly;
 };
 }
 
-bool SaveExitSession(MainFrame& frame) {
+bool SaveExitSession(MainFrame& frame, ExitSessionContents contents) {
     if (!frame.exitSessionEligible || !frame.settings.persistent || !frame.settings.Get(ID_RESTORE_EXIT_SESSION)) return false;
     if (!LockExitSession(frame)) return false;
     const int count = frame.tabs.GetPageCount();
@@ -335,12 +336,16 @@ bool SaveExitSession(MainFrame& frame) {
         WriteFields(consume, {uint64_t(count), uint64_t(frame.tabs.GetActivePage() + 1), frame.untitledCount});
         for (int i = 0; i < count; ++i) {
             const auto& document = *static_cast<EditorDocument*>(frame.tabs.GetPageData(i));
-            const auto kind = !document.Modified() ? CleanTab : document.FastView() ? EditedMappedTab : EditedTab;
+            const bool includeEdits = contents == ExitSessionContents::IncludeUnsaved && document.Modified();
+            const auto kind = includeEdits ? (document.FastView() ? EditedMappedTab : EditedTab) : CleanTab;
             const uint64_t size = kind == EditedMappedTab ? document.fastView->Model().FileSize()
                 : kind == EditedTab ? static_cast<uint64_t>(document.Send(SCI_GETLENGTH)) : 0;
             const auto& path = document.path.native();
             const auto& title = document.untitled;
-            WriteFields(consume, {path.size(), title.size(), size, static_cast<uint64_t>(kind), static_cast<unsigned>(document.encoding),
+            // Reopen named files using their on-disk encoding after discarding a conversion.
+            const uint64_t encoding = !includeEdits && document.encodingDirty && !path.empty() ?
+                DetectExitEncoding : static_cast<unsigned>(document.encoding);
+            WriteFields(consume, {path.size(), title.size(), size, static_cast<uint64_t>(kind), encoding,
                 static_cast<uint64_t>(document.Send(SCI_GETEOLMODE)), document.Send(SCI_GETREADONLY) != 0});
             consume({reinterpret_cast<const char*>(path.data()), path.size() * sizeof(wchar_t)});
             consume({reinterpret_cast<const char*>(title.data()), title.size() * sizeof(wchar_t)});
@@ -389,13 +394,16 @@ void RestoreExitSession(MainFrame& frame) {
         uint64_t fields[7]{};
         read(fields, sizeof(fields));
         const auto [pathLength, titleLength, size, kind, encoding, eol, readOnly] = fields;
-        require(kind <= EditedMappedTab && (kind != CleanTab || !size) && encoding <= INT_MAX &&
-            ValidEncoding(static_cast<long long>(encoding)) && eol <= SC_EOL_LF && readOnly <= 1);
         auto file = std::filesystem::path(readString(pathLength));
         auto title = readString(titleLength);
+        const bool detectEncoding = kind == CleanTab && !file.empty() && encoding == DetectExitEncoding;
+        require(kind <= EditedMappedTab && (kind != CleanTab || !size) &&
+            (detectEncoding || (encoding <= INT_MAX && ValidEncoding(static_cast<long long>(encoding)))) &&
+            eol <= SC_EOL_LF && readOnly <= 1);
         require((file.empty() || file.is_absolute()) && size <= snapshot.Size() - cursor);
         entries.push_back({std::move(file), std::move(title), cursor, size, kind,
-            static_cast<files::Encoding>(encoding), static_cast<int>(eol), readOnly != 0});
+            detectEncoding ? std::nullopt : std::optional(static_cast<files::Encoding>(encoding)),
+            static_cast<int>(eol), readOnly != 0});
         cursor += size;
     }
     require(cursor == snapshot.Size());
@@ -442,10 +450,10 @@ void RestoreExitSession(MainFrame& frame) {
             const auto options = entry.size >= files::LargeFileThreshold ? SC_DOCUMENTOPTION_TEXT_LARGE | SC_DOCUMENTOPTION_STYLES_NONE : 0;
             document->LoadStream(static_cast<size_t>(entry.size), options, [&](const files::ChunkConsumer& consume) {
                 body(consume);
-                return entry.encoding;
+                return entry.encoding.value();
             });
         } else document->ConfigureLexer();
-        document->encoding = entry.encoding;
+        document->encoding = entry.encoding.value();
         document->encodingDirty = entry.kind != CleanTab;
         document->Send(SCI_SETEOLMODE, entry.eol);
         document->Send(SCI_SETREADONLY, entry.readOnly);
