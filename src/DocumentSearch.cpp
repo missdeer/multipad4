@@ -339,7 +339,37 @@ size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
     return search.matches;
 }
 
-// Shared enumeration for Count, Mark and Finder. Positions are UTF-8 byte offsets.
+EditorDocument::MatchCursor EditorDocument::BeginMatches(bool selectionOnly) {
+    MatchCursor cursor;
+    cursor.needle = Needle(*this); cursor.flags = Flags(*this);
+    cursor.next = selectionOnly ? Send(SCI_GETSELECTIONSTART) : 0;
+    cursor.limit = selectionOnly ? Send(SCI_GETSELECTIONEND) : Send(SCI_GETLENGTH);
+    cursor.done = cursor.needle.empty();
+    return cursor;
+}
+bool EditorDocument::MatchStep(MatchCursor& cursor, const std::function<void(LRESULT, LRESULT)>& consume) {
+    const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);
+    struct Restore { EditorDocument& d; LRESULT flags, from, to;
+        ~Restore() { d.Send(SCI_SETSEARCHFLAGS, flags); d.Send(SCI_SETTARGETRANGE, from, to); }
+    } restore{*this, flags, from, to};
+    const auto deadline = GetTickCount64() + 4;
+    Send(SCI_SETSEARCHFLAGS, cursor.flags);
+    for (size_t batch = 0; !cursor.done && cursor.next <= cursor.limit && batch < 512; ++batch) {
+        Send(SCI_SETSTATUS, SC_STATUS_OK); Send(SCI_SETTARGETRANGE, cursor.next, cursor.limit);
+        const auto found = Send(SCI_SEARCHINTARGET, cursor.needle.size(), reinterpret_cast<LPARAM>(cursor.needle.data()));
+        if (Send(SCI_GETSTATUS) == SC_STATUS_WARN_REGEX) throw std::runtime_error("Invalid regular expression.");
+        if (found < 0) { cursor.done = true; break; }
+        const auto end = Send(SCI_GETTARGETEND);
+        consume(found, end);
+        if (end == found) {
+            if (end >= cursor.limit) cursor.done = true;
+            else { cursor.next = Send(SCI_POSITIONAFTER, end); cursor.done = cursor.next > cursor.limit; }
+        } else { cursor.next = end; cursor.done = cursor.next > cursor.limit; }
+        if (GetTickCount64() >= deadline) break;
+    }
+    return cursor.done;
+}
+// Synchronous snapshot enumeration remains for replacement and compatibility callers.
 std::vector<SearchMatch> EditorDocument::CollectMatches(bool selectionOnly) {
     if (FastView()) { auto snapshot = fastView->Model().Capture(); auto hits = fastView->Matches(MappedSearchOptions(), selectionOnly); return MappedMatches(snapshot, hits); }
     const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);

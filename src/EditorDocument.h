@@ -29,6 +29,12 @@ struct SearchMatch {
     std::string preview;
     std::shared_ptr<const large::Document::Snapshot> diskSource;
     unsigned long long sourceRevision = 0, sourceSize = 0, sourceWriteTime = 0;
+    LRESULT sourceBase = 0;
+};
+struct OrdinarySearchResult {
+    struct Line { LRESULT number, start; std::shared_ptr<const std::string> text; };
+    std::shared_ptr<large::HitArchive> hits;
+    std::vector<Line> lines;
 };
 struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
@@ -87,6 +93,14 @@ struct EditorDocument {
     bool ReplaceOne();
     size_t ReplaceAll(bool selectionOnly = false);
     std::vector<SearchMatch> CollectMatches(bool selectionOnly = false);
+    struct MatchCursor {
+        std::string needle;
+        LRESULT next = 0, limit = 0;
+        int flags = 0;
+        bool done = false;
+    };
+    MatchCursor BeginMatches(bool selectionOnly = false);
+    bool MatchStep(MatchCursor& cursor, const std::function<void(LRESULT, LRESULT)>& consume);
     size_t FindAll(bool selectAll = false, bool bookmark = false);
     void SetEncoding(files::Encoding value);
 };

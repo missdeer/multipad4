@@ -5,7 +5,9 @@
 #include "EditSelection.h"
 #include <shlobj.h>
 #include <shlwapi.h>
+#include "ScintillaBatch.h"
 namespace {
+constexpr UINT ContinueOrdinarySearch = WM_APP + 0x210;
 std::wstring Field(HWND window, int id) {
     HWND control = GetDlgItem(window, id); int length = GetWindowTextLengthW(control);
     std::wstring value(static_cast<size_t>(length) + 1, L'\0');
@@ -48,6 +50,7 @@ void SearchDialog::Open(MainFrame& frame, EditorDocument& target, bool replace) 
 }
 void SearchDialog::Close() {
     if (hwnd && IsWindow(hwnd)) {
+        if (ordinaryTask) FinishSearch(true);
         if (fileRunning) FinishFiles(true);
         if (document && owner && std::any_of(owner->documents.begin(), owner->documents.end(), [&](const auto& d) { return d.get() == document; })) ReadFields();
         owner->settings.WriteString(L"Search", L"TransparentAlways", transparentAlways ? L"1" : L"0");
@@ -173,6 +176,7 @@ void SearchDialog::WatchMappedTask() {
 }
 void SearchDialog::Status(const std::wstring& text) { SetDlgItemTextW(hwnd, IDC_SEARCH_STATUS, text.c_str()); }
 void SearchDialog::SetPage(int value) {
+    if (ordinaryTask) FinishSearch(true);
     if (fileRunning) FinishFiles(true);
     page = value; replacing = page == 1;
     TabCtrl_SetCurSel(GetDlgItem(hwnd, IDC_SEARCH_TABS), page);
@@ -200,6 +204,7 @@ void SearchDialog::SetPage(int value) {
     ResizeHeight();
 }
 void SearchDialog::Execute(int command) {
+    if (ordinaryTask) { Status(L"A search is running. Close to cancel."); return; }
     if (fileRunning) { Status(L"A file search is running. Close to cancel."); return; }
     // Resolve synchronously too: WM_MDIACTIVATE notifications are posted and
     // may still be queued when a button or accelerator invokes this command.
@@ -239,39 +244,8 @@ void SearchDialog::Execute(int command) {
             (target.search.regex || target.search.wildcard) && target.search.replaceText != L"^c", selection);
         WatchMappedTask(); Status(L"Replacing… Press Esc in the document to cancel."); return;
     }
-    if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) {
-        size_t count = 0, files = 0;
-        if (command != IDC_SEARCH_COUNT) owner->searchResults.Begin(target.search.findText);
-        auto collect = [&](EditorDocument& d, bool inSelection) {
-            if (d.FastView()) {
-                auto snapshot = d.fastView->Model().Capture(); auto hits = d.fastView->ArchiveMatches(d.MappedSearchOptions(), inSelection);
-                count += hits->Count(); if (hits->Count()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.AddMapped(d, snapshot, hits); }
-            } else {
-                auto matches = d.CollectMatches(inSelection); count += matches.size();
-                if (!matches.empty()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.Add(d, matches); }
-            }
-        };
-        if (command == IDC_SEARCH_ALL_OPEN) {
-            for (int i = 0; i < owner->tabs.GetPageCount(); ++i) {
-                auto& d = *static_cast<EditorDocument*>(owner->tabs.GetPageData(i)); UseSearch state(d, target.search); collect(d, false);
-            }
-        } else collect(target, selection);
-        if (command != IDC_SEARCH_COUNT) owner->searchResults.Finish(count, files);
-        Status(std::to_wstring(count) + L" matches in " + std::to_wstring(files) + L" documents."); return;
-    }
-    if (command == IDC_SEARCH_MARK) {
-        const auto matches = target.CollectMatches(selection);
-        target.Send(SCI_SETINDICATORCURRENT, 12); target.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX);
-        target.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
-        if (IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED) {
-            target.Send(SCI_INDICATORCLEARRANGE, 0, target.Send(SCI_GETLENGTH));
-            if (target.search.bookmarkMatches) target.Send(SCI_MARKERDELETEALL, 0);
-        }
-        for (const auto& m : matches) {
-            target.Send(SCI_INDICATORFILLRANGE, m.start, m.end - m.start);
-            if (target.search.bookmarkMatches) target.Send(SCI_MARKERADD, m.line, 0);
-        }
-        Status(std::to_wstring(matches.size()) + L" matches marked."); return;
+    if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN || command == IDC_SEARCH_MARK) {
+        StartSearch(command, selection); return;
     }
     if (command == IDC_REPLACEALL || command == IDC_SEARCH_REPLACE_OPEN) {
         if (command == IDC_SEARCH_REPLACE_OPEN && MessageBoxW(hwnd, L"Replace all matches in all opened documents? Each document can be undone separately.", L"Replace", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
@@ -290,6 +264,117 @@ void SearchDialog::Execute(int command) {
     else found = target.FindNext(backwards);
     if (target.FastView() && found) WatchMappedTask();
     Status(target.FastView() && found ? L"Searching… Press Esc in the document to cancel." : found ? (replaced ? L"Replaced. Next match found." : L"Match found.") : L"No further match found."); owner->Refresh();
+}
+void SearchDialog::StartSearch(int command, bool selection) {
+    ordinaryTask = std::make_unique<SearchTask>(); auto& task = *ordinaryTask;
+    task.token = ++nextSearchToken;
+    task.command = command; task.state = document->search; task.selection = selection;
+    task.purge = IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED;
+    if (command == IDC_SEARCH_ALL_OPEN) {
+        for (int i = 0; i < owner->tabs.GetPageCount(); ++i)
+            task.documents.push_back(static_cast<EditorDocument*>(owner->tabs.GetPageData(i))->searchIdentity);
+    } else task.documents.push_back(document->searchIdentity);
+    if (command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) owner->searchResults.Begin(task.state.findText);
+    task.generation = owner->searchResults.generation;
+    Status(L"Searching… Close to cancel."); SetTimer(hwnd, 3, 20, nullptr);
+    ContinueSearch();
+}
+void SearchDialog::ContinueSearch() {
+    SearchStep();
+    if (ordinaryTask && !ordinaryTask->mapped) PostMessageW(hwnd, ContinueOrdinarySearch, ordinaryTask->token, 0);
+}
+void SearchDialog::FinishSearch(bool interrupted) {
+    if (!ordinaryTask) return;
+    auto task = std::move(ordinaryTask); KillTimer(hwnd, 3);
+    if (task->mapped) {
+        auto found = owner->tabs.documentsById.find(task->identity);
+        if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
+    }
+    if ((task->command == IDC_FINDALL || task->command == IDC_SEARCH_ALL_OPEN) && task->generation == owner->searchResults.generation)
+        owner->searchResults.Finish(task->count, task->files);
+    Status((interrupted ? L"Interrupted. " : L"Completed. ") + std::to_wstring(task->count) + L" matches in " + std::to_wstring(task->files) + L" documents.");
+}
+void SearchDialog::SearchStep() {
+    if (!ordinaryTask) return;
+    auto& task = *ordinaryTask;
+    const bool finder = task.command == IDC_FINDALL || task.command == IDC_SEARCH_ALL_OPEN;
+    if (finder && task.generation != owner->searchResults.generation) { FinishSearch(true); return; }
+    if (task.mapped && task.mappedDone) { task.mapped = false; ++task.next; }
+    if (task.next >= task.documents.size()) { FinishSearch(false); return; }
+    const auto identity = task.documents[task.next];
+    auto found = owner->tabs.documentsById.find(identity);
+    if (found == owner->tabs.documentsById.end()) { FinishSearch(true); return; }
+    auto& target = *found->second;
+    if (task.identity != identity) {
+        task.identity = identity; task.revision = target.style.revision;
+        UseSearch state(target, task.state);
+        if (target.FastView()) {
+            task.mapped = true; task.mappedDone = false;
+            target.fastView->StartEnumerate(target.MappedSearchOptions(), task.selection && task.command != IDC_SEARCH_ALL_OPEN,
+                [this, identity](const auto& snapshot, const auto& hits) {
+                    if (!ordinaryTask || ordinaryTask->identity != identity) return;
+                    auto& current = *ordinaryTask;
+                    auto found = owner->tabs.documentsById.find(identity);
+                    if (found == owner->tabs.documentsById.end()) return;
+                    if ((current.command == IDC_FINDALL || current.command == IDC_SEARCH_ALL_OPEN) && current.generation != owner->searchResults.generation) return;
+                    if (current.command == IDC_SEARCH_MARK) found->second->fastView->SetMarks(snapshot, hits, current.state.bookmarkMatches, current.purge);
+                    else if (current.command != IDC_SEARCH_COUNT && hits->Count()) owner->searchResults.AddMapped(*found->second, snapshot, hits);
+                    current.count += hits->Count(); if (hits->Count()) ++current.files;
+                    current.mappedDone = true;
+                }, task.command != IDC_SEARCH_COUNT, finder);
+            return;
+        }
+        task.cursor = target.BeginMatches(task.selection && task.command != IDC_SEARCH_ALL_OPEN);
+        task.result = std::make_shared<OrdinarySearchResult>();
+        task.result->hits = std::make_shared<large::HitArchive>(task.command != IDC_SEARCH_COUNT);
+    }
+    if (task.mapped) {
+        if (!target.FastView() || (!target.fastView->Busy() && !task.mappedDone)) { FinishSearch(true); return; }
+        return;
+    }
+    if (target.FastView() || target.style.revision != task.revision) { FinishSearch(true); return; }
+    auto& result = *task.result;
+    const bool done = target.MatchStep(task.cursor, [&](LRESULT start, LRESULT end) {
+        if (task.command == IDC_SEARCH_COUNT) { result.hits->AddCount(1); return; }
+        const auto line = finder || task.state.bookmarkMatches ? target.Send(SCI_LINEFROMPOSITION, start) : 0;
+        const auto lineStart = finder ? target.Send(SCI_POSITIONFROMLINE, line) : 0;
+        result.hits->Append({static_cast<large::Position>(start), static_cast<large::Position>(end), {}, static_cast<large::Position>(line), static_cast<large::Position>(lineStart)});
+        if (finder) {
+            const auto limit = (std::max)(end, target.Send(SCI_GETLINEENDPOSITION, line));
+            if (result.lines.empty() || result.lines.back().number != line)
+                result.lines.push_back({line, lineStart, std::make_shared<const std::string>(target.Range(lineStart, limit - lineStart))});
+            else if (static_cast<size_t>(limit - lineStart) > result.lines.back().text->size())
+                result.lines.back().text = std::make_shared<const std::string>(target.Range(lineStart, limit - lineStart));
+        }
+    });
+    if (!done) return;
+    if (task.command == IDC_SEARCH_MARK) {
+        struct Span { LRESULT start, end; };
+        std::vector<Span> spans; spans.reserve(result.hits->Count());
+        std::vector<LRESULT> bookmarks;
+        for (size_t offset = 0; offset < result.hits->Count(); offset += 512)
+            for (const auto& hit : result.hits->Page(offset, 512)) {
+                spans.push_back({static_cast<LRESULT>(hit.start), static_cast<LRESULT>(hit.end)});
+                if (task.state.bookmarkMatches && (bookmarks.empty() || bookmarks.back() != static_cast<LRESULT>(hit.line))) bookmarks.push_back(static_cast<LRESULT>(hit.line));
+            }
+        {
+            struct Batch { EditorDocument& document;
+                Batch(EditorDocument& value) : document(value) { document.Send(BeginIndicatorBatch); }
+                ~Batch() { document.Send(EndIndicatorBatch); }
+            } batch(target);
+            target.Send(SCI_SETINDICATORCURRENT, 12); target.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX);
+            target.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
+            if (task.purge) {
+                target.Send(SCI_INDICATORCLEARRANGE, 0, target.Send(SCI_GETLENGTH));
+            }
+            for (const auto& span : spans) target.Send(SCI_INDICATORFILLRANGE, span.start, span.end - span.start);
+        }
+        if (task.purge && task.state.bookmarkMatches) target.Send(SCI_MARKERDELETEALL, 0);
+        for (const auto line : bookmarks) target.Send(SCI_MARKERADD, line, 0);
+    } else if (finder && result.hits->Count()) owner->searchResults.AddOrdinary(target, task.result);
+    task.count += result.hits->Count(); if (result.hits->Count()) ++task.files;
+    task.result.reset(); ++task.next;
+    if (task.next == task.documents.size()) FinishSearch(false);
 }
 void SearchDialog::StartFiles(bool replace) {
     auto path = std::filesystem::path(Field(hwnd, IDC_SEARCH_DIRECTORY));
@@ -487,7 +572,21 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
         }
         if (!dialog) return FALSE;
         if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
-        if (message == WM_NCDESTROY) { dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == WM_NCDESTROY) { if (dialog->ordinaryTask) dialog->FinishSearch(true); dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == ContinueOrdinarySearch) {
+            if (dialog->ordinaryTask && dialog->ordinaryTask->token == w) {
+                // Posted work must let queued input and paint run before continuing.
+                if (HIWORD(GetQueueStatus(QS_INPUT | QS_PAINT))) dialog->ordinaryTask->yielding = true;
+                else dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
+        if (message == WM_TIMER && w == 3) {
+            if (dialog->ordinaryTask && (dialog->ordinaryTask->mapped || dialog->ordinaryTask->yielding)) {
+                dialog->ordinaryTask->yielding = false; dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
         if (message == WM_TIMER && w == 2) {
             auto found = std::find_if(dialog->owner->documents.begin(), dialog->owner->documents.end(), [&](const auto& d) { return d->searchIdentity == dialog->pendingIdentity; });
             if (found == dialog->owner->documents.end() || !(*found)->FastView()) { KillTimer(window, 2); return TRUE; }
@@ -590,7 +689,7 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
             dialog->Execute(id); return TRUE;
         }
     } catch (const std::exception& error) {
-        if (dialog) { if (dialog->fileRunning) dialog->FinishFiles(true); dialog->Status(files::FromUtf8(error.what())); }
+        if (dialog) { if (dialog->ordinaryTask) dialog->FinishSearch(true); if (dialog->fileRunning) dialog->FinishFiles(true); dialog->Status(files::FromUtf8(error.what())); }
         return TRUE;
     }
     return FALSE;

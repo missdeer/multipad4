@@ -2,6 +2,15 @@
 #include "../src/MainFrame.h"
 #include "QAArtifacts.h"
 #include <source_location>
+inline void WaitForOrdinarySearch(SearchDialog& dialog) {
+    const auto deadline = GetTickCount64() + 30000;
+    while (dialog.SearchBusy()) {
+        MSG message{};
+        if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+        else MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
+        if (GetTickCount64() >= deadline) throw std::runtime_error("Ordinary search did not complete.");
+    }
+}
 inline void WaitForFileSearch(SearchDialog& dialog) {
     const auto deadline = GetTickCount64() + 10000;
     while (GetTickCount64() < deadline) {
@@ -71,7 +80,7 @@ inline void RunSearchResultTargetTests(MainFrame& frame) {
     SendMessageW(GetDlgItem(window, IDC_FINDPREV), BM_CLICK, 0, 0);
     require(opened->Send(SCI_GETSELECTIONSTART) == 0 && opened->Send(SCI_GETSELECTIONEND) == 6);
     results.Clear();
-    SendMessageW(GetDlgItem(window, IDC_FINDALL), BM_CLICK, 0, 0);
+    SendMessageW(GetDlgItem(window, IDC_FINDALL), BM_CLICK, 0, 0); WaitForOrdinarySearch(dialog);
     require(results.lines.size() == 3 && results.lines[2].segments.size() == 2);
     require(results.targets[2].identity == opened->searchIdentity);
     require(source->Text() == "No matching content in the source document.");
@@ -124,7 +133,7 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     require(TabCtrl_GetItemCount(GetDlgItem(dialog.hwnd, IDC_SEARCH_TABS)) == 4);
     wchar_t selection[32]{}; GetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, selection, 32); require(std::wstring(selection) == L"中文😀");
     SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"alpha");
-    frame.searchResults.Clear(); dialog.Execute(IDC_FINDALL);
+    frame.searchResults.Clear(); dialog.Execute(IDC_FINDALL); WaitForOrdinarySearch(dialog);
     auto& results = frame.searchResults;
     require(results.visible && results.lines.size() == 4);
     require(results.lines[2].segments.size() == 2);
@@ -155,13 +164,13 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     wchar_t status[256]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, status, 256); require(std::wstring(status).find(L"Invalid") != std::wstring::npos);
     CheckRadioButton(dialog.hwnd, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, IDC_SEARCH_EXTENDED);
     SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"\\n"); dialog.ReadFields(); require(d->CollectMatches().size() == 2);
-    dialog.SetPage(3); dialog.Execute(IDC_SEARCH_MARK); require(d->Send(SCI_INDICATORALLONFOR, 3) & (1 << 12));
+    dialog.SetPage(3); dialog.Execute(IDC_SEARCH_MARK); WaitForOrdinarySearch(dialog); require(d->Send(SCI_INDICATORALLONFOR, 3) & (1 << 12));
     dialog.Execute(IDC_SEARCH_CLEAR_MARK); require(!(d->Send(SCI_INDICATORALLONFOR, 3) & (1 << 12)));
     CaptureQAWindow(dialog.hwnd, L"Search-Mark");
     CheckRadioButton(dialog.hwnd, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, IDC_SEARCH_NORMAL);
     SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"one");
     auto* other = frame.NewDocument(); other->Load({"one one"});
-    require(dialog.document == other); dialog.Execute(IDC_SEARCH_ALL_OPEN);
+    require(dialog.document == other); dialog.Execute(IDC_SEARCH_ALL_OPEN); WaitForOrdinarySearch(dialog);
     require(other->search.findText == L"one");
     dialog.SetPage(2);
     auto directory = std::filesystem::temp_directory_path() / (L"MultiPad4-search-" + std::to_wstring(GetCurrentProcessId()));
