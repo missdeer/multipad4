@@ -82,6 +82,17 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
             require(opened->Text() == "after external edit");
         }
         waitFor([&] { return opened->Text() == "deferred replacement"; });
+        // A stale subscription token cannot target a reopened/reconfigured document.
+        const auto staleToken = opened->runtime.directoryWatch->token;
+        opened->runtime.directoryWatch.reset(); SnapshotDocument(*opened);
+        require(opened->runtime.directoryWatch->token != staleToken);
+        opened->runtime.externalCheckPending = false;
+        frame.SendMessage(WM_FILE_CHANGE, opened->searchIdentity, staleToken);
+        require(!opened->runtime.externalCheckPending);
+        // Deleting then recreating a watched path keeps the directory subscription alive.
+        std::filesystem::remove(openedPath);
+        files::WriteAtomic(openedPath, {"recreated replacement"});
+        waitFor([&] { return opened->Text() == "recreated replacement"; });
         // An outstanding read can be cancelled when its tab closes.
         files::WriteAtomic(openedPath, {"closing replacement"});
         require(frame.Close(frame.tabs.GetActivePage()));

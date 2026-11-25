@@ -75,17 +75,18 @@ void CheckExternalChanges(MainFrame& frame) {
     struct Reset { MainFrame& frame; ~Reset() {
         frame.runtime.inBackgroundWork = false;
         if (!frame.runtime.pendingCommands.empty() || !frame.runtime.pendingTabCloses.empty()) frame.PostMessage(WM_APP + 0x104);
-        if (frame.IsWindowEnabled() && !frame.runtime.operationDepth && std::any_of(frame.documents.begin(), frame.documents.end(),
-            [](const auto& d) { return d->runtime.externalCheckPending; })) frame.PostMessage(WM_FILE_CHANGE);
+        if (frame.IsWindowEnabled() && !frame.runtime.operationDepth && std::any_of(frame.runtime.pendingExternalChecks.begin(), frame.runtime.pendingExternalChecks.end(),
+            [&](auto id) { const auto found = frame.tabs.documentsById.find(id); return found != frame.tabs.documentsById.end() && found->second->runtime.externalCheckPending; })) frame.PostMessage(WM_FILE_CHANGE);
     } } reset{frame};
     // Modal commands own a stable document snapshot until OK/Cancel. A notification
     // must not reload that buffer underneath a pending edit or settings dialog.
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth) return;
-    std::vector<HWND> windows; for (const auto& document : frame.documents) windows.push_back(document->hwnd);
-    for (HWND window : windows) {
-        auto found = std::find_if(frame.documents.begin(), frame.documents.end(), [&](const auto& d) { return d->hwnd == window; });
-        if (found == frame.documents.end()) continue;
-        auto& d = **found; auto& state = d.runtime;
+    const std::vector<UINT_PTR> identities(frame.runtime.pendingExternalChecks.begin(), frame.runtime.pendingExternalChecks.end());
+    for (const auto identity : identities) {
+        frame.runtime.pendingExternalChecks.erase(identity);
+        auto found = frame.tabs.documentsById.find(identity);
+        if (found == frame.tabs.documentsById.end()) continue;
+        auto& d = *found->second; auto& state = d.runtime;
         if (!state.monitorMode || d.path.empty()) { state.externalCheckPending = false; continue; }
         if (!state.externalCheckPending && !state.externalChangePending) continue;
         state.externalCheckPending = false;
@@ -102,30 +103,37 @@ void CheckExternalChanges(MainFrame& frame) {
             if (frame.Reload(d) && state.keepAtEnd) d.Send(SCI_GOTOPOS, d.Send(SCI_GETLENGTH));
             continue;
         }
-        if (GetForegroundWindow() != frame.m_hWnd) continue;
+        if (GetForegroundWindow() != frame.m_hWnd) { frame.runtime.pendingExternalChecks.insert(identity); continue; }
         state.externalChangePending = false;
         const auto question = L"The file changed on disk:\n" + d.path.wstring() + L"\n\nReload it? Unsaved changes in this document will be discarded.";
         if (frame.MessageBox(question.c_str(), L"File Change Notification", MB_YESNO | MB_ICONQUESTION) == IDYES) {
-            // Reload's own protection still applies if the editor has changed.
-            if (frame.Reload(d) && state.keepAtEnd) d.Send(SCI_GOTOPOS, d.Send(SCI_GETLENGTH));
+            // A modal prompt can pump tab closures; reacquire by identity.
+            const auto current = frame.tabs.documentsById.find(identity);
+            if (current != frame.tabs.documentsById.end()) {
+                auto& live = *current->second;
+                if (frame.Reload(live) && live.runtime.keepAtEnd) live.Send(SCI_GOTOPOS, live.Send(SCI_GETLENGTH));
+            }
         }
     }
 }
 LRESULT MainFrame::OnFileChange(UINT, WPARAM identity, LPARAM token, BOOL&) {
-    if (identity) {
-        const auto found = std::find_if(documents.begin(), documents.end(), [&](const auto& d) { return d->searchIdentity == identity; });
-        if (found == documents.end()) return 0;
-        auto& state = (*found)->runtime;
+    auto changes = DirectoryWatch::Drain(m_hWnd);
+    if (identity) changes.push_back({identity, static_cast<UINT_PTR>(token), ERROR_SUCCESS});
+    DWORD failure = ERROR_SUCCESS;
+    for (const auto& change : changes) {
+        const auto found = tabs.documentsById.find(change.identity);
+        if (found == tabs.documentsById.end()) continue;
+        auto& state = found->second->runtime;
         auto* watch = state.directoryWatch.get();
-        if (!watch || watch->token != static_cast<UINT_PTR>(token)) return 0;
-        if (!watch->Arm()) {
-            const auto error = watch->error.load();
-            state.directoryWatch.reset();
-            Error(std::system_error(error, std::system_category(), "Cannot monitor external file changes"));
-            return 0;
+        if (!watch || watch->token != change.token) continue;
+        if (change.error != ERROR_SUCCESS || !watch->Arm()) {
+            failure = change.error != ERROR_SUCCESS ? change.error : watch->error.load();
+            state.directoryWatch.reset(); continue;
         }
         state.externalCheckPending = true;
+        runtime.pendingExternalChecks.insert(change.identity);
     }
+    if (failure != ERROR_SUCCESS) Error(std::system_error(failure, std::system_category(), "Cannot monitor external file changes"));
     CheckExternalChanges(*this);
     return 0;
 }
