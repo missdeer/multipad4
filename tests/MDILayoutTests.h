@@ -315,7 +315,38 @@ inline void RunMDILayoutTests(MainFrame& frame) {
 
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }
+inline void RunPerTabCloseTest(MainFrame& frame) {
+    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
+        if (!ok) throw std::runtime_error("Per-tab close assertion at line " + std::to_string(where.line()));
+    };
+    auto& control = frame.GetMDITabCtrl();
+    require(frame.tabs.GetPageCount() == 0);
+    require(frame.NewDocument() != nullptr);
+    const HWND inactive = frame.tabs.GetPageHWND(0);
+    require(frame.NewDocument() != nullptr);
+    const HWND active = frame.tabs.GetPageHWND(1);
+    require(frame.MDIGetActive() == active);
+    RECT tab{};
+    require(control.GetItemRect(0, &tab) != FALSE);
+    const LPARAM button = MAKELPARAM(tab.right - MulDiv(10, control.TitleDpi(), 96), (tab.top + tab.bottom) / 2);
+    const LPARAM label = MAKELPARAM(tab.left + 4, (tab.top + tab.bottom) / 2);
+    CaptureQAWindow(frame, L"MDI-per-tab-close");
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, button);
+    control.SendMessage(WM_LBUTTONUP, 0, label);
+    MSG close{};
+    require(!PeekMessageW(&close, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE));
+    require(frame.MDIGetActive() == active);
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, button);
+    control.SendMessage(WM_LBUTTONUP, 0, button);
+    require(PeekMessageW(&close, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE) != FALSE);
+    require(reinterpret_cast<HWND>(close.wParam) == inactive && frame.MDIGetActive() == active);
+    DispatchMessageW(&close);
+    require(frame.tabs.GetPageCount() == 1 && frame.MDIGetActive() == active);
+    require(frame.Close(0));
+}
+
 inline void RunTabCloseTests(MainFrame& frame, const std::filesystem::path& dir) {
+    RunPerTabCloseTest(frame);
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Tab close assertion at line " + std::to_string(where.line()));
     };

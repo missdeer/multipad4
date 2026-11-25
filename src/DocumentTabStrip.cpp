@@ -8,13 +8,20 @@ constexpr auto layoutClass = L"MultiPad4.DocumentLayout";
 constexpr int closeId = 1;
 constexpr UINT_PTR scrollButtons = 0, closeButton = 1;
 
-void PaintTabButton(HWND window, HDC dc, RECT bounds, int direction, bool hot, bool enabled) {
+std::wstring WindowTitle(HWND window) {
+    const int length = GetWindowTextLengthW(window);
+    std::wstring title(static_cast<size_t>(length) + 1, L'\0');
+    title.resize(GetWindowTextW(window, title.data(), length + 1));
+    return title;
+}
+
+void PaintTabButton(HWND window, HDC dc, RECT bounds, int direction, bool hot, bool enabled, bool flat = false) {
     const bool pressed = hot && GetCapture() == window && (GetKeyState(VK_LBUTTON) < 0);
     const auto background = enabled && hot ? (pressed ? COLOR_3DSHADOW : COLOR_WINDOW) : COLOR_BTNFACE;
-    FillRect(dc, &bounds, GetSysColorBrush(background));
+    if (!flat || hot) FillRect(dc, &bounds, GetSysColorBrush(background));
     const int x = (bounds.left + bounds.right) / 2, y = (bounds.top + bounds.bottom) / 2;
     const UINT dpi = GetDpiForWindow(window);
-    const int radius = MulDiv(4, dpi, 96);
+    const int radius = MulDiv(flat ? 3 : 4, dpi, 96);
     const auto oldPen = SelectObject(dc, GetStockObject(DC_PEN));
     const auto oldColor = SetDCPenColor(dc, GetSysColor(enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
     if (direction) {
@@ -31,7 +38,7 @@ void PaintTabButton(HWND window, HDC dc, RECT bounds, int direction, bool hot, b
         const COLORREF color = GetDCPenColor(dc);
         SetPixelV(dc, down[1].x, down[1].y, color);
         SetPixelV(dc, up[1].x, up[1].y, color);
-        if (GetFocus() == window && !(SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
+        if (!flat && GetFocus() == window && !(SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
             InflateRect(&bounds, -1, -1);
             DrawFocusRect(dc, &bounds);
         }
@@ -138,9 +145,10 @@ HWND DocumentTabStrip::ChildAt(int index) const {
 }
 
 bool DocumentTabStrip::Insert(HWND child, const wchar_t* title) {
+    auto label = NativeTitle(title);
     TCITEMW item{};
     item.mask = TCIF_TEXT | TCIF_PARAM | TCIF_IMAGE;
-    item.pszText = const_cast<wchar_t*>(title);
+    item.pszText = label.data();
     item.lParam = reinterpret_cast<LPARAM>(child);
     item.iImage = -1;
     if (TabCtrl_InsertItem(control, GetItemCount(), &item) < 0) return false;
@@ -159,9 +167,10 @@ void DocumentTabStrip::Remove(int index) {
 }
 
 void DocumentTabStrip::SetTitle(int index, const wchar_t* title) {
+    auto label = NativeTitle(title);
     TCITEMW item{};
     item.mask = TCIF_TEXT;
-    item.pszText = const_cast<wchar_t*>(title);
+    item.pszText = label.data();
     TabCtrl_SetItem(control, index, &item);
 }
 
@@ -213,14 +222,12 @@ void DocumentTabStrip::SyncSelection(HWND active) {
 bool DocumentTabStrip::MoveItem(int from, int to) {
     if (from < 0 || to < 0 || from >= GetItemCount() || to >= GetItemCount() || from == to) return false;
     const HWND child = ChildAt(from);
-    const int length = GetWindowTextLengthW(child);
-    std::wstring title(static_cast<size_t>(length) + 1, L'\0');
-    GetWindowTextW(child, title.data(), length + 1);
+    auto label = NativeTitle(WindowTitle(child));
     TCITEMW item{};
     item.mask = TCIF_IMAGE;
     if (!TabCtrl_GetItem(control, from, &item)) return false;
     item.mask |= TCIF_TEXT | TCIF_PARAM;
-    item.pszText = title.data();
+    item.pszText = label.data();
     item.lParam = reinterpret_cast<LPARAM>(child);
     const int inserted = TabCtrl_InsertItem(control, to + (from < to), &item);
     if (inserted < 0) return false;
@@ -268,6 +275,42 @@ int DocumentTabStrip::TitleFontHeight() const {
     return metrics.tmHeight;
 }
 
+std::wstring DocumentTabStrip::NativeTitle(std::wstring title) const {
+    const HDC dc = GetDC(control);
+    if (!dc) return title;
+    const auto oldFont = titleFont ? SelectObject(dc, titleFont) : nullptr;
+    const UINT dpi = TitleDpi();
+    SIZE space{};
+    GetTextExtentPoint32W(dc, L"\u00a0", 1, &space);
+    const int spaceWidth = std::max(1L, space.cx);
+    const int padding = MulDiv(13, dpi, 96);
+    const int spaces = (padding + spaceWidth - 1) / spaceWidth;
+    if (fixedTabWidth) {
+        const int available = MulDiv(fixedTabWidth - 17, dpi, 96) - spaces * spaceWidth -
+            GetSystemMetricsForDpi(SM_CXSMICON, dpi);
+        const int length = static_cast<int>(title.size());
+        SIZE extent{};
+        GetTextExtentPoint32W(dc, title.data(), length, &extent);
+        if (extent.cx > available) {
+            GetTextExtentPoint32W(dc, L"\u2026", 1, &extent);
+            int fit = 0;
+            if (available >= extent.cx) {
+                GetTextExtentExPointW(dc, title.data(), length, available - extent.cx, &fit, nullptr, &extent);
+                if (fit > 0 && IS_HIGH_SURROGATE(title[fit - 1])) --fit;
+                title.resize(fit);
+                title += L'\u2026';
+            } else {
+                title.clear();
+            }
+        }
+    }
+    if (oldFont) SelectObject(dc, oldFont);
+    ReleaseDC(control, dc);
+    // Native tabs center the icon and label together. Trailing space makes room for the close button.
+    title.append(spaces, L'\u00a0');
+    return title;
+}
+
 void DocumentTabStrip::SetFixedTabWidth(int width) {
     fixedTabWidth = width;
     auto style = GetWindowLongPtrW(control, GWL_STYLE);
@@ -275,6 +318,8 @@ void DocumentTabStrip::SetFixedTabWidth(int width) {
     else style &= ~TCS_FIXEDWIDTH;
     SetWindowLongPtrW(control, GWL_STYLE, style);
     TabCtrl_SetItemSize(control, MulDiv(width, TitleDpi(), 96), TitleFontHeight() + MulDiv(5, TitleDpi(), 96));
+    for (int index = 0; index < GetItemCount(); ++index)
+        SetTitle(index, WindowTitle(ChildAt(index)).c_str());
     InvalidateRect(control, nullptr, TRUE);
     ApplyLayout();
 }
@@ -330,6 +375,49 @@ int DocumentTabStrip::HitTest(POINT point) const {
     return TabCtrl_HitTest(control, &hit);
 }
 
+RECT DocumentTabStrip::TabViewport() const {
+    RECT visible{};
+    if (GetWindowRgnBox(control, &visible) == ERROR) return {};
+    if (const HWND scroll = FindWindowExW(control, nullptr, UPDOWN_CLASSW, nullptr);
+        scroll && (GetWindowLongPtrW(scroll, GWL_STYLE) & WS_VISIBLE)) {
+        RECT buttons{};
+        GetWindowRect(scroll, &buttons);
+        MapWindowPoints(nullptr, control, reinterpret_cast<POINT*>(&buttons), 2);
+        visible.right = std::min(visible.right, buttons.left);
+    }
+    return visible;
+}
+
+RECT DocumentTabStrip::TabCloseRect(int index, const RECT& viewport) const {
+    RECT tab{};
+    if (!GetItemRect(index, &tab)) return {};
+    RECT clipped{};
+    if (!IntersectRect(&clipped, &tab, &viewport)) return {};
+    const int size = std::min<LONG>(MulDiv(14, TitleDpi(), 96), clipped.bottom - clipped.top);
+    const LONG right = clipped.right - MulDiv(3, TitleDpi(), 96);
+    if (right - size < clipped.left || size < MulDiv(10, TitleDpi(), 96)) return {};
+    const LONG top = (clipped.top + clipped.bottom - size) / 2;
+    return {right - size, top, right, top + size};
+}
+
+HWND DocumentTabStrip::TabCloseAt(POINT point) const {
+    const int index = HitTest(point);
+    const RECT bounds = TabCloseRect(index, TabViewport());
+    return PtInRect(&bounds, point) ? ChildAt(index) : nullptr;
+}
+
+void DocumentTabStrip::PaintTabCloses(HDC dc) const {
+    const int count = GetItemCount();
+    const RECT viewport = TabViewport();
+    for (int index = 0; index < count; ++index) {
+        const RECT button = TabCloseRect(index, viewport);
+        if (IsRectEmpty(&button) || !RectVisible(dc, &button)) continue;
+        const HWND child = ChildAt(index);
+        const bool hot = hotClose == child && dragIndex < 0 && (!pressedClose || pressedClose == child);
+        PaintTabButton(control, dc, button, 0, hot, true, true);
+    }
+}
+
 void DocumentTabStrip::Activate(int index) {
     const HWND child = ChildAt(index);
     if (!child) return;
@@ -358,9 +446,7 @@ LRESULT CALLBACK DocumentTabStrip::WindowProcedure(HWND window, UINT message, WP
             if (notification.code == TCN_SELCHANGE) tabs->Activate(tabs->GetCurSel());
             if (notification.code == TTN_GETDISPINFOW && notification.hwndFrom == TabCtrl_GetToolTips(tabs->control)) {
                 const HWND child = tabs->ChildAt(static_cast<int>(notification.idFrom));
-                const int length = GetWindowTextLengthW(child);
-                tabs->tooltip.resize(static_cast<size_t>(length) + 1);
-                tabs->tooltip.resize(GetWindowTextW(child, tabs->tooltip.data(), length + 1));
+                tabs->tooltip = WindowTitle(child);
                 reinterpret_cast<NMTTDISPINFOW*>(l)->lpszText = tabs->tooltip.data();
                 return 0;
             }
@@ -375,6 +461,14 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
     auto& tabs = *reinterpret_cast<DocumentTabStrip*>(data);
     POINT point{GET_X_LPARAM(l), GET_Y_LPARAM(l)};
     switch (message) {
+    case WM_PAINT: {
+        const auto result = DefSubclassProc(window, message, w, l);
+        if (HDC dc = GetDC(window)) {
+            tabs.PaintTabCloses(dc);
+            ReleaseDC(window, dc);
+        }
+        return result;
+    }
     case WM_PRINT:
     case WM_PRINTCLIENT: {
         // PrintWindow supplies a DC without the window's screen clipping region.
@@ -385,17 +479,36 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
         if (!saved) break;
         IntersectClipRect(dc, row.left, row.top, row.right, row.bottom);
         const auto result = DefSubclassProc(window, message, w, l);
+        tabs.PaintTabCloses(dc);
         RestoreDC(dc, saved);
         return result;
     }
-    case WM_LBUTTONDOWN: {
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK: {
+        if (const HWND child = tabs.TabCloseAt(point)) {
+            tabs.pressedClose = tabs.hotClose = child;
+            SetCapture(window);
+            InvalidateRect(window, nullptr, FALSE);
+            return 0;
+        }
+        if (message == WM_LBUTTONDBLCLK) break;
         const auto result = DefSubclassProc(window, message, w, l);
         tabs.dragIndex = tabs.HitTest(point);
         tabs.dragOrigin = point;
         if (tabs.dragIndex >= 0) SetCapture(window);
         return result;
     }
-    case WM_MOUSEMOVE:
+    case WM_MOUSEMOVE: {
+        const auto hot = tabs.TabCloseAt(point);
+        if (hot != tabs.hotClose) {
+            tabs.hotClose = hot;
+            InvalidateRect(window, nullptr, FALSE);
+        }
+        if (hot) {
+            TRACKMOUSEEVENT tracking{sizeof(tracking), TME_LEAVE, window, 0};
+            TrackMouseEvent(&tracking);
+        }
+        if (tabs.pressedClose) return 0;
         if (tabs.dragIndex >= 0 && GetCapture() == window && (w & MK_LBUTTON)) {
             if (abs(point.x - tabs.dragOrigin.x) >= GetSystemMetrics(SM_CXDRAG) ||
                 abs(point.y - tabs.dragOrigin.y) >= GetSystemMetrics(SM_CYDRAG)) tabs.dragging = true;
@@ -403,10 +516,25 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
             if (tabs.dragging && tabs.MoveItem(tabs.dragIndex, target)) tabs.dragIndex = target;
         }
         break;
+    }
+    case WM_MOUSELEAVE:
+        tabs.hotClose = nullptr;
+        InvalidateRect(window, nullptr, FALSE);
+        break;
     case WM_LBUTTONUP:
+        if (const HWND child = tabs.pressedClose) {
+            tabs.hotClose = tabs.TabCloseAt(point);
+            ReleaseCapture();
+            if (child == tabs.hotClose) ::PostMessageW(tabs.frame, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(child), 0);
+            return 0;
+        }
         if (GetCapture() == window) ReleaseCapture();
         break;
     case WM_CAPTURECHANGED:
+        if (tabs.pressedClose) {
+            tabs.pressedClose = nullptr;
+            InvalidateRect(window, nullptr, FALSE);
+        }
         tabs.dragIndex = -1;
         tabs.dragging = false;
         break;
