@@ -24,16 +24,14 @@ inline std::wstring Read(const std::filesystem::path& path, const wchar_t* secti
 template<class Pane>
 bool Save(const std::filesystem::path& path, const wchar_t* section, const Pane& pane, bool visible) {
     if (path.empty()) return true;
-    dockwins::DFDOCKPOSEX state{};
-    if (!pane.GetDockingWindowPlacement(&state)) return false;
-    // Hide() temporarily undocks the window and retains the dock position.
-    const bool docked = state.bDocking || (!visible && state.dockPos.hdr.hBar != HNONDOCKBAR);
-    const auto& pos = state.dockPos;
+    const auto state = pane.Placement();
+    const bool docked = state.side != PaneSide::Floating;
+    const int side = docked ? (3 - static_cast<int>(state.side)) : 0;
     std::wostringstream out; out.imbue(std::locale::classic()); out.precision(9);
     out << 1 << L' ' << visible << L' ' << docked << L' ' << GetDpiForWindow(pane.m_hWnd)
-        << L' ' << state.rect.left << L' ' << state.rect.top << L' ' << state.rect.right << L' ' << state.rect.bottom
-        << L' ' << (pos.dwDockSide & 3) << L' ' << pos.nBar << L' ' << pos.fPctPos
-        << L' ' << pos.nWidth << L' ' << pos.nHeight << L' ' << pos.nIndex;
+        << L' ' << state.floating.left << L' ' << state.floating.top << L' ' << state.floating.right << L' ' << state.floating.bottom
+        << L' ' << side << L' ' << state.bar << L' ' << state.position
+        << L' ' << state.width << L' ' << state.height << L' ' << state.index;
     HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file != INVALID_HANDLE_VALUE) {
         const WORD bom = 0xFEFF; DWORD written = 0;
@@ -44,37 +42,34 @@ bool Save(const std::filesystem::path& path, const wchar_t* section, const Pane&
 template<class Pane>
 bool Restore(const std::filesystem::path& path, const wchar_t* section, Pane& pane, HWND owner, bool& visible) {
     std::wistringstream input(Read(path, section)); input.imbue(std::locale::classic());
-    dockwins::DFDOCKPOSEX state{};
-    int version = 0, show = 0, docked = 0, dpi = 0;
-    auto& pos = state.dockPos;
-    if (!(input >> version >> show >> docked >> dpi >> state.rect.left >> state.rect.top >> state.rect.right >> state.rect.bottom
-        >> pos.dwDockSide >> pos.nBar >> pos.fPctPos >> pos.nWidth >> pos.nHeight >> pos.nIndex)) return false;
+    DockPlacement state{};
+    int version = 0, show = 0, docked = 0, dpi = 0, side = 0;
+    auto& rect = state.floating;
+    if (!(input >> version >> show >> docked >> dpi >> rect.left >> rect.top >> rect.right >> rect.bottom
+        >> side >> state.bar >> state.position >> state.width >> state.height >> state.index)) return false;
     input >> std::ws;
-    const auto width = static_cast<long long>(state.rect.right) - state.rect.left;
-    const auto height = static_cast<long long>(state.rect.bottom) - state.rect.top;
+    const auto width = static_cast<long long>(rect.right) - rect.left;
+    const auto height = static_cast<long long>(rect.bottom) - rect.top;
     if (!input.eof() || version != 1 || show < 0 || show > 1 || docked < 0 || docked > 1 || dpi < 48 || dpi > 768 ||
-        width < 64 || height < 64 || width > 32768 || height > 32768 || pos.dwDockSide > 3 ||
-        !std::isfinite(pos.fPctPos) || pos.fPctPos < 0 || pos.fPctPos > 1 || pos.nBar > 1024 || pos.nIndex > 1024 ||
-        (docked && (pos.nWidth < 16 || pos.nHeight < 16 || pos.nWidth > 32768 || pos.nHeight > 32768))) return false;
+        width < 64 || height < 64 || width > 32768 || height > 32768 || side < 0 || side > 3 ||
+        !std::isfinite(state.position) || state.position < 0 || state.position > 1 || state.bar > 1024 || state.index > 1024 ||
+        state.width < 0 || state.height < 0 || state.width > 32768 || state.height > 32768 ||
+        (docked && (state.width < 16 || state.height < 16))) return false;
     const int currentDpi = static_cast<int>(GetDpiForWindow(owner));
-    pos.nWidth = MulDiv(static_cast<int>(pos.nWidth), currentDpi, dpi);
-    pos.nHeight = MulDiv(static_cast<int>(pos.nHeight), currentDpi, dpi);
+    state.width = MulDiv(state.width, currentDpi, dpi);
+    state.height = MulDiv(state.height, currentDpi, dpi);
     MONITORINFO monitor{sizeof(monitor)};
-    if (GetMonitorInfoW(MonitorFromRect(&state.rect, MONITOR_DEFAULTTONEAREST), &monitor)) {
+    if (GetMonitorInfoW(MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST), &monitor)) {
         // Keep the title and resize edges reachable after display/DPI changes.
         const LONG w = (std::min<LONG>)(MulDiv(static_cast<int>(width), currentDpi, dpi), monitor.rcWork.right - monitor.rcWork.left);
         const LONG h = (std::min<LONG>)(MulDiv(static_cast<int>(height), currentDpi, dpi), monitor.rcWork.bottom - monitor.rcWork.top);
-        state.rect.left = (std::clamp)(state.rect.left, monitor.rcWork.left, monitor.rcWork.right - w);
-        state.rect.top = (std::clamp)(state.rect.top, monitor.rcWork.top, monitor.rcWork.bottom - h);
-        state.rect.right = state.rect.left + w; state.rect.bottom = state.rect.top + h;
+        rect.left = (std::clamp)(rect.left, monitor.rcWork.left, monitor.rcWork.right - w);
+        rect.top = (std::clamp)(rect.top, monitor.rcWork.top, monitor.rcWork.bottom - h);
+        rect.right = rect.left + w; rect.bottom = rect.top + h;
     }
-    pos.hdr.hWnd = pane.m_hWnd;
-    pos.hdr.hBar = docked ? owner : HNONDOCKBAR;
-    state.bDocking = docked; state.bVisible = show;
-    // Undock first: the framework caches the current position in Undock(),
-    // which would otherwise overwrite the restored hidden position.
-    if (pane.IsDocking()) pane.Undock();
-    if (!pane.SetDockingWindowPlacement(&state)) return false;
+    state.side = docked ? static_cast<PaneSide>(3 - side) : PaneSide::Floating;
+    state.visible = show != 0;
+    if (!pane.Place(state)) return false;
     visible = show != 0;
     return true;
 }

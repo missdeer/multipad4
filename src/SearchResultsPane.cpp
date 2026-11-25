@@ -2,18 +2,15 @@
 #include "MainFrame.h"
 void SearchResultsPane::CreatePane(MainFrame& frame) {
     owner = &frame;
-    dockwins::DFDOCKPOSEX placement{};
-    placement.rect = {100, 100, 800, 340};
-    if (!Create(frame.m_hWnd, placement.rect, L"Search results", GetWndStyle(0) & ~WS_VISIBLE)) return;
-    auto& position = placement.dockPos;
-    position.hdr.hBar = frame.m_hWnd;
-    position.dwDockSide = dockwins::CDockingSide::sBottom;
-    position.nWidth = MulDiv(210, GetDpiForWindow(frame.m_hWnd), 96); position.nHeight = 700;
-    SetDockingWindowPlacement(&placement);
+    DockPlacement placement{};
+    placement.floating = {100, 100, 800, 340};
+    placement.side = PaneSide::Bottom;
+    placement.height = MulDiv(210, GetDpiForWindow(frame.m_hWnd), 96);
+    if (Create(frame.m_hWnd, placement.floating, L"Search results")) Place(placement);
 }
 LRESULT SearchResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     editor = CreateWindowExW(0, L"Scintilla", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPCHILDREN,
-        0, 0, 1, 1, m_hWnd, nullptr, _Module.GetModuleInstance(), nullptr);
+        0, 0, 1, 1, m_hWnd, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!editor) return -1;
     SearchResultLexer::Configure(editor); handled = FALSE; return 0;
 }

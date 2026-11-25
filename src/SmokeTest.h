@@ -35,12 +35,10 @@
 #include "../tests/MatepathPaneTests.h"
 #include "../tests/OpenDocumentsPaneTests.h"
 #include "../tests/PluginPaneStateTests.h"
-// Runs against actual WTL and Scintilla windows on the application's UI thread.
+// Runs against actual Win32 and Scintilla windows on the application's UI thread.
 inline void RunSmokeTest(MainFrame& frame) {
     RunWindowMenuTests(frame);
-    RunFrameworkCompatibilityTests();
-    RunFloatingMoveTests(frame);
-    RunDragDockTests(frame);
+    RunDockLayoutTests(frame);
     auto require = [](bool ok, std::source_location where = std::source_location::current()) { if (!ok) throw std::runtime_error("Editor integration assertion failed at line " + std::to_string(where.line())); };
     auto dir = std::filesystem::temp_directory_path() / (L"MultiPad4-smoke-" + std::to_wstring(GetCurrentProcessId()));
     std::filesystem::create_directories(dir);

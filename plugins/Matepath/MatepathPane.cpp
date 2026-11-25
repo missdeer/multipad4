@@ -12,37 +12,26 @@ std::wstring ControlText(HWND window) {
     return text;
 }
 }
-void MatepathPane::CreatePane(HWND frame) {
+void MatepathPane::CreatePane(HWND frame, HINSTANCE instance) {
     owner = frame;
     RECT rect{100, 100, 460, 650};
-    Create(frame, rect, L"Matepath — 文件浏览器", GetWndStyle(0) & ~WS_VISIBLE);
+    Create(frame, rect, L"Matepath — 文件浏览器", instance);
 }
 void MatepathPane::DestroyPane() {
-    if (IsWindow()) { if (IsDocking()) Undock(); DestroyWindow(); }
+    if (IsWindow()) DestroyWindow();
 }
 void MatepathPane::SetSide(DockSide value, bool show) {
-    dockwins::DFDOCKPOSEX placement{};
-    GetWindowRect(&placement.rect);
-    auto& pos = placement.dockPos;
-    pos.hdr.hBar = HNONDOCKBAR;
+    DockPlacement placement = Placement();
+    constexpr PaneSide sides[]{PaneSide::Left, PaneSide::Right, PaneSide::Bottom, PaneSide::Floating};
+    placement.side = sides[static_cast<int>(value)];
     if (value == DockSide::Floating) {
         RECT rect{}; ::GetWindowRect(owner, &rect);
-        placement.rect = {rect.left + 80, rect.top + 110, rect.left + 480, rect.top + 660};
+        placement.floating = {rect.left + 80, rect.top + 110, rect.left + 480, rect.top + 660};
     } else {
-        pos.hdr.hWnd = m_hWnd; pos.hdr.hBar = owner;
-        pos.dwDockSide = value == DockSide::Left ? dockwins::CDockingSide::sLeft
-            : value == DockSide::Right ? dockwins::CDockingSide::sRight : dockwins::CDockingSide::sBottom;
-        pos.nWidth = MulDiv(300, GetDpiForWindow(owner), 96); pos.nHeight = pos.nWidth;
+        placement.width = placement.height = MulDiv(300, GetDpiForWindow(owner), 96);
     }
-    if (!IsDocking()) {
-        placement.bDocking = value != DockSide::Floating;
-        placement.bVisible = show;
-        SetDockingWindowPlacement(&placement);
-    } else if (value != DockSide::Floating) {
-        SetDockingPosition(&pos);
-    } else {
-        Float(&placement.rect);
-    }
+    placement.visible = show;
+    Place(placement);
     side = value; visible = show; Layout();
 }
 void MatepathPane::Toggle() {
@@ -50,34 +39,38 @@ void MatepathPane::Toggle() {
     visible = !visible;
 }
 DockSide MatepathPane::CurrentSide() const {
-    if (!visible) return side;
-    if (!IsDocking()) return DockSide::Floating;
-    dockwins::DFDOCKPOS position{};
-    if (GetDockingPosition(&position)) {
-        switch (position.dwDockSide & 3) {
-        case dockwins::CDockingSide::sLeft: return DockSide::Left;
-        case dockwins::CDockingSide::sRight: return DockSide::Right;
-        default: return DockSide::Bottom;
-        }
+    switch (Placement().side) {
+    case PaneSide::Left: return DockSide::Left;
+    case PaneSide::Right: return DockSide::Right;
+    case PaneSide::Floating: return DockSide::Floating;
+    default: return DockSide::Bottom;
     }
-    return side;
 }
 LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
-    tooltips.Create(m_hWnd, rcDefault, nullptr, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX);
-    auto button = [&](CButton& control, int id, LPCWSTR text) {
+    const auto instance = reinterpret_cast<HINSTANCE>(::GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE));
+    auto create = [&](const wchar_t* type, const wchar_t* text, DWORD style, DWORD ex, int id) {
+        return CreateWindowExW(ex, type, text, style, 0, 0, 0, 0, m_hWnd,
+            reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), instance, nullptr);
+    };
+    tooltips = create(TOOLTIPS_CLASSW, nullptr, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, 0, 0);
+    auto button = [&](HWND& control, int id, LPCWSTR text) {
         // Keep the descriptive caption for accessibility; draw only the icon.
-        control.Create(m_hWnd, rcDefault, text, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, 0, id);
-        CToolInfo info(TTF_IDISHWND | TTF_SUBCLASS, m_hWnd, reinterpret_cast<UINT_PTR>(control.m_hWnd), nullptr, const_cast<LPWSTR>(text));
-        tooltips.AddTool(&info);
+        control = create(WC_BUTTONW, text, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, 0, id);
+        TOOLINFOW info{sizeof(info), TTF_IDISHWND | TTF_SUBCLASS, m_hWnd, reinterpret_cast<UINT_PTR>(control)};
+        info.lpszText = const_cast<LPWSTR>(text);
+        ::SendMessageW(tooltips, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&info));
     };
     button(back, Back, L"后退"); button(forward, Forward, L"前进"); button(up, Up, L"上一级"); button(reload, Reload, L"刷新");
     button(go, Go, L"转到"); button(apply, Filter, L"筛选");
-    address.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Address);
-    pattern.Create(m_hWnd, rcDefault, L"*.*", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Pattern);
-    pattern.SetLimitText(DL_FILTER_BUFSIZE - 2);
-    list.Create(m_hWnd, rcDefault, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHAREIMAGELISTS | LVS_NOCOLUMNHEADER, WS_EX_CLIENTEDGE, 200);
-    list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
-    list.InsertColumn(0, L"名称", LVCFMT_LEFT, 280);
+    address = create(WC_EDITW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Address);
+    pattern = create(WC_EDITW, L"*.*", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Pattern);
+    ::SendMessageW(pattern, EM_SETLIMITTEXT, DL_FILTER_BUFSIZE - 2, 0);
+    list = create(WC_LISTVIEWW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHAREIMAGELISTS | LVS_NOCOLUMNHEADER, WS_EX_CLIENTEDGE, 200);
+    if (!list || !address || !pattern) { handled = TRUE; return -1; }
+    ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
+    wchar_t columnName[] = L"名称";
+    LVCOLUMNW column{LVCF_TEXT | LVCF_WIDTH | LVCF_FMT, LVCFMT_LEFT, 280, columnName};
+    ListView_InsertColumn(list, 0, &column);
     for (HWND child = GetWindow(GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
         ::SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
     DirList_Init(list);
@@ -116,7 +109,7 @@ LRESULT MatepathPane::OnDrawButton(UINT, WPARAM, LPARAM l, BOOL& handled) {
             | (disabled ? DFCS_INACTIVE : 0) | (pressed ? DFCS_PUSHED : 0));
         if (pressed) OffsetRect(&rect, 1, 1);
     }
-    SelectObject(item->hDC, iconFont);
+    if (iconFont) SelectObject(item->hDC, iconFont.get());
     SetBkMode(item->hDC, TRANSPARENT);
     SetTextColor(item->hDC, GetSysColor(disabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
     DrawTextW(item->hDC, &glyphs[item->CtlID - Back], 1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
@@ -133,24 +126,23 @@ void MatepathPane::Layout() {
     const int dpi = GetDpiForWindow(m_hWnd);
     auto px = [dpi](int value) { return MulDiv(value, dpi, 96); };
     if (iconDpi != dpi) {
-        if (iconFont) iconFont.DeleteObject();
-        iconFont.CreateFontW(-px(16), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets");
+        iconFont.reset(CreateFontW(-px(16), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets"));
         iconDpi = dpi;
-        for (HWND control : {back.m_hWnd, forward.m_hWnd, up.m_hWnd, reload.m_hWnd, go.m_hWnd, apply.m_hWnd})
+        for (HWND control : {back, forward, up, reload, go, apply})
             ::InvalidateRect(control, nullptr, TRUE);
     }
     const int gap = px(4), row = px(25), width = max(0, static_cast<int>(r.right) - gap * 2), button = px(32);
-    back.MoveWindow(gap, gap, px(32), row); forward.MoveWindow(gap + px(36), gap, px(32), row);
-    up.MoveWindow(gap + px(72), gap, px(32), row); reload.MoveWindow(gap + px(108), gap, button, row);
+    ::MoveWindow(back, gap, gap, px(32), row, TRUE); ::MoveWindow(forward, gap + px(36), gap, px(32), row, TRUE);
+    ::MoveWindow(up, gap + px(72), gap, px(32), row, TRUE); ::MoveWindow(reload, gap + px(108), gap, button, row, TRUE);
     const int editWidth = max(0, width - button - gap);
-    address.MoveWindow(gap, row + gap * 2, editWidth, row);
-    go.MoveWindow(gap * 2 + editWidth, row + gap * 2, button, row);
-    pattern.MoveWindow(gap, row * 2 + gap * 3, editWidth, row);
-    apply.MoveWindow(gap * 2 + editWidth, row * 2 + gap * 3, button, row);
+    ::MoveWindow(address, gap, row + gap * 2, editWidth, row, TRUE);
+    ::MoveWindow(go, gap * 2 + editWidth, row + gap * 2, button, row, TRUE);
+    ::MoveWindow(pattern, gap, row * 2 + gap * 3, editWidth, row, TRUE);
+    ::MoveWindow(apply, gap * 2 + editWidth, row * 2 + gap * 3, button, row, TRUE);
     const int top = row * 3 + gap * 4;
-    list.MoveWindow(gap, top, width, max(0, static_cast<int>(r.bottom) - top - gap));
-    list.SetColumnWidth(0, LVSCW_AUTOSIZE_USEHEADER);
+    ::MoveWindow(list, gap, top, width, max(0, static_cast<int>(r.bottom) - top - gap), TRUE);
+    ListView_SetColumnWidth(list, 0, LVSCW_AUTOSIZE_USEHEADER);
 }
 bool MatepathPane::Navigate(const std::filesystem::path& input, bool remember) {
     std::error_code ec;
@@ -174,7 +166,7 @@ bool MatepathPane::Navigate(const std::filesystem::path& input, bool remember) {
         history.push_back(path); historyIndex = history.size() - 1;
     }
     directory = path;
-    address.SetWindowTextW(directory.c_str());
+    ::SetWindowTextW(address, directory.c_str());
     RefreshItems();
     return true;
 }
@@ -185,9 +177,9 @@ void MatepathPane::RefreshItems() {
     DirList_Fill(list, directory.c_str(), DL_FOLDERS | DL_NONFOLDERS | (showHidden ? DL_INCLHIDDEN : 0), fileSpec.c_str(), false, false, sort, reverse);
     DirList_StartIconThread(list); // Host adaptation resolves icons on this STA.
     if (*selected.szFileName) DirList_SelectItem(list, nullptr, selected.szFileName);
-    back.EnableWindow(!history.empty() && historyIndex > 0);
-    forward.EnableWindow(historyIndex + 1 < history.size());
-    up.EnableWindow(directory.has_parent_path() && directory != directory.parent_path());
+    ::EnableWindow(back, !history.empty() && historyIndex > 0);
+    ::EnableWindow(forward, historyIndex + 1 < history.size());
+    ::EnableWindow(up, directory.has_parent_path() && directory != directory.parent_path());
 }
 void MatepathPane::ActivateSelection() {
     DirListItem item{}; item.mask = DLI_ALL;
@@ -220,9 +212,7 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
     if (msg->message == WM_SYSKEYDOWN && (msg->wParam == VK_LEFT || msg->wParam == VK_RIGHT || msg->wParam == VK_UP)) {
         SendMessage(WM_COMMAND, msg->wParam == VK_LEFT ? Back : msg->wParam == VK_RIGHT ? Forward : Up); return TRUE;
     }
-    // This is a docking window, not a dialog. IsDialogMessage sends
-    // DM_GETDEFID (WM_USER), which the framework interprets as an undock
-    // notification. That clears its owner without changing WS_CHILD/parent.
+    // The pane's buttons and edits share tab order without claiming frame shortcuts.
     if (msg->message == WM_KEYDOWN && msg->wParam == VK_TAB
         && GetKeyState(VK_CONTROL) >= 0 && GetKeyState(VK_MENU) >= 0) {
         if (HWND next = ::GetNextDlgTabItem(m_hWnd, msg->hwnd, GetKeyState(VK_SHIFT) < 0))
@@ -293,8 +283,9 @@ LRESULT MatepathPane::OnDpi(UINT message, WPARAM, LPARAM l, BOOL& handled) {
 }
 LRESULT MatepathPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { PostMessage(WM_MATEPATH_ACTION, 0, 0); return 0; }
 LRESULT MatepathPane::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
-    if (tooltips.IsWindow()) tooltips.DestroyWindow();
-    list.DeleteAllItems(); DirList_Destroy(list); handled = FALSE; return 0;
+    if (::IsWindow(tooltips)) ::DestroyWindow(tooltips);
+    if (list) { ListView_DeleteAllItems(list); DirList_Destroy(list); }
+    handled = FALSE; return 0;
 }
 
 void MatepathPane::FollowActive() {

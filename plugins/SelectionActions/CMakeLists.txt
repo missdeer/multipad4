@@ -4,9 +4,6 @@ add_library(SelectionActions SHARED Plugin.cpp ../EditExpression.cpp SelectionAc
 target_include_directories(SelectionActions PRIVATE
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")
-if(MINGW)
-  target_include_directories(SelectionActions PRIVATE "${OPENATL_COMPAT_DIR}")
-endif()
 target_compile_options(SelectionActions PRIVATE ${MULTIPAD4_WARNINGS})
 target_link_libraries(SelectionActions PRIVATE multipad_files shell32 ole32 oleaut32 uuid)
 set_target_properties(SelectionActions PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/plugins/SelectionActions/$<0:>")

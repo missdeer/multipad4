@@ -2,6 +2,7 @@
 #include "StyleManager.h"
 #include "LanguageConfiguration.h"
 #include "ConfigurationXml.h"
+#include "FileDialogs.h"
 #include "resource.h"
 #include <sstream>
 #include <iomanip>
@@ -40,7 +41,7 @@ const wchar_t* Text(const wchar_t* english,const wchar_t* chinese) {
     return PRIMARYLANGID(GetThreadUILanguage())==LANG_CHINESE?chinese:english;
 }
 std::wstring Label(UINT resource,const std::wstring& fallback) {
-    auto instance=_Module.GetModuleInstance();
+    auto instance=GetModuleHandleW(nullptr);
     auto block=FindResourceExW(instance,RT_STRING,MAKEINTRESOURCEW((resource>>4)+1),GetThreadUILanguage());
     auto loaded=block?LoadResource(instance,block):nullptr;
     auto cursor=loaded?static_cast<const wchar_t*>(LockResource(loaded)):nullptr;
@@ -151,7 +152,7 @@ void DrawAppearance(const DRAWITEMSTRUCT& draw,const Context& context) {
     }else if(draw.itemState&ODS_FOCUS){InflateRect(&rectangle,-2,-2);DrawFocusRect(draw.hDC,&rectangle);}
 }
 INT_PTR CALLBACK ReportProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
-    if(message==WM_INITDIALOG){SetDlgItemTextW(window,IDC_THEME_REPORT,reinterpret_cast<const wchar_t*>(l));CWindow(window).CenterWindow(GetParent(window));return TRUE;}
+    if(message==WM_INITDIALOG){SetDlgItemTextW(window,IDC_THEME_REPORT,reinterpret_cast<const wchar_t*>(l));CenterWindow(window, GetParent(window));return TRUE;}
     if(message==WM_CLOSE||(message==WM_COMMAND&&(LOWORD(w)==IDOK||LOWORD(w)==IDCANCEL))){EndDialog(window,IDOK);return TRUE;}
     return FALSE;
 }
@@ -316,7 +317,7 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
             SendDlgItemMessageW(window,IDC_THEME_LANGUAGE,CB_SETCURSEL,context->language,0);
             for(const wchar_t* mode:{Text(L"Inherit",L"继承默认"),Text(L"Append",L"追加"),Text(L"Replace",L"替换")})SendDlgItemMessageW(window,IDC_THEME_KEYWORD_MODE,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(mode));
             context->changing=false;ShowLanguage(window,*context);EnableWindow(GetDlgItem(window,IDOK),FALSE);
-            CWindow(window).CenterWindow(GetParent(window));return TRUE;
+            CenterWindow(window, GetParent(window));return TRUE;
         }
         if(!context)return FALSE;
         if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(w)==IDCANCEL)){
@@ -330,7 +331,7 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         if(context->changing)return FALSE;
         if(id==IDC_THEME_ALL){context->scopeChanged=true;EnableWindow(GetDlgItem(window,IDOK),TRUE);return TRUE;}
         if(id==IDC_THEME_ADVANCED){ShowAdvanced(window,*context);return TRUE;}
-        if(id==IDC_THEME_REPORT_BUTTON){auto report=Field(window,IDC_THEME_REPORT);if(report.empty())report=Text(L"No theme warnings.",L"没有主题警告。");DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_THEME_REPORT),window,ReportProcedure,reinterpret_cast<LPARAM>(report.c_str()));return TRUE;}
+        if(id==IDC_THEME_REPORT_BUTTON){auto report=Field(window,IDC_THEME_REPORT);if(report.empty())report=Text(L"No theme warnings.",L"没有主题警告。");DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_THEME_REPORT),window,ReportProcedure,reinterpret_cast<LPARAM>(report.c_str()));return TRUE;}
         if(id==IDC_THEME_ACTIONS){
             auto menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,IDC_THEME_RELOAD,Text(L"Reload theme",L"重新加载主题"));AppendMenuW(menu,MF_STRING,IDC_THEME_RESET,Text(L"Reset theme",L"恢复默认主题"));AppendMenuW(menu,MF_SEPARATOR,0,nullptr);AppendMenuW(menu,MF_STRING,IDC_THEME_REPORT_BUTTON,Text(L"Theme report...",L"主题报告..."));
             RECT r{};GetWindowRect(GetDlgItem(window,id),&r);auto command=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTALIGN,r.right,r.bottom,0,window,nullptr);DestroyMenu(menu);if(command)SendMessageW(window,WM_COMMAND,command,0);return TRUE;
@@ -392,10 +393,12 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
             context->source=source;context->candidate=candidate;ShowFields(window,*context);ApplyPreview(window,*context);return TRUE;
         }
         if(id==IDC_THEME_IMPORT){
-            CFileDialog file(TRUE,L"xml",nullptr,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,L"MultiPad4 theme XML (*.xml)\0*.xml\0\0",window);
-            if(file.DoModal()==IDOK){
-                auto candidate=LoadTheme(file.m_szFileName);ReadFields(window,*context);context->drafts[context->source]=context->candidate;
-                context->source=file.m_szFileName;context->candidate=candidate;context->files.push_back(context->source);
+            wchar_t file[32768]{};
+            auto dialog = FileDialogOptions(window, file, _countof(file), OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR,
+                L"MultiPad4 theme XML (*.xml)\0*.xml\0\0", L"xml");
+            if(GetOpenFileNameW(&dialog)){
+                auto candidate=LoadTheme(file);ReadFields(window,*context);context->drafts[context->source]=context->candidate;
+                context->source=file;context->candidate=candidate;context->files.push_back(context->source);
                 auto label=candidate->name;auto index=SendDlgItemMessageW(window,IDC_THEME_LIST,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));SendDlgItemMessageW(window,IDC_THEME_LIST,CB_SETCURSEL,index,0);
                 ShowFields(window,*context);ApplyPreview(window,*context);
             }return TRUE;
@@ -424,7 +427,7 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
 }
 bool ShowThemeDialog(HWND owner,EditorDocument& document) {
     Context context{document,document.style.theme,document.style.themePath,{},document.style.themePath,document.style.theme};
-    return DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_THEME_CONFIG),owner,ThemeProcedure,reinterpret_cast<LPARAM>(&context))==IDOK;
+    return DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_THEME_CONFIG),owner,ThemeProcedure,reinterpret_cast<LPARAM>(&context))==IDOK;
 }
 bool ThemeScopeAll(){return scopeAll;}
 void ApplyDefaultDocumentTheme(EditorDocument& document){document.style.theme=selectedTheme;document.style.themePath=selectedPath;}

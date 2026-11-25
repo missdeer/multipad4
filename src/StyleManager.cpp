@@ -28,7 +28,7 @@ bool autoSelectScheme = true;
 std::vector<int> favoriteSchemes;
 bool FavoriteContains(int id){return std::find(favoriteSchemes.begin(),favoriteSchemes.end(),id)!=favoriteSchemes.end();}
 std::wstring LocalizedLabel(UINT id,const wchar_t* fallback){
-    auto instance=_Module.GetModuleInstance();auto resource=FindResourceExW(instance,RT_STRING,MAKEINTRESOURCEW((id>>4)+1),GetThreadUILanguage());
+    auto instance=GetModuleHandleW(nullptr);auto resource=FindResourceExW(instance,RT_STRING,MAKEINTRESOURCEW((id>>4)+1),GetThreadUILanguage());
     if(!resource)return fallback;auto loaded=LoadResource(instance,resource);auto* cursor=static_cast<const wchar_t*>(LockResource(loaded));if(!cursor)return fallback;
     for(UINT index=0;index<(id&15);++index)cursor+=*cursor+1;
     return *cursor?std::wstring(cursor+1,*cursor):std::wstring(fallback);
@@ -720,31 +720,40 @@ struct SchemeDialogContext {
     std::vector<Layout> controls;
     int clientWidth=0,clientHeight=0;
 };
+HTREEITEM InsertSchemeItem(HWND tree, wchar_t* name, size_t index) {
+    TVINSERTSTRUCTW insert{};
+    insert.hParent = TVI_ROOT;
+    insert.hInsertAfter = TVI_LAST;
+    insert.item.mask = TVIF_TEXT | TVIF_PARAM;
+    insert.item.pszText = name;
+    insert.item.lParam = static_cast<LPARAM>(index);
+    return TreeView_InsertItem(tree, &insert);
+}
 void MoveFavoriteItem(HWND window,int direction){
-    CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));auto selected=tree.GetSelectedItem();if(!selected)return;
-    auto neighbor=direction<0?tree.GetPrevSiblingItem(selected):tree.GetNextSiblingItem(selected);if(!neighbor)return;
-    wchar_t first[256]{},second[256]{};tree.GetItemText(selected,first,256);tree.GetItemText(neighbor,second,256);
-    auto data=tree.GetItemData(selected),other=tree.GetItemData(neighbor);bool checked=tree.GetCheckState(selected)!=0,otherCheck=tree.GetCheckState(neighbor)!=0;
-    tree.SetItemText(selected,second);tree.SetItemData(selected,other);tree.SetCheckState(selected,otherCheck);
-    tree.SetItemText(neighbor,first);tree.SetItemData(neighbor,data);tree.SetCheckState(neighbor,checked);tree.SelectItem(neighbor);tree.EnsureVisible(neighbor);
+    HWND tree(GetDlgItem(window,IDC_STYLELIST));auto selected=TreeView_GetSelection(tree);if(!selected)return;
+    auto neighbor=direction<0?TreeView_GetPrevSibling(tree, selected):TreeView_GetNextSibling(tree, selected);if(!neighbor)return;
+    wchar_t first[256]{},second[256]{};TreeGetItemText(tree, selected,first,256);TreeGetItemText(tree, neighbor,second,256);
+    auto data=TreeGetItemData(tree, selected),other=TreeGetItemData(tree, neighbor);bool checked=TreeView_GetCheckState(tree, selected)!=0,otherCheck=TreeView_GetCheckState(tree, neighbor)!=0;
+    TreeSetItemText(tree, selected,second);TreeSetItemData(tree, selected,other);TreeView_SetCheckState(tree, selected,otherCheck);
+    TreeSetItemText(tree, neighbor,first);TreeSetItemData(tree, neighbor,data);TreeView_SetCheckState(tree, neighbor,checked);TreeView_SelectItem(tree, neighbor);TreeView_EnsureVisible(tree, neighbor);
 }
 INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
     try {
     auto* c=reinterpret_cast<SchemeDialogContext*>(GetWindowLongPtrW(window,DWLP_USER));
     if(message==WM_INITDIALOG) {
         c=reinterpret_cast<SchemeDialogContext*>(l);SetWindowLongPtrW(window,DWLP_USER,l);
-        CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));HTREEITEM selected=nullptr;
-        if(c->favorites){tree.ModifyStyle(0,TVS_CHECKBOXES);SetWindowTextW(window,L"Favorite Schemes (Ctrl+Up/Down reorders)");
+        HWND tree(GetDlgItem(window,IDC_STYLELIST));HTREEITEM selected=nullptr;
+        if(c->favorites){SetWindowLongPtrW(tree,GWL_STYLE,GetWindowLongPtrW(tree,GWL_STYLE)|TVS_CHECKBOXES);SetWindowTextW(window,L"Favorite Schemes (Ctrl+Up/Down reorders)");
             for(int control:{IDC_DEFAULTSCHEME,IDC_AUTOSELECT}){auto button=GetDlgItem(window,control);auto style=GetWindowLongPtrW(button,GWL_STYLE);SetWindowLongPtrW(button,GWL_STYLE,(style&~BS_TYPEMASK)|BS_PUSHBUTTON);SetWindowTextW(button,control==IDC_DEFAULTSCHEME?L"Move Up":L"Move Down");RECT placement{control==IDC_DEFAULTSCHEME?7:86,171,control==IDC_DEFAULTSCHEME?79:158,191};MapDialogRect(window,&placement);SetWindowPos(button,nullptr,placement.left,placement.top,placement.right-placement.left,placement.bottom-placement.top,SWP_NOZORDER);ShowWindow(button,SW_SHOW);}}
         std::vector<size_t> order;
         for(int i:favoriteSchemes)if(i>0 && i<static_cast<int>(Count))order.push_back(static_cast<size_t>(i));
         for(size_t i=1;i<Count;++i)if(!FavoriteContains(static_cast<int>(i)))order.push_back(i);
         for(size_t i:order) {
-            auto name=LocalizedLabel(lexerCatalog[i]->rid,lexerCatalog[i]->pszName);auto root=tree.InsertItem(name.c_str(),TVI_ROOT,TVI_LAST);tree.SetItemData(root,i);
+            auto name=LocalizedLabel(lexerCatalog[i]->rid,lexerCatalog[i]->pszName);auto root=InsertSchemeItem(tree, name.data(), i);
             if(static_cast<int>(i)==c->scheme)selected=root;
-            if(c->favorites)tree.SetCheckState(root,FavoriteContains(static_cast<int>(i)));
+            if(c->favorites)TreeView_SetCheckState(tree, root,FavoriteContains(static_cast<int>(i)));
         }
-        tree.SelectItem(selected);
+        TreeView_SelectItem(tree, selected);
         if(!c->favorites) {
             CheckDlgButton(window,IDC_AUTOSELECT,autoSelectScheme?BST_CHECKED:BST_UNCHECKED);
             CheckDlgButton(window,IDC_DEFAULTSCHEME,c->scheme==defaultScheme?BST_CHECKED:BST_UNCHECKED);
@@ -752,7 +761,7 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         PositionDialogResizeGrip(window,IDC_RESIZEGRIP3);
         RECT client{};GetClientRect(window,&client);c->clientWidth=client.right;c->clientHeight=client.bottom;
         for(HWND child=GetWindow(window,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)){RECT rectangle{};GetWindowRect(child,&rectangle);MapWindowPoints(nullptr,window,reinterpret_cast<POINT*>(&rectangle),2);c->controls.push_back({child,rectangle});}
-        CWindow(window).CenterWindow(GetParent(window));return TRUE;
+        CenterWindow(window, GetParent(window));return TRUE;
     }
     if(!c)return FALSE;
     if(message==WM_GETMINMAXINFO && c->clientWidth){
@@ -788,7 +797,7 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
     UINT id=LOWORD(w);
     if(c->favorites && (id==IDC_DEFAULTSCHEME || id==IDC_AUTOSELECT)){MoveFavoriteItem(window,id==IDC_DEFAULTSCHEME?-1:1);return TRUE;}
     if(id==IDOK) {
-        if(c->favorites){favoriteSchemes.clear();CTreeViewCtrl tree(GetDlgItem(window,IDC_STYLELIST));for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item))if(tree.GetCheckState(item) && favoriteSchemes.size()<31)favoriteSchemes.push_back(static_cast<int>(tree.GetItemData(item)));EndDialog(window,IDOK);return TRUE;}
+        if(c->favorites){favoriteSchemes.clear();HWND tree(GetDlgItem(window,IDC_STYLELIST));for(auto item=TreeView_GetRoot(tree);item;item=TreeView_GetNextSibling(tree, item))if(TreeView_GetCheckState(tree, item) && favoriteSchemes.size()<31)favoriteSchemes.push_back(static_cast<int>(TreeGetItemData(tree, item)));EndDialog(window,IDOK);return TRUE;}
         c->document.style.scheme=c->scheme;autoSelectScheme=IsDlgButtonChecked(window,IDC_AUTOSELECT)!=0;if(IsDlgButtonChecked(window,IDC_DEFAULTSCHEME))defaultScheme=c->scheme;
         ConfigureDocumentStyle(c->document);EndDialog(window,IDOK);return TRUE;
     }
@@ -797,7 +806,7 @@ INT_PTR CALLBACK SchemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
 }
 void SelectScheme(HWND owner,EditorDocument& document,bool favorites=false) {
     SchemeDialogContext c{document,ActualScheme(document),favorites};
-    DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_STYLESELECT),owner,SchemeProcedure,reinterpret_cast<LPARAM>(&c));
+    DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_STYLESELECT),owner,SchemeProcedure,reinterpret_cast<LPARAM>(&c));
 }
 }
 namespace {

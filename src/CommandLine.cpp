@@ -89,7 +89,7 @@ void ApplyCommandLine(MainFrame& frame,const ParsedCommandLine& options){
     if(!options.appId.empty())SetCurrentProcessExplicitAppUserModelID(options.appId.c_str());
     if(options.useSystemMRU>=0)frame.runtime.useSystemMRU=options.useSystemMRU;
     if(options.alwaysOnTop>=0)frame.SetWindowPos(options.alwaysOnTop?HWND_TOPMOST:HWND_NOTOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
-    auto systemDefault=[&](){RECT rect{80,60,1280,860};HWND probe=CreateWindowExW(0,L"STATIC",L"",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,nullptr,nullptr,_Module.GetModuleInstance(),nullptr);if(probe){GetWindowRect(probe,&rect);DestroyWindow(probe);}return rect;};
+    auto systemDefault=[&](){RECT rect{80,60,1280,860};HWND probe=CreateWindowExW(0,L"STATIC",L"",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);if(probe){GetWindowRect(probe,&rect);DestroyWindow(probe);}return rect;};
     if(options.position){auto r=*options.position;auto fallback=systemDefault();
         int x=r.left==CW_USEDEFAULT?fallback.left:r.left,y=r.top==CW_USEDEFAULT?fallback.top:r.top;
         int width=r.right==CW_USEDEFAULT?fallback.right-fallback.left:r.right-r.left,height=r.bottom==CW_USEDEFAULT?fallback.bottom-fallback.top:r.bottom-r.top;

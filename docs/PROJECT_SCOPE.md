@@ -1,16 +1,16 @@
 # 项目目标与验收范围
 
-项目正式名称为 **MultiPad4**，目标是 Windows only、基于 WTL 框架、支持标签的 MDI 编辑器。功能和交互以本地 notepad4 源码为基准，包括全部菜单项、工具栏、状态栏和对话框；产品差异仅来自将 SDI 调整为多文档。首版原型只是历史基础，不代表最终功能范围。
+项目正式名称为 **MultiPad4**，目标是 Windows only、基于 Win32、支持标签的 MDI 编辑器。功能和交互以本地 notepad4 源码为基准，包括全部菜单项、工具栏、状态栏和对话框；产品差异仅来自将 SDI 调整为多文档。首版原型只是历史基础，不代表最终功能范围。
 
 产品菜单、对话框和提示统一使用 MultiPad4。上游多语言资源由 `cmake/Notepad4Resources.cmake` 在构建时转换文案，保留第三方原件。notepad4 名称仅用于上游来源、署名、许可证、迁移基线及旧配置兼容；上游 UI 清单中的原始标签也予以保留。
 
 ## 已确定的框架
 
-- 标签与 MDI：Daniel Bowen 的 WTL Tabbing Framework，使用 `CTabbedMDIFrameWindowImpl`、`CTabbedMDIChildWindowImpl`、`CTabbedMDIClient` 和 `CDotNetTabCtrl`。
-- Docking：Sergey Klimov 的 WTL Docking Framework，使用 `CDockingFrameImplBase` 和 `CTitleDockingWindowImpl`。
+- 标签与 MDI 使用 Windows 通用标签控件、`MDICLIENT` 和原生 MDI 子窗口。
+- 停靠使用 Win32 窗口布局，支持停靠、浮动、拖动及分隔条调整。
 - 来源：Programmer's Notepad 的框架目录，固定提交 `618ea4ad538b26a8795b1cdaa684f08b72d31d09`。该项目同时使用这两套库，可参考集成方式，但应用功能仍以 notepad4 为准。
-- 正式构建不再使用 `CTabViewImpl` 或自行实现停靠、浮动、拖动和分隔条算法。`plugins/OpenDocuments` 的停靠适配层使用第三方框架，打开文档列表由可选 DLL 插件实现。
-- 保留上游源码及作者许可；MSVC 兼容变换在 `cmake/FrameworkCompatibility.cmake`，只生成构建目录副本。
+- 打开文档列表由可选 DLL 插件实现，并与搜索结果和其他插件面板共用 Win32 停靠布局。
+- 保留随附上游源码及作者许可，构建适配在构建目录生成。
 
 ## notepad4 基线
 
@@ -42,13 +42,13 @@
 
 ## 迁移边界
 
-保留原始命令 ID、资源、图标和对话框过程。复用 `Edit.cpp`、`EditEncoding.cpp`、`EditAutoC.cpp`、`Styles.cpp`、`Dialogs.cpp` 等实现；将 `Notepad4.cpp` 中单主窗口的调度拆成 WTL 主框架调度和文档调度。
+保留原始命令 ID、资源、图标和对话框过程。复用 `Edit.cpp`、`EditEncoding.cpp`、`EditAutoC.cpp`、`Styles.cpp`、`Dialogs.cpp` 等实现；将 `Notepad4.cpp` 中单主窗口的调度拆成 Win32 主窗口调度和文档调度。
 
 首先必须拆分文档上下文：`hwndEdit` / `g_hScintilla`、文件路径、编码与 EOL、`fvCurFile`、修改与只读标记、lexer 和语言索引、查找替换实例、自动保存记录、文件监视句柄和时间戳。随后审核对话框静态变量、通知、异步标记任务和定时器；仅替换一个全局编辑器句柄不足以完成 MDI 迁移。
 
 ## 当前完成度
 
-已完成：两套网上框架的源码引入、现代 MSVC 兼容、真实 MDI 宿主替换，以及现有基础功能的回归。测试验证 MDICLIENT、WS_EX_MDICHILD、文档隔离、标签重排、层叠/平铺、保存和停靠状态转换。
+测试覆盖原生 MDICLIENT 和 WS_EX_MDICHILD、文档隔离、标签重排、层叠和平铺、保存以及面板停靠状态转换。
 
 后续迁移已经接通资源清单中的全部 418 个不同菜单命令，并扩展文件/编码、高级编辑/查找、上游 lexer 配置、补全、对话框、设置持久化、后台任务和会话恢复等实现。业务命令采用显式文档上下文。详细范围和验证见 [MIGRATION_STATUS.md](MIGRATION_STATUS.md)。
 

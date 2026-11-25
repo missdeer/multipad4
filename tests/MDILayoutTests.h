@@ -65,7 +65,7 @@ inline void RunMDILayoutTests(MainFrame& frame) {
             KillTimer(owner, id);
             SendMessageW(face, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"Courier New"));
             SendMessageW(chooser, WM_COMMAND, MAKEWPARAM(cmb1, CBN_SELCHANGE), reinterpret_cast<LPARAM>(face));
-            SetDlgItemInt(chooser, cmb3, EditorTabCtrl::titleMaxPoints, FALSE);
+            SetDlgItemInt(chooser, cmb3, DocumentTabStrip::titleMaxPoints, FALSE);
             PostMessageW(chooser, WM_COMMAND, IDOK, 0);
         });
         require(timer != 0);
@@ -75,19 +75,16 @@ inline void RunMDILayoutTests(MainFrame& frame) {
         const auto preview = SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, WM_GETFONT, 0, 0);
         require(GetObjectW(reinterpret_cast<HFONT>(preview), sizeof(font), &font) == sizeof(font));
         require(std::wstring_view(font.lfFaceName) == L"Courier New");
-        require(font.lfHeight == -MulDiv(EditorTabCtrl::titleMaxPoints, GetDpiForWindow(dialog), 72));
+        require(font.lfHeight == -MulDiv(DocumentTabStrip::titleMaxPoints, GetDpiForWindow(dialog), 72));
         require(IsWindowEnabled(GetDlgItem(dialog, IDC_TAB_FONT_RESET)) && !control.HasTitleFont());
     });
     const auto checkTitleFont = [&] {
-        NMCTCCUSTOMDRAW draw{};
-        control.InitializeDrawStruct(&draw);
-        for (HFONT handle : {draw.hFontInactive, draw.hFontSelected}) {
-            LOGFONTW font{};
-            require(GetObjectW(handle, sizeof(font), &font) == sizeof(font));
-            require(std::wstring_view(font.lfFaceName) == L"Courier New");
-            require(font.lfHeight == -MulDiv(EditorTabCtrl::titleMaxPoints, control.TitleDpi(), 72));
-            require(font.lfWeight == (handle == draw.hFontSelected && (control.GetStyle() & CTCS_BOLDSELECTEDTAB) ? FW_BOLD : FW_NORMAL));
-        }
+        const auto handle = reinterpret_cast<HFONT>(control.SendMessage(WM_GETFONT, 0, 0));
+        LOGFONTW font{};
+        require(GetObjectW(handle, sizeof(font), &font) == sizeof(font));
+        require(std::wstring_view(font.lfFaceName) == L"Courier New");
+        require(font.lfHeight == -MulDiv(DocumentTabStrip::titleMaxPoints, control.TitleDpi(), 72));
+        require(font.lfWeight == FW_NORMAL);
         const auto customTabs = rectangle(control);
         require(customTabs.bottom - customTabs.top >= control.TitleFontHeight());
         require(customTabs.bottom - customTabs.top > defaultTabs.bottom - defaultTabs.top);
@@ -126,7 +123,7 @@ inline void RunMDILayoutTests(MainFrame& frame) {
         require(reinterpret_cast<HWND>(SendMessageW(spin, UDM_GETBUDDY, 0, 0)) == input);
         int minWidth = 0, maxWidth = 0;
         SendMessageW(spin, UDM_GETRANGE32, reinterpret_cast<WPARAM>(&minWidth), reinterpret_cast<LPARAM>(&maxWidth));
-        require(minWidth == EditorTabCtrl::minTabWidth && maxWidth == EditorTabCtrl::maxTabWidth);
+        require(minWidth == DocumentTabStrip::minTabWidth && maxWidth == DocumentTabStrip::maxTabWidth);
         SendMessageW(input, WM_KEYDOWN, VK_UP, 0);
         require(GetDlgItemInt(dialog, IDC_TAB_WIDTH_PIXELS, nullptr, FALSE) == 101);
         SendMessageW(input, WM_KEYDOWN, VK_DOWN, 0);
@@ -177,6 +174,7 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     frame.ApplyTabTitleFont();
     frame.ApplyTabWidth();
     std::filesystem::remove(persisted.path);
+
     for (HWND child : {first, second}) {
         const auto style = ::GetWindowLongPtrW(child, GWL_STYLE);
         require((style & WS_OVERLAPPEDWINDOW) == WS_OVERLAPPEDWINDOW);
@@ -262,6 +260,34 @@ inline void RunMDILayoutTests(MainFrame& frame) {
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     checkMaximized(first);
     frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
+    frame.tabs.SetActivePage(0);
+    control.SetFixedTabWidth(DocumentTabStrip::maxTabWidth);
+    frame.UpdateLayout();
+    const HWND scroll = FindWindowExW(control, nullptr, UPDOWN_CLASSW, nullptr);
+    const HWND close = FindWindowExW(::GetParent(control), nullptr, WC_BUTTONW, nullptr);
+    require(scroll && close && (GetWindowLongPtrW(scroll, GWL_STYLE) & WS_VISIBLE));
+    const auto scrollRect = rectangle(scroll), closeRect = rectangle(close);
+    require(scrollRect.top == closeRect.top && scrollRect.bottom == closeRect.bottom);
+    require(scrollRect.right <= closeRect.left);
+    const auto scrollPosition = [&] { return SendMessageW(scroll, UDM_GETPOS32, 0, 0); };
+    const auto startPosition = scrollPosition();
+    const auto scrollClick = [&](bool right) {
+        const int offset = (scrollRect.right - scrollRect.left) / 4;
+        const LPARAM point = MAKELPARAM(right ? offset * 3 : offset, (scrollRect.bottom - scrollRect.top) / 2);
+        SendMessageW(scroll, WM_LBUTTONDOWN, MK_LBUTTON, point);
+        SendMessageW(scroll, WM_LBUTTONUP, 0, point);
+    };
+    scrollClick(true);
+    require(scrollPosition() > startPosition && frame.tabs.GetActivePage() == 0);
+    CaptureQAWindow(frame, L"MDI-tab-navigation");
+    scrollClick(false);
+    require(scrollPosition() == startPosition);
+    SendMessageW(close, BM_CLICK, 0, 0);
+    MSG closeRequest{};
+    require(PeekMessageW(&closeRequest, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE) != FALSE);
+    require(reinterpret_cast<HWND>(closeRequest.wParam) == first);
+    frame.ApplyTabWidth();
+
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }
 inline void RunTabCloseTests(MainFrame& frame, const std::filesystem::path& dir) {
@@ -293,7 +319,7 @@ inline void RunTabCloseTests(MainFrame& frame, const std::filesystem::path& dir)
             const auto rightClick = [&] {
                 control.SendMessage(WM_RBUTTONUP, 0, MAKELPARAM((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2));
                 MSG message{};
-                require(PeekMessageW(&message, frame, UWM_MDICHILDSHOWTABCONTEXTMENU, UWM_MDICHILDSHOWTABCONTEXTMENU, PM_REMOVE) != FALSE);
+                require(PeekMessageW(&message, frame, WM_TAB_CONTEXT, WM_TAB_CONTEXT, PM_REMOVE) != FALSE);
                 require(reinterpret_cast<HWND>(message.wParam) == frame.tabs.GetPageHWND(2));
                 return message;
             };

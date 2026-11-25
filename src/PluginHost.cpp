@@ -80,7 +80,7 @@ void PluginHost::Initialize(MainFrame& owner) {
 
     std::error_code directoryError;
     std::filesystem::create_directories(config, directoryError);
-    WNDCLASSW cls{}; cls.hInstance = _Module.GetModuleInstance(); cls.lpfnWndProc = ProxyProc; cls.lpszClassName = L"MultiPad4.PluginScintilla";
+    WNDCLASSW cls{}; cls.hInstance = GetModuleHandleW(nullptr); cls.lpfnWndProc = ProxyProc; cls.lpszClassName = L"MultiPad4.PluginScintilla";
     RegisterClassW(&cls);
     proxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
     secondProxy = CreateWindowW(cls.lpszClassName, L"", WS_CHILD, 0, 0, 0, 0, owner, nullptr, cls.hInstance, this);
@@ -88,7 +88,7 @@ void PluginHost::Initialize(MainFrame& owner) {
     const HMENU mainMenu = owner.runtime.mainMenu;
     int pluginMenuPosition = GetMenuItemCount(mainMenu) - 1;
     wchar_t label[128]{};
-    const auto instance = _Module.GetModuleInstance();
+    const auto instance = GetModuleHandleW(nullptr);
     LoadStringW(instance, IDS_PLUGIN_MENU, label, _countof(label));
     InsertMenuW(mainMenu, pluginMenuPosition, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(menu), label);
     LoadStringW(instance, IDS_PLUGIN_ADMIN, label, _countof(label));
@@ -180,7 +180,7 @@ void PluginHost::Shutdown() {
     Notify(NPPN_SHUTDOWN); stopped = true;
     for (auto& pane : panes) if (pane->IsWindow()) {
         if (::IsWindow(pane->client)) ::DestroyWindow(pane->client);
-        if (pane->IsDocking()) pane->Undock(); pane->DestroyWindow();
+        pane->DestroyWindow();
     }
     panes.clear();
     for (HWND dialog : modeless) if (::IsWindow(dialog)) ::DestroyWindow(dialog);
@@ -372,17 +372,15 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
         auto* data = reinterpret_cast<tTbData*>(l); if (!data || !::IsWindow(data->hClient)) return FALSE;
         for (auto& pane : panes) if (pane->client == data->hClient) return TRUE;
         auto pane = std::make_unique<PluginPane>(); pane->owner = *frame; pane->client = data->hClient; pane->dialogId = data->dlgID; pane->module = data->pszModuleName ? data->pszModuleName : L"";
-        dockwins::DFDOCKPOSEX placement{};
-        placement.rect = {100, 100, 500, 600};
-        if (!pane->Create(*frame, placement.rect, data->pszName, PluginPane::GetWndStyle(0) & ~WS_VISIBLE)) return FALSE;
+        DockPlacement placement{};
+        if (!pane->Create(*frame, placement.floating, data->pszName)) return FALSE;
         ::SetParent(data->hClient, *pane); SetWindowLongPtrW(data->hClient, GWL_STYLE, (GetWindowLongPtrW(data->hClient, GWL_STYLE) & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)) | WS_CHILD);
         ::SetWindowPos(data->hClient, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-        auto& pos = placement.dockPos;
-        pos.hdr.hBar = (data->uMask & DWS_DF_FLOATING) ? HNONDOCKBAR : frame->m_hWnd;
-        auto side = (data->uMask >> 28) & 3;
-        pos.dwDockSide = side == 0 ? dockwins::CDockingSide::sLeft : side == 1 ? dockwins::CDockingSide::sRight : side == 2 ? dockwins::CDockingSide::sTop : dockwins::CDockingSide::sBottom;
-        pos.nWidth = MulDiv(440, GetDpiForWindow(*frame), 96); pos.nHeight = MulDiv(520, GetDpiForWindow(*frame), 96); pos.fPctPos = 0;
-        pane->SetDockingWindowPlacement(&placement);
+        constexpr PaneSide sides[]{PaneSide::Left, PaneSide::Right, PaneSide::Top, PaneSide::Bottom};
+        if (!(data->uMask & DWS_DF_FLOATING)) placement.side = sides[(data->uMask >> 28) & 3];
+        placement.width = MulDiv(440, GetDpiForWindow(*frame), 96);
+        placement.height = MulDiv(210, GetDpiForWindow(*frame), 96);
+        pane->Place(placement);
         ::ShowWindow(data->hClient, SW_HIDE); pane->SendMessage(WM_SIZE); panes.push_back(std::move(pane)); return TRUE;
     }
     case NPPM_DMMSHOW: case NPPM_DMMHIDE: case NPPM_DMMUPDATEDISPINFO:
@@ -414,7 +412,7 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     case NPPM_GETCURRENTCMDLINE: return copy(GetCommandLineW(), true);
     case NPPM_SETUNTITLEDNAME: { auto* doc = w == static_cast<WPARAM>(-1) ? d : Document(w); if (!doc || !doc->path.empty() || !l) return FALSE; doc->untitled = reinterpret_cast<const wchar_t*>(l); frame->Refresh(); return TRUE; }
     case NPPM_ADDSCNMODIFIEDFLAGS: for (auto& doc : frame->documents) doc->Send(SCI_SETMODEVENTMASK, doc->Send(SCI_GETMODEVENTMASK) | w); return TRUE;
-    case NPPM_CREATESCINTILLAHANDLE: return reinterpret_cast<LRESULT>(CreateWindowW(L"Scintilla", L"", WS_CHILD, 0, 0, 0, 0, w ? reinterpret_cast<HWND>(w) : *frame, nullptr, _Module.GetModuleInstance(), nullptr));
+    case NPPM_CREATESCINTILLAHANDLE: return reinterpret_cast<LRESULT>(CreateWindowW(L"Scintilla", L"", WS_CHILD, 0, 0, 0, 0, w ? reinterpret_cast<HWND>(w) : *frame, nullptr, GetModuleHandleW(nullptr), nullptr));
     case NPPM_DESTROYSCINTILLAHANDLE_DEPRECATED: return ::DestroyWindow(reinterpret_cast<HWND>(l));
     case NPPM_MSGTOPLUGIN: if (w && l) for (auto& p : plugins) if (_wcsicmp(p.module.c_str(), reinterpret_cast<const wchar_t*>(w)) == 0) { p.message(msg, w, l); return TRUE; } return FALSE;
     default: return FALSE;

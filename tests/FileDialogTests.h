@@ -93,9 +93,9 @@ inline void RunFileDialogTests(MainFrame& frame) {
         SetDlgItemInt(dialog,IDC_PAGESETUP_ZOOMLEVEL,175,FALSE);
         SendDlgItemMessageW(dialog,IDC_PAGESETUP_HEADER_LIST,CB_SETCURSEL,3,0);
         PostMessageW(dialog,WM_COMMAND,IDOK,0);
-    },[&]{require(DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_PAGESETUP),frame.m_hWnd,filedialogtest::PrintTemplate,0)==IDOK);});
+    },[&]{require(DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_PAGESETUP),frame.m_hWnd,filedialogtest::PrintTemplate,0)==IDOK);});
     require(CurrentPrintPreferences().zoom==175 && CurrentPrintPreferences().header==3);
-    filedialogtest::Run([](HWND dialog){SetDlgItemInt(dialog,IDC_PAGESETUP_ZOOMLEVEL,999,FALSE);PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);},[&]{require(DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_PAGESETUP),frame.m_hWnd,filedialogtest::PrintTemplate,0)==IDCANCEL);});
+    filedialogtest::Run([](HWND dialog){SetDlgItemInt(dialog,IDC_PAGESETUP_ZOOMLEVEL,999,FALSE);PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);},[&]{require(DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_PAGESETUP),frame.m_hWnd,filedialogtest::PrintTemplate,0)==IDCANCEL);});
     require(CurrentPrintPreferences().zoom==175);
     auto* conversion=frame.NewDocument();require(conversion!=nullptr);conversion->Load({"中文 😀 café"});
     auto conversionText=conversion->Text();

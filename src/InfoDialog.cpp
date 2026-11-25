@@ -41,7 +41,7 @@ INT_PTR CALLBACK Procedure(HWND window, UINT message, WPARAM w, LPARAM l) {
             }
             GetWindowRect(label, &textRect); SetWindowPos(label, nullptr, 0, 0, textRect.right - textRect.left, textRect.bottom - textRect.top + extra, SWP_NOMOVE | SWP_NOZORDER);
         }
-        CWindow(window).CenterWindow(GetParent(window)); return TRUE;
+        CenterWindow(window, GetParent(window)); return TRUE;
     }
     if (!context) return FALSE;
     if (message == WM_COMMAND && (LOWORD(w) == IDOK || LOWORD(w) == IDCANCEL || LOWORD(w) == IDYES || LOWORD(w) == IDNO)) {
@@ -58,5 +58,5 @@ INT_PTR ShowInfoDialog(HWND owner, AppSettings& settings, const std::wstring& me
     if (mode == 1) return (type & MB_TYPEMASK) == MB_YESNO ? IDYES : IDOK;
     if (mode == 3) return (type & MB_TYPEMASK) == MB_YESNO ? IDNO : IDCANCEL;
     Context context{settings, message, title, type, suppressionKey, mode};
-    return DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_INFOBOX), owner, Procedure, reinterpret_cast<LPARAM>(&context));
+    return DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_INFOBOX), owner, Procedure, reinterpret_cast<LPARAM>(&context));
 }

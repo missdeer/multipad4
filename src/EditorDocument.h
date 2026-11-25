@@ -5,6 +5,7 @@
 #include "AppRuntime.h"
 #include "FileVariables.h"
 #include "FastFileView.h"
+#include "DocumentTabStrip.h"
 #include <functional>
 #include <unordered_map>
 #include "StatusStatistics.h"
@@ -90,56 +91,36 @@ struct EditorDocument {
     void SetEncoding(files::Encoding value);
 };
 void HandleStyleNotification(EditorDocument& document, const SCNotification& notification);
-class EditorChild : public CTabbedMDIChildWindowImpl<EditorChild> {
+class EditorChild {
 public:
-    DECLARE_FRAME_WND_CLASS(L"MultiPad4.MdiDocument", 0)
     HWND owner = nullptr;
+    HWND m_hWnd = nullptr, m_hWndClient = nullptr;
     EditorDocument* document = nullptr;
+    bool Create(HWND mdi, const wchar_t* title);
+    void UpdateLayout();
     void UpdateFileIcon();
-    BEGIN_MSG_MAP(EditorChild)
-        MESSAGE_HANDLER(WM_CLOSE, OnClose)
-        MESSAGE_HANDLER(UWM_MDICHILDSHOWTABCONTEXTMENU, OnTabContextMenu)
-        MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
-        MESSAGE_HANDLER(WM_MDIACTIVATE, OnActivate)
-        CHAIN_MSG_MAP(CTabbedMDIChildWindowImpl<EditorChild>)
-    END_MSG_MAP()
-    LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) {
-        ::PostMessageW(owner, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(m_hWnd), 0); return 0;
+    HICON GetIcon(bool large = true) const {
+        return reinterpret_cast<HICON>(SendMessageW(m_hWnd, WM_GETICON, large ? ICON_BIG : ICON_SMALL, 0));
     }
-    LRESULT OnTabContextMenu(UINT message, WPARAM, LPARAM coordinates, BOOL&) {
-        // A menu command may destroy this child after its message handler returns.
-        ::PostMessageW(owner, message, reinterpret_cast<WPARAM>(m_hWnd), coordinates);
-        return 0;
-    }
-    LRESULT OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
-        auto* n = reinterpret_cast<NMHDR*>(l);
-        if (document && n->hwndFrom == document->hwnd) ::SendMessageW(owner, WM_APP + 0x120, 0, l);
-        if (document && n->hwndFrom == document->hwnd) HandleStyleNotification(*document, *reinterpret_cast<SCNotification*>(l));
-        if (n->code == SCN_SAVEPOINTLEFT || n->code == SCN_SAVEPOINTREACHED || n->code == SCN_ZOOM)
-            ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
-        else if (n->code == SCN_UPDATEUI)
-            ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 1, 0);
-        handled = FALSE; return 0;
-    }
-    LRESULT OnActivate(UINT, WPARAM, LPARAM, BOOL& handled) {
-        ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0); handled = FALSE; return 0;
-    }
+    ~EditorChild() { if (fileIcon) DestroyIcon(fileIcon); }
 private:
-    CIcon fileIcon;
+    static LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l);
+    void Notify(const NMHDR& notification);
+    HICON fileIcon = nullptr;
     int fileIconResource = 0;
     UINT fileIconDpi = 0;
 };
-// Document lookup follows the framework tab order, including drag reordering.
+// Document lookup follows the tab control order, including drag reordering.
 class EditorTabs {
 public:
     HWND owner = nullptr, m_hWnd = nullptr;
-    EditorTabCtrl* control = nullptr;
+    DocumentTabStrip* control = nullptr;
     std::vector<std::unique_ptr<EditorChild>> children;
     std::unordered_map<HWND, EditorChild*> childrenByWindow;
     std::unordered_map<UINT_PTR, EditorDocument*> documentsById;
     operator HWND() const { return m_hWnd; }
     int GetPageCount() const { return control ? control->GetItemCount() : 0; }
-    HWND GetPageHWND(int i) const { return control->GetItem(i)->GetTabView(); }
+    HWND GetPageHWND(int i) const { return control ? control->ChildAt(i) : nullptr; }
     EditorChild* Child(int i) const {
         HWND window = GetPageHWND(i);
         auto found = childrenByWindow.find(window);
@@ -151,29 +132,45 @@ public:
         ::SendMessageW(m_hWnd, WM_MDIACTIVATE, reinterpret_cast<WPARAM>(GetPageHWND(i)), 0);
         ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
     }
-    std::wstring GetPageTitle(int i) const { return control->GetItem(i)->GetText().GetString(); }
+    std::wstring GetPageTitle(int i) const {
+        const HWND child = GetPageHWND(i);
+        const int length = GetWindowTextLengthW(child);
+        std::wstring title(static_cast<size_t>(length) + 1, L'\0');
+        title.resize(GetWindowTextW(child, title.data(), length + 1));
+        return title;
+    }
     void SetPageTitle(int i, const wchar_t* title) {
-        if (auto* child = Child(i)) { child->SetTitle(title); child->UpdateFileIcon(); }
+        if (auto* child = Child(i)) {
+            SetWindowTextW(child->m_hWnd, title);
+            control->SetTitle(i, title);
+            child->UpdateFileIcon();
+            control->SetIcon(child->m_hWnd, child->GetIcon(false));
+        }
     }
     bool AddPage(HWND editor, const wchar_t* title, int, void* data) {
         auto child = std::make_unique<EditorChild>(); child->owner = owner;
         child->document = static_cast<EditorDocument*>(data);
-        // A nonzero style replaces (rather than augments) WTL's defaults.
-        // Keep the caption and sizing frame so Win32 can maximize, restore,
-        // cascade and tile this real MDI child.
-        if (!child->Create(m_hWnd, CWindow::rcDefault, title, EditorChild::GetWndStyle(0) | WS_MAXIMIZE)) return false;
+        if (!child->Create(m_hWnd, title)) return false;
         child->UpdateFileIcon();
+        if (!control->Insert(child->m_hWnd, title)) {
+            ::SendMessageW(m_hWnd, WM_MDIDESTROY, reinterpret_cast<WPARAM>(child->m_hWnd), 0);
+            control->SyncSelection();
+            return false;
+        }
         ::SetParent(editor, child->m_hWnd); child->m_hWndClient = editor;
-        ::ShowWindow(editor, SW_SHOW); child->UpdateLayout(); child->SetTitle(title);
+        ::ShowWindow(editor, SW_SHOW); child->UpdateLayout();
         childrenByWindow.emplace(child->m_hWnd, child.get());
         documentsById.emplace(child->document->searchIdentity, child->document);
-        children.push_back(std::move(child)); return true;
+        children.push_back(std::move(child));
+        control->SetIcon(children.back()->m_hWnd, children.back()->GetIcon(false));
+        return true;
     }
     void RemovePage(int i) {
         auto* child = Child(i); if (!child) return;
         childrenByWindow.erase(child->m_hWnd);
         documentsById.erase(child->document->searchIdentity);
         ::SendMessageW(m_hWnd, WM_MDIDESTROY, reinterpret_cast<WPARAM>(child->m_hWnd), 0);
+        control->Remove(i);
         std::erase_if(children, [child](const auto& p) { return p.get() == child; });
     }
 };

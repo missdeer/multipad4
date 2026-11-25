@@ -2,7 +2,7 @@
 
 English | [简体中文](README_zh.md)
 
-**MultiPad4** is a Windows x64 tabbed MDI text editor built with C++20, WTL, and notepad4's optimized Scintilla. It brings notepad4's editing features to a multi-document workflow with on-demand large-file editing, Notepad++-style search, and dockable plugin panes.
+**MultiPad4** is a Windows x64 tabbed MDI text editor built with C++20, Win32, and notepad4's optimized Scintilla. It brings notepad4's editing features to a multi-document workflow with on-demand large-file editing, Notepad++-style search, and dockable plugin panes.
 
 Builds from the current source show `v0.4` in the About dialog and report `0.4.0.0` in Windows executable metadata.
 
@@ -59,21 +59,24 @@ The compatibility layer implements only part of the Notepad++ API. **A plugin's 
 
 ## Frameworks and source
 
-- WTL 10: `3rdparty/wtl`.
-- Daniel Bowen's WTL Tabbing Framework: `3rdparty/TabbingFramework`.
-- Sergey Klimov's WTL Docking Framework: `3rdparty/DockingFramework`.
 - notepad4 application source and resource baseline: `3rdparty/notepad4`.
 - notepad4's optimized Scintilla: `3rdparty/notepad4-scintilla/scintilla`.
 - Matepath Shell directory list: `3rdparty/matepath`.
 - Notepad++ search/plugin-management reference resources and plugin API: `3rdparty/notepad-plus-plus`, `3rdparty/notepad-plus-plus-plugin-api`.
 
-The main frame uses the Docking Framework's `CDockingFrameImplBase` to wrap `CTabbedMDIFrameWindowImpl`; document windows derive from `CTabbedMDIChildWindowImpl`. The application uses a real `MDICLIENT` and `WS_EX_MDICHILD` windows. The earlier custom docking algorithms and `CTabViewImpl` are no longer part of the production implementation.
+The main frame and document windows use the native MDI API. A Windows common control provides document tabs. The host lays out docked and floating panes with Win32 windows and restores the existing plugin layout settings.
 
-Third-party snapshots are preserved unchanged. `cmake/FrameworkCompatibility.cmake` and `cmake/Matepath.cmake` generate host-compatible copies in the build directory. The notepad4 baseline is `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`. See [THIRD_PARTY.md](THIRD_PARTY.md) for provenance, pinned revisions, and licenses.
+`cmake/Matepath.cmake` generates the host-compatible Matepath source in the build directory. The notepad4 baseline is `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`. See [THIRD_PARTY.md](THIRD_PARTY.md) for provenance, pinned revisions, and licenses.
+
+## License
+
+MultiPad4's original code is licensed under GNU GPL version 3 or later (GPL-3.0-or-later). Third-party code, data and assets retain their original license terms. [GPL text](LICENSE)
+
+The third-party license review documents redistribution terms and open questions for the bundled themes, plugin catalog, and toolbar assets. [Third-party license review](THIRD_PARTY.md#redistribution-status)
 
 ## Building
 
-Requires Windows 10/11, VS 2022 Desktop development with C++ (including ATL and the Windows SDK), CMake 3.25+, Ninja, and C++20. Qt and MFC are not required.
+Requires Windows 10/11, VS 2022 Desktop development with C++ (including the Windows SDK), CMake 3.25+, Ninja, and C++20. Qt and MFC are not required.
 
 From the repository root, run the following in an x64 VS Developer Command Prompt.
 
@@ -88,10 +91,9 @@ The `msvc-release` preset enables link-time optimization in Release builds. The 
 
 The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, `config/`, all seven bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
 
-### MinGW-w64 / OpenATL
+### MinGW-w64
 
-A MinGW-w64 x64 build uses the pinned MIT-licensed OpenATL snapshot instead of
-Microsoft ATL. Install GCC, binutils (windres), CMake, Ninja, and Python 3.10+.
+For a MinGW-w64 x64 build, install GCC, binutils (windres), CMake, and Ninja.
 The existing local wrappers select the MinGW64 toolchain by directory name:
 
 ```powershell
@@ -104,9 +106,6 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 On other machines, the `mingw64-x64` configure/build/test presets can be used
 from an MSYS2 MinGW64 terminal. Keep the selected toolchain's `bin` directory
 on PATH when launching the executable, or deploy its runtime DLLs alongside it.
-No Microsoft ATL or Visual Studio installation is needed for this build.
-OpenATL, WTL, and the tabbing/docking snapshots remain unchanged; compatibility
-patches are applied to build-directory copies. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ### SIMD build options
 
@@ -130,7 +129,7 @@ With `BUILD_TESTING=ON`, CMake registers 14 tests and up to four more when Pytho
 |---|---|
 | `scintilla_line_index` | LF/CRLF/CR line counts and offsets across scalar/SIMD boundaries, with both line-index widths |
 | `fileio_roundtrip` | Encodings, Chinese/emoji, line endings, lossless binary-file fallback, strict UTF-8, and failed-save protection |
-| `editor_integration` | WTL/Scintilla windows, MDI isolation, tab commands, search/replace, styles, settings, autosave, restoration of unsaved tabs, and bundled plugins |
+| `editor_integration` | Win32/Scintilla windows, MDI isolation, tab commands, search/replace, styles, settings, autosave, restoration of unsaved tabs, and bundled plugins |
 | `simd_boundaries` | Guard pages, random input, invalid/truncated encodings, line endings across blocks, and graphics tail boundaries |
 | `lazy_document` | Piece tree, random edits, snapshots, transactions, undo/redo, index reuse, and failed-save protection |
 | `large_file_integration` | On-demand view editing/saving, full-document search/replace, cancellation, encodings, and conversion to the full editor |

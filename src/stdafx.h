@@ -1,16 +1,13 @@
 #pragma once
-#include <atlbase.h>
-#include <atlstr.h>
-#include <atlapp.h>
-extern WTL::CAppModule _Module;
-#include <atlwin.h>
-#include <atlframe.h>
-#include <atlctrls.h>
-#include <atlctrlx.h>
-#include <atlmisc.h>
-#include <atldlgs.h>
-#include <atlctrlw.h>
-#include <atltheme.h>
+#include "WinWindow.h"
+#include <commdlg.h>
+#include <objbase.h>
+#include <ole2.h>
+#include <uxtheme.h>
+#include <shlwapi.h>
+#include <shlobj.h>
+#include <cwchar>
+#include <cassert>
 #include <algorithm>
 #include <memory>
 #include <string>

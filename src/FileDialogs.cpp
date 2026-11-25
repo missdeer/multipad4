@@ -1,3 +1,4 @@
+#include "ComObject.h"
 #include "FileDialogs.h"
 #include "DialogResizeGrip.h"
 #include "MainFrame.h"
@@ -7,6 +8,19 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 #include <shlwapi.h>
+
+OPENFILENAMEW FileDialogOptions(HWND owner, wchar_t* file, DWORD capacity, DWORD flags,
+    const wchar_t* filter, const wchar_t* extension) {
+    OPENFILENAMEW options{sizeof(options)};
+    options.hwndOwner = owner;
+    options.lpstrFile = file;
+    options.nMaxFile = capacity;
+    options.lpstrFilter = filter;
+    options.lpstrDefExt = extension;
+    options.Flags = flags | OFN_EXPLORER | OFN_ENABLESIZING;
+    return options;
+}
+
 namespace {
 std::wstring Field(HWND window, int id) {
     HWND control = GetDlgItem(window,id); auto length = GetWindowTextLengthW(control);
@@ -18,7 +32,7 @@ bool IsAvailableEncoding(files::Encoding encoding) {
 }
 std::wstring EncodingTreeLabel(files::Encoding encoding) {
     wchar_t resource[256]{};
-    for(const auto& entry:EncodingCatalog)if(entry.encoding==encoding){LoadStringW(_Module.GetModuleInstance(),entry.label,resource,256);break;}
+    for(const auto& entry:EncodingCatalog)if(entry.encoding==encoding){LoadStringW(GetModuleHandleW(nullptr),entry.label,resource,256);break;}
     // Encoding_AddToTreeView uses the long name before ';'. The second field
     // is Encoding_GetLabel's compact name for status and other short labels.
     if(auto* separator=wcschr(resource,L';'))*separator=L'\0';
@@ -35,7 +49,7 @@ HIMAGELIST CreateEncodingTreeImages(HWND window) {
     // Match upstream GetBitmapResourceIdForDPI/ResizeImageForDPI.
     int resource=IDB_ENCODING16;
     if(dpi>120)resource+=(std::min)(static_cast<int>((dpi+23)/48),6)-2;
-    auto bitmap=static_cast<HBITMAP>(LoadImageW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(resource),IMAGE_BITMAP,0,0,LR_CREATEDIBSECTION));
+    auto bitmap=static_cast<HBITMAP>(LoadImageW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(resource),IMAGE_BITMAP,0,0,LR_CREATEDIBSECTION));
     BITMAP info{};if(!bitmap || !GetObjectW(bitmap,sizeof(info),&info)){if(bitmap)DeleteObject(bitmap);return nullptr;}
     int size=static_cast<int>(dpi*16/96);size+=size&1;
     if(size!=info.bmHeight){
@@ -58,7 +72,7 @@ INT_PTR CALLBACK EncodingProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
     if(message==WM_INITDIALOG) {
         context=reinterpret_cast<EncodingContext*>(l);SetWindowLongPtrW(window,DWLP_USER,l);
         PositionDialogResizeGrip(window,IDC_RESIZEGRIP);
-        wchar_t prompt[256]{};LoadStringW(_Module.GetModuleInstance(),IDS_SELRECT_CURRENT_ENCODING,prompt,256);
+        wchar_t prompt[256]{};LoadStringW(GetModuleHandleW(nullptr),IDS_SELRECT_CURRENT_ENCODING,prompt,256);
         SetDlgItemTextW(window,IDC_ENCODING_LABEL,prompt);
         HWND tree=GetDlgItem(window,IDC_ENCODINGLIST);
         TreeView_SetImageList(tree,CreateEncodingTreeImages(window),TVSIL_NORMAL);
@@ -72,8 +86,8 @@ INT_PTR CALLBACK EncodingProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
         };
         insert(TVI_ROOT,files::Encoding::Ansi);insert(TVI_ROOT,files::Encoding::Oem);
         std::vector<const FileEncodingGroup*> groups;for(const auto& group:FileEncodingGroups)groups.push_back(&group);
-        if(groups.size()>3)std::sort(groups.begin()+2,groups.end()-1,[](const auto* left,const auto* right){wchar_t a[256]{},b[256]{};LoadStringW(_Module.GetModuleInstance(),left->label,a,256);LoadStringW(_Module.GetModuleInstance(),right->label,b,256);return wcscmp(a,b)<0;});
-        for(const auto* group:groups){wchar_t label[256]{};LoadStringW(_Module.GetModuleInstance(),group->label,label,256);
+        if(groups.size()>3)std::sort(groups.begin()+2,groups.end()-1,[](const auto* left,const auto* right){wchar_t a[256]{},b[256]{};LoadStringW(GetModuleHandleW(nullptr),left->label,a,256);LoadStringW(GetModuleHandleW(nullptr),right->label,b,256);return wcscmp(a,b)<0;});
+        for(const auto* group:groups){wchar_t label[256]{};LoadStringW(GetModuleHandleW(nullptr),group->label,label,256);
             TVINSERTSTRUCTW item{};item.hParent=TVI_ROOT;item.hInsertAfter=TVI_LAST;item.item.mask=TVIF_TEXT|TVIF_PARAM|TVIF_IMAGE|TVIF_SELECTEDIMAGE;item.item.pszText=label;item.item.lParam=-1;item.item.iImage=2;item.item.iSelectedImage=2;
             auto parent=TreeView_InsertItem(tree,&item);
             bool expand=group==groups[0] || group==groups[1];
@@ -84,7 +98,7 @@ INT_PTR CALLBACK EncodingProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
             if(expand)TreeView_Expand(tree,parent,TVE_EXPAND);
         }
         TreeView_SelectItem(tree,selected);if(selected)TreeView_EnsureVisible(tree,selected);
-        EnableWindow(GetDlgItem(window,IDOK),selected!=nullptr);CWindow(window).CenterWindow(GetParent(window));return TRUE;
+        EnableWindow(GetDlgItem(window,IDOK),selected!=nullptr);CenterWindow(window, GetParent(window));return TRUE;
     }
     if(!context)return FALSE;
     if(message==WM_DESTROY){
@@ -114,7 +128,7 @@ struct BrowseButtonImage {
     void Attach(HWND window, UINT control) {
         const UINT dpi = GetDpiForWindow(window);
         const int resource = IDB_OPEN_FOLDER16 + std::clamp(static_cast<int>((dpi + 23) / 48) - 2, 0, 4);
-        auto bitmap = static_cast<HBITMAP>(LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(resource), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+        auto bitmap = static_cast<HBITMAP>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
         BITMAP info{};
         if (!bitmap) return;
         if (!GetObjectW(bitmap, sizeof(info), &info)) { DeleteObject(bitmap); return; }
@@ -140,14 +154,20 @@ INT_PTR CALLBACK TextProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
         RECT client{};GetClientRect(window,&client);context->initial={client.right,client.bottom};
         for(HWND child=GetWindow(window,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)){RECT r{};GetWindowRect(child,&r);MapWindowPoints(nullptr,window,reinterpret_cast<POINT*>(&r),2);context->controls.emplace_back(child,r);}
         if(context->frame){auto key=std::to_wstring(context->resource);int saved=_wtoi(context->frame->settings.ReadString(L"Dialog Widths",key.c_str()).c_str());if(saved>client.right){RECT r{};GetWindowRect(window,&r);SetWindowPos(window,nullptr,0,0,saved+r.right-r.left-client.right,r.bottom-r.top,SWP_NOMOVE|SWP_NOZORDER);}}
-        CWindow(window).CenterWindow(GetParent(window));return TRUE;}
+        CenterWindow(window, GetParent(window));return TRUE;}
     if(!context)return FALSE;
     if(message==WM_GETMINMAXINFO){auto* info=reinterpret_cast<MINMAXINFO*>(l);info->ptMinTrackSize.x=context->initial.cx+16;info->ptMinTrackSize.y=context->initial.cy+40;info->ptMaxTrackSize.y=info->ptMinTrackSize.y;return TRUE;}
     if(message==WM_SIZE&&context->initial.cx){int dx=LOWORD(l)-context->initial.cx;for(const auto& entry:context->controls){auto r=entry.second;int id=GetDlgCtrlID(entry.first);if(id==IDOK||id==IDCANCEL||id==IDC_SEARCHEXE){r.left+=dx;r.right+=dx;}else if(id==IDC_COMMANDLINE||id==IDC_RUNDESC||id==IDC_FAVORITESDESCR)r.right+=dx;SetWindowPos(entry.first,nullptr,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);}PositionDialogResizeGrip(window,context->resource==IDD_RUN?IDC_RESIZEGRIP3:IDC_RESIZEGRIP);return TRUE;}
     if(message==WM_DESTROY&&context->frame){RECT r{};GetClientRect(window,&r);auto key=std::to_wstring(context->resource);context->frame->settings.WriteString(L"Dialog Widths",key.c_str(),std::to_wstring(r.right));return FALSE;}
     if(message!=WM_COMMAND)return FALSE;
-    if(LOWORD(w)==IDC_SEARCHEXE && context->resource==IDD_RUN){CFileDialog dialog(TRUE,L"exe",nullptr,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,L"Programs\0*.exe;*.com;*.bat;*.cmd\0All files\0*.*\0\0",window);
-        if(dialog.DoModal()==IDOK)SetDlgItemTextW(window,IDC_COMMANDLINE,(L"\""+std::wstring(dialog.m_szFileName)+L"\"").c_str());return TRUE;}
+    if (LOWORD(w) == IDC_SEARCHEXE && context->resource == IDD_RUN) {
+        wchar_t file[32768]{};
+        auto dialog = FileDialogOptions(window, file, _countof(file), OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR,
+            L"Programs\0*.exe;*.com;*.bat;*.cmd\0All files\0*.*\0\0", L"exe");
+        if (GetOpenFileNameW(&dialog))
+            SetDlgItemTextW(window, IDC_COMMANDLINE, (L"\"" + std::wstring(file) + L"\"").c_str());
+        return TRUE;
+    }
     if(LOWORD(w)==IDCANCEL){EndDialog(window,IDCANCEL);return TRUE;}
     if(LOWORD(w)==IDOK){context->text=Field(window,IDC_COMMANDLINE);if(!context->text.empty())EndDialog(window,IDOK);return TRUE;}
     return FALSE;
@@ -159,8 +179,8 @@ std::filesystem::path FavoritesDirectory(MainFrame& frame, bool applications=fal
 }
 std::filesystem::path ResolveShortcut(const std::filesystem::path& path){
     if(_wcsicmp(path.extension().c_str(),L".lnk")!=0)return path;
-    CComPtr<IShellLinkW> link;if(FAILED(link.CoCreateInstance(CLSID_ShellLink)))return path;
-    CComQIPtr<IPersistFile> persist(link);if(!persist || FAILED(persist->Load(path.c_str(),STGM_READ)))return path;
+    ComObject<IShellLinkW> link;if(FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(link.Receive()))))return path;
+    ComObject<IPersistFile> persist; link->QueryInterface(IID_PPV_ARGS(persist.Receive()));if(!persist || FAILED(persist->Load(path.c_str(),STGM_READ)))return path;
     wchar_t target[32768]{};if(SUCCEEDED(link->GetPath(target,32768,nullptr,SLGP_RAWPATH))&&target[0])return target;return path;
 }
 struct HistoryContext { MainFrame& frame; bool favorites; std::vector<std::wstring> paths; std::wstring selected; bool applications=false; SIZE initialSize{}; std::vector<std::pair<HWND,RECT>> controls; BrowseButtonImage browse; };
@@ -177,7 +197,7 @@ INT_PTR CALLBACK HistoryProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
         for(size_t i=0;i<context->paths.size();++i){LVITEMW item{};item.mask=LVIF_TEXT|LVIF_IMAGE;item.iItem=static_cast<int>(i);SHFILEINFOW fileInfo{};bool useAttributes=PathIsUNCW(context->paths[i].c_str())||GetFileAttributesW(context->paths[i].c_str())==INVALID_FILE_ATTRIBUTES;auto iconPath=useAttributes?std::filesystem::path(context->paths[i]).filename().wstring():context->paths[i];if(SHGetFileInfoW(iconPath.c_str(),useAttributes?FILE_ATTRIBUTE_NORMAL:0,&fileInfo,sizeof(fileInfo),SHGFI_SYSICONINDEX|SHGFI_SMALLICON|(useAttributes?SHGFI_USEFILEATTRIBUTES:0)))item.iImage=fileInfo.iIcon;auto label=context->favorites?std::filesystem::path(context->paths[i]).stem().wstring():context->paths[i];item.pszText=label.data();ListView_InsertItem(list,&item);}
         if(context->favorites){SetWindowTextW(window,context->applications?L"Open with...":L"Favorites");}
         else {CheckDlgButton(window,IDC_SAVEMRU,context->frame.settings.Get(IDM_VIEW_NOSAVERECENT,1)?BST_CHECKED:BST_UNCHECKED);SetDlgItemInt(window,IDC_MRU_COUNT_VALUE,context->frame.settings.Get(IDM_FILE_RECENT,32),FALSE);}
-        CWindow(window).CenterWindow(GetParent(window));return TRUE;}
+        CenterWindow(window, GetParent(window));return TRUE;}
     if(!context)return FALSE;
     if(message==WM_GETMINMAXINFO){auto* info=reinterpret_cast<MINMAXINFO*>(l);info->ptMinTrackSize={context->initialSize.cx+16,context->initialSize.cy+40};return TRUE;}
     if(message==WM_SIZE && context->initialSize.cx){int dx=LOWORD(l)-context->initialSize.cx,dy=HIWORD(l)-context->initialSize.cy;
@@ -209,7 +229,7 @@ INT_PTR CALLBACK HistoryProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
     if(LOWORD(w)==IDCANCEL){saveRecentOptions();EndDialog(window,IDCANCEL);return TRUE;}return FALSE;
 }
 }
-bool SelectFileEncoding(HWND owner,files::Encoding& encoding){EncodingContext context{encoding};if(DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_SELECT_ENCODING),owner,EncodingProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;encoding=context.value;return true;}
+bool SelectFileEncoding(HWND owner,files::Encoding& encoding){EncodingContext context{encoding};if(DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_SELECT_ENCODING),owner,EncodingProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;encoding=context.value;return true;}
 bool ShouldUseSystemMRU(const MainFrame& frame) {
     if (!frame.settings.persistent) return false;
     return frame.runtime.useSystemMRU >= 0 ? frame.runtime.useSystemMRU != 0 : frame.settings.Get(60050, 1) != 0;
@@ -224,24 +244,32 @@ void RecordOpenedFile(MainFrame& frame,const std::filesystem::path& path){
 bool SelectHistoryFile(MainFrame& frame,bool favorites){HistoryContext context{frame,favorites,{},{}};auto section=favorites?L"Favorites":L"Recent Files";
     if(favorites){for(const auto& item:std::filesystem::directory_iterator(FavoritesDirectory(frame)))context.paths.push_back(item.path().wstring());std::sort(context.paths.begin(),context.paths.end());}
     else for(int i=0;i<(std::clamp)(frame.settings.Get(IDM_FILE_RECENT,32),32,4096);++i){auto value=frame.settings.ReadString(section,std::to_wstring(i).c_str());if(!value.empty())context.paths.push_back(value);}
-    auto result=DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(favorites?IDD_FAVORITES:IDD_FILEMRU),frame.m_hWnd,HistoryProcedure,reinterpret_cast<LPARAM>(&context));
+    auto result=DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(favorites?IDD_FAVORITES:IDD_FILEMRU),frame.m_hWnd,HistoryProcedure,reinterpret_cast<LPARAM>(&context));
     if(result==IDRETRY)return SelectHistoryFile(frame,favorites);if(result!=IDOK)return false;
-    auto selected=ResolveShortcut(context.selected);if(std::filesystem::is_directory(selected)){CFileDialog dialog(TRUE,nullptr,nullptr,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,L"All files\0*.*\0\0",frame.m_hWnd);auto folder=selected.wstring();dialog.m_ofn.lpstrInitialDir=folder.c_str();return dialog.DoModal()==IDOK && frame.Open(dialog.m_szFileName);}return frame.Open(selected);
+    auto selected = ResolveShortcut(context.selected);
+    if (std::filesystem::is_directory(selected)) {
+        wchar_t file[32768]{};
+        auto dialog = FileDialogOptions(frame.m_hWnd, file, _countof(file), OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR,
+            L"All files\0*.*\0\0");
+        dialog.lpstrInitialDir = selected.c_str();
+        return GetOpenFileNameW(&dialog) && frame.Open(file);
+    }
+    return frame.Open(selected);
 }
 bool AddFavoriteFile(MainFrame& frame){auto* d=frame.Active();if(!d || d->path.empty())return false;
     TextContext context{IDD_ADDTOFAV,d->path.filename().wstring(),&frame};
-    if(DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_ADDTOFAV),frame.m_hWnd,TextProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;
+    if(DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_ADDTOFAV),frame.m_hWnd,TextProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;
     if(context.text.find_first_of(L"\\/:*?\"<>|")!=std::wstring::npos || context.text==L"." || context.text==L"..")throw std::runtime_error("Invalid favorites item name.");
     auto path=FavoritesDirectory(frame)/(context.text+L".lnk");
     if(std::filesystem::exists(path) && frame.MessageBox(L"Replace the existing favorite?",L"Favorites",MB_OKCANCEL|MB_ICONQUESTION)!=IDOK)return false;
-    CComPtr<IShellLinkW> link;if(FAILED(link.CoCreateInstance(CLSID_ShellLink)))throw std::runtime_error("Cannot create favorite shortcut.");
-    link->SetPath(d->path.c_str());link->SetWorkingDirectory(d->path.parent_path().c_str());CComQIPtr<IPersistFile> persist(link);
+    ComObject<IShellLinkW> link;if(FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(link.Receive()))))throw std::runtime_error("Cannot create favorite shortcut.");
+    link->SetPath(d->path.c_str());link->SetWorkingDirectory(d->path.parent_path().c_str());ComObject<IPersistFile> persist; link->QueryInterface(IID_PPV_ARGS(persist.Receive()));
     if(!persist || FAILED(persist->Save(path.c_str(),TRUE)))throw std::runtime_error("Cannot save favorite shortcut.");return true;
 }
 void ManageFavoriteFiles(MainFrame& frame){auto directory=FavoritesDirectory(frame);ShellExecuteW(frame.m_hWnd,L"open",directory.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}
 
 bool RunFileDialog(MainFrame& frame){TextContext context{IDD_RUN,frame.settings.ReadString(L"Run",L"Command"),&frame};
-    if(DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_RUN),frame.m_hWnd,TextProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;
+    if(DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_RUN),frame.m_hWnd,TextProcedure,reinterpret_cast<LPARAM>(&context))!=IDOK)return false;
     auto* d=frame.Active();if(d && frame.settings.Get(IDM_VIEW_SAVEBEFORERUNNINGTOOLS,1) && d->Modified() && !frame.Save(*d))return false;
     std::wstring command=context.text;if(d){auto replace=[&](const std::wstring& token,const std::wstring& value){size_t position=0;while((position=command.find(token,position))!=std::wstring::npos){command.replace(position,token.size(),value);position+=value.size();}};replace(L"$(FilePath)",d->path.wstring());replace(L"$(FileDir)",d->path.parent_path().wstring());replace(L"$(FileName)",d->path.filename().wstring());}
     ExecuteExternalCommand(frame,command);
@@ -261,7 +289,7 @@ INT_PTR CALLBACK DefaultsProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
         }else{for(auto label:{L"Windows (CR+LF)",L"Classic Mac OS (CR)",L"Unix/macOS (LF)"})SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label));
             SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_SETCURSEL,context->frame.settings.Get(IDM_LINEENDINGS_SETDEFAULT,SC_EOL_CRLF),0);
             for(int i=0;i<3;++i)CheckDlgButton(window,eolControls[i],context->frame.settings.ReadString(L"File Settings",eolKeys[i],L"0")==L"1"?BST_CHECKED:BST_UNCHECKED);
-        }CWindow(window).CenterWindow(GetParent(window));return TRUE;}
+        }CenterWindow(window, GetParent(window));return TRUE;}
     if(!context)return FALSE;
     if(message==WM_NOTIFY && context->encoding){auto* notification=reinterpret_cast<NMHDR*>(l);if(notification->idFrom==IDC_ENCODING_LINK && (notification->code==NM_CLICK||notification->code==NM_RETURN)){
         if(SelectFileEncoding(window,context->value))SetDlgItemTextW(window,IDC_ENCODING_LABEL,files::EncodingName(context->value));return TRUE;}return FALSE;}
@@ -272,8 +300,8 @@ INT_PTR CALLBACK DefaultsProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
         EndDialog(window,IDOK);return TRUE;}return FALSE;
 }
 }
-void ConfigureDefaultEncoding(MainFrame& frame){DefaultsContext context{frame,true,static_cast<files::Encoding>(frame.settings.Get(IDM_ENCODING_SETDEFAULT,static_cast<int>(files::Encoding::Ansi)))};DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_DEFENCODING),frame.m_hWnd,DefaultsProcedure,reinterpret_cast<LPARAM>(&context));}
-void ConfigureDefaultLineEndings(MainFrame& frame){DefaultsContext context{frame,false,files::Encoding::Utf8};DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_DEFEOLMODE),frame.m_hWnd,DefaultsProcedure,reinterpret_cast<LPARAM>(&context));}
+void ConfigureDefaultEncoding(MainFrame& frame){DefaultsContext context{frame,true,static_cast<files::Encoding>(frame.settings.Get(IDM_ENCODING_SETDEFAULT,static_cast<int>(files::Encoding::Ansi)))};DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_DEFENCODING),frame.m_hWnd,DefaultsProcedure,reinterpret_cast<LPARAM>(&context));}
+void ConfigureDefaultLineEndings(MainFrame& frame){DefaultsContext context{frame,false,files::Encoding::Utf8};DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_DEFEOLMODE),frame.m_hWnd,DefaultsProcedure,reinterpret_cast<LPARAM>(&context));}
 
 bool OpenWithFileDialog(MainFrame& frame){
     auto* document=frame.Active();if(!document || document->path.empty())return false;
@@ -281,7 +309,7 @@ bool OpenWithFileDialog(MainFrame& frame){
     HistoryContext context{frame,true,{},{},true};
     for(const auto& item:std::filesystem::directory_iterator(FavoritesDirectory(frame,true)))context.paths.push_back(item.path().wstring());
     std::sort(context.paths.begin(),context.paths.end());
-    auto result=DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_OPENWITH),frame.m_hWnd,HistoryProcedure,reinterpret_cast<LPARAM>(&context));
+    auto result=DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_OPENWITH),frame.m_hWnd,HistoryProcedure,reinterpret_cast<LPARAM>(&context));
     if(result==IDRETRY)return OpenWithFileDialog(frame);if(result!=IDOK)return false;
     auto executable=ResolveShortcut(context.selected);auto parameter=L"\""+document->path.wstring()+L"\"";
     if(reinterpret_cast<INT_PTR>(ShellExecuteW(frame.m_hWnd,L"open",executable.c_str(),parameter.c_str(),document->path.parent_path().c_str(),SW_SHOWNORMAL))<=32)throw std::runtime_error("Cannot open file with selected application.");return true;

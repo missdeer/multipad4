@@ -15,7 +15,7 @@
     },
     {
       "name": "mingw64-x64",
-      "displayName": "MinGW-w64 x64 / OpenATL (MinGW terminal)",
+      "displayName": "MinGW-w64 x64 (MinGW terminal)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-mingw64-build",
       "cacheVariables": {

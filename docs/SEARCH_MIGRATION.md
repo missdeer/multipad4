@@ -44,7 +44,7 @@ PROJECT_SCOPE.md. Reference checkout: Notepad++
 ## Validation and remaining differences
 
 Build with the local MSVC wrapper and run CTest. SearchDialogFeatureTests uses
-real Scintilla/WTL windows and covers Unicode byte positions, multiple matches
+real Scintilla/Win32 windows and covers Unicode byte positions, multiple matches
 per line, lexer styles/folds, regex captures, undo, zero-width searches,
 invalid regex status, extended newlines, markers, isolated document state,
 recursive file filtering, disk replacement and UTF-16 / UTF-8 BOM preservation.
@@ -56,7 +56,7 @@ newly opened editor, checking source-document isolation and live F3 queries.
 QA images are generated with `multipad4 --qa-render tmp/search-layout-qa`.
 
 This is a host adaptation, not the original Notepad++ dialog class linked into
-WTL. Notepad++ project-panel searches have no corresponding project model here.
+Win32. Notepad++ project-panel searches have no corresponding project model here.
 Incremental Find, Find in Finder, the optional two-button layout and Notepad++
 theme/full translation-catalogue integration are not ported. The dialog uses
 English or Simplified Chinese labels; other language catalogues are not ported. File cancellation occurs between

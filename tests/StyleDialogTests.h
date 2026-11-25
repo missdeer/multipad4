@@ -86,18 +86,18 @@ inline void RunStyleDialogTests(HWND owner,EditorDocument& d){
     RunCommand(owner,IDM_VIEW_DEFAULT_TEXT_FONT,[](HWND){},IDCANCEL);
     require(d.style.textFont==oldTextFont && d.style.textFontSize==oldTextSize);
     auto oldScheme=d.style.scheme;
-    auto choosePython=[](HWND dialog){CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)){wchar_t name[128]{};tree.GetItemText(item,name,128);if(wcscmp(name,L"Python Script")==0){tree.SelectItem(item);return;}}};
+    auto choosePython=[](HWND dialog){HWND tree(GetDlgItem(dialog,IDC_STYLELIST));for(auto item=TreeView_GetRoot(tree);item;item=TreeView_GetNextSibling(tree, item)){wchar_t name[128]{};TreeGetItemText(tree, item,name,128);if(wcscmp(name,L"Python Script")==0){TreeView_SelectItem(tree, item);return;}}};
     RunCommand(owner,IDM_VIEW_SCHEME,choosePython,IDCANCEL);require(d.style.scheme==oldScheme);
     RunCommand(owner,IDM_VIEW_SCHEME,choosePython);require(d.Send(SCI_GETLEXER)==SCLEX_PYTHON);
     RunCommand(owner,IDM_VIEW_SCHEME_FAVORITE,[](HWND dialog){
-        CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));HTREEITEM selected=nullptr;
-        for(auto item=tree.GetRootItem();item;item=tree.GetNextSiblingItem(item)){wchar_t name[128]{};tree.GetItemText(item,name,128);bool keep=wcscmp(name,L"Python Script")==0 || wcscmp(name,L"C/C++ Source")==0;tree.SetCheckState(item,keep);if(wcscmp(name,L"Python Script")==0)selected=item;}
-        tree.SelectItem(selected);
-        for(unsigned count=0;count<100 && tree.GetSelectedItem()!=tree.GetRootItem();++count)SendMessageW(dialog,WM_COMMAND,IDC_DEFAULTSCHEME,0);
+        HWND tree(GetDlgItem(dialog,IDC_STYLELIST));HTREEITEM selected=nullptr;
+        for(auto item=TreeView_GetRoot(tree);item;item=TreeView_GetNextSibling(tree, item)){wchar_t name[128]{};TreeGetItemText(tree, item,name,128);bool keep=wcscmp(name,L"Python Script")==0 || wcscmp(name,L"C/C++ Source")==0;TreeView_SetCheckState(tree, item,keep);if(wcscmp(name,L"Python Script")==0)selected=item;}
+        TreeView_SelectItem(tree, selected);
+        for(unsigned count=0;count<100 && TreeView_GetSelection(tree)!=TreeView_GetRoot(tree);++count)SendMessageW(dialog,WM_COMMAND,IDC_DEFAULTSCHEME,0);
     });
     auto profile=std::filesystem::temp_directory_path()/(L"MultiPad4-favorite-test-"+std::to_wstring(GetCurrentProcessId()))/L"Settings.ini";SaveStylePreferences(profile);
     wchar_t order[1024]{};GetPrivateProfileStringW(L"Style Preferences",L"Favorites",L"",order,1024,profile.c_str());std::wistringstream entries(order);int first=-1,second=-1;entries>>first>>second;
     require(first>0 && second>0 && first!=second);
-    RunCommand(owner,IDM_VIEW_SCHEME,[&](HWND dialog){CTreeViewCtrl tree(GetDlgItem(dialog,IDC_STYLELIST));wchar_t name[128]{};tree.GetItemText(tree.GetRootItem(),name,128);require(wcscmp(name,L"Python Script")==0);},IDCANCEL);
+    RunCommand(owner,IDM_VIEW_SCHEME,[&](HWND dialog){HWND tree(GetDlgItem(dialog,IDC_STYLELIST));wchar_t name[128]{};TreeGetItemText(tree, TreeView_GetRoot(tree),name,128);require(wcscmp(name,L"Python Script")==0);},IDCANCEL);
     std::error_code cleanup;std::filesystem::remove_all(profile.parent_path(),cleanup);
 }

@@ -2,9 +2,7 @@
 #include "MenuStrings.h"
 #include "../DockPaneState.h"
 #include <memory>
-#include <DockImpl.cpp>
 
-WTL::CAppModule _Module;
 namespace {
 HINSTANCE instance = nullptr;
 NppData host;
@@ -33,11 +31,11 @@ void Start() {
     configPath = pluginLayout::ConfigPath(host._nppHandle, L"Matepath.ini").wstring();
     testMode = configPath.empty();
     pane = std::make_unique<MatepathPane>();
-    pane->CreatePane(host._nppHandle);
+    pane->CreatePane(host._nppHandle, instance);
     if (!pane->IsWindow()) { pane.reset(); return; }
     pane->fileSpec = Read(L"Filter", L"*.*");
     if (pane->fileSpec.empty() || pane->fileSpec.size() > 126) pane->fileSpec = L"*.*";
-    pane->pattern.SetWindowTextW(pane->fileSpec.c_str());
+    SetWindowTextW(pane->pattern, pane->fileSpec.c_str());
     pane->showHidden = Read(L"Hidden") == L"1";
     pane->reverse = Read(L"Reverse") == L"1";
     const auto sort = Read(L"Sort", L"0");
@@ -50,11 +48,7 @@ void Start() {
             ? static_cast<DockSide>(side[0] - L'0') : DockSide::Right;
         pane->SetSide(dockSide, Read(L"Visible", L"1") != L"0");
     } else {
-        // CurrentSide() uses the cached side while hidden.
-        dockwins::DFDOCKPOSEX state{}; pane->GetDockingWindowPlacement(&state);
-        pane->side = state.dockPos.hdr.hBar == HNONDOCKBAR ? DockSide::Floating
-            : (state.dockPos.dwDockSide & 3) == dockwins::CDockingSide::sLeft ? DockSide::Left
-            : (state.dockPos.dwDockSide & 3) == dockwins::CDockingSide::sRight ? DockSide::Right : DockSide::Bottom;
+        pane->side = pane->CurrentSide();
         pane->Layout();
     }
 }
@@ -75,7 +69,7 @@ void Stop() {
     }
     if (initialized) {
         UnregisterClassW(L"MultiPad4.MatepathPane", instance);
-        _Module.Term(); initialized = false;
+        initialized = false;
     }
 }
 void Toggle() { Start(); if (pane) pane->Toggle(); }
@@ -90,7 +84,7 @@ extern "C" __declspec(dllexport) BOOL isUnicode() { return TRUE; }
 extern "C" __declspec(dllexport) const wchar_t* getName() { return L"Matepath"; }
 extern "C" __declspec(dllexport) void setInfo(NppData data) {
     host = data;
-    initialized = SUCCEEDED(_Module.Init(nullptr, instance));
+    initialized = instance != nullptr;
 }
 extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) {
     constexpr UINT labels[]{IDS_FILE_BROWSER, IDS_FOLLOW_DOCUMENT};

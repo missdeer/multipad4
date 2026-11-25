@@ -24,9 +24,9 @@ UINT_PTR CALLBACK TabTitleFontHook(HWND dialog, UINT message, WPARAM, LPARAM) {
 struct TabSettingsDialog {
     LOGFONTW font{};
     int points = 0;
-    int width = EditorTabCtrl::defaultTabWidth;
+    int width = DocumentTabStrip::defaultTabWidth;
     bool fixed = false;
-    WTL::CFont preview;
+    UniqueFont preview;
 };
 void UpdateTabFontPreview(HWND dialog, TabSettingsDialog& context) {
     LOGFONTW font{};
@@ -38,11 +38,10 @@ void UpdateTabFontPreview(HWND dialog, TabSettingsDialog& context) {
     } else {
         SystemParametersInfoW(SPI_GETICONTITLELOGFONT, sizeof(font), &font, 0);
     }
-    WTL::CFont preview;
-    preview.CreateFontIndirect(&font);
+    UniqueFont preview(CreateFontIndirectW(&font));
     SendDlgItemMessageW(dialog, IDC_TAB_FONT_PREVIEW, WM_SETFONT,
-        preview.m_hFont ? reinterpret_cast<WPARAM>(preview.m_hFont) : SendMessageW(dialog, WM_GETFONT, 0, 0), TRUE);
-    context.preview.Attach(preview.Detach());
+        preview ? reinterpret_cast<WPARAM>(preview.get()) : SendMessageW(dialog, WM_GETFONT, 0, 0), TRUE);
+    context.preview = std::move(preview);
     EnableWindow(GetDlgItem(dialog, IDC_TAB_FONT_RESET), context.points != 0);
 }
 void ChooseTabTitleFont(HWND dialog, TabSettingsDialog& context) {
@@ -55,8 +54,8 @@ void ChooseTabTitleFont(HWND dialog, TabSettingsDialog& context) {
     choose.lpfnHook = TabTitleFontHook;
     choose.Flags = CF_SCREENFONTS | CF_SCALABLEONLY | CF_INITTOLOGFONTSTRUCT | CF_LIMITSIZE |
         CF_FORCEFONTEXIST | CF_NOSCRIPTSEL | CF_ENABLEHOOK;
-    choose.nSizeMin = EditorTabCtrl::titleMinPoints;
-    choose.nSizeMax = EditorTabCtrl::titleMaxPoints;
+    choose.nSizeMin = DocumentTabStrip::titleMinPoints;
+    choose.nSizeMax = DocumentTabStrip::titleMaxPoints;
     if (ChooseFontW(&choose)) {
         context.font = font;
         context.points = choose.iPointSize / 10;
@@ -86,7 +85,7 @@ INT_PTR CALLBACK TabSettingsDialogProc(HWND dialog, UINT message, WPARAM wParam,
         UpdateTabFontPreview(dialog, context);
         CheckDlgButton(dialog, IDC_TAB_FIXED_WIDTH, context.fixed ? BST_CHECKED : BST_UNCHECKED);
         SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_PIXELS, EM_SETLIMITTEXT, 4, 0);
-        SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_SPIN, UDM_SETRANGE32, EditorTabCtrl::minTabWidth, EditorTabCtrl::maxTabWidth);
+        SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_SPIN, UDM_SETRANGE32, DocumentTabStrip::minTabWidth, DocumentTabStrip::maxTabWidth);
         SendDlgItemMessageW(dialog, IDC_TAB_WIDTH_SPIN, UDM_SETPOS32, 0, context.width);
         EnableTabWidth(dialog, context.fixed);
         return TRUE;
@@ -115,9 +114,9 @@ INT_PTR CALLBACK TabSettingsDialogProc(HWND dialog, UINT message, WPARAM wParam,
         const auto width = wcstol(text, nullptr, 10);
         const bool valid = GetWindowTextLengthW(input) < static_cast<int>(_countof(text)) &&
             std::wstring_view(text).find_first_not_of(L"0123456789") == std::wstring_view::npos &&
-            width >= EditorTabCtrl::minTabWidth && width <= EditorTabCtrl::maxTabWidth;
+            width >= DocumentTabStrip::minTabWidth && width <= DocumentTabStrip::maxTabWidth;
         if (fixed && !valid) {
-            const auto range = std::to_wstring(EditorTabCtrl::minTabWidth) + L"–" + std::to_wstring(EditorTabCtrl::maxTabWidth);
+            const auto range = std::to_wstring(DocumentTabStrip::minTabWidth) + L"–" + std::to_wstring(DocumentTabStrip::maxTabWidth);
             const auto hint = PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE ? L"请输入此范围内的整数：" + range : L"Enter a whole number in this range: " + range;
             MessageBoxW(dialog, hint.c_str(), L"MultiPad4", MB_OK | MB_ICONWARNING);
             SetFocus(input);
@@ -227,7 +226,7 @@ INT_PTR CALLBACK RuntimeDialogProc(HWND window, UINT message, WPARAM w, LPARAM l
             swprintf_s(text, L"%lu.%03lu", period / 1000, period % 1000);
             SetDlgItemTextW(window, IDC_AUTOSAVE_PERIOD, text);
         }
-        CWindow(window).CenterWindow(context->frame); return TRUE;
+        CenterWindow(window, context->frame); return TRUE;
     }
     if (!context) return FALSE;
     if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { EndDialog(window, IDCANCEL); return TRUE; }
@@ -307,7 +306,7 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
     if (id >= IDM_LANG_USER_DEFAULT && id <= IDM_LANG_LAST_LANGUAGE) {
         if (static_cast<UINT>(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)) == id) return true;
         wchar_t message[1024]{};
-        LoadStringW(_Module.GetModuleInstance(), IDS_CHANGE_LANG_RESTART, message, _countof(message));
+        LoadStringW(GetModuleHandleW(nullptr), IDS_CHANGE_LANG_RESTART, message, _countof(message));
         const int result = frame.MessageBox(message, L"MultiPad4", MB_YESNOCANCEL | MB_ICONINFORMATION);
         if (result != IDYES && result != IDNO) return true;
         frame.settings.Set(IDM_LANG_USER_DEFAULT, id);
@@ -391,7 +390,7 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
         context.width = frame.TabWidthPreference();
         context.fixed = tabs.HasFixedTabWidth();
         GetObjectW(tabs.GetFont(), sizeof(context.font), &context.font);
-        const auto result = DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_TAB_SETTINGS), frame,
+        const auto result = DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_TAB_SETTINGS), frame,
             TabSettingsDialogProc, reinterpret_cast<LPARAM>(&context));
         if (result == -1) throw std::runtime_error("Cannot open the document tab settings dialog.");
         if (result == IDOK) {
@@ -410,7 +409,7 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
     case IDM_VIEW_CHANGENOTIFY: case IDM_SET_FILE_AUTOSAVE: {
         auto* d = frame.Active(); if (id == IDM_VIEW_CHANGENOTIFY && !d) return true;
         RuntimeDialog context{frame, d, static_cast<UINT>(id == IDM_VIEW_CHANGENOTIFY ? IDD_CHANGENOTIFY : IDD_AUTOSAVE)};
-        DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(context.resource), frame, RuntimeDialogProc, reinterpret_cast<LPARAM>(&context)); break;
+        DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(context.resource), frame, RuntimeDialogProc, reinterpret_cast<LPARAM>(&context)); break;
     }
     case IDM_VIEW_TOGGLE_FULLSCREEN: ToggleFullscreen(frame); break;
     case IDM_VIEW_MENU:
@@ -459,7 +458,7 @@ void SetFrameTransparency(MainFrame& frame, bool active) {
 void SetTrayVisible(MainFrame& frame, bool visible) {
     NOTIFYICONDATAW data{sizeof(data)}; data.hWnd = frame; data.uID = 1;
     data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP; data.uCallbackMessage = WM_APP + 0x103;
-    data.hIcon = reinterpret_cast<HICON>(LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME), IMAGE_ICON, 16, 16, LR_SHARED));
+    data.hIcon = reinterpret_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_MAINFRAME), IMAGE_ICON, 16, 16, LR_SHARED));
     wcscpy_s(data.szTip, L"MultiPad4");
     if (visible && !frame.runtime.trayPresent) frame.runtime.trayPresent = Shell_NotifyIconW(NIM_ADD, &data) != FALSE;
     else if (!visible && frame.runtime.trayPresent) { Shell_NotifyIconW(NIM_DELETE, &data); frame.runtime.trayPresent = false; }
@@ -469,7 +468,7 @@ void UpdateToolbarImages(MainFrame& frame) {
     if (frame.settings.Get(IDM_VIEW_USE_LARGE_TOOLBAR)) dpi = MulDiv(dpi, 3, 2);
     int size = dpi >= 288 ? 48 : dpi >= 240 ? 40 : dpi >= 192 ? 32 : dpi >= 144 ? 24 : 16;
     UINT resource = size == 48 ? IDB_TOOLBAR48 : size == 40 ? IDB_TOOLBAR40 : size == 32 ? IDB_TOOLBAR32 : size == 24 ? IDB_TOOLBAR24 : IDB_TOOLBAR16;
-    auto images = ImageList_LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(resource), size, 0, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION);
+    auto images = ImageList_LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource), size, 0, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION);
     if (!images) return;
     ::SendMessageW(frame.m_hWndToolBar, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(images));
     ::SendMessageW(frame.m_hWndToolBar, TB_SETBITMAPSIZE, 0, MAKELPARAM(size, size));
