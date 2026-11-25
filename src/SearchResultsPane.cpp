@@ -39,6 +39,11 @@ void SearchResultsPane::Begin(const std::wstring& query) {
     auto text = files::ToUtf8(query); std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
     Append("Search \"" + text + "\"", {SearchResultLexer::SearchHeader}, {}); Reveal();
 }
+void SearchResultsPane::Skipped(const std::filesystem::path& path, const std::string& reason) {
+    auto text = "  Skipped " + files::ToUtf8(path.wstring()) + ": " + reason;
+    std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
+    Append(text, {SearchResultLexer::FileHeader}, {});
+}
 void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMatch>& matches) {
     if (matches.empty()) return;
     Add(document.path, document.searchIdentity, matches, document.Title());
@@ -105,6 +110,8 @@ bool SearchResultsPane::LoadMore(size_t archive) {
         const auto dirty = lines.size();
         auto hits = page.hits->Page(page.next, 64);
         std::vector<SearchMatch> matches;
+        const auto replacementTargets = page.disk.replacementTargets ? page.disk.replacementTargets->Page(page.next, hits.size()) : std::vector<files::ReplacementTarget>{};
+        size_t targetIndex = 0;
         for (const auto& hit : hits) {
             auto begin = (std::max)(hit.lineStart, hit.start > 256 ? hit.start - 256 : 0);
             auto preview = large::Document::Read(page.snapshot, begin, 2048);
@@ -123,6 +130,7 @@ bool SearchResultsPane::LoadMore(size_t archive) {
             match.nativeLineStart = hit.lineStart; match.nativeStart = hit.start; match.nativeEnd = hit.end;
             match.diskSource = page.disk.snapshot; match.sourceRevision = page.revision;
             match.sourceSize = page.disk.originalSize; match.sourceWriteTime = page.disk.originalWriteTime;
+            if (!replacementTargets.empty()) match.replacementTarget = replacementTargets[targetIndex++];
             match.preview = std::move(preview); matches.push_back(std::move(match));
         }
         Add(page.path, page.identity, matches); page.next += hits.size();
@@ -176,7 +184,15 @@ bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
         }
         if (!valid) { ::MessageBoxW(m_hWnd, L"This result has changed. Run the search again.", L"Search results", MB_OK | MB_ICONINFORMATION); return false; }
         for (int i = 0; i < owner->tabs.GetPageCount(); ++i) if (owner->tabs.GetPageData(i) == document) owner->tabs.SetActivePage(i);
-        if (document->FastView()) document->fastView->StartExternalMatch(*match.diskSource, match.line, match.nativeLineStart, match.nativeStart, match.nativeEnd);
+        if (match.replacementTarget) {
+            const auto& destination = *match.replacementTarget;
+            if (document->FastView()) document->fastView->ShowSelection(destination.nativeStart, destination.nativeEnd - destination.nativeStart);
+            else {
+                document->Send(SCI_ENSUREVISIBLE, document->Send(SCI_LINEFROMPOSITION, destination.utf8Start));
+                document->Send(SCI_SETSEL, destination.utf8Start, destination.utf8End);
+                document->Send(SCI_SCROLLCARET);
+            }
+        } else if (document->FastView()) document->fastView->StartExternalMatch(*match.diskSource, match.line, match.nativeLineStart, match.nativeStart, match.nativeEnd);
         else {
             // Verify the displayed context before using UTF-8 coordinates from a disk snapshot.
             if (document->Range(match.lineStart, match.preview.size()) != match.preview) return false;
