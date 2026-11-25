@@ -6,6 +6,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <thread>
+#include <fstream>
 
 void Check(bool value, std::source_location where = std::source_location::current()) {
     if (!value) throw std::runtime_error("File search regression at line " + std::to_string(where.line()));
@@ -22,8 +23,10 @@ Results Collect(files::DirectorySearchOptions options, large::SearchOptions patt
         Check(std::chrono::steady_clock::now() < deadline);
         std::this_thread::yield();
     }
-    Check(search.Errors() == 0); return results;
+    if (search.Errors()) std::cerr << "Search errors: " << search.Errors() << " pattern=" << files::ToUtf8(pattern.pattern) << " filter=" << files::ToUtf8(options.filter) << "\n"; Check(search.Errors() == 0); return results;
 }
+std::vector<large::SearchHit> Hits(const files::FileSearchResult& result) { return result.archive->Page(0, result.archive->Count()); }
+std::string Text(const files::FileSearchResult& result) { return large::Document::Read(*result.snapshot, 0, static_cast<size_t>(large::Document::Size(*result.snapshot))); }
 int main() {
     const auto root = std::filesystem::temp_directory_path() / (L"MultiPad4-file-search-" + std::to_wstring(GetCurrentProcessId()));
     try {
@@ -43,25 +46,25 @@ int main() {
         auto parallel = Collect(options, pattern); Check(parallel.size() == serial.size());
         for (const auto& [path, result] : serial) {
             const auto& other = parallel.at(path);
-            Check(*result.text == *other.text && result.matches.size() == other.matches.size());
-            for (size_t i = 0; i < result.matches.size(); ++i) {
-                Check(result.matches[i].start == other.matches[i].start && result.matches[i].line == other.matches[i].line);
-                Check(result.text->substr(result.matches[i].start, result.matches[i].end - result.matches[i].start) == "needle");
+            Check(Text(result) == Text(other) && result.archive->Count() == other.archive->Count());
+            for (size_t i = 0; i < Hits(result).size(); ++i) {
+                Check(Hits(result)[i].start == Hits(other)[i].start && Hits(result)[i].line == Hits(other)[i].line);
+                Check(Text(result).substr(Hits(result)[i].start, Hits(result)[i].end - Hits(result)[i].start) == "needle");
             }
         }
         const auto& unicode = parallel.at(root / L"sub" / L"unicode.txt");
-        Check(unicode.matches.size() == 3 && unicode.matches[1].line == 1 && unicode.matches[2].line == 2);
+        Check(Hits(unicode).size() == 3 && Hits(unicode)[1].line == 1 && Hits(unicode)[2].line == 2);
         options.recursive = false; Check(Collect(options, pattern).size() == 30);
         options.recursive = true; options.hidden = true; Check(Collect(options, pattern).size() == 32);
         options.filter = L"*.*"; Check(Collect(options, pattern).size() == 34);
         options.filter = L"*.txt *.bin"; Check(Collect(options, pattern).size() == 33);
         pattern.regex = true; pattern.wholeWord = false; pattern.pattern = L"(?=needle)";
-        auto zero = Collect(options, pattern); Check(zero.at(root / L"0.txt").matches.size() == 2);
+        auto zero = Collect(options, pattern); Check(zero.at(root / L"0.txt").archive->Count() == 2);
         pattern.pattern = L"needle\\r\\nneedle";
-        Check(Collect(options, pattern).at(root / L"sub" / L"unicode.txt").matches.size() == 1);
+        Check(Collect(options, pattern).at(root / L"sub" / L"unicode.txt").archive->Count() == 1);
         pattern.pattern = L"\\n";
         auto newline = Collect(options, pattern).at(root / L"sub" / L"unicode.txt");
-        Check(newline.matches[0].line == 0 && newline.matches[1].line == 2);
+        Check(Hits(newline)[0].line == 0 && Hits(newline)[1].line == 2);
         pattern = {L"absent"};
         auto open = Collect(options, pattern, {root / L"0.txt"});
         Check(open.size() == 1 && open.begin()->second.openDocument);
@@ -95,10 +98,10 @@ int main() {
             {blockBytes + 14, blockBytes + 15, 2, blockBytes + 8},
             {blockBytes + 15, blockBytes + 21, 3, blockBytes + 15},
         };
-        Check(boundary.matches.size() == std::size(expected) && hits.size() == std::size(expected));
+        Check(Hits(boundary).size() == std::size(expected) && hits.size() == std::size(expected));
         for (size_t index = 0; index < std::size(expected); ++index) {
             const auto& match = expected[index];
-            const auto& disk = boundary.matches[index];
+            const auto disk = Hits(boundary)[index];
             const auto& openHit = hits[index];
             Check(disk.start == match.start && disk.end == match.end && disk.line == match.line && disk.lineStart == match.lineStart);
             Check(openHit.start == match.start && openHit.end == match.end && openHit.line == match.line && openHit.lineStart == match.lineStart);
@@ -108,18 +111,48 @@ int main() {
         options.filter = L"*.archive"; pattern = {L"needle", false, true};
         auto archived = Collect(options, pattern);
         const auto& large = archived.at(root / L"large.archive");
-        Check(!large.text && large.matches.empty() && large.archive && large.archive->Count() == 2);
+        Check(large.archive && large.archive->Count() == 2);
         Check(large.archive->Page(0, 2)[0].line == 1 && large.archive->Page(1, 1)[0].line == 2);
         Check(large::Document::Read(*large.snapshot, 2 * 1024 * 1024 + 2, 6) == "needle");
         std::string dense; for (int i = 0; i < 5000; ++i) dense += "needle\n";
         files::WriteAtomic(root / L"dense.archive", {dense});
         auto denseResults = Collect(options, pattern);
         const auto& many = denseResults.at(root / L"dense.archive");
-        Check(!many.text && many.matches.empty() && many.archive->Count() == 5000);
+        Check(many.archive->Count() == 5000);
         Check(many.archive->Page(4999, 1)[0].line == 4999 && many.archive->Page(4999, 1)[0].start == 4999 * 7);
         // Published snapshots are stable after the original path is replaced.
         files::WriteAtomic(root / L"large.archive", {"changed"});
         Check(large::Document::Read(*large.snapshot, 2 * 1024 * 1024 + 2, 6) == "needle");
+        // Exact literal streams retain overlap and line coordinates across decoder chunks.
+        const auto streamedPath = root / L"streamed.literal";
+        for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf16LE, files::Encoding::Utf16BE}) {
+            const std::string content = std::string(1024 * 1024 - 3, 'x') + "needle\r\nneedle\rneedle\n";
+            files::WriteAtomic(streamedPath, {content, encoding});
+            options.filter = L"*.literal"; pattern = {L"needle", false, true};
+            auto streamed = Collect(options, pattern); const auto& result = streamed.at(streamedPath);
+            Check(result.archive->Count() == 3 && Text(result) == content);
+            auto direct = files::SearchSnapshot(large::Document::FromUtf8(std::make_shared<const std::string>(content))->Capture(), pattern, active);
+            const auto expectedHits = Hits(direct), actualHits = Hits(result);
+            for (size_t i = 0; i < expectedHits.size(); ++i) Check(actualHits[i].start == expectedHits[i].start && actualHits[i].line == expectedHits[i].line && actualHits[i].lineStart == expectedHits[i].lineStart);
+            files::WriteAtomic(streamedPath, {"replacement"}); std::filesystem::remove(streamedPath); Check(Text(result) == content);
+        }
+        files::WriteAtomic(streamedPath, {"needle" + std::string(2 * 1024 * 1024, 'x') + std::string(1, '\0')});
+        Check(Collect(options, pattern).empty());
+        // A malformed UTF-8 suffix after provisional hits must publish nothing.
+        {
+            std::ofstream output(streamedPath, std::ios::binary | std::ios::trunc);
+            output << "\xEF\xBB\xBF" << "needle" << std::string(2 * 1024 * 1024, 'x') << "\xFF";
+        }
+        {
+            files::FileSearch invalidSuffix(options, pattern);
+            while (!invalidSuffix.Done()) {
+                files::FileSearchResult provisional; Check(!invalidSuffix.Poll(provisional)); std::this_thread::yield();
+            }
+            Check(invalidSuffix.Errors() == 1);
+        }
+        const auto legacy = files::FromCodePage(1252);
+        files::WriteAtomic(streamedPath, {"# coding: windows-1252\nneedle" + std::string(2 * 1024 * 1024, 'x') + "é", legacy});
+        Check(Collect(options, pattern).at(streamedPath).archive->Count() == 1);
         std::filesystem::remove_all(root); std::cout << "File search tests passed.\n"; return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n'; std::filesystem::remove_all(root); return 1;
