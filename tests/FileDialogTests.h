@@ -105,16 +105,25 @@ inline void RunFileDialogTests(MainFrame& frame) {
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDYES,0);},[&]{require(SelectDocumentEncoding(frame,*conversion,files::Encoding::Ansi));});
     require(conversion->Text()==ansiText && conversion->encoding==files::Encoding::Ansi);
     if(ansiText!=conversionText){conversion->Send(SCI_UNDO);require(conversion->Text()==conversionText);}
-    conversion->Load({conversionText});conversion->SetEncoding(files::FromCodePage(1252));files::Text convertedOutput;
+    conversion->Load({conversionText});conversion->SetEncoding(files::FromCodePage(1252));std::string convertedOutput;
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);},[&]{require(!PrepareEncodingSave(frame,*conversion,convertedOutput));});
     require(conversion->Text()==conversionText);
     conversion->Send(SCI_SETREADONLY,TRUE);
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDOK,0);},[&]{require(!PrepareEncodingSave(frame,*conversion,convertedOutput));});
     require(conversion->Text()==conversionText&&conversion->Send(SCI_GETREADONLY));
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDOK,0);},[&]{require(PrepareEncodingSave(frame,*conversion,convertedOutput,true));});
-    require(conversion->Text()==conversionText && convertedOutput.utf8!=conversionText&&conversion->Send(SCI_GETREADONLY));conversion->Send(SCI_SETREADONLY,FALSE);
+    require(conversion->Text()==conversionText && files::Decode(convertedOutput,conversion->encoding).utf8!=conversionText&&conversion->Send(SCI_GETREADONLY));conversion->Send(SCI_SETREADONLY,FALSE);
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDOK,0);},[&]{require(PrepareEncodingSave(frame,*conversion,convertedOutput));});
-    require(conversion->Text()==convertedOutput.utf8);conversion->Send(SCI_UNDO);require(conversion->Text()==conversionText);
+    require(conversion->Text()==files::Decode(convertedOutput,conversion->encoding).utf8);conversion->Send(SCI_UNDO);require(conversion->Text()==conversionText);
+    bool staleRejected = false;
+    filedialogtest::Run([&](HWND dialog) {
+        conversion->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("!"));
+        PostMessageW(dialog, WM_COMMAND, IDOK, 0);
+    }, [&] {
+        try { PrepareEncodingSave(frame, *conversion, convertedOutput); }
+        catch (const std::runtime_error&) { staleRejected = true; }
+    });
+    require(staleRejected && conversion->Text() == conversionText + "!");
     conversion->Load({"text"});conversion->Send(SCI_CLEARALL);
     filedialogtest::Run([](HWND dialog){PostMessageW(dialog,WM_COMMAND,IDNO,0);},[&]{require(!SelectDocumentEncoding(frame,*conversion,files::Encoding::Ansi));});
     require(conversion->encoding==files::Encoding::Utf8 && conversion->Text().empty());
