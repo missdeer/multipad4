@@ -25,6 +25,7 @@ public:
     void AddFile(files::FileSearchResult result, unsigned long long identity = 0, unsigned long long revision = 0);
     bool LoadMore(size_t archive);
     void Finish(size_t hits, size_t files);
+    void Skipped(const std::filesystem::path& path, const std::string& reason);
     bool Navigate(size_t line, size_t matchIndex = 0);
     BOOL PreTranslateMessage(MSG* message);
     LRESULT Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
