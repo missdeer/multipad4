@@ -134,6 +134,7 @@ LRESULT MainFrame::OnWatchEnable(UINT, WPARAM enabled, LPARAM, BOOL& handled) {
     handled = FALSE; return 0;
 }
 LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
+    if (id == 0x282) { searchDialog.ServiceReplacement(); return 0; }
     if (id == 3) {
         if (!IsWindowEnabled() || runtime.operationDepth || runtime.inBackgroundWork) return 0;
         auto* activeDocument = Active();

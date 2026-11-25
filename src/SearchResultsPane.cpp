@@ -39,6 +39,11 @@ void SearchResultsPane::Begin(const std::wstring& query) {
     auto text = files::ToUtf8(query); std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
     Append("Search \"" + text + "\"", {SearchResultLexer::SearchHeader}, {}); Reveal();
 }
+void SearchResultsPane::Skipped(const std::filesystem::path& path, const std::string& reason) {
+    auto text = "  Skipped " + files::ToUtf8(path.wstring()) + ": " + reason;
+    std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
+    Append(text, {SearchResultLexer::FileHeader}, {});
+}
 void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMatch>& matches) {
     if (matches.empty()) return;
     Add(document.path, document.searchIdentity, matches, document.Title());

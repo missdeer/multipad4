@@ -1,3 +1,4 @@
+#include "FileReplace.h"
 #include "EditClipboard.h"
 #include "EditSelection.h"
 #include "EditorDocument.h"
@@ -121,6 +122,9 @@ large::SearchOptions EditorDocument::MappedSearchOptions() const {
         (search.flags & SCFIND_WHOLEWORD) != 0, (search.flags & SCFIND_WORDSTART) != 0, search.dotMatchesNewline};
 }
 std::string EditorDocument::SearchReplacement() { return Replacement(*this); }
+files::ReplacePattern EditorDocument::SearchReplacePattern() {
+    return {Needle(*this), Replacement(*this), Flags(*this), ReplaceMessage(*this) == SCI_REPLACETARGETRE};
+}
 void EditorDocument::ValidateSearch(bool replacing) {
     if (FastView()) {
         large::Search pattern(fastView->Model().Capture(), encoding, MappedSearchOptions());

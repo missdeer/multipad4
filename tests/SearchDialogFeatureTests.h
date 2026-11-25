@@ -22,6 +22,17 @@ inline void WaitForFileSearch(SearchDialog& dialog) {
     }
     throw std::runtime_error("File search did not complete.");
 }
+inline void StartFileReplacement(SearchDialog& dialog) {
+    const auto timer = SetTimer(nullptr, 0, 10, [](HWND, UINT, UINT_PTR, DWORD) {
+        EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+            wchar_t title[64]{}; GetWindowTextW(window, title, 64);
+            if (std::wstring(title) == L"Replace in Files" && GetDlgItem(window, IDOK)) PostMessageW(window, WM_COMMAND, IDOK, 0);
+            return TRUE;
+        }, 0);
+    });
+    if (!timer) throw std::runtime_error("Cannot confirm replacement test.");
+    dialog.Execute(IDC_SEARCH_REPLACE_FILES); KillTimer(nullptr, timer);
+}
 inline void RunSearchAvailabilityTests(MainFrame& frame) {
     auto require = [](bool condition) {
         if (!condition) throw std::runtime_error("Search must remain available without document text.");
@@ -233,20 +244,78 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     frame.Refresh();
     require(frame.Close(resultIndex));
     SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"changed");
-    const auto timer = SetTimer(nullptr, 0, 10, [](HWND, UINT, UINT_PTR, DWORD) {
-        EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
-            wchar_t title[64]{}; GetWindowTextW(window, title, 64);
-            if (std::wstring(title) == L"Replace in Files" && GetDlgItem(window, IDOK)) PostMessageW(window, WM_COMMAND, IDOK, 0);
-            return TRUE;
-        }, 0);
-    });
-    require(timer != 0); dialog.Execute(IDC_SEARCH_REPLACE_FILES); KillTimer(nullptr, timer);
+    StartFileReplacement(dialog);
     WaitForFileSearch(dialog);
     auto replaced = files::Read(directory / L"first.txt");
     require(replaced.utf8 == "changed changed" && replaced.encoding == files::Encoding::Utf16LE);
     require(files::Read(directory / L"sub" / L"second.txt").encoding == files::Encoding::Utf8Bom);
     require(files::Read(directory / L"ignored.bin").utf8 == "one");
+    // Open buffers use the searched revision and retain a single undo action.
+    require(frame.Open(directory / L"first.txt"));
+    auto* opened = frame.Active(); opened->Load({"changed unsaved changed", files::Encoding::Utf16LE});
+    SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"changed");
+    SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"buffer");
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt");
+    StartFileReplacement(dialog);
+    WaitForFileSearch(dialog);
+    require(opened->Text() == "buffer unsaved buffer");
+    require(files::Read(directory / L"first.txt").utf8 == "changed changed");
+    opened->Send(SCI_UNDO); require(opened->Text() == "changed unsaved changed");
+    // Edit after the first snapshot slice: the batch must report a conflict and continue.
+    opened->Load({std::string(1024 * 1024, 'x') + "changed"});
+    StartFileReplacement(dialog);
+    const auto conflictDeadline = GetTickCount64() + 10000;
+    bool copying = false;
+    while (GetTickCount64() < conflictDeadline) {
+        SendMessageW(dialog.hwnd, WM_TIMER, 1, 0);
+        wchar_t progress[512]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, progress, 512);
+        if (std::wstring_view(progress).starts_with(L"Replacing:")) { copying = true; break; }
+        Sleep(1);
+    }
+    require(copying); opened->Send(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("edited during snapshot"));
+    WaitForFileSearch(dialog);
+    require(opened->Text() == "edited during snapshot" && files::Read(directory / L"first.txt").utf8 == "changed changed");
+    wchar_t conflictStatus[512]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, conflictStatus, 512);
+    require(std::wstring_view(conflictStatus).find(L"1 files/folders skipped") != std::wstring_view::npos);
+    // A failed commit must immediately replay opens reserved during that commit.
+    const auto failurePath = directory / L"failure.txt", queuedPath = directory / L"queued.txt";
+    files::WriteAtomic(failurePath, {"changed"}); files::WriteAtomic(queuedPath, {"queued"});
+    require(SetFileAttributesW(failurePath.c_str(), FILE_ATTRIBUTE_READONLY));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"failure.txt");
+    StartFileReplacement(dialog);
+    const auto commitDeadline = GetTickCount64() + 10000;
+    while (!dialog.CommittingReplacement() && GetTickCount64() < commitDeadline) { SendMessageW(dialog.hwnd, WM_TIMER, 1, 0); Sleep(1); }
+    require(dialog.CommittingReplacement());
+    const auto pageCount = frame.tabs.GetPageCount();
+    require(!frame.Open(queuedPath) && frame.tabs.GetPageCount() == pageCount);
+    SendMessageW(dialog.hwnd, WM_TIMER, 1, 0);
+    const auto replayDeadline = GetTickCount64() + 10000;
+    while (frame.tabs.GetPageCount() == pageCount && GetTickCount64() < replayDeadline) { SendMessageW(dialog.hwnd, WM_TIMER, 1, 0); Sleep(1); }
+    require(frame.tabs.GetPageCount() == pageCount + 1 && frame.Active()->path == queuedPath);
+    WaitForFileSearch(dialog);
+    require(files::Read(failurePath).utf8 == "changed"); require(SetFileAttributesW(failurePath.c_str(), FILE_ATTRIBUTE_NORMAL));
+    const int queuedIndex = frame.tabs.GetActivePage();
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == opened) frame.tabs.SetActivePage(i);
+    frame.Refresh(); require(frame.Close(queuedIndex));
+
+    // Retiring cancellation must not replace the status of a different search page.
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt");
+    opened->Load({std::string(1024 * 1024, 'x') + "changed"}); StartFileReplacement(dialog);
+    copying = false;
+    const auto cancelDeadline = GetTickCount64() + 10000;
+    while (GetTickCount64() < cancelDeadline) {
+        SendMessageW(dialog.hwnd, WM_TIMER, 1, 0); wchar_t progress[512]{};
+        GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, progress, 512);
+        if (std::wstring_view(progress).starts_with(L"Replacing:")) { copying = true; break; } Sleep(1);
+    }
+    require(copying); dialog.SetPage(0); dialog.Status(L"New action."); dialog.ServiceReplacement();
+    wchar_t retainedStatus[512]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, retainedStatus, 512);
+    require(std::wstring_view(retainedStatus) == L"New action.");
+    opened->Send(SCI_SETSAVEPOINT);
     dialog.Close(); require(!dialog.hwnd && !dialog.document);
+    require(frame.Close(frame.tabs.GetActivePage()));
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
+
     const auto originalLanguage = GetThreadUILanguage();
     struct RestoreSearchLanguage { LANGID language; ~RestoreSearchLanguage() { SetThreadUILanguage(language); } } languageRestore{originalLanguage};
     SetThreadUILanguage(MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED));

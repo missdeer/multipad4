@@ -39,6 +39,7 @@ public:
 };
 inline constexpr size_t SampleLookahead = 8;
 // Incomplete samples include SampleLookahead bytes beyond the probe boundary.
+Encoding DetectEncoding(std::string_view bytes, const ReadOptions& options);
 Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options);
 using ChunkConsumer = std::function<void(std::string_view)>;
 // Wall-clock milliseconds. Mapping first-touch faults are charged to the
@@ -53,7 +54,7 @@ struct ReadStats {
 Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume,
     const ReadOptions& options = {}, std::optional<Encoding> forced = {}, ReadStats* stats = nullptr);
 void WriteAtomicChunks(const std::filesystem::path& path,
-    const std::function<void(const ChunkConsumer&)>& produce);
+    const std::function<void(const ChunkConsumer&)>& produce, const std::function<void()>& validate = {}, const std::function<void()>& committed = {});
 Text Read(const std::filesystem::path& path);
 Text Read(const std::filesystem::path& path, const ReadOptions& options);
 Text ReadWithEncoding(const std::filesystem::path& path, Encoding encoding);

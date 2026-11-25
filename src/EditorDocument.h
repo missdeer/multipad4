@@ -9,6 +9,7 @@
 #include <functional>
 #include <unordered_map>
 #include "StatusStatistics.h"
+namespace files { struct ReplacePattern; }
 struct SearchState {
     std::wstring findText, replaceText;
     int flags = 0;
@@ -88,6 +89,7 @@ struct EditorDocument {
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     large::SearchOptions MappedSearchOptions() const;
     std::string SearchReplacement();
+    files::ReplacePattern SearchReplacePattern();
     void ValidateSearch(bool replacing = false);
     std::vector<SearchMatch> MappedMatches(const large::Document::Snapshot& snapshot, const std::vector<large::SearchHit>& hits);
     bool ReplaceOne();
