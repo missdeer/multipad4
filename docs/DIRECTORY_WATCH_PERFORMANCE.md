@@ -91,3 +91,19 @@ notify the new target and not the old target. Eager hard-link-name enumeration
 was removed; only subscription names/long names are cached. Other hard links
 resolve their current file identity on every notification. Full dedicated
 `directory_watch` passed (3.29 s), including this regression.
+
+PR reload-retry regression: deny read sharing on a changed monitored file,
+dismiss the automatic reload failure, release the sharing handle, and call the
+activation check without a new filesystem write. Failed automatic reload now
+retains its identity for a later activation check while clearing the immediate
+check flag to avoid a retry/error loop. The document is reacquired after the
+potentially modal reload before accessing it. Real editor integration passed
+(23.56 s) with this case.
+
+Round-six retry verification keeps the sharing-denial handle open while pumping
+all queued dialog messages, sending repeated WM_ENABLE and unrelated-file
+notifications. Exactly one error dialog is allowed before the handle is released.
+Filesystem dispatch now skips/requeues previously failed change-only identities;
+activation explicitly retries them. WM_ENABLE posts only for fresh pending file
+checks outside background work. Editor integration passed (45.92 s), including
+release and retry without another filesystem change.

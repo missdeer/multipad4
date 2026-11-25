@@ -69,7 +69,7 @@ void TickBackgroundWork(MainFrame& frame) {
     if (!frame.IsWindowEnabled() || frame.runtime.operationDepth || frame.runtime.inBackgroundWork) return;
     if (frame.settings.Get(IDM_SET_FILE_AUTOSAVE, 6) & 1) QueueDocumentBackups(frame);
 }
-void CheckExternalChanges(MainFrame& frame) {
+void CheckExternalChanges(MainFrame& frame, bool retryPendingChanges) {
     if (frame.runtime.inBackgroundWork) return;
     frame.runtime.inBackgroundWork = true;
     struct Reset { MainFrame& frame; ~Reset() {
@@ -89,6 +89,7 @@ void CheckExternalChanges(MainFrame& frame) {
         auto& d = *found->second; auto& state = d.runtime;
         if (!state.monitorMode || d.path.empty()) { state.externalCheckPending = false; continue; }
         if (!state.externalCheckPending && !state.externalChangePending) continue;
+        if (!state.externalCheckPending && !retryPendingChanges) { frame.runtime.pendingExternalChecks.insert(identity); continue; }
         state.externalCheckPending = false;
         WIN32_FILE_ATTRIBUTE_DATA data{};
         if (!GetFileAttributesExW(d.path.c_str(), GetFileExInfoStandard, &data)) continue;
@@ -100,7 +101,16 @@ void CheckExternalChanges(MainFrame& frame) {
         }
         if (!state.externalChangePending) continue;
         if (state.monitorMode == 2 && !d.Modified()) {
-            if (frame.Reload(d) && state.keepAtEnd) d.Send(SCI_GOTOPOS, d.Send(SCI_GETLENGTH));
+            const auto reloaded = frame.Reload(d);
+            const auto current = frame.tabs.documentsById.find(identity);
+            if (current != frame.tabs.documentsById.end()) {
+                auto& live = *current->second;
+                if (reloaded) { if (live.runtime.keepAtEnd) live.Send(SCI_GOTOPOS, live.Send(SCI_GETLENGTH)); }
+                else {
+                    live.runtime.externalChangePending = true; live.runtime.externalCheckPending = false;
+                    frame.runtime.pendingExternalChecks.insert(identity);
+                }
+            }
             continue;
         }
         if (GetForegroundWindow() != frame.m_hWnd) { frame.runtime.pendingExternalChecks.insert(identity); continue; }
@@ -134,11 +144,14 @@ LRESULT MainFrame::OnFileChange(UINT, WPARAM identity, LPARAM token, BOOL&) {
         runtime.pendingExternalChecks.insert(change.identity);
     }
     if (failure != ERROR_SUCCESS) Error(std::system_error(failure, std::system_category(), "Cannot monitor external file changes"));
-    CheckExternalChanges(*this);
+    CheckExternalChanges(*this, false);
     return 0;
 }
 LRESULT MainFrame::OnWatchEnable(UINT, WPARAM enabled, LPARAM, BOOL& handled) {
-    if (enabled) PostMessage(WM_FILE_CHANGE);
+    if (enabled && !runtime.inBackgroundWork && std::any_of(runtime.pendingExternalChecks.begin(), runtime.pendingExternalChecks.end(), [&](auto identity) {
+        const auto found = tabs.documentsById.find(identity);
+        return found != tabs.documentsById.end() && found->second->runtime.externalCheckPending;
+    })) PostMessage(WM_FILE_CHANGE);
     handled = FALSE; return 0;
 }
 LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {

@@ -93,6 +93,41 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
         std::filesystem::remove(openedPath);
         files::WriteAtomic(openedPath, {"recreated replacement"});
         waitFor([&] { return opened->Text() == "recreated replacement"; });
+        // Retry a failed automatic reload on activation without another filesystem event.
+        {
+            FrameOperation operation(frame.runtime, frame);
+            files::WriteAtomic(openedPath, {"retry after sharing denial"});
+            waitFor([&] { return opened->runtime.externalCheckPending; });
+        }
+        HANDLE denied = CreateFileW(openedPath.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        require(denied != INVALID_HANDLE_VALUE);
+        static unsigned failureDialogs = 0; failureDialogs = 0;
+        auto dismissFailure = SetTimer(nullptr, 0, 10, [](HWND, UINT, UINT_PTR, DWORD) {
+            EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+                wchar_t type[32]{}; GetClassNameW(window, type, _countof(type));
+                if (!wcscmp(type, L"#32770")) {
+                    if (!GetPropW(window, L"MultiPad4.CountedReloadFailure")) { SetPropW(window, L"MultiPad4.CountedReloadFailure", reinterpret_cast<HANDLE>(1)); ++failureDialogs; }
+                    PostMessageW(window, WM_COMMAND, IDOK, 0);
+                }
+                return TRUE;
+            }, 0);
+        });
+        CheckExternalChanges(frame);
+        require(failureDialogs == 1);
+        // Pump everything queued by the error dialog while the denial remains active.
+        for (int turn = 0; turn < 3; ++turn) {
+            MSG message{}; while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+            frame.SendMessage(WM_ENABLE, TRUE);
+            frame.SendMessage(WM_FILE_CHANGE, first->searchIdentity, first->runtime.directoryWatch->token);
+        }
+        require(failureDialogs == 1);
+        KillTimer(nullptr, dismissFailure); CloseHandle(denied);
+        require(opened->Text() == "recreated replacement" && opened->runtime.externalChangePending);
+        require(frame.runtime.pendingExternalChecks.contains(opened->searchIdentity));
+        require(!opened->runtime.externalCheckPending);
+        CheckExternalChanges(frame);
+        require(opened->Text() == "retry after sharing denial" && !opened->runtime.externalChangePending);
         // An outstanding read can be cancelled when its tab closes.
         files::WriteAtomic(openedPath, {"closing replacement"});
         require(frame.Close(frame.tabs.GetActivePage()));
