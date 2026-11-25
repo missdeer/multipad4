@@ -6,10 +6,14 @@
 #include <stdexcept>
 #include <vector>
 #include <limits>
+#include <cstring>
 #include "VectorISA.h"
 namespace large {
 namespace {
 constexpr size_t IndexBlockBytes = 64 * 1024;
+#ifdef MULTIPAD4_PIECE_READ_TEST
+thread_local Position backingReads = 0, copiedBytes = 0, largestMappedVisit = 0;
+#endif
 thread_local const std::atomic<bool>* cancellation = nullptr;
 struct CancelScope {
     const std::atomic<bool>* previous = cancellation;
@@ -53,17 +57,18 @@ public:
         } catch (...) { SetFilePointerEx(file, position, nullptr, FILE_BEGIN); SetEndOfFile(file); throw; }
         size += bytes.size(); return begin;
     }
-    std::string Read(Position offset, size_t length) {
+    void ReadInto(Position offset, size_t length, char* output) {
         std::lock_guard guard(mutex);
         if (offset > size || length > size - offset) throw std::runtime_error("Invalid journal range.");
         LARGE_INTEGER position{}; position.QuadPart = offset;
         if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
-        std::string bytes(length, '\0');
         for (size_t done = 0; done < length;) {
             DWORD got = 0, count = static_cast<DWORD>((std::min)(length - done, size_t(16 * 1024 * 1024)));
-            if (!ReadFile(file, bytes.data() + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
+            if (!ReadFile(file, output + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
         }
-        return bytes;
+    }
+    std::string Read(Position offset, size_t length) {
+        std::string bytes(length, '\0'); ReadInto(offset, length, bytes.data()); return bytes;
     }
 };
 struct Counters { std::atomic<Position> read{0}, added{0}, blocks{0}, nodes{0}; };
@@ -148,6 +153,37 @@ public:
         journal(std::move(changes)), journalBegin(begin), counters(std::move(values)), blockCount((length + IndexBlockBytes - 1) / IndexBlockBytes), width(unitWidth), little(isLittle), size(length) {}
     Source(std::shared_ptr<const std::string> text, std::shared_ptr<Counters> values) :
         memory(std::move(text)), counters(std::move(values)), blockCount((memory->size() + IndexBlockBytes - 1) / IndexBlockBytes), width(1), little(true), size(memory->size()) {}
+    bool Contiguous(Position offset, Position length, const Source& next, Position nextOffset) const {
+        if (journal && journal == next.journal) return journalBegin + offset + length == next.journalBegin + nextOffset;
+        if (file && file == next.file) return offset + length == nextOffset;
+        return this == &next && offset + length == nextOffset;
+    }
+    void ReadInto(Position offset, size_t count, char* output, ReadSessions* sessions) {
+#ifdef MULTIPAD4_PIECE_READ_TEST
+        ++backingReads; copiedBytes += count;
+#endif
+        // Coalesced journal runs may extend past this Source into the same backing journal.
+        if (journal) { journal->ReadInto(journalBegin + offset, count, output); return; }
+        if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
+        if (memory) { memcpy(output, memory->data() + static_cast<size_t>(offset), count); return; }
+        auto fill = [&](files::MappedFile& mapped) {
+            for (size_t done = 0; done < count;) {
+                const auto take = (std::min)(count - done, size_t(16 * 1024 * 1024));
+#ifdef MULTIPAD4_PIECE_READ_TEST
+                largestMappedVisit = (std::max)(largestMappedVisit, Position(take));
+#endif
+                mapped.Visit(offset + done, take, [&](std::string_view bytes) { memcpy(output + done, bytes.data(), bytes.size()); });
+                done += take;
+            }
+        };
+        if (sessions) {
+            auto& session = (*sessions)[this]; if (!session) session = file->NewReadSession();
+            fill(*session);
+        } else {
+            std::lock_guard guard(readMutex); fill(*file);
+        }
+        counters->read += count;
+    }
     std::string Read(Position offset, size_t count, ReadSessions* sessions = nullptr) {
         if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
         if (memory) return memory->substr(static_cast<size_t>(offset), count);
@@ -219,13 +255,47 @@ struct Document::Impl {
         auto first = node->piece, second = first; first.length = position - left; second.offset += first.length; second.length -= first.length;
         return {Merge(node->left, Make(first)), Merge(Make(second), node->right)};
     }
+#ifdef MULTIPAD4_PIECE_READ_BASELINE
     static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
         if (!node || !length) return;
         const auto left = Length(node->left), end = left + node->piece.length;
         if (offset < left) { auto take = (std::min)(length, left - offset); Append(node->left, offset, take, output, sessions); offset += take; length -= take; }
-        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset); output += node->piece.source->Read(node->piece.offset + start, static_cast<size_t>(take), sessions); offset += take; length -= take; }
+        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset);
+#ifdef MULTIPAD4_PIECE_READ_TEST
+            ++backingReads; copiedBytes += 2 * take;
+#endif
+            output += node->piece.source->Read(node->piece.offset + start, static_cast<size_t>(take), sessions); offset += take; length -= take; }
         if (length) Append(node->right, offset - end, length, output, sessions);
     }
+#else
+    struct ReadBuffer {
+        char* output;
+        ReadSessions* sessions;
+        Source* source = nullptr;
+        Position offset = 0, length = 0;
+        void Flush() {
+            if (!length) return;
+            source->ReadInto(offset, static_cast<size_t>(length), output, sessions);
+            output += length; length = 0;
+        }
+        void Add(const Piece& piece, Position start, Position count) {
+            if (length && !source->Contiguous(offset, length, *piece.source, start)) Flush();
+            if (!length) { source = piece.source.get(); offset = start; }
+            length += count;
+        }
+    };
+    static void Append(const Root& node, Position offset, Position length, ReadBuffer& buffer) {
+        if (!node || !length) return;
+        const auto left = Length(node->left), end = left + node->piece.length;
+        if (offset < left) { auto take = (std::min)(length, left - offset); Append(node->left, offset, take, buffer); offset += take; length -= take; }
+        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset); buffer.Add(node->piece, node->piece.offset + start, take); offset += take; length -= take; }
+        if (length) Append(node->right, offset - end, length, buffer);
+    }
+    static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
+        output.resize(static_cast<size_t>(length));
+        ReadBuffer buffer{output.data(), sessions}; Append(node, offset, length, buffer); buffer.Flush();
+    }
+#endif
     static void Stream(const Root& node, const files::ChunkConsumer& consume) {
         if (!node) return;
         Stream(node->left, consume); node->piece.source->Stream(node->piece.offset, node->piece.length, consume); Stream(node->right, consume);
