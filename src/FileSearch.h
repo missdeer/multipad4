@@ -34,6 +34,19 @@ public:
         return targets;
     }
 };
+// Sequential edits retain original source intervals and stable final-output replacement spans.
+struct ReplacementEdit { large::Position sourceStart, sourceEnd, resultStart, resultEnd; };
+class ReplacementEdits {
+    ReplacementTargets records;
+public:
+    void Append(ReplacementEdit edit) { records.Append({edit.sourceStart, edit.sourceEnd, edit.resultStart, edit.resultEnd}); }
+    size_t Count() const { return records.Count(); }
+    std::vector<ReplacementEdit> Page(size_t first, size_t count) const {
+        std::vector<ReplacementEdit> edits;
+        for (const auto& record : records.Page(first, count)) edits.push_back({record.utf8Start, record.utf8End, record.nativeStart, record.nativeEnd});
+        return edits;
+    }
+};
 struct FileSearchMatch { size_t start, end, line, lineStart; };
 struct FileSearchResult {
     std::filesystem::path path;

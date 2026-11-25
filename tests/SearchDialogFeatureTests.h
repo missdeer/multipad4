@@ -284,6 +284,43 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     require(results.Navigate(replacementRow(opened->path), 1));
     require(opened->Range(opened->Send(SCI_GETSELECTIONSTART), opened->Send(SCI_GETSELECTIONEND) - opened->Send(SCI_GETSELECTIONSTART)) == "buffer");
     opened->Send(SCI_UNDO); require(opened->Text() == "changed unsaved changed");
+    // Prepared edits preserve markers, folds and selection like the sequential editor.
+    {
+        auto* oracle = frame.NewDocument(); require(oracle);
+        const auto markerScheme = opened->style.scheme;
+        const std::string marked = "void f() {\nchanged line;\nuntouched two;\nchanged tail;\n}\n";
+        auto prepare = [&](EditorDocument& target) {
+            require(SelectDocumentScheme(target, L"C/C++")); target.Load({marked});
+            target.Send(SCI_SETPROPERTY, reinterpret_cast<WPARAM>("fold"), reinterpret_cast<LPARAM>("1"));
+            target.Send(SCI_COLOURISE, 0, -1);
+            target.Send(SCI_MARKERADD, 0, 0); target.Send(SCI_MARKERADD, 1, 0);
+            target.Send(SCI_MARKERADD, 2, 3); target.Send(SCI_MARKERADD, 3, 4);
+            target.Send(SCI_SETFOLDEXPANDED, 0, FALSE); target.Send(SCI_HIDELINES, 1, 1);
+            target.Send(SCI_SETSEL, 28, 31);
+        };
+        prepare(*opened); prepare(*oracle);
+        for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == opened) frame.tabs.SetActivePage(i);
+        frame.Refresh();
+        SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"grown\nnext"); dialog.ReadFields(); oracle->search = opened->search;
+        require(oracle->ReplaceAll() == 2);
+        StartFileReplacement(dialog); WaitForFileSearch(dialog);
+        auto compare = [&] {
+            opened->Send(SCI_COLOURISE, 0, -1); oracle->Send(SCI_COLOURISE, 0, -1);
+            require(opened->Text() == oracle->Text());
+            require(opened->Send(SCI_GETSELECTIONSTART) == oracle->Send(SCI_GETSELECTIONSTART) && opened->Send(SCI_GETSELECTIONEND) == oracle->Send(SCI_GETSELECTIONEND));
+            for (LRESULT line = 0; line < oracle->Send(SCI_GETLINECOUNT); ++line) {
+                require(opened->Send(SCI_MARKERGET, line) == oracle->Send(SCI_MARKERGET, line));
+                require(opened->Send(SCI_GETFOLDLEVEL, line) == oracle->Send(SCI_GETFOLDLEVEL, line));
+                require(opened->Send(SCI_GETFOLDEXPANDED, line) == oracle->Send(SCI_GETFOLDEXPANDED, line));
+                require(opened->Send(SCI_GETLINEVISIBLE, line) == oracle->Send(SCI_GETLINEVISIBLE, line));
+            }
+        };
+        compare(); opened->Send(SCI_UNDO); oracle->Send(SCI_UNDO); compare(); require(opened->Text() == marked);
+        opened->style.scheme = markerScheme; opened->ConfigureLexer();
+        oracle->Send(SCI_SETSAVEPOINT);
+        for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == oracle) { require(frame.Close(i)); break; }
+        SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"buffer");
+    }
     // NUL is valid editor content. Growing multiline replacements retain post-edit targets.
     const std::string nulInput("changed\0changed", 15);
     opened->Send(SCI_SETTARGETRANGE, 0, opened->Send(SCI_GETLENGTH));

@@ -612,9 +612,44 @@ void SearchDialog::ReplaceFileStep() {
                 throw std::runtime_error("Replacement conflict; buffer changed.");
             auto& target = *found->second;
             if (target.Send(SCI_GETREADONLY)) throw std::runtime_error("Replacement buffer is read-only.");
+            // Validate every spooled instruction before touching the owner-thread document.
+            const auto& prepared = task->result;
+            auto length = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
+            size_t first = 0;
+            while (first < prepared.edits->Count()) {
+                const auto edits = prepared.edits->Page(first, 4096);
+                for (const auto& edit : edits) {
+                    if (edit.sourceEnd < edit.sourceStart || edit.resultEnd < edit.resultStart || edit.resultEnd > prepared.text.utf8.size() ||
+                        edit.resultStart > length || edit.sourceEnd - edit.sourceStart > length - edit.resultStart)
+                        throw std::runtime_error("Invalid prepared replacement; buffer retained.");
+                    length = length - (edit.sourceEnd - edit.sourceStart) + (edit.resultEnd - edit.resultStart);
+                }
+                first += edits.size();
+            }
+            if (length != prepared.text.utf8.size()) throw std::runtime_error("Incomplete prepared replacement; buffer retained.");
+            bool changed = false;
+            auto appliedLength = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
             target.Send(SCI_BEGINUNDOACTION);
-            target.Send(SCI_SETTARGETRANGE, 0, target.Send(SCI_GETLENGTH));
-            target.Send(SCI_REPLACETARGET, task->result.text.utf8.size(), reinterpret_cast<LPARAM>(task->result.text.utf8.data()));
+            try {
+                for (first = 0; first < prepared.edits->Count();) {
+                    const auto edits = prepared.edits->Page(first, 4096);
+                    for (const auto& edit : edits) {
+                        const auto oldLength = edit.sourceEnd - edit.sourceStart, size = edit.resultEnd - edit.resultStart;
+                        target.Send(SCI_SETTARGETRANGE, edit.resultStart, edit.resultStart + oldLength);
+                        const auto inserted = target.Send(SCI_REPLACETARGET, size, reinterpret_cast<LPARAM>(prepared.text.utf8.data() + edit.resultStart));
+                        const auto expectedLength = appliedLength - oldLength + size;
+                        const auto actualLength = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
+                        changed |= actualLength != appliedLength || (oldLength && inserted);
+                        if (inserted != static_cast<LRESULT>(size) || actualLength != expectedLength) throw std::runtime_error("Cannot apply complete replacement.");
+                        appliedLength = actualLength;
+                    }
+                    first += edits.size();
+                }
+            } catch (...) {
+                target.Send(SCI_ENDUNDOACTION);
+                if (changed) target.Send(SCI_UNDO);
+                throw;
+            }
             target.Send(SCI_ENDUNDOACTION);
             fileHits += task->result.hits.archive->Count(); ++foundFiles;
             owner->searchResults.AddFile(std::move(task->result.hits), task->identity, target.style.revision); replaceWork.reset(); owner->Refresh(); return;

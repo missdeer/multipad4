@@ -10,6 +10,7 @@ struct ReplaceResult {
     Text text;
     FileSearchResult hits;
     size_t replacements = 0;
+    std::shared_ptr<ReplacementEdits> edits;
 };
 // Uses the pinned Scintilla document engine without creating any window or renderer.
 Text ReadReplacement(const std::filesystem::path& path, const std::atomic<bool>& cancel);

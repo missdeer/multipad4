@@ -85,7 +85,8 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
         else { if (found == document.Length()) break; start = document.MovePositionOutsideChar(found + 1, 1, true); }
     }
     // The temporary edit archive maps original UTF-8 spans to sequential replacement spans.
-    ReplacementTargets edits;
+    result.edits = std::make_shared<ReplacementEdits>();
+    auto& edits = *result.edits;
     Sci::Position delta = 0;
     size_t originalLine = 0, originalLineStart = 0, nextBreak = source->find_first_of("\r\n");
     for (Sci::Position start = 0; start <= document.Length();) {
@@ -119,7 +120,7 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
     result.hits.replacementTargets = std::make_shared<ReplacementTargets>();
     size_t editIndex = 0, editPageStart = 0;
     auto editPage = edits.Page(0, (std::min)(size_t(4096), edits.Count()));
-    auto edit = [&]() -> const ReplacementTarget* {
+    auto edit = [&]() -> const ReplacementEdit* {
         if (editIndex >= edits.Count()) return nullptr;
         if (editIndex >= editPageStart + editPage.size()) { editPageStart = editIndex; editPage = edits.Page(editIndex, 4096); }
         return &editPage[editIndex - editPageStart];
@@ -127,14 +128,14 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
     Sci::Position shift = 0;
     auto map = [&](large::Position position, bool end, bool zero) {
         auto current = edit();
-        while (current && current->utf8End <= position && (current->utf8Start < position || (!end && !zero))) {
-            shift = static_cast<Sci::Position>(current->nativeEnd) - static_cast<Sci::Position>(current->utf8End);
+        while (current && current->sourceEnd <= position && (current->sourceStart < position || (!end && !zero))) {
+            shift = static_cast<Sci::Position>(current->resultEnd) - static_cast<Sci::Position>(current->sourceEnd);
             ++editIndex; current = edit();
         }
-        if (current && current->utf8Start <= position && position <= current->utf8End) {
-            if (end && position == current->utf8Start && (!zero || current->utf8Start != current->utf8End))
+        if (current && current->sourceStart <= position && position <= current->sourceEnd) {
+            if (end && position == current->sourceStart && (!zero || current->sourceStart != current->sourceEnd))
                 return static_cast<large::Position>(static_cast<Sci::Position>(position) + shift);
-            return end ? current->nativeEnd : current->nativeStart;
+            return end ? current->resultEnd : current->resultStart;
         }
         return static_cast<large::Position>(static_cast<Sci::Position>(position) + shift);
     };
