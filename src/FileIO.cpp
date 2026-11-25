@@ -13,6 +13,7 @@
 #include <regex>
 #include <cctype>
 #include <climits>
+#include <exception>
 #include "FileVariables.h"
 namespace files {
 namespace {
@@ -202,36 +203,65 @@ std::string ReadBytes(const std::filesystem::path& path) {
 }
 Text ReadWithEncoding(const std::filesystem::path& path, Encoding encoding) { return Decode(ReadBytes(path), encoding); }
 Text Read(const std::filesystem::path& path) { return Read(path, {}); }
-Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options) {
-    const auto decode = [&](Encoding encoding) {
-        return Decode(std::string_view(bytes).substr(0, ChunkEnd(bytes, encoding, complete)), encoding);
+namespace {
+void ValidateEncoding(std::string_view bytes, Encoding encoding) {
+    const bool utf16 = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16LEPlain || encoding == Encoding::Utf16BE || encoding == Encoding::Utf16BEPlain;
+    if (utf16) {
+        if (bytes.size() % 2) Fail("Truncated UTF-16 file.");
+        const bool little = encoding == Encoding::Utf16LE || encoding == Encoding::Utf16LEPlain;
+        auto unit = [&](size_t offset) { const auto a = static_cast<unsigned char>(bytes[offset]), b = static_cast<unsigned char>(bytes[offset + 1]); return little ? a | (b << 8) : (a << 8) | b; };
+        for (size_t offset = 0; offset < bytes.size(); offset += 2) {
+            const auto value = unit(offset);
+            if (value >= 0xD800 && value <= 0xDBFF) {
+                if (offset + 3 >= bytes.size() || unit(offset + 2) < 0xDC00 || unit(offset + 2) > 0xDFFF) Fail("Invalid UTF-16 text.");
+                offset += 2;
+            } else if (value >= 0xDC00 && value <= 0xDFFF) Fail("Invalid UTF-16 text.");
+        }
+    } else if (!bytes.empty()) {
+        const auto page = CodePage(encoding); CPINFOEXW info{}; if (!GetCPInfoExW(page, 0, &info)) Fail("Encoding is not installed.");
+        DWORD flags = page == CP_UTF7 || page == 42 || page == 50220 || page == 50221 || page == 50222 ? 0 : MB_ERR_INVALID_CHARS;
+        auto length = MultiByteToWideChar(page, flags, bytes.data(), static_cast<int>(bytes.size()), nullptr, 0);
+        if (!length && GetLastError() == ERROR_INVALID_FLAGS) length = MultiByteToWideChar(page, 0, bytes.data(), static_cast<int>(bytes.size()), nullptr, 0);
+        if (!length && GetLastError() == ERROR_NO_UNICODE_TRANSLATION) throw InvalidByteSequence("Invalid byte sequence for selected encoding.");
+        if (!length) Fail("Cannot decode file.");
+    }
+}
+Text DetectUsing(std::string_view bytes, const ReadOptions& options, const std::function<Text(Encoding)>& decode, bool allowUtf16 = true) {
+    std::vector<std::pair<Encoding, std::exception_ptr>> failures;
+    const auto attempt = [&](Encoding encoding) {
+        for (const auto& failure : failures) if (failure.first == encoding) std::rethrow_exception(failure.second);
+        try { return decode(encoding); }
+        catch (const std::runtime_error&) { failures.emplace_back(encoding, std::current_exception()); throw; }
     };
     if (bytes.starts_with("\xEF\xBB\xBF")) {
-        try { return decode(Encoding::Utf8Bom); }
-        catch (const InvalidByteSequence&) { return decode(Latin1); }
+        try { return attempt(Encoding::Utf8Bom); }
+        catch (const InvalidByteSequence&) { return attempt(Latin1); }
     }
-    if (bytes.starts_with("\xFF\xFE")) return decode(Encoding::Utf16LE);
-    if (bytes.starts_with("\xFE\xFF")) return decode(Encoding::Utf16BE);
+    if (bytes.starts_with("\xFF\xFE")) return attempt(Encoding::Utf16LE);
+    if (bytes.starts_with("\xFE\xFF")) return attempt(Encoding::Utf16BE);
     if (options.fileVariables) {
-        auto region=filevars::Region(bytes);std::string name;
+        auto first = std::string(bytes.substr(0, 512));
+        auto region = filevars::Recognized(first) || bytes.size() <= 512 ? std::move(first) : std::string(bytes.substr(bytes.size() - 512)); std::string name;
         int enabled=1;
         const bool parse= !filevars::Integer(region,"enable-local-variables",enabled)||enabled!=0;
         if(parse)for(auto key:{"encoding","charset","coding","fileencoding","/*!40101 SET NAMES "})if(!(name=filevars::String(region,key)).empty())break;
         Encoding declared = Encoding::Utf8;
         if(!name.empty()&&ParseEncodingName(FromUtf8(name),declared)
             && declared!=Encoding::Utf16LE && declared!=Encoding::Utf16BE && declared!=Encoding::Utf16LEPlain && declared!=Encoding::Utf16BEPlain) {
-            try { return decode(declared); }
-            catch (const InvalidByteSequence&) { return decode(Latin1); }
+            try { return attempt(declared); }
+            catch (const InvalidByteSequence&) { return attempt(Latin1); }
         }
     }
 
-    if (bytes.size() >= 2 && bytes.size() % 2 == 0) {
+    bool triedUtf8 = false;
+    if (allowUtf16 && bytes.size() >= 2 && bytes.size() % 2 == 0) {
         const int unicode = simd::DetectUtf16(bytes);
         if (unicode) {
-            try { return decode(unicode == 1 ? Encoding::Utf16LEPlain : Encoding::Utf16BEPlain); }
+            try { return attempt(unicode == 1 ? Encoding::Utf16LEPlain : Encoding::Utf16BEPlain); }
             catch (const std::runtime_error&) {}
         }
-        try { return decode(Encoding::Utf8); } catch(const std::runtime_error&) {}
+        triedUtf8 = true;
+        try { return attempt(Encoding::Utf8); } catch(const std::runtime_error&) {}
         int unicodeFlags = IS_TEXT_UNICODE_STATISTICS | IS_TEXT_UNICODE_REVERSE_STATISTICS |
             IS_TEXT_UNICODE_CONTROLS | IS_TEXT_UNICODE_REVERSE_CONTROLS | IS_TEXT_UNICODE_ILLEGAL_CHARS;
         if(options.unicodeDetection)IsTextUnicode(bytes.data(), static_cast<int>((std::min)(bytes.size(), size_t(4096))), &unicodeFlags);
@@ -240,14 +270,20 @@ Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& op
             const bool little=(unicodeFlags & (IS_TEXT_UNICODE_STATISTICS | IS_TEXT_UNICODE_CONTROLS))!=0;
             const bool big=(unicodeFlags & (IS_TEXT_UNICODE_REVERSE_STATISTICS | IS_TEXT_UNICODE_REVERSE_CONTROLS))!=0;
             if(bytes.size() >= 16 && little != big) {
-                try { return decode(little ? Encoding::Utf16LEPlain : Encoding::Utf16BEPlain); }
+                try { return attempt(little ? Encoding::Utf16LEPlain : Encoding::Utf16BEPlain); }
                 catch(const std::runtime_error&) {} // Invalid UTF-16 falls through to byte-oriented detection.
             }
         }
     }
-    try { return decode(Encoding::Utf8); } catch(const std::runtime_error&) {}
-    try { return decode(options.fallback); }
-    catch (const InvalidByteSequence&) { return decode(Latin1); }
+    if (!triedUtf8) try { return attempt(Encoding::Utf8); } catch(const std::runtime_error&) {}
+    try { return attempt(options.fallback); }
+    catch (const InvalidByteSequence&) { return attempt(Latin1); }
+}
+}
+Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options) {
+    return DetectUsing(bytes, options, [&](Encoding encoding) {
+        return Decode(std::string_view(bytes).substr(0, ChunkEnd(bytes, encoding, complete)), encoding);
+    });
 }
 Text Read(const std::filesystem::path& path, const ReadOptions& options) { return DetectSample(ReadBytes(path), true, options); }
 namespace {
@@ -377,7 +413,8 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
     ReadTimer total(stats ? &stats->totalMs : nullptr);
     const auto probeStart = stats ? ReadClock() : 0;
     MappedInput input(path, stats, options.backend);
-    const auto sample = input.Read(0, 1024 * 1024 + SampleLookahead);
+    const auto sample = forced ? std::string{} : input.Read(0, 1024 * 1024 + SampleLookahead);
+    size_t validatedSample = 0;
     Encoding encoding = forced.value_or(Encoding::Utf8);
     bool declared = false;
     if (!forced) {
@@ -386,8 +423,13 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
         else if (sample.starts_with("\xEF\xBB\xBF")) encoding = Encoding::Utf8Bom;
         else {
             if (options.fileVariables) {
-                auto firstAndLast = input.Read(0, 512);
-                if (input.size > 512) firstAndLast += input.Read((std::max)(512ULL, input.size - (std::min)(input.size, 512ULL)), 512);
+                auto firstAndLast = sample.substr(0, 512);
+                if (input.size > 512) {
+                    const auto tail = (std::max)(512ULL, input.size - (std::min)(input.size, 512ULL));
+                    const auto available = tail < sample.size() ? (std::min)(size_t(512), sample.size() - static_cast<size_t>(tail)) : 0;
+                    if (available) firstAndLast += sample.substr(static_cast<size_t>(tail), available);
+                    if (available < 512) firstAndLast += input.Read(tail + available, 512 - available);
+                }
                 const auto region = filevars::Region(firstAndLast);
                 int enabled = 1;
                 if (!filevars::Integer(region, "enable-local-variables", enabled) || enabled) {
@@ -400,14 +442,26 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
                     }
                 }
             }
-            if (!declared) { auto detection = options; detection.fileVariables = false; encoding = DetectSample(sample, sample.size() == input.size, detection).encoding; }
+            if (!declared) {
+                auto detection = options; detection.fileVariables = false;
+                encoding = DetectUsing(sample, detection, [&](Encoding candidate) {
+                    const auto count = ChunkEnd(sample, candidate, sample.size() == input.size);
+                    auto bytes = std::string_view(sample).substr(0, count);
+                    if (candidate == Encoding::Utf8 || candidate == Encoding::Utf8Bom) {
+                        ReadTimer timer(stats ? &stats->validationMs : nullptr);
+                        if (stats) stats->validationBytes += bytes.size();
+                        Validate(bytes); validatedSample = count;
+                    } else ValidateEncoding(bytes, candidate);
+                    return Text{{}, candidate};
+                }, input.size % 2 == 0).encoding;
+            }
         }
     }
     unsigned workers = options.validationWorkers;
     if (!workers) workers = input.size >= LargeFileThreshold ? (std::min)(4u, work::Concurrency()) : 1;
     if (encoding != Encoding::Utf8 && encoding != Encoding::Utf8Bom) workers = 1;
     Utf8Validator validator(workers);
-    if (stats) stats->probeMs = ReadElapsed(probeStart) - stats->mappingMs - stats->copyOrReadMs;
+    if (stats) stats->probeMs = ReadElapsed(probeStart) - stats->mappingMs - stats->copyOrReadMs - stats->validationMs;
     auto validUtf8 = [&](std::string_view text) {
         ReadTimer timer(stats ? &stats->validationMs : nullptr);
         if (stats) stats->validationBytes += text.size();
@@ -421,13 +475,18 @@ Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& cons
     // A sample cannot prove UTF-8 validity. Validate the entire byte stream
     // before delivering data so late legacy bytes cannot leave a mixed buffer.
     bool validatedUtf8 = false;
-    if (!forced && !declared && encoding == Encoding::Utf8) {
+    if (!forced && !declared && (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom)) {
         validatedUtf8 = true;
-        for (unsigned long long offset = 0; offset < input.size;) {
+        for (unsigned long long offset = validatedSample; offset < input.size;) {
             if (options.cancel && options.cancel->load(std::memory_order_relaxed)) Fail("File read cancelled.");
             auto bytes = input.View(offset, ConversionChunk + SampleLookahead);
             auto count = ChunkEnd(bytes, encoding, offset + bytes.size() == input.size);
-            if (!validUtf8(std::string_view(bytes.data(), count))) { validatedUtf8 = false; encoding = options.fallback; break; }
+            auto text = std::string_view(bytes.data(), count);
+            if (!offset && text.starts_with("\xEF\xBB\xBF")) text.remove_prefix(3);
+            if (!validUtf8(text)) {
+                if (encoding == Encoding::Utf8Bom) Fail("Invalid UTF-8.");
+                validatedUtf8 = false; encoding = options.fallback; break;
+            }
             offset += count;
         }
     }
