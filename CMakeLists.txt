@@ -114,8 +114,10 @@ set_source_files_properties(src/AppUpdate.cpp src/main.cpp PROPERTIES COMPILE_DE
   "MULTIPAD4_UPDATE_ASSET=\"${multipad4_update_asset}\"")
 
 add_executable(multipad4-registry WIN32 tools/RegistryHelper.cpp tools/RegistryHelper.rc src/NotepadReplacement.cpp)
-set_property(SOURCE tools/RegistryHelper.rc APPEND PROPERTY OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/tools/RegistryHelper.manifest")
-target_include_directories(multipad4-registry PRIVATE src tools)
+set_property(SOURCE tools/RegistryHelper.rc APPEND PROPERTY OBJECT_DEPENDS
+  "${PROJECT_SOURCE_DIR}/tools/RegistryHelper.manifest"
+  "${multipad4_icon}")
+target_include_directories(multipad4-registry PRIVATE src tools res)
 target_compile_definitions(multipad4-registry PRIVATE "MULTIPAD4_EDITOR_FILENAME=L\"$<TARGET_FILE_NAME:multipad4>\"")
 target_compile_options(multipad4-registry PRIVATE ${MULTIPAD4_WARNINGS})
 target_link_libraries(multipad4-registry PRIVATE advapi32)
