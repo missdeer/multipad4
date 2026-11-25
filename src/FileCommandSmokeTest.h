@@ -80,6 +80,11 @@ inline void RunFileCommandSmokeTest(MainFrame& frame) {
         auto vhdl=directory/L"logic.vhd";files::WriteAtomic(vhdl,{"entity ASCII"});require(ReadFileForFrame(frame,vhdl).encoding==files::FromCodePage(1252));
         auto shell=directory/L"script.sh";files::WriteAtomic(shell,{"echo ASCII"});require(ReadFileForFrame(frame,shell).encoding==files::Encoding::Utf8);
         files::WriteAtomic(plain,{"# coding: utf-8\nASCII"});require(ReadFileForFrame(frame,plain).encoding==files::Encoding::Utf8);
+        frame.settings.WriteString(L"File Settings", L"ASCIIAsUTF8", L"1");
+        require(ReadFileForFrame(frame, batch).encoding == files::Encoding::Ansi);
+        require(ReadFileForFrame(frame, vhdl).encoding == files::FromCodePage(1252));
+        require(ReadFileForFrame(frame, shell).encoding == files::Encoding::Utf8);
+        files::WriteAtomic(plain, {"#!/bin/sh\necho ASCII"}); require(ReadFileForFrame(frame, plain).encoding == files::Encoding::Utf8);
         frame.settings.Set(IDM_ENCODING_SETDEFAULT,oldDefaultEncoding);frame.settings.WriteString(L"File Settings",L"ASCIIAsUTF8",oldAsciiMode);
         auto nfo=directory/L"art.nfo";files::WriteAtomic(nfo,{"Unicode BOM 中文",files::Encoding::Utf16LE});
         frame.settings.WriteString(L"File Settings",L"NFOAsOEM",L"1");require(ReadFileForFrame(frame,nfo).encoding==files::Encoding::Utf16LE);frame.settings.WriteString(L"File Settings",L"NFOAsOEM",L"0");

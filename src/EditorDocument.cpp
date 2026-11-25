@@ -216,6 +216,9 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     Send(SCI_EMPTYUNDOBUFFER); Send(SCI_SETSAVEPOINT); Send(SCI_GOTOPOS, 0);
     style.occurrenceNeedle.clear(); style.occurrenceCursor = 0; style.occurrences = 0;
     style.occurrencePending = false; style.occurrenceRevision = style.revision;
+    loadMetrics.endings = endings;
+    loadMetrics.revision = style.revision;
+    loadMetrics.document = Send(SCI_GETDOCPOINTER);
 }
 void EditorDocument::SetEncoding(files::Encoding value) {
     if (FastView()) { if (encoding == value) return; throw std::runtime_error("Use the full editor to convert the file encoding."); }

@@ -670,6 +670,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     };
     auto element=[&](int elementId,unsigned index,const wchar_t* key,unsigned fallback){unsigned color=property(index,key,fallback);unsigned alpha=std::min(property(index,L"alpha:",255),255u);d.Send(SCI_SETELEMENTCOLOUR,elementId,(color&0xFFFFFF)|(alpha<<24));};
     element(SC_ELEMENT_WHITE_SPACE,8,L"fore:",RGB(255,64,0));
+    d.Send(SCI_SETSELECTIONLAYER,SC_LAYER_OVER_TEXT);
     element(SC_ELEMENT_SELECTION_BACK,7,L"back:",GetSysColor(COLOR_HIGHLIGHT));
     element(SC_ELEMENT_SELECTION_ADDITIONAL_BACK,7,L"fore:",GetSysColor(COLOR_HIGHLIGHT));
     auto caret = property(10, L"fore:", d.style.paletteDark ? RGB(220,220,220) : RGB(0,0,0));
@@ -689,6 +690,14 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.Send(SCI_SETMARGINWIDTHN,2,(d.style.folding && !d.LargeFile())?MulDiv(16,GetDpiForWindow(d.hwnd),96):0);
     d.Send(SCI_SETMARGINTYPEN,2,SC_MARGIN_SYMBOL);d.Send(SCI_SETMARGINMASKN,2,SC_MASK_FOLDERS);
     d.Send(SCI_SETMARGINSENSITIVEN,2,TRUE);
+    d.Send(SCI_SETMARGINTYPEN,3,SC_MARGIN_SYMBOL);
+    d.Send(SCI_SETMARGINMASKN,3,SC_MASK_HISTORY);
+    d.Send(SCI_SETMARGINWIDTHN,3,(!d.LargeFile()&&(d.Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS))?MulDiv(8,GetDpiForWindow(d.hwnd),96):0);
+    for(int marker=SC_MARKNUM_HISTORY_REVERTED_TO_ORIGIN;marker<=SC_MARKNUM_HISTORY_REVERTED_TO_MODIFIED;++marker){
+        const auto color=property(19,marker<=SC_MARKNUM_HISTORY_SAVED?L"fore:":L"back:",marker<=SC_MARKNUM_HISTORY_SAVED?RGB(0,128,0):RGB(0,128,255))|0xFF000000u;
+        d.Send(SCI_MARKERSETFORETRANSLUCENT,marker,color);
+        d.Send(SCI_MARKERSETBACKTRANSLUCENT,marker,(marker==SC_MARKNUM_HISTORY_SAVED||marker==SC_MARKNUM_HISTORY_MODIFIED)?color:static_cast<unsigned>(d.Send(SCI_STYLEGETBACK,STYLE_LINENUMBER))|0xFF000000u);
+    }
     const int folderShapes[]={SC_MARK_BOXPLUSCONNECTED,SC_MARK_BOXMINUSCONNECTED,SC_MARK_TCORNER,SC_MARK_LCORNER,SC_MARK_VLINE,SC_MARK_BOXPLUS,SC_MARK_BOXMINUS};
     for(int marker=SC_MARKNUM_FOLDEREND;marker<=SC_MARKNUM_FOLDEROPEN;++marker){
         d.Send(SCI_MARKERDEFINE,marker,folderShapes[marker-SC_MARKNUM_FOLDEREND]);d.Send(SCI_MARKERSETFORETRANSLUCENT,marker,property(15,L"back:",d.style.paletteDark?RGB(80,80,80):RGB(173,216,230))|0xFF000000u);d.Send(SCI_MARKERSETBACKTRANSLUCENT,marker,property(15,L"fore:",RGB(128,128,255))|0xFF000000u);
@@ -828,7 +837,7 @@ CommandState StyleCommandState(const EditorDocument* d,UINT id) {
     case IDM_VIEW_USEDEFAULT_CODESTYLE:return {true,d!=nullptr,d&&(d->style.fontKind<0?lexerCatalog[ActualScheme(*d)]->bUseDefaultCodeStyle:d->style.fontKind==0)};
     case IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE:case IDM_VIEW_HIGHLIGHTCURRENTLINE_BACK:case IDM_VIEW_HIGHLIGHTCURRENTLINE_FRAME:return {true,d!=nullptr,d&&d->style.lineHighlight==static_cast<int>(id-IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE)};
     case IDM_VIEW_HIGHLIGHTCURRENTLINE_SUBLINE:return {true,d!=nullptr,d&&d->style.highlightSubline};
-    case IDM_VIEW_CHANGE_HISTORY_MARKER:return {true,d!=nullptr,d&&(d->Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS)!=0};
+    case IDM_VIEW_CHANGE_HISTORY_MARKER:return {true,d&&!d->LargeFile()&&(d->Send(SCI_GETCHANGEHISTORY)||d->Send(SCI_GETUNDOCURRENT)==0),d&&(d->Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS)!=0};
     case IDM_VIEW_HIGHLIGHTCURRENT_BLOCK:return {true,d!=nullptr,d&&d->style.highlightBlock};
     case IDM_VIEW_LONGLINEMARKER:return {true,d!=nullptr,d&&d->Send(SCI_GETEDGEMODE)!=EDGE_NONE};
     case IDM_VIEW_WORDWRAP:return {true,d!=nullptr,d&&d->Send(SCI_GETWRAPMODE)!=SC_WRAP_NONE};
@@ -870,7 +879,11 @@ bool ExecuteStyleCommand(HWND owner,EditorDocument& d,UINT id) {
     case IDM_VIEW_SHOWCALLTIP_OFF:case IDM_VIEW_SHOWCALLTIP_RGBA:case IDM_VIEW_SHOWCALLTIP_ARGB:case IDM_VIEW_SHOWCALLTIP_BGRA:case IDM_VIEW_SHOWCALLTIP_ABGR:d.style.colorCalltip=id-IDM_VIEW_SHOWCALLTIP_OFF;if(!d.style.colorCalltip)d.Send(SCI_CALLTIPCANCEL);break;
     case IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE:case IDM_VIEW_HIGHLIGHTCURRENTLINE_BACK:case IDM_VIEW_HIGHLIGHTCURRENTLINE_FRAME:d.style.lineHighlight=id-IDM_VIEW_HIGHLIGHTCURRENTLINE_NONE;HighlightCurrentLine(d);break;
     case IDM_VIEW_HIGHLIGHTCURRENTLINE_SUBLINE:d.style.highlightSubline=!d.style.highlightSubline;HighlightCurrentLine(d);break;
-    case IDM_VIEW_CHANGE_HISTORY_MARKER:d.Send(SCI_SETCHANGEHISTORY,d.Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS?SC_CHANGE_HISTORY_ENABLED:SC_CHANGE_HISTORY_ENABLED|SC_CHANGE_HISTORY_MARKERS);break;
+    case IDM_VIEW_CHANGE_HISTORY_MARKER:
+        if(!StyleCommandState(&d,id).enabled)return false;
+        d.Send(SCI_SETCHANGEHISTORY,d.Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS?SC_CHANGE_HISTORY_ENABLED:SC_CHANGE_HISTORY_ENABLED|SC_CHANGE_HISTORY_MARKERS);
+        d.Send(SCI_SETMARGINWIDTHN,3,(d.Send(SCI_GETCHANGEHISTORY)&SC_CHANGE_HISTORY_MARKERS)?MulDiv(8,GetDpiForWindow(d.hwnd),96):0);
+        break;
     case IDM_VIEW_HIGHLIGHTCURRENT_BLOCK:d.style.highlightBlock=!d.style.highlightBlock;if(!d.style.highlightBlock){d.Send(SCI_SETINDICATORCURRENT,11);d.Send(SCI_INDICATORCLEARRANGE,0,d.Send(SCI_GETLENGTH));}break;
     case IDM_VIEW_LONGLINEMARKER:d.style.longLineEnabled=!d.Send(SCI_GETEDGEMODE);d.Send(SCI_SETEDGEMODE,d.style.longLineEnabled?d.edgeMode:EDGE_NONE);break;
     case IDM_VIEW_WORDWRAP:d.Send(SCI_SETWRAPMODE,d.Send(SCI_GETWRAPMODE)?SC_WRAP_NONE:d.style.wrapMode);break;
