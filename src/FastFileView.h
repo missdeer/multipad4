@@ -18,6 +18,14 @@ class FastFileView {
     large::Position begin = 0, end = 0;
     files::Encoding encoding = files::Encoding::Utf8;
     std::string viewText;
+    struct ViewPosition { uint32_t native, utf8; };
+    bool directPositions = false, indexedPositions = false;
+    bool leadBytes[256]{};
+    std::vector<ViewPosition> positions;
+    std::vector<ViewPosition> Positions(std::string_view raw, std::string_view text) const;
+    size_t NativePosition(size_t utf8) const;
+    size_t Utf8Position(size_t native) const;
+    void UpdatePositions(size_t first, size_t last, std::string_view raw, std::string_view text);
     std::optional<large::Selection> extendedSelection;
     bool loading = false, readOnly = false;
     unsigned editDepth = 0;
@@ -47,7 +55,6 @@ class FastFileView {
     void CompleteTask();
     std::string Encode(std::string_view utf8) const;
     std::string Decode(std::string_view raw) const;
-    large::Position NativePrefix(std::string_view utf8, size_t bytes) const;
     large::Selection Selection() const;
     void RestoreSelection(large::Selection selection);
     bool HandleMessage(UINT message, WPARAM w, LPARAM l, LRESULT& result);
