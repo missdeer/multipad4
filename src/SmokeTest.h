@@ -47,7 +47,9 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunSearchAvailabilityTests(frame);
         wchar_t className[32]{}; GetClassNameW(frame.m_hWndMDIClient, className, 32);
         require(wcscmp(className, L"MDIClient") == 0);
+        ::SetFocus(frame.m_hWndMDIClient);
         frame.NewDocument(); auto* first = frame.Active(); require(first != nullptr);
+        require(::GetFocus() == first->hwnd);
         require((::GetWindowLongPtrW(frame.tabs.GetPageHWND(0), GWL_EXSTYLE) & WS_EX_MDICHILD) != 0);
         auto windowIcon = [&](int page) { return frame.tabs.Child(page)->GetIcon(FALSE); };
         const HICON untitledIcon = windowIcon(0);

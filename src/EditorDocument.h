@@ -162,7 +162,10 @@ public:
         childrenByWindow.emplace(child->m_hWnd, child.get());
         documentsById.emplace(child->document->searchIdentity, child->document);
         children.push_back(std::move(child));
-        control->SetIcon(children.back()->m_hWnd, children.back()->GetIcon(false));
+        const HWND childWindow = children.back()->m_hWnd;
+        control->SetIcon(childWindow, children.back()->GetIcon(false));
+        // MDI can focus the child while it is still being created, before its editor is attached.
+        if (::GetFocus() == childWindow) ::SetFocus(editor);
         return true;
     }
     void RemovePage(int i) {
