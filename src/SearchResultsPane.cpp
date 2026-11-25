@@ -1,5 +1,6 @@
 #include "SearchResultsPane.h"
 #include "MainFrame.h"
+#include <exception>
 void SearchResultsPane::CreatePane(MainFrame& frame) {
     owner = &frame;
     DockPlacement placement{};
@@ -21,17 +22,41 @@ LRESULT SearchResultsPane::OnSize(UINT, WPARAM, LPARAM, BOOL& handled) {
 LRESULT SearchResultsPane::OnClose(UINT, WPARAM, LPARAM, BOOL&) { Hide(); visible = false; return 0; }
 void SearchResultsPane::Reveal() { Show(); visible = true; }
 void SearchResultsPane::Clear() {
-    ++generation;
+    ++generation; changingText = true;
     ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0); ::SendMessageW(editor, SCI_CLEARALL, 0, 0);
     ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0); targets.clear(); lines.clear(); archives.clear();
+    pendingRows.clear(); pendingStyle = SIZE_MAX; changingText = false;
+}
+SearchResultsPane::Batch::Batch(SearchResultsPane& value) : pane(value), exceptions(std::uncaught_exceptions()) { ++pane.batchDepth; }
+SearchResultsPane::Batch::~Batch() noexcept(false) {
+    if (--pane.batchDepth) return;
+    if (std::uncaught_exceptions() > exceptions) pane.pendingRows.clear();
+    else pane.CommitRows();
+}
+void SearchResultsPane::CommitRows() {
+    if (pendingRows.empty()) return;
+    auto rows = std::move(pendingRows);
+    std::string text;
+    for (const auto& row : rows) { text += row.text; text += '\n'; }
+    lines.reserve(lines.size() + rows.size()); targets.reserve(targets.size() + rows.size());
+    const auto dirty = lines.size();
+    for (auto& row : rows) { lines.push_back(std::move(row.style)); targets.push_back(std::move(row.target)); }
+    changingText = true;
+    ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
+    ::SendMessageW(editor, SCI_APPENDTEXT, text.size(), reinterpret_cast<LPARAM>(text.data()));
+    ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
+    changingText = false;
+    const auto first = (std::min)(dirty, pendingStyle); pendingStyle = SIZE_MAX;
+    StyleRows(first);
+}
+void SearchResultsPane::StyleRows(size_t first, size_t last) {
+    changingText = true;
+    SearchResultLexer::Colourise(editor, lines, first, last);
+    pendingStyle = SIZE_MAX; changingText = false;
 }
 void SearchResultsPane::Append(const std::string& text, SearchResultLexer::Line style, Target target) {
-    ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
-    auto value = text + "\n";
-    ::SendMessageW(editor, SCI_APPENDTEXT, value.size(), reinterpret_cast<LPARAM>(value.data()));
-    ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
-    lines.push_back(std::move(style)); targets.push_back(std::move(target));
-    SearchResultLexer::Colourise(editor, lines, lines.size() - 1);
+    pendingRows.push_back({text, std::move(style), std::move(target)});
+    if (!batchDepth) CommitRows();
 }
 void SearchResultsPane::Begin(const std::wstring& query) {
     ++generation;
@@ -50,10 +75,10 @@ void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMa
 }
 void SearchResultsPane::Add(const std::filesystem::path& path, unsigned long long identity, const std::vector<SearchMatch>& matches, const std::wstring& title) {
     if (matches.empty()) return;
-    Target target{identity, path, {}};
-    Append("  " + files::ToUtf8(path.empty() ? title : path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, target);
+    Batch batch(*this);
+    Append("  " + files::ToUtf8(path.empty() ? title : path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, Target{identity, path, {}});
     for (size_t i = 0; i < matches.size();) {
-        const auto& match = matches[i]; target.match = match; target.matches.clear();
+        const auto& match = matches[i]; Target target{identity, path, match};
         auto lineText = (match.mappedSource || match.diskSource) ? match.preview : match.source->substr(match.lineStart - match.sourceBase,
             match.source->find_first_of("\r\n", match.lineStart - match.sourceBase) == std::string::npos ? std::string::npos :
             match.source->find_first_of("\r\n", match.lineStart - match.sourceBase) - (match.lineStart - match.sourceBase));
@@ -65,7 +90,7 @@ void SearchResultsPane::Add(const std::filesystem::path& path, unsigned long lon
             style.segments.emplace_back(prefix.size() + m.start - m.lineStart,
                 prefix.size() + min<LRESULT>(m.end - m.lineStart, lineText.size()));
         } while (!match.mappedSource && i < matches.size() && matches[i].line == match.line && matches[i].lineStart == match.lineStart);
-        Append(prefix + lineText, std::move(style), target);
+        Append(prefix + lineText, std::move(style), std::move(target));
     }
 }
 void SearchResultsPane::AddOrdinary(EditorDocument& document, std::shared_ptr<OrdinarySearchResult> result) {
@@ -84,6 +109,7 @@ void SearchResultsPane::AddFile(files::FileSearchResult result, unsigned long lo
     archives.push_back(std::move(page)); LoadMore(archives.size() - 1);
 }
 bool SearchResultsPane::LoadMore(size_t archive) {
+    Batch batch(*this);
     if (archive >= archives.size()) return false;
     auto& page = archives[archive]; if (page.next >= page.hits->Count()) return false;
     if (page.ordinary) {
@@ -107,7 +133,6 @@ bool SearchResultsPane::LoadMore(size_t archive) {
         return true;
     }
     if (page.file) {
-        const auto dirty = lines.size();
         auto hits = page.hits->Page(page.next, 64);
         std::vector<SearchMatch> matches;
         const auto replacementTargets = page.disk.replacementTargets ? page.disk.replacementTargets->Page(page.next, hits.size()) : std::vector<files::ReplacementTarget>{};
@@ -138,37 +163,43 @@ bool SearchResultsPane::LoadMore(size_t archive) {
             Target target; target.identity = page.identity; target.path = page.path; target.archive = archive;
             Append("  Load next results page (" + std::to_string(page.next) + " / " + std::to_string(page.hits->Count()) + " displayed)", {SearchResultLexer::Default}, std::move(target));
         }
-        SearchResultLexer::Colourise(editor, lines, dirty); return true;
+        return true;
     }
     EditorDocument* document = nullptr;
     for (const auto& candidate : owner->documents) if (candidate->searchIdentity == page.identity) document = candidate.get();
     if (!document || !document->FastView() || document->fastView->Model().Capture().root != page.snapshot.root) return false;
-    const auto dirty = lines.size();
     auto hits = page.hits->Page(page.next, (std::min)(size_t(64), page.hits->Count() - page.next));
     Add(*document, document->MappedMatches(page.snapshot, hits)); page.next += hits.size();
     if (page.next < page.hits->Count()) {
         Target target; target.identity = page.identity; target.path = page.path; target.archive = archive;
         Append("  Load next results page (" + std::to_string(page.next) + " / " + std::to_string(page.hits->Count()) + " displayed)", {SearchResultLexer::Default}, std::move(target));
     }
-    SearchResultLexer::Colourise(editor, lines, dirty); return true;
+    return true;
 }
 void SearchResultsPane::Finish(size_t hits, size_t files) {
     auto start = ::SendMessageW(editor, SCI_POSITIONFROMLINE, header, 0);
     auto end = ::SendMessageW(editor, SCI_GETLINEENDPOSITION, header, 0);
     std::string suffix = " (" + std::to_string(hits) + " hits in " + std::to_string(files) + " files)";
+    const auto styled = ::SendMessageW(editor, SCI_GETENDSTYLED, 0, 0);
+    changingText = true;
     ::SendMessageW(editor, SCI_SETREADONLY, FALSE, 0);
     ::SendMessageW(editor, SCI_INSERTTEXT, end, reinterpret_cast<LPARAM>(suffix.c_str()));
     ::SendMessageW(editor, SCI_SETREADONLY, TRUE, 0);
-    SearchResultLexer::Colourise(editor, lines, header, header + 1);
+    changingText = false; pendingStyle = SIZE_MAX;
+    StyleRows(header, header + 1);
+    if (styled >= end) ::SendMessageW(editor, SCI_STARTSTYLING, styled + suffix.size(), 0);
     ::SendMessageW(editor, SCI_GOTOPOS, start, 0); ::SendMessageW(editor, SCI_EMPTYUNDOBUFFER, 0, 0);
 }
 bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
     if (line >= targets.size() || lines[line].style != SearchResultLexer::Default) return false;
-    auto target = targets[line];
-    if (target.archive != static_cast<size_t>(-1)) return LoadMore(target.archive);
-    if (matchIndex < target.matches.size()) target.match = target.matches[matchIndex];
+    const auto& row = targets[line];
+    if (row.archive != static_cast<size_t>(-1)) return LoadMore(row.archive);
+    Target target;
+    target.identity = row.identity; target.path = row.path;
+    target.match = matchIndex < row.matches.size() ? row.matches[matchIndex] : row.match;
     EditorDocument* document = nullptr;
-    for (const auto& d : owner->documents) if (d->searchIdentity == target.identity) document = d.get();
+    const auto found = owner->tabs.documentsById.find(target.identity);
+    if (found != owner->tabs.documentsById.end()) document = found->second;
     if (!document && !target.path.empty()) {
         if (!owner->Open(target.path)) return false;
         document = owner->Active();
@@ -245,7 +276,8 @@ LRESULT SearchResultsPane::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
     else if (n->nmhdr.code == SCN_STYLENEEDED) {
         auto first = ::SendMessageW(editor, SCI_LINEFROMPOSITION, ::SendMessageW(editor, SCI_GETENDSTYLED, 0, 0), 0);
         auto last = ::SendMessageW(editor, SCI_LINEFROMPOSITION, n->position, 0);
-        SearchResultLexer::Colourise(editor, lines, first, last + 1);
+        if (changingText) pendingStyle = (std::min)(pendingStyle, static_cast<size_t>(first));
+        else StyleRows(first, last + 1);
     }
     return 0;
 }

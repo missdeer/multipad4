@@ -7,6 +7,7 @@
 #include <fstream>
 #include <chrono>
 #include <psapi.h>
+#include "MappedPreviewBaseline.h"
 inline void RunMappedSearchTests(MainFrame& frame, const std::filesystem::path& directory) {
     auto require = [](bool value, std::source_location where = std::source_location::current()) { if (!value) throw std::runtime_error("Mapped search regression at line " + std::to_string(where.line())); };
     auto* document = frame.NewDocument(); require(document != nullptr);
@@ -47,6 +48,30 @@ inline void RunMappedSearchTests(MainFrame& frame, const std::filesystem::path& 
         document->Send(SCI_INSERTTEXT, 0, reinterpret_cast<LPARAM>("edit"));
         document->fastView->ShowSelection(document->fastView->Size(), 0); require(document->FindNext(true)); wait();
         document->Send(SCI_UNDO);
+    }
+    {
+        std::ofstream metrics("mapped-preview-benchmark.csv"); metrics << "encoding,variant,run,elapsed_ms,source_bytes_read\n";
+        for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf16LE, files::Encoding::Utf16BE, files::FromCodePage(936), files::FromCodePage(54936)}) {
+            std::string sample; for (int i = 0; i < 128; ++i) sample += encoding == files::FromCodePage(936) ? "中 a " : "中😀 a "; sample += "\r\nlast\n";
+            load(sample, encoding); document->search.findText = L"a";
+            const auto snapshot = document->fastView->Model().Capture();
+            auto hits = document->fastView->Matches(document->MappedSearchOptions(), false); hits.resize(64);
+            const auto expected = BaselineMappedMatches(*document, snapshot, hits);
+            const auto actual = document->MappedMatches(snapshot, hits);
+            require(expected.size() == actual.size());
+            for (size_t i = 0; i < actual.size(); ++i) {
+                require(actual[i].nativeStart == expected[i].nativeStart && actual[i].nativeEnd == expected[i].nativeEnd && actual[i].nativeLineStart == expected[i].nativeLineStart && actual[i].line == expected[i].line);
+                require(actual[i].preview.substr(actual[i].start, actual[i].end - actual[i].start) == "a");
+            }
+            if (GetEnvironmentVariableW(L"MULTIPAD4_PREVIEW_BENCHMARK", nullptr, 0)) for (bool baseline : {true, false}) for (int run = 0; run < 5; ++run) {
+                const auto before = document->fastView->Model().Statistics(); const auto start = std::chrono::steady_clock::now();
+                for (int repeat = 0; repeat < 20; ++repeat) {
+                    auto matches = baseline ? BaselineMappedMatches(*document, snapshot, hits) : document->MappedMatches(snapshot, hits); require(matches.size() == 64);
+                }
+                const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+                metrics << static_cast<unsigned>(encoding) << ',' << (baseline ? "before" : "after") << ',' << run << ',' << elapsed << ',' << document->fastView->Model().Statistics().sourceBytesRead - before.sourceBytesRead << '\n';
+            }
+        }
     }
     load("first\nsecond\tvalue\r\nlast");
     document->search.findText = L"second\tvalue\r\n"; document->search.transformBackslashes = true;

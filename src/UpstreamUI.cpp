@@ -214,10 +214,10 @@ void MainFrame::UpdateStatus() {
             text[1] = L"Col " + column + L" / " + columns;
             text[2] = L"Ch " + character + L" / " + characters;
             const bool rectangular = d->Send(SCI_SELECTIONISRECTANGLE) != 0;
-            const std::wstring selectionCharacters = rectangular ? L"--" : pending ? L"..." : StatusNumber(stats.SelectedCharacters());
-            const std::wstring selectionBytes = rectangular ? L"--" : StatusNumber(stats.selectedBytes);
+            const std::wstring selectionCharacters = rectangular ? L"--" : !stats.SelectionReady() ? L"..." : StatusNumber(stats.SelectedCharacters());
+            const std::wstring selectionBytes = rectangular ? L"--" : !stats.SelectionReady() ? L"..." : StatusNumber(stats.selectedBytes);
             text[3] = L"Sel " + selectionCharacters + L" / " + selectionBytes;
-            text[4] = L"SelLn " + std::to_wstring(stats.selectedLines);
+            text[4] = L"SelLn " + (stats.SelectionReady() ? std::to_wstring(stats.selectedLines) : L"...");
             text[5] = L"Fnd " + std::to_wstring(d->style.markOccurrences ? d->style.occurrences : d->search.matches)
                 + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"");
             // Reuse the upstream localized six-field format instead of hard-coding
@@ -226,7 +226,7 @@ void MainFrame::UpdateStatus() {
             std::array<std::wstring, 10> values{
                 StatusNumber(line + 1), StatusNumber(d->Send(SCI_GETLINECOUNT)),
                 column, columns, character, characters,
-                selectionCharacters, selectionBytes, StatusNumber(stats.selectedLines),
+                selectionCharacters, selectionBytes, stats.SelectionReady() ? StatusNumber(stats.selectedLines) : L"...",
                 StatusNumber(d->style.markOccurrences ? d->style.occurrences : d->search.matches) + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"")};
             if (LoadStringW(GetModuleHandleW(nullptr), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
                 _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, format, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),

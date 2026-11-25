@@ -6,6 +6,48 @@
 
 namespace files {
 namespace {
+#ifdef MULTIPAD4_FILE_STREAM_TEST
+std::atomic<unsigned long long> tempSnapshotBytes{0}, decodedBytes{0};
+#endif
+class LiteralStream {
+    std::string needle, buffer;
+    const std::atomic<bool>& cancel;
+    large::Position base = 0, line = 0, lineStart = 0;
+    bool cr = false;
+public:
+    std::shared_ptr<large::HitArchive> hits = std::make_shared<large::HitArchive>();
+    LiteralStream(std::string pattern, const std::atomic<bool>& stop) : needle(std::move(pattern)), cancel(stop) {}
+    void Feed(std::string_view chunk) {
+        if (cancel.load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+        buffer.append(chunk);
+        const auto safe = buffer.size() >= needle.size() ? buffer.size() - needle.size() + 1 : 0;
+        size_t cursor = 0, searched = 0;
+        auto locate = [&](size_t limit) {
+            while (cursor < limit) {
+                const auto c = buffer[cursor];
+                if (cr && c != '\n') { ++line; lineStart = base + cursor; }
+                if (c == '\n') { ++line; lineStart = base + cursor + 1; }
+                cr = c == '\r'; ++cursor;
+                if (!cr) {
+                    const auto next = std::string_view(buffer).substr(cursor, limit - cursor).find_first_of("\r\n");
+                    cursor += next == std::string_view::npos ? limit - cursor : next;
+                }
+            }
+            if (cr && limit < buffer.size() && buffer[limit] != '\n') { ++line; lineStart = base + limit; cr = false; }
+        };
+        for (;;) {
+            const auto found = buffer.find(needle, searched);
+            if (found == std::string::npos || found >= safe) break;
+            if ((hits->Count() & 4095) == 0 && cancel.load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+            locate(found);
+            large::SearchHit hit{base + found, base + found + needle.size(), {}};
+            hit.line = line; hit.lineStart = lineStart; hits->Append(hit);
+            searched = found + needle.size();
+        }
+        const auto consumed = (std::max)(safe, searched);
+        locate(consumed); buffer.erase(0, consumed); base += consumed;
+    }
+};
 class LineLocations {
     static constexpr size_t BlockBytes = 64 * 1024;
     large::Document::ReadSession reader;
@@ -148,6 +190,18 @@ void FileSearch::Run() {
                 }
                 if (result.openDocument) { Publish(std::move(result)); continue; }
                 matcher.Rebase({});
+                const bool streamLiteral =
+#ifdef MULTIPAD4_FILE_STREAM_BASELINE
+                    false &&
+#endif
+                    !pattern.regex && pattern.matchCase && !pattern.wholeWord && !pattern.wordStart && !pattern.pattern.empty();
+                // Keep this version stable until a matching file's independent snapshot is captured.
+                std::unique_ptr<MappedFile> sourceGuard;
+                std::unique_ptr<LiteralStream> literal;
+                if (streamLiteral) {
+                    sourceGuard = std::make_unique<MappedFile>(*path);
+                    literal = std::make_unique<LiteralStream>(ToUtf8(pattern.pattern), cancel);
+                }
                 constexpr size_t MemoryLimit = 1024 * 1024;
                 auto text = std::make_shared<std::string>();
                 struct Spool {
@@ -162,6 +216,9 @@ void FileSearch::Run() {
                         if (file == INVALID_HANDLE_VALUE) throw std::runtime_error("Cannot write search snapshot.");
                     }
                     void Write(std::string_view bytes) {
+#ifdef MULTIPAD4_FILE_STREAM_TEST
+                        tempSnapshotBytes += bytes.size();
+#endif
                         DWORD written = 0;
                         if (!WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) || written != bytes.size()) throw std::runtime_error("Cannot write search snapshot.");
                     }
@@ -170,15 +227,31 @@ void FileSearch::Run() {
                 result.originalSize = std::filesystem::file_size(*path);
                 struct Binary {};
                 ReadOptions read; read.validationWorkers = 1; read.cancel = &cancel;
+                auto capture = [&](std::string_view chunk) {
+                    if (spool.file == INVALID_HANDLE_VALUE && text->size() + chunk.size() > MemoryLimit) {
+                        spool.Open(); spool.Write(*text); text = std::make_shared<std::string>();
+                    }
+                    if (spool.file != INVALID_HANDLE_VALUE) spool.Write(chunk); else text->append(chunk);
+                };
+                Encoding searchedEncoding = Encoding::Utf8;
                 try {
-                    ReadChunks(*path, [&](std::string_view chunk) {
+                    searchedEncoding = ReadChunks(*path, [&](std::string_view chunk) {
+#ifdef MULTIPAD4_FILE_STREAM_TEST
+                        decodedBytes += chunk.size();
+#endif
                         if (cancel.load()) throw std::runtime_error("Search cancelled.");
                         if (chunk.find('\0') != std::string_view::npos) throw Binary{};
-                        if (spool.file == INVALID_HANDLE_VALUE && text->size() + chunk.size() > MemoryLimit) {
-                            spool.Open(); spool.Write(*text); text = std::make_shared<std::string>();
-                        }
-                        if (spool.file != INVALID_HANDLE_VALUE) spool.Write(chunk); else text->append(chunk);
+                        if (literal) literal->Feed(chunk); else capture(chunk);
                     }, read);
+                    if (literal) {
+                        if (!literal->hits->Count()) continue;
+                        ReadChunks(*path, [&](std::string_view chunk) {
+#ifdef MULTIPAD4_FILE_STREAM_TEST
+                            decodedBytes += chunk.size();
+#endif
+                            capture(chunk);
+                        }, read, searchedEncoding);
+                    }
                 } catch (const Binary&) { continue; }
                 if (cancel.load()) break;
                 std::shared_ptr<large::Document> document;
@@ -191,27 +264,23 @@ void FileSearch::Run() {
                 const auto snapshot = document->Capture(); const auto size = document->Size();
                 matcher.Rebase(snapshot);
                 auto archive = std::make_shared<large::HitArchive>();
-                LineLocations locations(snapshot, cancel);
-                large::Position position = 0;
-                while (position <= size && !cancel.load()) {
-                    auto hit = matcher.Next(position, size);
-                    if (!hit) break;
-                    locations.Set(*hit);
-                    archive->Append(*hit);
-                    if (spool.path.empty() && archive->Count() <= 4096) result.matches.push_back({hit->start, hit->end, hit->line, hit->lineStart});
-                    position = hit->end;
-                    if (hit->start == hit->end) { if (position == size) break; position = static_cast<size_t>(matcher.Advance(position)); }
+                if (literal) archive = literal->hits;
+                else {
+                    LineLocations locations(snapshot, cancel);
+                    large::Position position = 0;
+                    while (position <= size && !cancel.load()) {
+                        auto hit = matcher.Next(position, size);
+                        if (!hit) break;
+                        locations.Set(*hit); archive->Append(*hit);
+                        position = hit->end;
+                        if (hit->start == hit->end) { if (position == size) break; position = static_cast<size_t>(matcher.Advance(position)); }
+                    }
                 }
                 if (archive->Count() && !cancel.load()) {
                     result.snapshot = std::make_shared<const large::Document::Snapshot>(snapshot);
                     result.archive = archive;
-                    if (spool.path.empty() && archive->Count() <= 4096) result.text = std::move(text);
-                    else {
-                        result.matches.clear(); result.matches.shrink_to_fit();
-                        result.snapshot = std::make_shared<const large::Document::Snapshot>(snapshot);
-                        result.archive = std::move(archive);
-                    }
                     if (GetTimes(*path).write != result.originalWriteTime || std::filesystem::file_size(*path) != result.originalSize) throw std::runtime_error("File changed while searching.");
+                    sourceGuard.reset();
                     Publish(std::move(result));
                 }
             } catch (const std::exception&) { if (!cancel.load()) ++errors; }
