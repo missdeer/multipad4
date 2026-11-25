@@ -255,7 +255,7 @@ void EditorDocument::SaveStreaming(const std::filesystem::path& destination) con
                 while (count && (static_cast<unsigned char>(chunk[count]) & 0xC0) == 0x80) --count;
                 chunk.resize(count);
             }
-            consume(files::Encode({std::move(chunk), chunkEncoding})); offset += count;
+            files::EncodeChunks({std::move(chunk), chunkEncoding}, consume); offset += count;
         }
     });
 }

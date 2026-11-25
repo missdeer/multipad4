@@ -479,7 +479,14 @@ std::string EncodeImpl(const Text& text,bool allowLoss) {
     if (utf16) {
         bool le = text.encoding == Encoding::Utf16LE || text.encoding == Encoding::Utf16LEPlain;
         if (text.encoding == Encoding::Utf16LE || text.encoding == Encoding::Utf16BE) bytes = le ? "\xFF\xFE" : "\xFE\xFF";
-        for (wchar_t c : FromUtf8(text.utf8)) { bytes.push_back(static_cast<char>(le ? c & 255 : c >> 8)); bytes.push_back(static_cast<char>(le ? c >> 8 : c & 255)); }
+        const auto wide = FromUtf8(text.utf8);
+        const auto prefix = bytes.size();
+        bytes.resize(prefix + wide.size() * 2);
+        for (size_t i = 0; i < wide.size(); ++i) {
+            const auto c = wide[i];
+            bytes[prefix + i * 2] = static_cast<char>(le ? c & 255 : c >> 8);
+            bytes[prefix + i * 2 + 1] = static_cast<char>(le ? c >> 8 : c & 255);
+        }
     } else if (text.encoding == Encoding::Utf8 || text.encoding == Encoding::Utf8Bom) bytes += text.utf8;
     else {
         auto wide=FromUtf8(text.utf8);if(wide.empty())return {};
@@ -504,6 +511,16 @@ std::string EncodeImpl(const Text& text,bool allowLoss) {
 }
 std::string Encode(const Text& text) {return EncodeImpl(text,false);}
 std::string EncodeLossy(const Text& text) {return EncodeImpl(text,true);}
+void EncodeChunks(const Text& text, const ChunkConsumer& consume) {
+    if (text.encoding == Encoding::Utf8 || text.encoding == Encoding::Utf8Bom) {
+        Validate(text.utf8);
+        if (text.encoding == Encoding::Utf8Bom) consume("\xEF\xBB\xBF");
+        consume(text.utf8);
+    } else {
+        const auto bytes = Encode(text);
+        consume(bytes);
+    }
+}
 void WriteNew(const std::filesystem::path& path,const Text& text) {
     const auto bytes=Encode(text);
     HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL|FILE_FLAG_WRITE_THROUGH,nullptr);
