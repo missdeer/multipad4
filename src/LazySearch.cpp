@@ -153,6 +153,10 @@ struct HitArchive::Impl {
     struct Record { Position start, end, line, lineStart; };
     HANDLE file = INVALID_HANDLE_VALUE;
     std::vector<Record> pending;
+    struct PageIndex { size_t first, count; Position end; };
+    std::vector<PageIndex> pages;
+    size_t cachedPage = SIZE_MAX;
+    std::vector<Record> cachedRecords;
     size_t count = 0;
     bool retainOffsets;
     explicit Impl(bool retain) : retainOffsets(retain) {}
@@ -168,8 +172,23 @@ struct HitArchive::Impl {
         if (file == INVALID_HANDLE_VALUE) Open();
         LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((count - pending.size()) * sizeof(Record)); DWORD written = 0;
         const auto bytes = static_cast<DWORD>(pending.size() * sizeof(Record));
+        const auto needed = pages.size() + (pending.size() + 15) / 16;
+        if (needed > pages.capacity()) pages.reserve((std::max)(needed, pages.capacity() * 2));
         if (!SetFilePointerEx(file, offset, nullptr, FILE_BEGIN) || !WriteFile(file, pending.data(), bytes, &written, nullptr) || written != bytes) throw std::runtime_error("Cannot write complete search result archive.");
+        const auto first = count - pending.size();
+        for (size_t at = 0; at < pending.size(); at += 16) {
+            const auto take = (std::min)(size_t(16), pending.size() - at);
+            pages.push_back({first + at, take, pending[at + take - 1].end});
+        }
         pending.clear();
+    }
+    void ReadRecords(size_t first, Record* records, size_t count) const {
+#ifdef MULTIPAD4_ARCHIVE_BENCHMARK
+        ++archiveReadCalls; archiveReadBytes += count * sizeof(Record);
+#endif
+        LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>(first * sizeof(Record)); DWORD got = 0;
+        const auto bytes = static_cast<DWORD>(count * sizeof(Record));
+        if (!SetFilePointerEx(file, offset, nullptr, FILE_BEGIN) || !ReadFile(file, records, bytes, &got, nullptr) || got != bytes) throw std::runtime_error("Cannot read search result page.");
     }
 };
 HitArchive::HitArchive(bool retainOffsets) : impl(std::make_unique<Impl>(retainOffsets)) {}
@@ -179,6 +198,25 @@ void HitArchive::Append(const SearchHit& hit) {
     if (!impl->retainOffsets) { ++impl->count; return; }
     impl->pending.push_back({hit.start, hit.end, hit.line, hit.lineStart}); ++impl->count;
     if (impl->pending.size() == 4096) impl->Flush();
+}
+void HitArchive::AppendArchive(const HitArchive& archive, const std::atomic<bool>* cancel) {
+    if (&archive == this || !impl->retainOffsets || !archive.impl->retainOffsets) throw std::runtime_error("Invalid retained search archive merge.");
+    if (archive.Count() > static_cast<size_t>(LLONG_MAX) / sizeof(Impl::Record) - Count()) throw std::runtime_error("Too many search results.");
+    auto append = [&](const Impl::Record* data, size_t count) {
+        while (count) {
+            if (cancel && cancel->load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+            const auto take = (std::min)(count, size_t(4096) - impl->pending.size());
+            impl->pending.insert(impl->pending.end(), data, data + take); impl->count += take; data += take; count -= take;
+            if (impl->pending.size() == 4096) impl->Flush();
+        }
+    };
+    std::vector<Impl::Record> records;
+    const auto diskCount = archive.impl->count - archive.impl->pending.size();
+    for (size_t at = 0; at < diskCount; at += 4096) {
+        if (cancel && cancel->load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+        records.resize((std::min)(size_t(4096), diskCount - at)); archive.impl->ReadRecords(at, records.data(), records.size()); append(records.data(), records.size());
+    }
+    append(archive.impl->pending.data(), archive.impl->pending.size());
 }
 size_t HitArchive::Count() const { return impl->count; }
 bool HitArchive::RetainsOffsets() const { return impl->retainOffsets; }
@@ -203,17 +241,25 @@ std::vector<SearchHit> HitArchive::Page(size_t first, size_t count) const {
     impl->Flush();
     for (size_t index = 0; index < count;) {
         const auto take = (std::min)(size_t(4096), count - index); std::vector<Impl::Record> records(take);
-        LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((first + index) * sizeof(Impl::Record)); DWORD got = 0;
-        const auto bytes = static_cast<DWORD>(take * sizeof(Impl::Record));
-        if (!SetFilePointerEx(impl->file, offset, nullptr, FILE_BEGIN) || !ReadFile(impl->file, records.data(), bytes, &got, nullptr) || got != bytes) throw std::runtime_error("Cannot read search result page.");
+        impl->ReadRecords(first + index, records.data(), take);
         for (const auto& record : records) output.push_back({record.start, record.end, {}, record.line, record.lineStart}); index += take;
     }
     return output;
 }
 size_t HitArchive::FirstEndingAtOrAfter(Position position) const {
-    size_t low = 0, high = Count();
-    while (low < high) { auto middle = low + (high - low) / 2; auto hit = Page(middle, 1)[0]; if (hit.end < position) low = middle + 1; else high = middle; }
-    return low;
+    if (!impl->retainOffsets) { if (!Count()) return 0; throw std::runtime_error("Offsets are unavailable for a count-only search."); }
+    const auto page = std::lower_bound(impl->pages.begin(), impl->pages.end(), position, [](const auto& item, auto value) { return item.end < value; });
+    if (page == impl->pages.end()) {
+        const auto hit = std::lower_bound(impl->pending.begin(), impl->pending.end(), position, [](const auto& item, auto value) { return item.end < value; });
+        return impl->count - impl->pending.size() + static_cast<size_t>(hit - impl->pending.begin());
+    }
+    const auto index = static_cast<size_t>(page - impl->pages.begin());
+    if (impl->cachedPage != index) {
+        impl->cachedPage = SIZE_MAX;
+        impl->cachedRecords.resize(page->count); impl->ReadRecords(page->first, impl->cachedRecords.data(), page->count); impl->cachedPage = index;
+    }
+    const auto hit = std::lower_bound(impl->cachedRecords.begin(), impl->cachedRecords.end(), position, [](const auto& item, auto value) { return item.end < value; });
+    return page->first + static_cast<size_t>(hit - impl->cachedRecords.begin());
 }
 struct Search::Impl {
     Reader reader;
@@ -489,10 +535,7 @@ void Search::Enumerate(Position first, Position limit, HitArchive& hits) {
             if (!job.hit) continue;
             previousEnd = job.lastEnd;
             if (!hits.RetainsOffsets()) hits.AddCount(job.archive->Count());
-            else for (size_t at = 0; at < job.archive->Count();) {
-                impl->reader.Check(); auto page = job.archive->Page(at, 4096);
-                for (const auto& hit : page) hits.Append(hit); at += page.size();
-            }
+            else hits.AppendArchive(*job.archive, impl->reader.cancel);
         }
         first = last;
     }
