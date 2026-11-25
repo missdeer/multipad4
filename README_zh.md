@@ -4,18 +4,18 @@
 
 **MultiPad4** 是面向 Windows x64 的标签式 MDI 文本编辑器，使用 C++20、WTL 和 notepad4 优化版 Scintilla。它将 notepad4 的编辑功能扩展到多文档工作流，支持按需大文件编辑、Notepad++ 风格的查找界面和可停靠插件面板。
 
-“关于”对话框显示 `v0.3`，Windows 可执行文件的版本信息为 `0.3.0.0`。
+从当前源码构建的程序在“关于”对话框中显示 `v0.4`，Windows 可执行文件的版本信息为 `0.4.0.0`。
 
 与 notepad4 的行为一致性仍在逐项验收。参见[项目范围](docs/PROJECT_SCOPE.md)、[迁移记录](docs/MIGRATION_STATUS.md)和[验收清单](docs/MIGRATION_ACCEPTANCE.md)。
 
 ## 当前功能
 
-- **多文档与停靠。** 支持真实 MDI 子窗口、标签切换和拖动排序、独立撤销栈、Ctrl+Tab、层叠和平铺。搜索结果和插件面板可停靠、浮动或隐藏。通过**设置 → 文档标签设置**调整标签标题字体、字号和宽度，可启用固定宽度。文档最大化时，菜单栏旁显示文件类型图标。
-- **文件与编码。** 支持多文件打开、拖放、命令行参数、单实例复用、保存、另存为、保存副本和全部保存。支持 UTF-8、UTF-16 和代码页检测与转换，保留 BOM 和换行符，并支持文件变量、备份、历史和收藏夹。文件在外部发生变化时，可根据监视模式提示重载，或自动重载未修改的文档。
+- **多文档与停靠。** 支持真实 MDI 子窗口、标签切换和拖动排序、独立撤销栈、Ctrl+Tab、层叠和平铺。右键单击标签可关闭当前、左侧、右侧、其他或全部标签。已有磁盘文件的标签还提供 Windows Shell 命令。搜索结果和插件面板可停靠、浮动或隐藏。通过**设置 → 文档标签设置**调整标签标题字体、字号和宽度，可启用固定宽度。文档最大化时，菜单栏旁显示文件类型图标。
+- **文件与编码。** 支持多文件打开、拖放、命令行参数、单实例复用、保存、另存为、保存副本和全部保存。支持 UTF-8、UTF-16 和代码页检测与转换，保留 BOM 和换行符，并支持文件变量、备份、历史和收藏夹。自动解码失败时，编辑器使用 ISO-8859-1（Latin-1）将文件作为文本打开，未编辑的内容以该编码保存时保留原始字节。显式选择 UTF-8 时仍会严格校验。文件在外部发生变化时，可根据监视模式提示重载，或自动重载未修改的文档。
 - **编辑与语言。** 支持高级选择与行操作、转换、排序、对齐、插入、语言检测、折叠、书签、匹配项高亮、自动补全、自动缩进、自动配对及 LaTeX 输入。
 - **查找与替换。** 无模式对话框提供查找、替换、文件中查找和标记，支持普通文本、扩展转义、正则表达式、计数，以及在当前文档或全部打开文档中查找和替换。Ctrl+F 聚焦查找输入框，Ctrl+H、Ctrl+Shift+F 和 Ctrl+M 打开其他对应页。F7 显示结果，支持折叠、命中高亮和跳转。查找对话框提供英文和简体中文界面。[查找界面](docs/SEARCH_MIGRATION.md)
 - **目录搜索。** 通过 Windows 线程池运行最多 8 个搜索任务，支持文件过滤、递归、隐藏目录选项、取消和错误统计。已打开的文件按当前缓冲区搜索，包含未保存的修改。大型解码快照和密集匹配列表会写入临时文件，结果分页显示。目录遍历使用对话框中的筛选条件，独立于 `.gitignore` 规则。文件替换在 UI 线程逐个执行，保留确认、编码、原子保存和各文档独立撤销。[文件搜索](docs/FILE_SEARCH.md) · [性能优化](docs/PERFORMANCE_CHANGES.md) · [线程池](docs/THREADING.md)
-- **界面与 Windows 集成。** “窗口”“插件”菜单及“插件管理”使用本地化资源。支持可定制工具栏、13 段状态栏、INI 设置、自动保存历史、会话恢复、运行命令和打印。通过**设置 → 文件关联**为当前用户注册扩展名和内嵌文件类型图标，再在 Windows 的“默认应用”中选择 MultiPad4。[文件类型图标](res/icons/README.md)
+- **会话与 Windows 集成。** 启用**设置 → 启动时恢复上次会话**后，正常退出时会保存标签顺序、未保存的草稿和修改。下次启动时按原顺序恢复，草稿和修改仍标记为未保存。支持可定制工具栏、13 段状态栏、INI 设置、自动保存历史、运行命令和打印。“窗口”“插件”菜单及“插件管理”使用本地化资源。通过**设置 → 文件关联**为当前用户注册扩展名和内嵌文件类型图标，再在 Windows 的“默认应用”中选择 MultiPad4。[文件类型图标](res/icons/README.md)
 
 ### 语言与样式
 
@@ -33,21 +33,27 @@
 
 实现、性能条件、原始数据与兼容边界见 [按需可编辑文档](docs/MAPPED_EDITING.md) 和 [大文件并行查找](docs/PARALLEL_SEARCH_EXPERIMENT.md)。
 
-![5 GiB 按需可编辑文档](docs/images/mapped-editor-5GiB.png)
+### 随附插件
 
-### 随附的停靠面板插件
+默认构建七个插件 DLL。将相应的 CMake 选项设为 `OFF` 即可跳过该插件。
 
-通过**插件 → Matepath → 文件浏览器**打开基于 Windows Shell 的文件浏览器。支持前进、后退、上一级、文件过滤、隐藏文件、排序、手动刷新、定位活动文档以及打开或激活标签。上游目录 API 有 `MAX_PATH` 限制，大目录加载图标时可能暂停导航。[Matepath 插件](docs/MATEPATH_MIGRATION.md)
+| 插件 | 功能 | CMake 选项 |
+| --- | --- | --- |
+| Matepath | 通过**插件 → Matepath → 文件浏览器**打开 Windows Shell 文件浏览器，可浏览目录、筛选或排序文件、显示隐藏文件、手动刷新并定位活动文档。路径长度受上游 `MAX_PATH` 限制，大目录加载图标时可能暂停导航。[Matepath 插件](docs/MATEPATH_MIGRATION.md) | `MULTIPAD4_BUILD_MATEPATH` |
+| OpenDocuments | 通过**插件 → OpenDocuments → 打开的文档**打开可停靠的文档列表，查看标签顺序、活动文档和未保存标记。双击列表项或按 Enter 切换文档。[OpenDocuments 插件](docs/OPEN_DOCUMENTS_PLUGIN.md) | `MULTIPAD4_BUILD_OPEN_DOCUMENTS` |
+| Project | 在 **Project → Edit Projects…** 中将文件和文件夹组织成项目，通过 **Project → Project Pane** 打开可停靠面板，切换项目或打开成员。加载文件夹时会打开其中的直属文件。[Project 插件](docs/PLUGINS.md#project-插件) | `MULTIPAD4_BUILD_PROJECT` |
+| Base64 | 对选区进行 Base64 编解码，支持 URL 安全编码、十六进制输出和生成 HTML 内嵌图片。 | `MULTIPAD4_BUILD_BASE64` |
+| Action on Selection | 打开选中的路径或链接、计算表达式、在线搜索和执行自定义操作。 | `MULTIPAD4_BUILD_SELECTION_ACTIONS` |
+| Text Transliteration | 支持全角与半角、简体与繁体中文、日文假名及其他文字的转换。 | `MULTIPAD4_BUILD_TEXT_TRANSLITERATION` |
+| Web Tools | 格式化或压缩代码、计算 JavaScript 表达式、转换 HTML 实体和 URL 转义。 | `MULTIPAD4_BUILD_WEB_TOOLS` |
 
-通过**插件 → OpenDocuments → 打开的文档**打开文档列表。列表同步标签顺序、活动文档和未保存标记。双击列表项或按 Enter 切换文档。[OpenDocuments 插件](docs/OPEN_DOCUMENTS_PLUGIN.md)
-
-默认将两个插件构建为独立 DLL。它们分别通过 `plugins/Config/OpenDocuments.ini` 和 `plugins/Config/Matepath.ini` 保存和恢复面板显隐、停靠位置和尺寸、浮动窗口坐标。可用 `MULTIPAD4_BUILD_OPEN_DOCUMENTS=OFF` 或 `MULTIPAD4_BUILD_MATEPATH=OFF` 跳过相应插件的构建。
+Matepath 和 OpenDocuments 分别通过 `plugins/Config/Matepath.ini` 和 `plugins/Config/OpenDocuments.ini` 恢复面板显隐、停靠位置和尺寸以及浮动窗口坐标。
 
 ### Notepad++ 插件与插件管理
 
 从可执行文件目录的 `plugins/<名称>/<名称>.dll` 加载 Unicode x64 插件，提供插件菜单、快捷键、通知、活动文档消息路由及停靠面板。已有使用 JsonTools、XMLTools、mimeTools、NppConverter、NppExport 真实 DLL 的集成检查。
 
-“插件 → 插件管理...”支持目录搜索及批量安装、更新、移除、禁用和启用；确认重启并处理文档保存后执行，下载校验 SHA-256，失败时保留日志与恢复资料。插件管理需要 Windows PowerShell 5.1 和可写安装目录。
+**插件 → 插件管理...**支持目录搜索及批量安装、更新、移除、禁用和启用。编辑器关窗并卸载插件 DLL 后，MultiPad4 使用 WinHTTP 按 Windows 代理设置通过 HTTPS 下载软件包，校验 SHA-256，并在重启后恢复会话。插件管理需要可写的安装目录。日志会记录失败原因及保留的备份路径。
 
 兼容层仅实现部分 Notepad++ API，**目录中列出插件不代表该插件已兼容**。目录使用固定版本快照，不会自动联网刷新；外部 lexer、双视图和完整暗色主题 API 等尚未提供。加载诊断位于 `plugins/Config/MultiPad4-plugin-load.log`。兼容层说明见 [PLUGINS.md](docs/PLUGINS.md)，插件管理以更新的 [PLUGIN_ADMIN.md](docs/PLUGIN_ADMIN.md) 为准。
 
@@ -80,7 +86,7 @@ ctest --preset msvc-x64
 
 `msvc-release` 预设为 Release 构建启用链接时优化。本地开发包装脚本及用法见 [AGENTS.md](AGENTS.md)。
 
-Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`config/`、两个随附插件 DLL 及其许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
+Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`config/`、七个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64 / OpenATL
 
@@ -119,20 +125,20 @@ OpenATL、WTL 和标签/停靠框架快照均保持原样，兼容补丁只应�
 | CTest 名称 | 主要范围 |
 |---|---|
 | `scintilla_line_index` | 三种换行、标量/SIMD 边界、两种行索引宽度下的行数和行起始位置 |
-| `fileio_roundtrip` | 编码、中文/emoji、换行、错误输入及失败保存保护 |
-| `editor_integration` | 真实 WTL/Scintilla 窗口、MDI 隔离、命令/UI、查找替换、样式、设置、会话、自动保存及 Matepath |
+| `fileio_roundtrip` | 编码、中文/emoji、换行、二进制文件无损回退、严格 UTF-8 校验及保存失败保护 |
+| `editor_integration` | WTL/Scintilla 窗口、MDI 隔离、标签命令、查找替换、样式、设置、自动保存、未保存标签恢复及随附插件 |
 | `simd_boundaries` | 保护页、随机输入、非法/截断编码、跨块换行及图形尾部边界 |
 | `lazy_document` | 片段树、随机编辑、快照、事务、撤销/重做、索引复用及保存失败保护 |
 | `large_file_integration` | 按需视图编辑/保存、全文查找替换、取消、编码及完整编辑器转换 |
 | `file_search` | 串行/并行一致性、目录过滤、编码、正则、打开文档交接与取消 |
 | `single_instance_integration` | 进程启动和单实例/窗口复用；已有 MultiPad4 窗口时跳过 |
-| `plugin_admin_worker` | 隔离临时目录中的启停/移除、批处理预检查及非法元数据拒绝 |
+| `plugin_maintenance` | 隔离临时目录中的启用、禁用和移除，批处理回滚、下载失败及拒绝无效元数据 |
 | `thread_pool` | 任务生命周期、异常传播、嵌套任务及并发上限 |
 | `lexer_configuration_baseline`、`lexer_behavior_baseline` | 对照固定的上游基线检查语言数据和运行时词法行为 |
 | `configuration_integration` | XML 语言配置、原生主题和语言样式配置器 |
 | `editor_without_plugins` | 禁用插件加载时的编辑器与会话行为 |
 | `configuration_data_equivalence`、`lexer_inventory_coverage`（需 Python） | XML 数据与资源清单的一致性 |
-| `bundled_pane_restart`（启用两个随附插件） | 跨进程重启恢复停靠、浮动及隐藏的面板布局 |
+| `bundled_pane_restart`（启用 Matepath 和 OpenDocuments） | 跨进程重启恢复停靠、浮动及隐藏的面板布局 |
 | `notepadpp_plugins`（配置时具备五个 DLL） | 五个真实插件的命令、面板、导出及文档路由 |
 
 资源清单、命令路由与窗口渲染可分别生成：

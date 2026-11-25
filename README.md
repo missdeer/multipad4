@@ -4,18 +4,18 @@ English | [简体中文](README_zh.md)
 
 **MultiPad4** is a Windows x64 tabbed MDI text editor built with C++20, WTL, and notepad4's optimized Scintilla. It brings notepad4's editing features to a multi-document workflow with on-demand large-file editing, Notepad++-style search, and dockable plugin panes.
 
-The About dialog shows `v0.3`, and Windows executable metadata reports `0.3.0.0`.
+Builds from the current source show `v0.4` in the About dialog and report `0.4.0.0` in Windows executable metadata.
 
 Behavioral parity with notepad4 is still being verified. See [project scope](docs/PROJECT_SCOPE.md), [migration history](docs/MIGRATION_STATUS.md), and [acceptance checks](docs/MIGRATION_ACCEPTANCE.md).
 
 ## Current features
 
-- **Multiple documents and docking.** Real MDI child windows, tab switching and drag reordering, independent undo stacks, Ctrl+Tab, and cascading/tiling. Search results and plugin panes can dock, float, or hide. Use **Settings → Document Tab Settings** to choose the tab title font, size, and variable or fixed width. Maximized documents show the file type icon beside the menu bar.
-- **Files and encodings.** Open multiple files, drag and drop, use command-line arguments or single-instance reuse, and use Save, Save As, Save Copy, or Save All. The editor detects and converts UTF-8, UTF-16, and code pages, preserves BOMs and line endings, and supports file variables, backups, history, and favorites. Windows file change notifications can prompt for reload or automatically reload unmodified documents, depending on the monitoring mode.
+- **Multiple documents and docking.** Real MDI child windows, tab switching and drag reordering, independent undo stacks, Ctrl+Tab, and cascading/tiling. Right-click a tab to close it, close tabs to one side, close other tabs, or close all tabs. Tabs backed by an existing file also offer Windows Shell commands. Search results and plugin panes can dock, float, or hide. Use **Settings → Document Tab Settings** to choose the tab title font, size, and variable or fixed width. Maximized documents show the file type icon beside the menu bar.
+- **Files and encodings.** Open multiple files, drag and drop, use command-line arguments or single-instance reuse, and use Save, Save As, Save Copy, or Save All. The editor detects and converts UTF-8, UTF-16, and code pages, preserves BOMs and line endings, and supports file variables, backups, history, and favorites. If automatic decoding fails, ISO-8859-1 (Latin-1) lets the editor open the file as text and preserve the original bytes when saved without edits in that encoding. Explicitly selected UTF-8 still requires valid UTF-8. Windows file change notifications can prompt for reload or automatically reload unmodified documents, depending on the monitoring mode.
 - **Editing and languages.** Advanced selection and line operations, conversion, sorting, alignment, and insertion. The editor supports language detection, folding, bookmarks, occurrence highlighting, completion, auto-indent, auto-pairing, and LaTeX input.
 - **Find and replace.** A modeless Find/Replace/Find in Files/Mark dialog supports plain text, extended escapes, regular expressions, counting, and search/replace in the current or all open documents. Ctrl+F focuses the Find field. Ctrl+H, Ctrl+Shift+F, and Ctrl+M open the other tabs. F7 shows results with folding, match highlighting, and navigation. The search dialog has English and Simplified Chinese labels. [Search UI](docs/SEARCH_MIGRATION.md)
 - **Directory search.** Windows thread pools run up to eight search workers with file filters, recursion, hidden-directory options, cancellation, and error counts. Open files are searched using their current buffers, including unsaved edits. Large decoded snapshots and dense match lists spill to temporary files, and the results pane displays matches in pages. Directory searches use the dialog's filters and traverse independently of `.gitignore`. Replacement runs one file at a time on the UI thread and preserves confirmation, encoding, atomic saves, and per-document undo. [File search](docs/FILE_SEARCH.md) · [Performance changes](docs/PERFORMANCE_CHANGES.md) · [Thread pools](docs/THREADING.md)
-- **UI and Windows integration.** The Window and Plugins menus and Plugins Admin use localized resources. The editor offers a configurable toolbar, a 13-part status bar, INI settings, autosave history, session restoration, run commands, and printing. **Settings → File Associations** registers extensions and embedded file type icons for the current user. Select MultiPad4 as the default handler in Windows Default Apps. [File type icons](res/icons/README.md)
+- **Sessions and Windows integration.** Enable **Settings → Restore Previous Session on Startup** to reopen tabs in order after a normal exit, including unsaved drafts and edits. Restored drafts and edits remain marked as modified. The editor offers a configurable toolbar, a 13-part status bar, INI settings, autosave history, run commands, and printing. The Window and Plugins menus and Plugins Admin use localized resources. **Settings → File Associations** registers extensions and embedded file type icons for the current user. Select MultiPad4 as the default handler in Windows Default Apps. [File type icons](res/icons/README.md)
 
 ### Language and style
 
@@ -33,21 +33,27 @@ In the existing warm-cache benchmark, the median time across five runs to open a
 
 See [On-demand editable documents](docs/MAPPED_EDITING.md) and [Parallel large-file search](docs/PARALLEL_SEARCH_EXPERIMENT.md) for implementation details, benchmark conditions, raw data, and compatibility limits.
 
-![Editable on-demand 5 GiB document](docs/images/mapped-editor-5GiB.png)
+### Bundled plugins
 
-### Bundled docking plugins
+The default build includes seven plugin DLLs. Set a plugin's CMake option to `OFF` to omit it.
 
-**Plugins → Matepath → File Browser** opens the Shell-based file browser. It supports back/forward/parent navigation, file filters, hidden files, sorting, manual refresh, locating the active document, and opening or activating tabs. The upstream directory API has a `MAX_PATH` limit, and loading icons in large directories can pause navigation. [Matepath plugin](docs/MATEPATH_MIGRATION.md)
+| Plugin | Features | CMake option |
+| --- | --- | --- |
+| Matepath | **Plugins → Matepath → File Browser** opens the Windows Shell browser. Navigate folders, filter or sort files, show hidden files, refresh, or locate the active document. Paths are subject to the upstream `MAX_PATH` limit, and icon loading can pause navigation in large folders. [Matepath plugin](docs/MATEPATH_MIGRATION.md) | `MULTIPAD4_BUILD_MATEPATH` |
+| OpenDocuments | **Plugins → OpenDocuments → Open Documents** shows the tab order, active document, and unsaved changes in a dockable list. Double-click an entry or press Enter to switch to it. [OpenDocuments plugin](docs/OPEN_DOCUMENTS_PLUGIN.md) | `MULTIPAD4_BUILD_OPEN_DOCUMENTS` |
+| Project | **Project → Edit Projects…** groups files and folders into projects. **Project → Project Pane** opens a dockable list for switching projects and opening members. Loading a folder opens its immediate files. [Project plugin](docs/PLUGINS.md#project-插件) | `MULTIPAD4_BUILD_PROJECT` |
+| Base64 | Encode and decode selections, including URL-safe encoding, hex output, and HTML-embedded images. | `MULTIPAD4_BUILD_BASE64` |
+| Action on Selection | Open selected paths or links, evaluate expressions, search online, and run custom actions. | `MULTIPAD4_BUILD_SELECTION_ACTIONS` |
+| Text Transliteration | Convert full-width and half-width text, Simplified and Traditional Chinese, Japanese kana, and other scripts. | `MULTIPAD4_BUILD_TEXT_TRANSLITERATION` |
+| Web Tools | Format or minify code, evaluate JavaScript expressions, and convert HTML entities and URL escapes. | `MULTIPAD4_BUILD_WEB_TOOLS` |
 
-**Plugins → OpenDocuments → Open Documents** opens a list synchronized with tab order, the active document, and unsaved changes. Double-click an entry or press Enter to switch to it. [OpenDocuments plugin](docs/OPEN_DOCUMENTS_PLUGIN.md)
-
-Both plugins are built as separate DLLs by default. They store and restore pane visibility, dock position and size, and floating coordinates in `plugins/Config/OpenDocuments.ini` and `plugins/Config/Matepath.ini`. To omit either plugin from a build, set `MULTIPAD4_BUILD_OPEN_DOCUMENTS=OFF` or `MULTIPAD4_BUILD_MATEPATH=OFF`.
+Matepath and OpenDocuments restore pane visibility, dock position and size, and floating coordinates from `plugins/Config/Matepath.ini` and `plugins/Config/OpenDocuments.ini`.
 
 ### Notepad++ plugins and plugin management
 
 Unicode x64 plugins are loaded from `plugins/<name>/<name>.dll` under the executable directory. The host provides plugin menus, shortcuts, notifications, message routing to the active document, and docking panes. Integration checks use real JsonTools, XMLTools, mimeTools, NppConverter, and NppExport DLLs.
 
-Plugins → Plugins Admin supports catalogue search and batch installation, updates, removal, disabling, and enabling. MultiPad4 performs the operations after closing the editor, verifies downloads with SHA-256, and restores the session on relaunch. Plugin management uses Windows networking APIs and requires a writable installation directory. Logs record failures and the location of any retained backups.
+**Plugins → Plugins Admin** supports catalogue search and batch installation, updates, removal, disabling, and enabling. After closing the editor and unloading plugin DLLs, MultiPad4 uses WinHTTP with Windows proxy settings to download packages over HTTPS, verifies them with SHA-256, and restores the session on relaunch. Plugin management requires a writable installation directory. Logs record failures and the location of any retained backups.
 
 The compatibility layer implements only part of the Notepad++ API. **A plugin's presence in the catalogue does not establish compatibility.** The catalogue is a pinned snapshot and does not refresh automatically over the network. External lexers, dual views, and the complete dark-theme API are among the features not provided. Loading diagnostics are written to `plugins/Config/MultiPad4-plugin-load.log`. See [PLUGINS.md](docs/PLUGINS.md) for the compatibility layer; the newer [PLUGIN_ADMIN.md](docs/PLUGIN_ADMIN.md) takes precedence for plugin management.
 
@@ -80,7 +86,7 @@ ctest --preset msvc-x64
 
 The `msvc-release` preset enables link-time optimization in Release builds. The local development wrappers and their setup are documented in [AGENTS.md](AGENTS.md).
 
-The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, `config/`, both bundled plugin DLLs with their notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
+The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, `config/`, all seven bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64 / OpenATL
 
@@ -123,20 +129,20 @@ With `BUILD_TESTING=ON`, CMake registers 14 tests and up to four more when Pytho
 | CTest name | Main coverage |
 |---|---|
 | `scintilla_line_index` | LF/CRLF/CR line counts and offsets across scalar/SIMD boundaries, with both line-index widths |
-| `fileio_roundtrip` | Encodings, Chinese/emoji, line endings, invalid input, and failed-save protection |
-| `editor_integration` | Real WTL/Scintilla windows, MDI isolation, commands/UI, search/replace, styles, settings, sessions, autosave, and Matepath |
+| `fileio_roundtrip` | Encodings, Chinese/emoji, line endings, lossless binary-file fallback, strict UTF-8, and failed-save protection |
+| `editor_integration` | WTL/Scintilla windows, MDI isolation, tab commands, search/replace, styles, settings, autosave, restoration of unsaved tabs, and bundled plugins |
 | `simd_boundaries` | Guard pages, random input, invalid/truncated encodings, line endings across blocks, and graphics tail boundaries |
 | `lazy_document` | Piece tree, random edits, snapshots, transactions, undo/redo, index reuse, and failed-save protection |
 | `large_file_integration` | On-demand view editing/saving, full-document search/replace, cancellation, encodings, and conversion to the full editor |
 | `file_search` | Serial/parallel consistency, directory filtering, encodings, regex, open-document handoff, and cancellation |
 | `single_instance_integration` | Process startup and single-instance/window reuse; skipped if a MultiPad4 window is already open |
-| `plugin_admin_worker` | Enable/disable/removal in isolated temporary directories, batch preflight checks, and rejection of invalid metadata |
+| `plugin_maintenance` | Enable/disable/removal in isolated temporary directories, batch rollback, failed downloads, and rejection of invalid metadata |
 | `thread_pool` | Task lifetime, exception propagation, nested work, and concurrency limits |
 | `lexer_configuration_baseline`, `lexer_behavior_baseline` | Language data and runtime lexer behavior against the pinned upstream baseline |
 | `configuration_integration` | XML language configuration, native themes, and style configurator |
 | `editor_without_plugins` | Editor and session behavior with plugin loading disabled |
 | `configuration_data_equivalence`, `lexer_inventory_coverage` (Python) | XML data and resource inventory consistency |
-| `bundled_pane_restart` (both bundled plugins enabled) | Docked, floating, and hidden pane layouts across process restarts |
+| `bundled_pane_restart` (Matepath and OpenDocuments enabled) | Docked, floating, and hidden pane layouts across process restarts |
 | `notepadpp_plugins` (five DLLs present at configure time) | Commands, panes, exports, and document routing for five real plugins |
 
 Generate the resource inventory, command-routing report, and rendered windows with:
