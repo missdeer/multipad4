@@ -74,9 +74,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     int count = 0;
     std::unique_ptr<wchar_t*, decltype(&LocalFree)> arguments(CommandLineToArgvW(GetCommandLineW(), &count), LocalFree);
     auto args = arguments.get();
-    if (count == 3 && wcscmp(args[1], L"--apply-update") == 0) {
+    if (count == 4 && wcscmp(args[1], L"--apply-update") == 0) {
         StartupLock lock;
-        return lock.Acquire() ? RunAppUpdateWorker(args[2]) : 1;
+        return lock.Acquire() ? RunAppUpdateWorker(args[2], args[3]) : 1;
     }
     const auto updateRestart = TakeAppUpdateRestart();
     if (count == 3 && wcscmp(args[1], L"--app-update-test") == 0) {
@@ -106,6 +106,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     int result = 0;
     std::optional<PluginMaintenance> pendingPluginMaintenance;
     std::unique_ptr<StagedAppUpdate> pendingUpdate;
+    std::filesystem::path updateSettingsPath;
     {
         MainFrame frame;
         StartupLock startupLock;
@@ -220,11 +221,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (!frame.IsWindow()) {
                 pendingPluginMaintenance = std::move(frame.pendingPluginMaintenance);
                 pendingUpdate = std::move(frame.appUpdater.ready);
+                if (pendingUpdate) updateSettingsPath = std::move(frame.settings.path);
             }
         }
     }
     Scintilla_ReleaseResources(); OleUninitialize();
     if (pendingPluginMaintenance) FinishPluginMaintenance(*pendingPluginMaintenance);
-    if (pendingUpdate) LaunchAppUpdateWorker(*pendingUpdate);
+    if (pendingUpdate) LaunchAppUpdateWorker(*pendingUpdate, updateSettingsPath);
     return result;
 }

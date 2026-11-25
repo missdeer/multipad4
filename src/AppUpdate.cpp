@@ -186,9 +186,10 @@ void StartProcess(const fs::path& exe, std::wstring arguments) {
     CloseHandle(process.hProcess);
 }
 
-void RestartAfterUpdate(const fs::path& directory) {
+void RestartAfterUpdate(const fs::path& directory, const fs::path& settingsPath) {
     const auto restart = std::to_wstring(GetCurrentProcessId()) + L" " + directory.filename().native();
-    if (!SetEnvironmentVariableW(CleanupVariable, restart.c_str()))
+    if (!SetEnvironmentVariableW(L"MULTIPAD4_SETTINGS", settingsPath.c_str()) ||
+        !SetEnvironmentVariableW(CleanupVariable, restart.c_str()))
         throw std::runtime_error("Cannot prepare update restart.");
     StartProcess(directory.parent_path() / AppFilename, {});
 }
@@ -273,19 +274,21 @@ void AppUpdater::Poll(MainFrame& frame) {
     }
 }
 
-void LaunchAppUpdateWorker(StagedAppUpdate& update) {
+void LaunchAppUpdateWorker(StagedAppUpdate& update, const fs::path& settingsPath) {
     try {
-        StartProcess(update.directory / L"runner" / AppFilename, L"--apply-update " + std::to_wstring(GetCurrentProcessId()));
+        StartProcess(update.directory / L"runner" / AppFilename, L"--apply-update " +
+            std::to_wstring(GetCurrentProcessId()) + L" \"" + settingsPath.native() + L"\"");
     } catch (const std::exception& error) {
         ShowUpdateError(error);
-        try { RestartAfterUpdate(update.directory); }
+        try { RestartAfterUpdate(update.directory, settingsPath); }
         catch (const std::exception& restartError) { ShowUpdateError(restartError); }
     }
     update.handedOff = true;
 }
 
-int RunAppUpdateWorker(const wchar_t* parentPid) {
+int RunAppUpdateWorker(const wchar_t* parentPid, const fs::path& settingsPath) {
     try {
+        if (!settingsPath.is_absolute()) throw std::runtime_error("Invalid update settings path.");
         const auto runner = ExecutablePath().parent_path();
         const auto directory = runner.parent_path();
         const auto root = directory.parent_path();
@@ -306,7 +309,7 @@ int RunAppUpdateWorker(const wchar_t* parentPid) {
         }
         if (!keepStaging) {
             try {
-                RestartAfterUpdate(directory);
+                RestartAfterUpdate(directory, settingsPath);
             } catch (const std::exception& error) {
                 throw std::runtime_error(std::string(error.what()) + "\nUpdate files: " + files::ToUtf8(directory.wstring()));
             }

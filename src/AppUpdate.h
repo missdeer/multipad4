@@ -34,8 +34,8 @@ struct AppUpdater {
     void Poll(MainFrame& frame);
 };
 
-int RunAppUpdateWorker(const wchar_t* parentPid);
-void LaunchAppUpdateWorker(StagedAppUpdate& update);
+int RunAppUpdateWorker(const wchar_t* parentPid, const std::filesystem::path& settingsPath);
+void LaunchAppUpdateWorker(StagedAppUpdate& update, const std::filesystem::path& settingsPath);
 std::optional<AppUpdateRestart> TakeAppUpdateRestart();
 std::filesystem::path UpdateSessionPath(const MainFrame& frame, const std::filesystem::path& stage);
 void CleanUpAppUpdate(const AppUpdateRestart& restart);
