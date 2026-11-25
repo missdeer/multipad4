@@ -28,6 +28,17 @@ int main() {
     auto directory = std::filesystem::temp_directory_path() / (L"MultiPad4-lazy-" + std::to_wstring(GetCurrentProcessId()));
     try {
         std::filesystem::create_directories(directory); auto path = directory / L"input.txt";
+        for (const auto encoding : {files::Encoding::Utf8, files::Encoding::Utf16LEPlain, files::Encoding::Utf16BEPlain}) {
+            const auto raw = [&](const std::string& value) { return files::Encode({value, encoding}); };
+            const auto unit = encoding == files::Encoding::Utf8 ? 1ull : 2ull;
+            files::WriteAtomic(path, {"a\r\nb\nc\rd\r\n", encoding});
+            auto file = std::make_shared<files::MappedFile>(path, nullptr, true); large::Document document(file, encoding);
+            // Split every CR/LF pair across source/journal pieces without changing bytes.
+            document.Replace(2 * unit, unit, raw("\n")); document.Replace(9 * unit, unit, raw("\n"));
+            const std::vector<size_t> expected{0, 3, 5, 7, 10};
+            for (int pass = 0; pass < 2; ++pass) for (const auto line : {4u, 1u, 3u, 0u, 2u, 8u})
+                Check(large::Document::PositionFromLine(document.Capture(), line) == (line < expected.size() ? expected[line] * unit : document.Size()));
+        }
         files::WriteAtomic(path, {"first\r\nsecond\rlast\n"});
         {
             auto file = std::make_shared<files::MappedFile>(path, nullptr, true);
@@ -130,13 +141,17 @@ int main() {
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf16LEPlain, files::Encoding::Utf16BEPlain}) {
             const auto width = encoding == files::Encoding::Utf8 ? 1u : 2u;
             const size_t boundary = 64 * 1024 * 1024;
-            files::WriteAtomic(path, {std::string((boundary + 2 * 1024 * 1024) / width, 'x'), encoding});
+            std::string initial((boundary + 2 * 1024 * 1024) / width, 'x'); initial.front() = '\n';
+            files::WriteAtomic(path, {initial, encoding}); initial.clear(); initial.shrink_to_fit();
             auto file = std::make_shared<files::MappedFile>(path, nullptr, true); large::Document document(file, encoding);
             auto raw = [&](const char* text) { return files::Encode({text, encoding}); };
             document.Replace(boundary - 5 * width, 40 * width, raw("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
             document.Replace(boundary + 256 * 1024 - 4 * width, 12 * width, raw("NeedleMarker"));
             document.Replace(2 * 1024 * 1024, 12 * width, raw("NeedleMarker"));
             document.Replace(boundary + 1024 * 1024, 12 * width, raw("NeedleMarker"));
+            const auto beforeNearStart = document.Statistics();
+            Check(large::Document::PositionFromLine(document.Capture(), 1) == width);
+            Check(document.Statistics().sourceBytesRead - beforeNearStart.sourceBytesRead <= 65536 + 4);
             const auto original = document.Capture();
             for (bool matchCase : {false, true}) for (auto pattern : {L"aaa", L"NeedleMarker", L"missing"}) {
                 large::SearchOptions options{pattern, false, matchCase}; options.workers = 1;
