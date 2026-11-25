@@ -264,11 +264,13 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
             return true;
         }
         PrepareFileSave(*this, document);
-        if (document.LargeFile()) document.SaveStreaming(path);
+        if (document.LargeFile() && (document.encoding == files::Encoding::Utf8 || document.encoding == files::Encoding::Utf8Bom
+            || document.encoding == files::Encoding::Utf16LE || document.encoding == files::Encoding::Utf16BE
+            || document.encoding == files::Encoding::Utf16LEPlain || document.encoding == files::Encoding::Utf16BEPlain)) document.SaveStreaming(path);
         else {
-            files::Text output;
+            std::string output;
             if (!PrepareEncodingSave(*this, document, output, copy)) return false;
-            files::WriteAtomic(path, output);
+            files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) { consume(output); });
         }
         if (copy) return true; // A copy must retain path, lexer, encoding and dirty state.
         document.path = path; document.ConfigureLexer(); document.Send(SCI_SETSAVEPOINT); document.encodingDirty = false;

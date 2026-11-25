@@ -62,6 +62,8 @@ Encoding FromCodePage(unsigned codePage);
 unsigned CodePage(Encoding encoding);
 bool ParseEncodingName(const std::wstring& name, Encoding& encoding);
 std::string Encode(const Text& text);
+// Synchronous: borrowed UTF-8 bytes remain owned by text until consume returns.
+void EncodeChunks(const Text& text, const ChunkConsumer& consume);
 std::string EncodeLossy(const Text& text);
 Text Decode(std::string_view bytes, Encoding encoding, bool stripBom = true);
 struct FileTimes { unsigned long long creation = 0, access = 0, write = 0; };

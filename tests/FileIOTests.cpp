@@ -1,5 +1,6 @@
 #include "FileIO.h"
 #include "FileReadBenchmark.h"
+#include "SaveEncodingBenchmark.h"
 #include <windows.h>
 #include <fstream>
 #include <iostream>
@@ -8,6 +9,7 @@ void Require(bool ok, const char* message) { if (!ok) throw std::runtime_error(m
 int wmain(int argc, wchar_t** argv) {
     if (argc == 3) {
         try {
+            if (wcscmp(argv[1], L"--benchmark-save") == 0) return RunSaveEncodingBenchmark(argv[2]);
             if (wcscmp(argv[1], L"--benchmark-read") == 0) return RunFileReadBenchmark(argv[2]);
             if (wcscmp(argv[1], L"--benchmark-read-paired") == 0) return RunPairedFileReadBenchmark(argv[2]);
         } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
@@ -81,6 +83,25 @@ int wmain(int argc, wchar_t** argv) {
         bool producerFailed = false;
         try { files::WriteAtomicChunks(path, [](const files::ChunkConsumer& consume) { consume("partial"); throw std::runtime_error("injected"); }); } catch (...) { producerFailed = true; }
         Require(producerFailed && files::Read(path).utf8 == "retained", "Streaming failure damaged destination");
+        for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE,
+            files::Encoding::Utf16BE, files::Encoding::Utf16LEPlain, files::Encoding::Utf16BEPlain, files::FromCodePage(1252)}) {
+            const files::Text input{std::string("a\0café", 7), encoding};
+            std::string chunks;
+            files::EncodeChunks(input, [&](std::string_view bytes) { chunks += bytes; });
+            Require(chunks == files::Encode(input), "Chunk encoder changed encoded bytes");
+        }
+        {
+            files::Text input{"borrowed UTF-8", files::Encoding::Utf8};
+            files::EncodeChunks(input, [&](std::string_view bytes) {
+                Require(bytes.data() == input.utf8.data(), "UTF-8 encoding copied the input");
+            });
+            input.utf8 = "\xF0\x9F";
+            size_t delivered = 0;
+            bool rejected = false;
+            try { files::EncodeChunks(input, [&](std::string_view bytes) { delivered += bytes.size(); }); }
+            catch (const std::runtime_error&) { rejected = true; }
+            Require(rejected && delivered == 0, "Invalid UTF-8 reached the writer");
+        }
         const std::string sample = "hello\r\n中文 😀\nlast\r";
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE, files::Encoding::Utf16BE}) {
             files::WriteAtomic(path, {sample, encoding});
