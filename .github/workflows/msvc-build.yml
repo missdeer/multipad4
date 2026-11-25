@@ -67,7 +67,7 @@ jobs:
             call "C:\Program Files (x86)\Intel\oneAPI\compiler\latest\env\vars.bat" vs2022
             if errorlevel 1 exit /b 1
           )
-          cmake -S . -B cmake-${{ matrix.toolchain.id }}-build -G Ninja -DCMAKE_C_COMPILER=${{ matrix.toolchain.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=${{ matrix.toolchain.rc }} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DMULTIPAD4_SIMD=${{ matrix.simd }}"
+          cmake -S . -B cmake-${{ matrix.toolchain.id }}-build -G Ninja -DCMAKE_C_COMPILER=${{ matrix.toolchain.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=${{ matrix.toolchain.rc }} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DMULTIPAD4_RELEASE_TOOLCHAIN=${{ matrix.toolchain.id }}" "-DMULTIPAD4_SIMD=${{ matrix.simd }}"
           if errorlevel 1 exit /b 1
           cmake --build cmake-${{ matrix.toolchain.id }}-build --target multipad4 --parallel 2
           if errorlevel 1 exit /b 1
@@ -161,7 +161,7 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.toolchain.compiler }}
           -DCMAKE_CXX_COMPILER=${{ matrix.toolchain.cxx }} -DCMAKE_RC_COMPILER=windres
           -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-          -DMULTIPAD4_SIMD=${{ matrix.simd }}
+          -DMULTIPAD4_SIMD=${{ matrix.simd }} -DMULTIPAD4_RELEASE_TOOLCHAIN=${{ matrix.toolchain.id }}
 
       - name: Build multipad4
         run: cmake --build cmake-${{ matrix.toolchain.id }}-build --target multipad4 --parallel 2

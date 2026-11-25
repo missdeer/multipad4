@@ -241,6 +241,17 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
         untitled->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("?"));
         named->SetEncoding(files::Encoding::Utf16LE);
         require(untitled->Modified() && mappedTab->Modified() && named->Modified());
+        const auto updateSnapshot = directory / L"update.session";
+        frame.settings.Set(ID_RESTORE_EXIT_SESSION, 0);
+        frame.exitSessionEligible = false;
+        require(!SaveExitSession(frame));
+        SaveSessionSnapshot(frame, updateSnapshot);
+        while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1, false));
+        RestoreSessionSnapshot(frame, updateSnapshot);
+        require(frame.tabs.GetPageCount() == 3 && frame.Active()->Text() == body + "!?");
+        require(frame.Active()->Modified() && !frame.exitSessionEligible);
+        frame.settings.Set(ID_RESTORE_EXIT_SESSION, 1);
+        frame.exitSessionEligible = true;
         require(SaveExitSession(frame, ExitSessionContents::SavedOnly));
         while (frame.tabs.GetPageCount()) require(frame.Close(frame.tabs.GetPageCount() - 1, false));
         RestoreExitSession(frame);

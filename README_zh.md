@@ -6,6 +6,8 @@
 
 从当前源码构建的程序在“关于”对话框中显示 `v0.4`，Windows 可执行文件的版本信息为 `0.4.0.0`。
 
+官方发布版本会自动检查更新。可通过 **帮助 → 检查更新** 手动检查，或通过 **帮助 → 自动检查更新** 更改设置。确认更新后，MultiPad4 将使用 GitHub 提供的 SHA-256 校验与当前编译器和 SIMD 指令集匹配的安装包，然后关闭并重启。安装目录需要可写。
+
 与 notepad4 的行为一致性仍在逐项验收。参见[项目范围](docs/PROJECT_SCOPE.md)、[迁移记录](docs/MIGRATION_STATUS.md)和[验收清单](docs/MIGRATION_ACCEPTANCE.md)。
 
 ## 当前功能

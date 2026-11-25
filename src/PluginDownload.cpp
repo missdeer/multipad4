@@ -4,11 +4,12 @@
 #include <winhttp.h>
 #include <array>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <system_error>
 
 namespace {
-constexpr wchar_t UserAgent[] = L"MultiPad4-PluginAdmin";
+constexpr wchar_t UserAgent[] = L"MultiPad4";
 constexpr DWORD TimeoutMs = 30000;
 constexpr size_t ChunkSize = 64 * 1024;
 
@@ -21,7 +22,7 @@ void CheckHttp(BOOL result, const char* action) {
     if (!result) throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), action);
 }
 
-void Download(const std::wstring& url, std::ofstream& output, std::wstring& host) {
+void Download(const std::wstring& url, std::ostream& output, std::wstring& host, size_t maximumBytes) {
     URL_COMPONENTSW parts{};
     parts.dwStructSize = sizeof(parts);
     parts.dwHostNameLength = parts.dwUrlPathLength = parts.dwExtraInfoLength = static_cast<DWORD>(-1);
@@ -54,20 +55,30 @@ void Download(const std::wstring& url, std::ofstream& output, std::wstring& host
         DWORD read = 0;
         CheckHttp(WinHttpReadData(request.value, buffer.data(), static_cast<DWORD>(buffer.size()), &read), "WinHttpReadData");
         if (!read) return;
+        if (read > maximumBytes) throw std::runtime_error("Download exceeds the size limit.");
+        maximumBytes -= read;
         output.write(buffer.data(), read);
     }
 }
 }
 
-void DownloadPluginPackage(const std::wstring& url, const std::filesystem::path& destination) {
+void DownloadPackage(const std::wstring& url, const std::filesystem::path& destination, size_t maximumBytes) {
     std::wstring host;
     try {
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);
         output.open(destination, std::ios::binary);
-        Download(url, output, host);
+        Download(url, output, host, maximumBytes);
         output.close();
     } catch (const std::exception& error) {
         throw std::runtime_error("Host " + files::ToUtf8(host) + ": " + error.what());
     }
+}
+
+std::string DownloadPackageBytes(const std::wstring& url, size_t maximumBytes) {
+    std::ostringstream output;
+    output.exceptions(std::ios::failbit | std::ios::badbit);
+    std::wstring host;
+    Download(url, output, host, maximumBytes);
+    return std::move(output).str();
 }

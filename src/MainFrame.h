@@ -11,6 +11,7 @@
 #include "PluginHost.h"
 #include "PluginAdmin.h"
 #include "PluginMaintenance.h"
+#include "AppUpdate.h"
 class MainFrame;
 enum class SaveMode { Normal, As, Copy };
 class MainFrame : public WinWindow {
@@ -23,6 +24,7 @@ public:
     PluginHost plugins;
     PluginAdmin pluginAdmin;
     std::optional<PluginMaintenance> pendingPluginMaintenance;
+    AppUpdater appUpdater;
     DocumentTabStrip tabStrip;
     EditorTabs tabs;
     DocumentTabStrip& GetMDITabCtrl() { return tabStrip; }

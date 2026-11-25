@@ -1,5 +1,6 @@
 #include "PluginMaintenance.h"
 #include "PluginDownload.h"
+#include "PackageInstall.h"
 #include "FileIO.h"
 #include "../3rdparty/miniz/miniz.h"
 #include <windows.h>
@@ -31,6 +32,9 @@ bool ValidFilename(std::wstring_view name) {
         std::wstring_view(L"123456789\u00b9\u00b2\u00b3").find(stem.back()) != stem.npos);
 }
 
+}
+
+namespace packages {
 fs::path NewDirectory(const fs::path& parent, const wchar_t* prefix) {
     GUID guid;
     if (FAILED(CoCreateGuid(&guid))) throw std::runtime_error("Cannot generate a temporary directory name.");
@@ -47,14 +51,15 @@ bool DirectoryExists(const fs::path& path) {
     if (attributes == INVALID_FILE_ATTRIBUTES) {
         const auto error = GetLastError();
         if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) return false;
-        throw fs::filesystem_error("Cannot inspect plugin directory", path,
+        throw fs::filesystem_error("Cannot inspect package directory", path,
             std::error_code(static_cast<int>(error), std::system_category()));
     }
     if ((attributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)) != FILE_ATTRIBUTE_DIRECTORY)
-        throw std::runtime_error("Expected a regular plugin directory: " + files::ToUtf8(path.wstring()));
+        throw std::runtime_error("Expected a regular directory: " + files::ToUtf8(path.wstring()));
     return true;
 }
 
+namespace {
 void RejectReparseEntries(const fs::path& path) {
     for (const auto& entry : fs::recursive_directory_iterator(path)) {
         const auto attributes = GetFileAttributesW(entry.path().c_str());
@@ -166,29 +171,26 @@ void VerifyDll(const fs::path& dll) {
         throw std::runtime_error("Package does not contain an x64 plugin DLL.");
 }
 
-fs::path StagePackage(const PluginPackage& package, const fs::path& directory) {
+}
+
+fs::path StageZip(const std::wstring& url, const std::wstring& hash, const fs::path& directory, size_t maximumBytes) {
     const auto zip = directory / L"package.zip";
-    if (package.hash.size() != 64 || package.hash.find_first_not_of(L"0123456789abcdefABCDEF") != package.hash.npos ||
-        package.url.size() < 8 || !SameName(std::wstring_view(package.url).substr(0, 8), L"https://") ||
-        package.url.find(L'\0') != package.url.npos)
+    if (hash.size() != 64 || hash.find_first_not_of(L"0123456789abcdefABCDEF") != hash.npos ||
+        !SameName(std::wstring_view(url).substr(0, 8), L"https://") || url.find(L'\0') != url.npos)
         throw std::runtime_error("Invalid package metadata.");
-    DownloadPluginPackage(package.url, zip);
-    VerifyHash(zip, package.hash);
+    DownloadPackage(url, zip, maximumBytes);
+    return VerifyAndExtractZip(zip, hash, directory);
+}
+
+fs::path VerifyAndExtractZip(const fs::path& zip, const std::wstring& hash, const fs::path& directory) {
+    VerifyHash(zip, hash);
     auto extracted = directory / L"contents";
     fs::create_directory(extracted);
     ExtractZip(zip, extracted);
-    const auto dll = package.folder + L".dll";
-    if (!fs::exists(extracted / dll)) extracted /= package.folder;
-    VerifyDll(extracted / dll);
     return extracted;
 }
 
-struct PluginMove {
-    fs::path destination, source, backup;
-    bool installed = false, backedUp = false;
-};
-
-void CommitMoves(std::vector<PluginMove>& moves, const fs::path& staging, bool& keepStaging) {
+void CommitMoves(std::vector<FileMove>& moves, const fs::path& staging, bool& keepStaging) {
     try {
         for (auto& move : moves) {
             fs::create_directories(move.destination.parent_path());
@@ -215,6 +217,18 @@ void CommitMoves(std::vector<PluginMove>& moves, const fs::path& staging, bool& 
 }
 }
 
+namespace {
+using namespace packages;
+
+fs::path StagePackage(const PluginPackage& package, const fs::path& directory) {
+    auto extracted = StageZip(package.url, package.hash, directory);
+    const auto dll = package.folder + L".dll";
+    if (!fs::exists(extracted / dll)) extracted /= package.folder;
+    VerifyDll(extracted / dll);
+    return extracted;
+}
+}
+
 bool ValidPluginFolder(const std::wstring& name) {
     return ValidFilename(name) && !SameName(name, L"Config") && !SameName(name, L"disabled") && !SameName(name, L"APIs");
 }
@@ -229,7 +243,7 @@ void ExecutePluginMaintenance(const PluginMaintenance& task) {
     const auto staging = NewDirectory(root, L".multipad4-stage-");
     bool keepStaging = false;
     try {
-        std::vector<PluginMove> moves;
+        std::vector<FileMove> moves;
         auto compare = [](const std::wstring& a, const std::wstring& b) {
             return CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_LESS_THAN;
         };
@@ -245,7 +259,7 @@ void ExecutePluginMaintenance(const PluginMaintenance& task) {
                 const auto& parent = package.disabled ? disabled : root;
                 const auto current = parent / name;
                 const bool exists = DirectoryExists(parent) && DirectoryExists(current);
-                PluginMove move{current, {}, {}};
+                FileMove move{current, {}, {}};
                 switch (task.operation) {
                 case PluginOperation::Install:
                     if (exists) throw std::runtime_error("Plugin already exists.");

@@ -8,5 +8,8 @@ void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bo
 // Missing/unreadable files are reported and skipped, never recreated as blank files.
 void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path);
 enum class ExitSessionContents { IncludeUnsaved, SavedOnly };
+void SaveSessionSnapshot(MainFrame& frame, const std::filesystem::path& path,
+    ExitSessionContents contents = ExitSessionContents::IncludeUnsaved);
+void RestoreSessionSnapshot(MainFrame& frame, const std::filesystem::path& path);
 bool SaveExitSession(MainFrame& frame, ExitSessionContents contents = ExitSessionContents::IncludeUnsaved);
 void RestoreExitSession(MainFrame& frame);
