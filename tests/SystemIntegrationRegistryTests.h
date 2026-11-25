@@ -100,6 +100,24 @@ inline void RunSystemIntegrationRegistryTests() {
     } fixture;
     require(RegCreateKeyExW(HKEY_CURRENT_USER, fixture.path.c_str(), 0, nullptr, 0, KEY_ALL_ACCESS,
         nullptr, &fixture.key, nullptr) == ERROR_SUCCESS);
+    // Read the helper's embedded manifest without launching an elevated process.
+    wchar_t module[32768]{};
+    const DWORD length = GetModuleFileNameW(nullptr, module, _countof(module));
+    require(length && length < _countof(module));
+    const auto helper = std::filesystem::path(module).replace_filename(NotepadReplacementHelper);
+    ACTCTXW activation{};
+    activation.cbSize = sizeof(activation);
+    activation.dwFlags = ACTCTX_FLAG_RESOURCE_NAME_VALID;
+    activation.lpSource = helper.c_str();
+    activation.lpResourceName = MAKEINTRESOURCEW(1);
+    const HANDLE context = CreateActCtxW(&activation);
+    require(context != INVALID_HANDLE_VALUE);
+    ACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION runLevel{};
+    const BOOL queried = QueryActCtxW(0, context, nullptr, RunlevelInformationInActivationContext,
+        &runLevel, sizeof(runLevel), nullptr);
+    ReleaseActCtx(context);
+    require(queried && runLevel.RunLevel == ACTCTX_RUN_LEVEL_REQUIRE_ADMIN && !runLevel.UiAccess);
+
     const std::wstring executable = L"C:\\MultiPad4 Registry Test\\multipad4.exe";
     const std::wstring command = L"\"" + executable + L"\" /z";
     auto setDword = [&](const wchar_t* name, DWORD value) {

@@ -97,6 +97,20 @@ set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
   "${PROJECT_SOURCE_DIR}/config/themes/dark.xml")
 set(MULTIPAD4_OUTPUT_NAME "multipad4" CACHE STRING "Executable basename for local validation builds")
 set_target_properties(multipad4 PROPERTIES OUTPUT_NAME "${MULTIPAD4_OUTPUT_NAME}")
+
+add_executable(multipad4-registry WIN32 tools/RegistryHelper.cpp tools/RegistryHelper.rc src/NotepadReplacement.cpp)
+set_property(SOURCE tools/RegistryHelper.rc APPEND PROPERTY OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/tools/RegistryHelper.manifest")
+target_include_directories(multipad4-registry PRIVATE src tools)
+target_compile_definitions(multipad4-registry PRIVATE "MULTIPAD4_EDITOR_FILENAME=L\"$<TARGET_FILE_NAME:multipad4>\"")
+target_compile_options(multipad4-registry PRIVATE ${MULTIPAD4_WARNINGS})
+target_link_libraries(multipad4-registry PRIVATE advapi32)
+if(MSVC)
+  target_link_options(multipad4-registry PRIVATE /MANIFEST:NO)
+else()
+  target_link_options(multipad4-registry PRIVATE -municode)
+endif()
+add_dependencies(multipad4 multipad4-registry)
+
 target_include_directories(multipad4 PRIVATE src)
 target_include_directories(multipad4 PRIVATE "${NOTEPAD4_SOURCE_DIR}" "${NOTEPAD4_SOURCE_DIR}/EditLexers")
 set_source_files_properties("${PROJECT_BINARY_DIR}/Notepad4Resources.rc" PROPERTIES
@@ -231,5 +245,5 @@ endif()
 add_custom_target(multipad_configuration ALL
   COMMAND "${CMAKE_COMMAND}" -E copy_directory "${PROJECT_SOURCE_DIR}/config" "$<TARGET_FILE_DIR:multipad4>/config")
 add_dependencies(multipad4 multipad_configuration)
-install(TARGETS multipad4 RUNTIME DESTINATION .)
+install(TARGETS multipad4 multipad4-registry RUNTIME DESTINATION .)
 install(DIRECTORY config DESTINATION .)
