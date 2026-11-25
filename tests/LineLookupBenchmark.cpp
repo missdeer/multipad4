@@ -1,5 +1,5 @@
 #define MULTIPAD4_LINE_BENCHMARK
-bool lineLookupBaseline = false;
+namespace large { bool lineLookupBaseline = false; }
 #include "../src/LazyDocument.cpp"
 #include <fstream>
 #include <iostream>
@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
         std::ofstream out(argc > 1 ? argv[1] : "line-lookup.csv"); out << "variant,state,run,elapsed_ms,source_bytes_read,indexed_blocks,checksum\n";
         for (bool baseline : {true, false}) for (bool warm : {false, true}) for (int run = 0; run < 5; ++run) {
             auto file = std::make_shared<files::MappedFile>(path, nullptr, true); large::Document document(file, files::Encoding::Utf8);
-            auto snapshot = document.Capture(); lineLookupBaseline = baseline;
+            auto snapshot = document.Capture(); large::lineLookupBaseline = baseline;
             if (warm) large::Document::LineCount(snapshot);
             auto before = document.Statistics(); const auto begin = std::chrono::steady_clock::now(); uint64_t checksum = 0;
             std::mt19937 random(12345);
