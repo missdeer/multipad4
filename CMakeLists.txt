@@ -143,6 +143,9 @@ endif()
 target_link_libraries(multipad4 PRIVATE multipad_files multipad_plugin_maintenance notepad4_scintilla comctl32 comdlg32 shlwapi shell32 ole32 oleaut32 uuid xmllite psapi uxtheme imm32 crypt32 version)
 set_target_properties(multipad4 PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 if(BUILD_TESTING)
+  add_executable(reverse_search_tests tests/ReverseSearchTests.cpp)
+  target_link_libraries(reverse_search_tests PRIVATE multipad_files psapi)
+  add_test(NAME reverse_search COMMAND reverse_search_tests)
   # Development baseline only. The product must never generate its defaults
   # from this target during an ordinary build or overwrite reviewed XML.
   add_executable(lexer_baseline_export tools/ExportLexerBaseline.cpp src/CompletionEngine.cpp ${LEXER_CONFIGS})

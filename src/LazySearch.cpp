@@ -221,6 +221,9 @@ struct Search::Impl {
     boost::wregex expression;
     std::string nativeNeedle;
     bool fastLiteral;
+    bool fixedRegex = false;
+    std::unique_ptr<HitArchive> reverseRegex;
+    Position reverseLower = 0, reverseUpper = 0;
     std::string literalBytes;
     Position literalBegin = 0;
     std::wstring literalWide;
@@ -306,12 +309,66 @@ struct Search::Impl {
             cursor = next; literalBytes.clear();
         }
     }
+    std::optional<SearchHit> ReverseLiteral(Position begin, Position end) {
+        const auto halo = Halo();
+        for (;;) {
+            reader.Check();
+            if (end <= begin || options.pattern.empty()) return {};
+            if (literalBytes.empty() || end <= literalBegin || end > literalBegin + literalBytes.size() ||
+                (literalBegin > begin && end - literalBegin <= halo + 4)) {
+                auto first = end - begin > 1024 * 1024 ? end - 1024 * 1024 : begin;
+                first = reader.dbcs && first ? reader.Previous(first) : reader.Align(first);
+                LoadLiteral(first, end);
+            }
+            const auto lower = (std::max)(begin, literalBegin);
+            auto acceptable = [&](Position first, Position last) {
+                return first >= lower && last <= end && first % reader.width == 0 &&
+                    ((!options.wholeWord && !options.wordStart) || !reader.WordBefore(first)) &&
+                    (!options.wholeWord || !reader.Word(last));
+            };
+            if (fastLiteral || asciiLiteral) {
+                const auto& bytes = asciiLiteral ? foldedBytes : literalBytes;
+                const auto& needle = asciiLiteral ? asciiNeedle : nativeNeedle;
+                if (end - literalBegin >= needle.size()) {
+                    auto found = bytes.rfind(needle, static_cast<size_t>(end - literalBegin - needle.size()));
+                    while (found != std::string::npos) {
+                        const auto first = literalBegin + found, last = first + needle.size();
+                        if (first < lower) break;
+                        if (acceptable(first, last)) return SearchHit{first, last, {{first, last, true}}};
+                        if (!found) break; found = bytes.rfind(needle, found - 1);
+                    }
+                }
+            } else {
+                auto index = [&](Position position) {
+                    return reader.width == 2 ? static_cast<size_t>((position - literalBegin) / 2) : literalAscii ? static_cast<size_t>(position - literalBegin) :
+                        static_cast<size_t>(std::lower_bound(wideOffsets.begin(), wideOffsets.end(), position - literalBegin) - wideOffsets.begin());
+                };
+                const auto first = index(lower); auto last = index(end);
+                while (last > first) {
+                    const auto found = FindStringOrdinal(FIND_FROMEND, literalWide.data() + first, static_cast<int>(last - first),
+                        options.pattern.data(), static_cast<int>(options.pattern.size()), !options.matchCase);
+                    if (found < 0) break;
+                    const auto at = first + found, finish = at + options.pattern.size();
+                    const auto start = LiteralOffset(at), stop = LiteralOffset(finish);
+                    if (acceptable(start, stop)) return SearchHit{start, stop, {{start, stop, true}}};
+                    last = finish - 1;
+                }
+            }
+            if (literalBegin <= begin) return {};
+            const auto overlapEnd = reader.Align(literalBegin + halo);
+            const auto next = reader.Advance(reader.Previous(overlapEnd), false);
+            if (next <= begin || next >= end) throw std::runtime_error("Invalid reverse search block boundary.");
+            end = next; literalBytes.clear();
+        }
+    }
     Impl(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions value, const std::atomic<bool>* cancel, bool independentReads) : reader(std::move(snapshot), encoding, cancel, independentReads), options(std::move(value)), fastLiteral(!options.regex && options.matchCase && !options.wholeWord && !options.wordStart && !reader.dbcs) {
         if (options.pattern.size() > INT_MAX) throw std::runtime_error("Search expression is too long.");
         try { boost::wregex::flag_type flags = options.regex ? boost::wregex::ECMAScript : boost::wregex::literal;
             if (!options.matchCase) flags |= boost::wregex::icase;
             if (!options.pattern.empty()) expression.assign(options.pattern, flags);
         } catch (const boost::regex_error& error) { throw std::runtime_error(std::string("Invalid regular expression: ") + error.what()); }
+        fixedRegex = options.regex && !options.pattern.empty() &&
+            options.pattern.find_first_of(L"\\.^$|?*+()[]{}") == std::wstring::npos;
         if (!options.regex) {
             nativeNeedle = files::Encode({files::ToUtf8(options.pattern), Plain(encoding)});
             if (reader.width == 1 && std::all_of(options.pattern.begin(), options.pattern.end(), [](wchar_t c) { return c < 128; })) {
@@ -319,6 +376,27 @@ struct Search::Impl {
                 if (!options.matchCase) for (char& c : asciiNeedle) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
             }
         }
+    }
+    std::optional<SearchHit> ReverseFixedRegex(Position lower, Position upper) {
+        // Literal regexes have no upper-bound dependencies, but retain regex non-overlap.
+        if (!reverseRegex || lower != reverseLower || upper > reverseUpper) {
+            auto hits = std::make_unique<HitArchive>();
+            for (auto position = lower; position <= upper;) {
+                auto hit = Forward(position, upper); if (!hit) break;
+                hits->Append(*hit); position = hit->end;
+            }
+            reverseRegex = std::move(hits); reverseLower = lower; reverseUpper = upper;
+        }
+        reader.Check();
+        size_t first = 0, last = reverseRegex->Count();
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
+            if (reverseRegex->Page(middle, 1)[0].end <= upper) first = middle + 1;
+            else last = middle;
+        }
+        if (!first) return {};
+        auto hit = reverseRegex->Page(first - 1, 1)[0];
+        hit.captures.push_back({hit.start, hit.end, true}); return hit;
     }
     static constexpr Position ParallelBlock = 64 * 1024 * 1024;
     unsigned Workers(Position length) const {
@@ -403,7 +481,7 @@ struct Search::Impl {
 };
 Search::Search(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions options, const std::atomic<bool>* cancel, bool independentReads) : impl(std::make_unique<Impl>(std::move(snapshot), encoding, std::move(options), cancel, independentReads)) {}
 Search::~Search() = default;
-void Search::Rebase(Document::Snapshot snapshot) { impl->reader.snapshot = std::move(snapshot); if (impl->reader.session) impl->reader.session = std::make_unique<Document::ReadSession>(impl->reader.snapshot); impl->reader.cache = {}; impl->reader.checkpoints = {{0, 0}}; impl->reader.boundaries.clear(); impl->literalBytes.clear(); impl->literalWide.clear(); impl->wideOffsets.clear(); }
+void Search::Rebase(Document::Snapshot snapshot) { impl->reader.snapshot = std::move(snapshot); if (impl->reader.session) impl->reader.session = std::make_unique<Document::ReadSession>(impl->reader.snapshot); impl->reader.cache = {}; impl->reader.checkpoints = {{0, 0}}; impl->reader.boundaries.clear(); impl->literalBytes.clear(); impl->literalWide.clear(); impl->wideOffsets.clear(); impl->reverseRegex.reset(); }
 Position Search::Advance(Position position, bool backwards) const { return impl->reader.Advance(position, backwards); }
 Position Search::Size() const { return impl->reader.Size(); }
 std::optional<SearchHit> Search::Next(Position start, Position limit, bool backwards) {
@@ -440,7 +518,8 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
     }
     if (!backwards) return impl->Forward(start, limit);
     if (start < limit) return {};
-    if (impl->fastLiteral && !impl->nativeNeedle.empty()) {
+    if (impl->fastLiteral && impl->Halo() > 512 * 1024) {
+        // Preserve the existing native path for needles larger than a decoded block halo.
         for (auto end = start; end > limit;) {
             impl->reader.Check();
             const auto bytesToRead = Position(1024 * 1024) + impl->nativeNeedle.size();
@@ -453,6 +532,8 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
         }
         return {};
     }
+    if (!impl->options.regex && impl->Halo() <= 512 * 1024) return impl->ReverseLiteral(limit, start);
+    if (impl->fixedRegex) return impl->ReverseFixedRegex(limit, start);
     std::optional<SearchHit> last;
     auto position = limit;
     while (position <= start) {
