@@ -1,4 +1,19 @@
 #include "SystemIntegration.h"
+#include <filesystem>
+#include <string_view>
+
+namespace {
+bool IsMultiPad4FromAnotherPath(const std::wstring& debugger) {
+    constexpr std::wstring_view suffix = L"\" /z";
+    if (debugger.size() <= suffix.size() || debugger.front() != L'"' ||
+        debugger.find(L'\0') != std::wstring::npos) return false;
+    const auto closingQuote = debugger.find(L'"', 1);
+    if (closingQuote != debugger.size() - suffix.size() ||
+        _wcsicmp(debugger.c_str() + closingQuote, suffix.data()) != 0) return false;
+    const std::filesystem::path previous(debugger.substr(1, closingQuote - 1));
+    return previous.is_absolute() && _wcsicmp(previous.filename().c_str(), L"multipad4.exe") == 0;
+}
+}
 
 LSTATUS ApplyNotepadReplacementToKey(HKEY key, const std::wstring& executable, bool enable) {
     const std::wstring command = L"\"" + executable + L"\" /z";
@@ -6,16 +21,18 @@ LSTATUS ApplyNotepadReplacementToKey(HKEY key, const std::wstring& executable, b
     LSTATUS status = RegQueryValueExW(key, L"Debugger", nullptr, &type, nullptr, &bytes);
     bool ownDebugger = false;
     if (status == ERROR_SUCCESS) {
-        // Never change another application's replacement, including malformed or
-        // non-string Debugger values. Match the entire command, not a substring.
+        // Treat other registry value types and malformed commands as foreign.
         if (type != REG_SZ || bytes % sizeof(wchar_t) != 0) return enable ? ERROR_ALREADY_EXISTS : ERROR_SUCCESS;
         std::wstring debugger(bytes / sizeof(wchar_t) + 1, L'\0');
         status = RegQueryValueExW(key, L"Debugger", nullptr, &type, reinterpret_cast<BYTE*>(debugger.data()), &bytes);
         if (status != ERROR_SUCCESS) return status;
+        if (type != REG_SZ || bytes % sizeof(wchar_t) != 0) return enable ? ERROR_ALREADY_EXISTS : ERROR_SUCCESS;
         debugger.resize(bytes / sizeof(wchar_t));
         if (!debugger.empty() && debugger.back() == L'\0') debugger.pop_back();
         ownDebugger = _wcsicmp(debugger.c_str(), command.c_str()) == 0 && debugger.size() == command.size();
-        if (!ownDebugger) return enable ? ERROR_ALREADY_EXISTS : ERROR_SUCCESS;
+        // Enabling from a new location can migrate an older MultiPad4 command.
+        if (!ownDebugger && (!enable || !IsMultiPad4FromAnotherPath(debugger)))
+            return enable ? ERROR_ALREADY_EXISTS : ERROR_SUCCESS;
     } else if (status != ERROR_FILE_NOT_FOUND) return status;
     if (!enable && !ownDebugger) return ERROR_SUCCESS;
 

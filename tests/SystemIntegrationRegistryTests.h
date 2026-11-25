@@ -181,6 +181,18 @@ inline void RunSystemIntegrationRegistryTests() {
     require(RegGetValueW(fixture.key, L"0", L"Unrelated", RRF_RT_REG_DWORD, nullptr, &actualMarker, &markerBytes) == ERROR_SUCCESS);
     require(actualMarker == marker);
 
+    const std::wstring previous = L"\"C:\\Old MultiPad4\\MultiPad4.EXE\" /Z";
+    setString(L"Debugger", previous);
+    require(apply(false) == ERROR_SUCCESS && string(L"Debugger") == previous && dword(L"UseFilter") == 1);
+    require(apply(true) == ERROR_SUCCESS && string(L"Debugger") == command && dword(L"UseFilter") == 0);
+    require(apply(false) == ERROR_SUCCESS);
+    absent(L"Debugger");
+
+    for (const auto* invalid : {L"\"multipad4.exe\" /z", L"\"C:\\Old MultiPad4\\multipad4.exe\" /z extra"}) {
+        setString(L"Debugger", invalid);
+        require(apply(true) == ERROR_ALREADY_EXISTS && string(L"Debugger") == invalid);
+    }
+
     // Substring ownership used to mistake wrapper commands for our replacement.
     const std::wstring foreign = L"\"C:\\Other Editor\\wrapper.exe\" " + command;
     setString(L"Debugger", foreign);
