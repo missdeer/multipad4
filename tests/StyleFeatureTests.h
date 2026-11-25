@@ -7,6 +7,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <fstream>
+#include "QAArtifacts.h"
 // Supply a scratch document; these tests intentionally replace its buffer.
 inline void RunStyleFeatureTests(EditorDocument& d) {
     auto require=[](bool ok,std::source_location where=std::source_location::current()){
@@ -44,6 +45,39 @@ inline void RunStyleFeatureTests(EditorDocument& d) {
     d.style.scheme=0;d.path=L"sample.cpp";d.Load({"int main() {\n    return 0;\n}\n"});ConfigureDocumentStyle(d);
     require(d.language==L"C/C++");
     require(d.Send(SCI_STYLEGETFORE,SCE_C_NUMBER)==RGB(255,0,0));
+    require(d.Send(SCI_GETSELECTIONLAYER)==SC_LAYER_OVER_TEXT);
+    require((static_cast<unsigned>(d.Send(SCI_GETELEMENTCOLOUR,SC_ELEMENT_SELECTION_BACK))>>24)==95);
+    d.Send(SCI_SETCHANGEHISTORY,0);
+    d.Send(SCI_APPENDTEXT,1,reinterpret_cast<LPARAM>(" "));
+    require(!StyleCommandState(&d,IDM_VIEW_CHANGE_HISTORY_MARKER).enabled);
+    require(!ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER));
+    require(d.Send(SCI_CANUNDO));
+    d.Send(SCI_SETREADONLY,TRUE);
+    require(!StyleCommandState(&d,IDM_VIEW_CHANGE_HISTORY_MARKER).enabled);
+    require(!ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER));
+    require(d.Send(SCI_GETCHANGEHISTORY)==0);
+    d.Send(SCI_SETREADONLY,FALSE);
+    d.Load({"int value = 1;\n"});
+    const auto bookmarkMargin=d.Send(SCI_GETMARGINWIDTHN,1);
+    require(ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER));
+    require(d.Send(SCI_GETMARGINMASKN,3)==SC_MASK_HISTORY && d.Send(SCI_GETMARGINWIDTHN,3)>0);
+    d.Send(SCI_INSERTTEXT,0,reinterpret_cast<LPARAM>("// edited\n"));
+    require(d.Send(SCI_MARKERGET,0)&(1<<SC_MARKNUM_HISTORY_MODIFIED));
+    d.Send(SCI_SETSEL,0,9);
+    CaptureQAWindow(d.hwnd,L"selection-change-history");
+    d.Send(SCI_SETSAVEPOINT);
+    require(d.Send(SCI_MARKERGET,0)&(1<<SC_MARKNUM_HISTORY_SAVED));
+    ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER);
+    require(d.Send(SCI_GETMARGINWIDTHN,3)==0 && d.Send(SCI_CANUNDO));
+    ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER);
+    d.Send(SCI_UNDO);
+    require(d.Text()=="int value = 1;\n");
+    d.Send(SCI_REDO);
+    require(d.Send(SCI_MARKERGET,0)&SC_MASK_HISTORY);
+    ConfigureDocumentStyle(d);
+    require(d.Send(SCI_GETMARGINWIDTHN,3)>0 && d.Send(SCI_GETMARGINWIDTHN,1)==bookmarkMargin);
+    ExecuteStyleCommand(d.hwnd,d,IDM_VIEW_CHANGE_HISTORY_MARKER);
+    d.Send(SCI_SETCHANGEHISTORY,0);
     auto wrap=d.Send(SCI_GETWRAPMODE),margin=d.Send(SCI_GETMARGINWIDTHN,0);
     d.Send(SCI_SETWRAPMODE,SC_WRAP_WORD);d.Send(SCI_SETMARGINWIDTHN,0,0);ConfigureDocumentStyle(d);
     require(d.Send(SCI_GETWRAPMODE)==SC_WRAP_WORD && d.Send(SCI_GETMARGINWIDTHN,0)==0);

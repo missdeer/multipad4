@@ -5314,49 +5314,49 @@
           ]
         },
         {
-          "line": 752,
+          "line": 761,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 813,
+          "line": 822,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 817,
+          "line": 826,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 828,
+          "line": 837,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 970,
+          "line": 983,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 978,
+          "line": 991,
           "symbols": [
             "GetCompletionCache"
           ]
         },
         {
-          "line": 1042,
+          "line": 1055,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 1043,
+          "line": 1056,
           "symbols": [
             "lexerCatalog"
           ]
@@ -5449,7 +5449,7 @@
   "applicationBindings": [
     {
       "path": "src/StyleManager.cpp",
-      "sha256": "84e4690827dcf54e5b9e4ea5c1b3669d2b869b025d592ca5dc146905a3919f5c",
+      "sha256": "e8f012b59f455a68c01794dd6099ff879ac9522498e559fea5df4d1a04e1b6e2",
       "rules": [
         {
           "line": 159,
@@ -5520,23 +5520,23 @@
           "text": "    bool rulesChanged=d.style.appliedRules!=lexer.rulesVersion||d.style.appliedLexer!=lexer.iLexer||previousDialect!=effective||d.Send(SCI_GETLEXER)!=(d.LargeFile()?SCLEX_NULL:lexer.iLexer);"
         },
         {
-          "line": 816,
+          "line": 825,
           "text": "    int scheme=SchemeForCommand(id);"
         },
         {
-          "line": 817,
+          "line": 826,
           "text": "    if(scheme){UINT selected=d?static_cast<UINT>(d->style.dialect?d->style.dialect:d->style.resolvedDialect):0;if(d && !selected)selected=DefaultSchemeCommand(*GetDocumentLexer(*d));return {true,d!=nullptr,d && ActualScheme(*d)==scheme && selected==id};}"
         },
         {
-          "line": 848,
+          "line": 857,
           "text": "    if(int scheme=SchemeForCommand(id)){"
         },
         {
-          "line": 1011,
+          "line": 1024,
           "text": "void LoadStylePreferences(const std::filesystem::path& path){"
         },
         {
-          "line": 1036,
+          "line": 1049,
           "text": "void SaveStylePreferences(const std::filesystem::path& path){"
         }
       ]
