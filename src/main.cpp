@@ -34,6 +34,27 @@ public:
     ~StartupLock() { Release(); if (mutex) CloseHandle(mutex); }
 };
 
+HWND FindReusableWindow(const AppSettings& settings) {
+    const auto portableDirectory = settings.portable ? settings.path.parent_path().parent_path() : std::filesystem::path{};
+    HWND window = nullptr;
+    while ((window = FindWindowExW(nullptr, window, L"MultiPad4.MainFrame", nullptr))) {
+        const bool portable = GetPropW(window, MainFrame::PortableWindowProperty) != nullptr;
+        if (portable != settings.portable) continue;
+        if (!portable) return window;
+        DWORD processId = 0;
+        GetWindowThreadProcessId(window, &processId);
+        const UniqueHandle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId));
+        wchar_t executable[32768];
+        DWORD length = _countof(executable);
+        if (process && QueryFullProcessImageNameW(process.get(), 0, executable, &length)) {
+            const auto directory = std::filesystem::path(std::wstring_view(executable, length)).parent_path();
+            if (CompareStringOrdinal(directory.c_str(), -1, portableDirectory.c_str(), -1, TRUE) == CSTR_EQUAL)
+                return window;
+        }
+    }
+    return nullptr;
+}
+
 void FinishPluginMaintenance(const PluginMaintenance& task) {
     std::string failure;
     const auto log = task.directory / L"result.log";
@@ -135,8 +156,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 bool singleInstance = options.singleFileInstance || frame.settings.Get(IDM_VIEW_SINGLEFILEINSTANCE, 1) != 0;
                 bool reuse = options.reuseWindow >= 0 ? options.reuseWindow != 0 : singleInstance || frame.settings.Get(IDM_VIEW_REUSEWINDOW) != 0;
                 if (!reused && reuse && !updateRestart) {
-                    HWND existing = FindWindowW(L"MultiPad4.MainFrame", nullptr);
-                    if (existing) {
+                    if (HWND existing = FindReusableWindow(frame.settings)) {
                         auto text = std::filesystem::current_path().wstring() + L"\n" + GetCommandLineW();
                         COPYDATASTRUCT data{0x4D503434, static_cast<DWORD>((text.size() + 1) * sizeof(wchar_t)), text.data()};
                         DWORD_PTR accepted = 0; AllowSetForegroundWindow(ASFW_ANY);

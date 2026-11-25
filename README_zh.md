@@ -8,6 +8,8 @@
 
 官方发布版本会自动检查更新。可通过 **帮助 → 检查更新** 手动检查，或通过 **帮助 → 自动检查更新** 更改设置。确认更新后，MultiPad4 将使用 GitHub 提供的 SHA-256 校验与当前编译器和 SIMD 指令集匹配的安装包，然后关闭并重启。安装目录需要可写。
 
+要启用便携模式，请在可写的 `MultiPad4.exe` 所在目录创建空文件 `.portable`。下次启动时，设置和退出会话会保存到 `data`，未命名草稿的自动保存备份会写入 `data/AutoSave`。便携模式优先于 `MULTIPAD4_SETTINGS`。移动整个目录前，请先退出 MultiPad4。
+
 与 notepad4 的行为一致性仍在逐项验收。参见[项目范围](docs/PROJECT_SCOPE.md)、[迁移记录](docs/MIGRATION_STATUS.md)和[验收清单](docs/MIGRATION_ACCEPTANCE.md)。
 
 ## 当前功能
