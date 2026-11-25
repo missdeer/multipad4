@@ -6,8 +6,11 @@
 #include <functional>
 #include <optional>
 #include <memory>
+#include <stdexcept>
 namespace files {
 enum class Encoding : unsigned { Utf8, Utf8Bom, Utf16LE, Utf16BE, Utf16LEPlain, Utf16BEPlain, Ansi, Oem, CodePageBase = 0x10000 };
+inline constexpr auto Latin1 = static_cast<Encoding>(static_cast<unsigned>(Encoding::CodePageBase) + 28591);
+struct InvalidByteSequence : std::runtime_error { using std::runtime_error::runtime_error; };
 struct Text { std::string utf8; Encoding encoding = Encoding::Utf8; };
 enum class ReadBackend { Mapped, Buffered };
 struct ReadOptions {

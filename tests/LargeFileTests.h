@@ -288,7 +288,7 @@ inline void RunLargeFileTests(MainFrame& frame) {
             { std::ofstream out(broken, std::ios::binary); out << "\xEF\xBB\xBF\xFF"; }
             RECT before{}, after{}; GetClientRect(document->hwnd, &before);
             auto viewWindow = document->ViewWindow(); auto text = document->Range(0, 64); bool rejected = false;
-            try { document->OpenFastFile(broken, {}); } catch (const std::exception&) { rejected = true; }
+            try { document->OpenFastFile(broken, {}, files::Encoding::Utf8Bom); } catch (const files::InvalidByteSequence&) { rejected = true; }
             GetClientRect(document->hwnd, &after);
             require(rejected && document->ViewWindow() == viewWindow && document->Range(0, 64) == text);
             require(EqualRect(&before, &after));
@@ -335,6 +335,16 @@ inline void RunLargeFileTests(MainFrame& frame) {
             preview.fastView->Seek(preview.fastView->Size(), true);
             require(preview.Range(static_cast<size_t>(preview.Send(SCI_GETLENGTH)) - 3, 3) == "end");
             preview.fastView->LoadForEditing(); require(!preview.FastView() && preview.Text() == expected);
+        }
+        {
+            const auto binary = directory / L"binary.bin";
+            const auto bytes = "\xEF\xBB\xBF" + std::string(8192, 'x') + std::string("\x00\xFF", 2);
+            files::WriteAtomicChunks(binary, [&](const auto& write) { write(bytes); });
+            EditorDocument preview; preview.path = binary; require(preview.Create(frame.tabs));
+            preview.OpenFastFile(binary, {});
+            require(preview.FastView() && preview.encoding == files::Latin1);
+            preview.fastView->LoadForEditing();
+            require(files::Encode({preview.Text(), preview.encoding}) == bytes);
         }
         // A late invalid sequence must not replace the fast viewport on upgrade.
         {
