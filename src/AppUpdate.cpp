@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 using Version = std::array<unsigned, 3>;
 constexpr wchar_t StagePrefix[] = L".multipad4-update-";
 constexpr wchar_t AppFilename[] = L"multipad4.exe";
+constexpr wchar_t RegistryHelperFilename[] = L"multipad4-registry.exe";
 constexpr wchar_t CleanupVariable[] = L"MULTIPAD4_UPDATE_CLEANUP";
 constexpr char ReleaseDownload[] = "https://github.com/missdeer/multipad4/releases/download/";
 constexpr auto NoWait = std::chrono::seconds(0);
@@ -145,7 +146,8 @@ void ApplyUpdate(const fs::path& root, const fs::path& directory, bool& keepStag
         if (relative.has_parent_path()) {
             if (first != L"config" && first != L"plugins")
                 throw std::runtime_error("Unexpected update package directory.");
-        } else if (first != AppFilename && first != L"Miniz.License.txt" && !ExtensionIs(first, L".dll")) {
+        } else if (first != AppFilename && first != RegistryHelperFilename &&
+            first != L"Miniz.License.txt" && !ExtensionIs(first, L".dll")) {
             throw std::runtime_error("Unexpected update package file.");
         }
         auto destination = root;
@@ -380,12 +382,14 @@ void TestAppUpdate(const fs::path& scratch) {
     fs::create_directories(root / L"plugins" / L"disabled" / L"Base64");
     fs::copy_file(exe, root / AppFilename);
     fs::copy_file(exe, contents / AppFilename);
+    fs::copy_file(exe.parent_path() / RegistryHelperFilename, contents / RegistryHelperFilename);
     std::ofstream(root / L"user.ini") << "settings";
     std::ofstream(contents / L"config" / L"default.xml") << "defaults";
     std::ofstream(contents / L"plugins" / L"Base64" / L"Base64.dll") << "bundled plugin";
     bool keepStaging = false;
     ApplyUpdate(root, stage, keepStaging);
     require(fs::exists(root / L"config" / L"default.xml") && fs::exists(root / L"user.ini"));
+    require(fs::exists(root / RegistryHelperFilename));
     require(fs::exists(root / L"plugins" / L"disabled" / L"Base64" / L"Base64.dll"));
     require(!fs::exists(root / L"plugins" / L"Base64") && !keepStaging);
 

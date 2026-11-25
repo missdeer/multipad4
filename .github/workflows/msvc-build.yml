@@ -101,6 +101,7 @@ jobs:
           name: multipad4-${{ matrix.toolchain.id }}-x64-${{ matrix.simd }}
           path: |
             cmake-${{ matrix.toolchain.id }}-build/multipad4.exe
+            cmake-${{ matrix.toolchain.id }}-build/multipad4-registry.exe
             cmake-${{ matrix.toolchain.id }}-build/Miniz.License.txt
             cmake-${{ matrix.toolchain.id }}-build/config/
             cmake-${{ matrix.toolchain.id }}-build/*.dll
@@ -202,7 +203,7 @@ jobs:
           cp "$build_dir/plugins/OpenDocuments/THIRD_PARTY.md" "$build_dir/package/plugins/OpenDocuments/"
           mkdir -p "$build_dir/package/plugins/Matepath"
           mkdir -p "$build_dir/package/plugins/Project"
-          cp "$build_dir/multipad4.exe" "$build_dir/package/"
+          cp "$build_dir/multipad4.exe" "$build_dir/multipad4-registry.exe" "$build_dir/package/"
           cp "$build_dir/Miniz.License.txt" "$build_dir/package/"
           cp -R "$build_dir/config" "$build_dir/package/"
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
@@ -213,9 +214,11 @@ jobs:
           # mingwdeployqt also scans DLLs beside the EXE.
           "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
             "$build_dir/package/multipad4.exe" 2>&1 | tee "$build_dir/runtime-dependencies.txt"
+          "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
+            "$build_dir/package/multipad4-registry.exe" 2>&1 | tee -a "$build_dir/runtime-dependencies.txt"
           # mingwdeployqt can return success for missing imports or failed copies.
           system_dir="$(cygpath -S)"
-          for binary in "$build_dir/package/multipad4.exe" "$build_dir/package/"*.dll; do
+          for binary in "$build_dir/package/"*.exe "$build_dir/package/"*.dll; do
             objdump -p "$binary" | awk '/DLL Name:/ {print $3}' |
               while IFS= read -r dll; do
                 case "${dll,,}" in api-ms-win-*|ext-ms-win-*) continue ;; esac
