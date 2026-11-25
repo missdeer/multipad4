@@ -501,7 +501,9 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
         RememberDocumentPreferences(*this, *d, id); Refresh(); return 0;
     }
     switch (id) {
-    case ID_NEW: NewDocument(); break;
+    case ID_NEW:
+        if (auto* created = NewDocument()) ::SetFocus(created->hwnd);
+        break;
     case ID_OPEN: {
         wchar_t buffer[32768]{};
         auto dialog = FileDialogOptions(m_hWnd, buffer, _countof(buffer),
