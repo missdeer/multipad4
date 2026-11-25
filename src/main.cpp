@@ -1,5 +1,6 @@
 #include "MainFrame.h"
 #include "SmokeTest.h"
+#include "../tests/OrdinarySearchTests.h"
 #include "../tests/LargeFileTests.h"
 #include "../tests/PluginFeatureTests.h"
 #include "../tests/LexerBaselineTests.h"
@@ -113,6 +114,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     extern UINT g_uSystemDPI; g_uSystemDPI = GetDpiForSystem();
     if (!Scintilla_RegisterClasses(instance)) { OleUninitialize(); return 2; }
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
+    bool ordinaryTest = count == 2 && wcscmp(args[1], L"--ordinary-search-test") == 0;
+    bool ordinaryBenchmark = count == 3 && wcscmp(args[1], L"--ordinary-search-benchmark") == 0;
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
     bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
@@ -120,7 +123,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool themeReport=count==4&&wcscmp(args[1],L"--theme-report")==0;
     bool benchmark=count==3&&wcscmp(args[1],L"--configuration-benchmark")==0;
     bool configurationMode=configurationTest||themeReport||benchmark;
-    bool smoke = configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
+    bool smoke = replacementTest || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
@@ -132,7 +136,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
         if (smoke || render) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
             frame.plugins.bundledModules = bundledTestModules;
@@ -180,8 +184,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
             try {
-                if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
+                if (ordinaryTest) { RunOrdinarySearchTests(frame); }
+                else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
+                else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
                 else if(themeReport){RunThemeValidationReport(frame,args[2],args[3]);}
+                else if (replacementTest) { RunSearchDialogFeatureTests(frame); }
                 else if(benchmark){RunConfigurationBenchmark(frame,args[2]);}
                 else if (lexerBaseline) { RunLexerBaseline(frame, args[2], wcscmp(args[1], L"--check-lexer-baseline") == 0); }
                 else if (largeTest) { RunLargeFileTests(frame); }

@@ -33,6 +33,12 @@ FastFileView::FastFileView(EditorDocument& d, const std::filesystem::path& path,
     const auto page = files::CodePage(encoding);
     if (!Utf16(encoding) && (page == CP_UTF7 || page == 50220 || page == 50221 || page == 50222))
         throw std::runtime_error("This encoding requires the full editor.");
+    CPINFO info{};
+    if (!GetCPInfo(page, &info)) throw std::runtime_error("Encoding is not installed.");
+    directPositions = Utf8(encoding) || (!Utf16(encoding) && page == CP_UTF8);
+    indexedPositions = Utf16(encoding) || page == 54936 || info.MaxCharSize == 1 || info.LeadByte[0] != 0;
+    for (size_t i = 0; i < MAX_LEADBYTES && info.LeadByte[i]; i += 2)
+        for (unsigned c = info.LeadByte[i]; c <= info.LeadByte[i + 1]; ++c) leadBytes[c] = true;
     model = std::make_unique<large::Document>(file, encoding, signature);
     const auto attributes = GetFileAttributesW(path.c_str());
     readOnly = attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY);
@@ -50,13 +56,68 @@ std::string FastFileView::Encode(std::string_view text) const {
     return files::Encode({std::string(text), plain});
 }
 std::string FastFileView::Decode(std::string_view raw) const { return files::Decode(raw, encoding, false).utf8; }
-large::Position FastFileView::NativePrefix(std::string_view text, size_t count) const {
-    count = (std::min)(count, text.size());
-    return Utf8(encoding) ? count : Encode(text.substr(0, count)).size();
+std::vector<FastFileView::ViewPosition> FastFileView::Positions(std::string_view raw, std::string_view text) const {
+    std::vector<ViewPosition> result;
+    if (directPositions || !indexedPositions) return result;
+    result.reserve(raw.size() / (Utf16(encoding) ? 2 : 1) + 1);
+    const auto page = files::CodePage(encoding);
+    size_t native = 0, utf8 = 0;
+    result.push_back({0, 0});
+    while (native < raw.size() && utf8 < text.size()) {
+        size_t width = 1;
+        if (Utf16(encoding)) {
+            const auto c = Unit(raw, native, encoding);
+            width = c >= 0xD800 && c <= 0xDBFF ? 4 : 2;
+        } else {
+            const auto c = static_cast<BYTE>(raw[native]);
+            if (page == 54936 && c >= 0x81 && c <= 0xFE && native + 1 < raw.size()) {
+                const auto next = static_cast<BYTE>(raw[native + 1]); width = next >= 0x30 && next <= 0x39 ? 4 : 2;
+            } else if (leadBytes[c]) width = 2;
+        }
+        native += width;
+        ++utf8;
+        while (utf8 < text.size() && (static_cast<BYTE>(text[utf8]) & 0xC0) == 0x80) ++utf8;
+        result.push_back({static_cast<uint32_t>(native), static_cast<uint32_t>(utf8)});
+    }
+    if (native != raw.size() || utf8 != text.size()) throw std::runtime_error("Invalid viewport character boundaries.");
+    return result;
+}
+size_t FastFileView::NativePosition(size_t utf8) const {
+    utf8 = (std::min)(utf8, viewText.size());
+    if (directPositions) return utf8;
+    // shortcut: unusual multibyte code pages retain prefix conversion until their boundary rules are indexed.
+    if (!indexedPositions) return Encode(std::string_view(viewText).substr(0, utf8)).size();
+    auto found = std::lower_bound(positions.begin(), positions.end(), utf8, [](const auto& p, size_t value) { return p.utf8 < value; });
+    if (found == positions.end() || found->utf8 != utf8) throw std::runtime_error("Viewport edit is not on a character boundary.");
+    return found->native;
+}
+size_t FastFileView::Utf8Position(size_t native) const {
+    if (directPositions) return native;
+    if (!indexedPositions) return Decode(model->Read(begin, native)).size();
+    auto found = std::lower_bound(positions.begin(), positions.end(), native, [](const auto& p, size_t value) { return p.native < value; });
+    if (found == positions.end() || found->native != native) throw std::runtime_error("Viewport selection is not on a character boundary.");
+    return found->utf8;
+}
+void FastFileView::UpdatePositions(size_t first, size_t last, std::string_view raw, std::string_view text) {
+    if (directPositions || !indexedPositions) return;
+    const auto nativeFirst = NativePosition(first), nativeLast = NativePosition(last);
+    auto inserted = raw.empty() ? std::vector<ViewPosition>{{0, 0}} : Positions(raw, text);
+    auto from = std::upper_bound(positions.begin(), positions.end(), first, [](size_t value, const auto& p) { return value < p.utf8; });
+    auto to = std::upper_bound(from, positions.end(), last, [](size_t value, const auto& p) { return value < p.utf8; });
+    const auto index = static_cast<size_t>(from - positions.begin());
+    positions.erase(from, to);
+    for (size_t i = index; i < positions.size(); ++i) {
+        positions[i].native = static_cast<uint32_t>(positions[i].native - (nativeLast - nativeFirst) + raw.size());
+        positions[i].utf8 = static_cast<uint32_t>(positions[i].utf8 - (last - first) + text.size());
+    }
+    for (auto& p : inserted) { p.native += static_cast<uint32_t>(nativeFirst); p.utf8 += static_cast<uint32_t>(first); }
+    positions.insert(positions.begin() + index, inserted.begin() + 1, inserted.end());
 }
 large::Selection FastFileView::Selection() const {
     if (extendedSelection) return *extendedSelection;
-    return {begin + NativePrefix(viewText, static_cast<size_t>(document.Send(SCI_GETCURRENTPOS))), begin + NativePrefix(viewText, static_cast<size_t>(document.Send(SCI_GETANCHOR)))};
+    const auto caret = static_cast<size_t>(document.Send(SCI_GETCURRENTPOS)), anchor = static_cast<size_t>(document.Send(SCI_GETANCHOR));
+    const auto nativeCaret = begin + NativePosition(caret);
+    return {nativeCaret, caret == anchor ? nativeCaret : begin + NativePosition(anchor)};
 }
 void FastFileView::RestoreSelection(large::Selection selection) {
     auto caret = (std::min)(selection.caret, Size()), anchor = (std::min)(selection.anchor, Size());
@@ -64,9 +125,10 @@ void FastFileView::RestoreSelection(large::Selection selection) {
     if (caret < begin || caret > end || anchor < begin || anchor > end) Seek((std::min)(caret, anchor));
     auto position = [&](large::Position offset) {
         offset = (std::clamp)(offset, begin, end);
-        return Utf8(encoding) ? static_cast<size_t>(offset - begin) : Decode(model->Read(begin, static_cast<size_t>(offset - begin))).size();
+        return Utf8Position(static_cast<size_t>(offset - begin));
     };
-    document.Send(SCI_SETSEL, position(anchor), position(caret)); document.Send(SCI_SCROLLCARET);
+    const auto utf8Caret = position(caret);
+    document.Send(SCI_SETSEL, anchor == caret ? utf8Caret : position(anchor), utf8Caret); document.Send(SCI_SCROLLCARET);
     if (caret < begin || caret > end || anchor < begin || anchor > end) extendedSelection = large::Selection{caret, anchor};
 }
 void FastFileView::Attach() {
@@ -141,6 +203,7 @@ void FastFileView::Seek(unsigned long long offset, bool bottom) {
         }
     }
     auto decoded = Decode(std::string_view(bytes).substr(first, count));
+    auto decodedPositions = Positions(std::string_view(bytes).substr(first, count), decoded);
     const bool previousLoading = loading; loading = true;
     struct Reset { bool& value; bool previous; ~Reset() { value = previous; } } reset{loading, previousLoading};
     const auto encodingDirty = document.encodingDirty;
@@ -151,7 +214,7 @@ void FastFileView::Seek(unsigned long long offset, bool bottom) {
     SendMessageW(document.hwnd, SCI_SETMARGINWIDTHN, 0, 0);
     SendMessageW(document.hwnd, SCI_SETVSCROLLBAR, FALSE, 0);
     SendMessageW(document.hwnd, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
-    viewText = std::move(decoded); begin = start + first; end = begin + count;
+    viewText = std::move(decoded); positions = std::move(decodedPositions); begin = start + first; end = begin + count;
     if (bottom) document.Send(SCI_GOTOPOS, document.Send(SCI_GETLENGTH));
     UpdateBar(); PaintMarks();
     PostMessageW(GetAncestor(document.hwnd, GA_ROOT), WM_DOCUMENT_CHANGED, 0, 0);
@@ -204,7 +267,7 @@ void FastFileView::LoadForEditing() {
             }
             return encoding;
         });
-    model.reset(); document.encodingDirty = modified;
+    model.reset(); positions.clear(); document.encodingDirty = modified;
     SendMessageW(document.hwnd, SCI_SETREADONLY, readOnly, 0);
     document.Send(SCI_SETVSCROLLBAR, TRUE);
     document.Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(document.hwnd), 96));
@@ -237,22 +300,22 @@ void FastFileView::OnModified(const SCNotification& n) {
     try {
         const auto position = static_cast<size_t>(n.position), length = static_cast<size_t>(n.length);
         if (position > viewText.size()) throw std::runtime_error("Invalid viewport edit position.");
-        const auto offset = begin + NativePrefix(viewText, position);
+        const auto offset = begin + NativePosition(position);
         if (n.modificationType & SC_MOD_DELETETEXT) {
             if (extendedSelection) {
                 const auto selection = *extendedSelection; extendedSelection.reset();
                 const auto first = (std::min)(selection.caret, selection.anchor), last = (std::max)(selection.caret, selection.anchor);
                 if (length > viewText.size() - position) throw std::runtime_error("Invalid viewport deletion.");
-                model->Replace(first, last - first, {}); viewText.erase(position, length); end = begin + Encode(viewText).size();
+                model->Replace(first, last - first, {}); UpdatePositions(position, position + length, {}, {}); viewText.erase(position, length); end = begin + NativePosition(viewText.size());
                 UpdateBar(); return;
             }
             if (length > viewText.size() - position) throw std::runtime_error("Invalid viewport deletion.");
-            const auto removed = NativePrefix(std::string_view(viewText).substr(position), length);
-            model->Replace(offset, removed, {}); viewText.erase(position, length); end -= removed;
+            const auto removed = !directPositions && !indexedPositions ? Encode(std::string_view(viewText).substr(position, length)).size() : NativePosition(position + length) - NativePosition(position);
+            model->Replace(offset, removed, {}); UpdatePositions(position, position + length, {}, {}); viewText.erase(position, length); end -= removed;
         } else {
             if (!n.text) throw std::runtime_error("Missing viewport insertion bytes.");
             auto raw = Encode(std::string_view(n.text, length));
-            model->Replace(offset, 0, raw); viewText.insert(position, n.text, length); end += raw.size();
+            model->Replace(offset, 0, raw); UpdatePositions(position, position, raw, std::string_view(n.text, length)); viewText.insert(position, n.text, length); end += raw.size();
         }
         UpdateBar(); PostMessageW(GetAncestor(document.hwnd, GA_ROOT), WM_DOCUMENT_CHANGED, 0, 0);
     } catch (...) {
@@ -516,11 +579,18 @@ void FastFileView::PaintMarks() {
     document.Send(SCI_SETINDICATORCURRENT, 12); document.Send(SCI_INDICATORCLEARRANGE, 0, document.Send(SCI_GETLENGTH));
     document.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX); document.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
     document.Send(SCI_MARKERDELETEALL, 0);
-    auto position = [&](large::Position value) { return Utf8(encoding) ? static_cast<size_t>(value - begin) : Decode(model->Read(begin, static_cast<size_t>(value - begin))).size(); };
     for (const auto& group : marks) {
         if (group.snapshot.root != model->Capture().root) continue;
         const auto& marked = group.hits;
         bool done = false;
+        size_t checkpoint = 0;
+        auto position = [&](large::Position value) {
+            const auto native = static_cast<size_t>(value - begin);
+            if (directPositions) return native;
+            if (!indexedPositions) return Utf8Position(native);
+            while (checkpoint + 1 < positions.size() && positions[checkpoint].native < native) ++checkpoint;
+            return static_cast<size_t>(positions[checkpoint].utf8);
+        };
         for (size_t firstHit = marked->FirstEndingAtOrAfter(begin); !done && firstHit < marked->Count();) {
             auto page = marked->Page(firstHit, (std::min)(size_t(4096), marked->Count() - firstHit));
             for (const auto& hit : page) {

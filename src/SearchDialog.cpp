@@ -5,7 +5,9 @@
 #include "EditSelection.h"
 #include <shlobj.h>
 #include <shlwapi.h>
+#include "ScintillaBatch.h"
 namespace {
+constexpr UINT ContinueOrdinarySearch = WM_APP + 0x210;
 std::wstring Field(HWND window, int id) {
     HWND control = GetDlgItem(window, id); int length = GetWindowTextLengthW(control);
     std::wstring value(static_cast<size_t>(length) + 1, L'\0');
@@ -25,6 +27,12 @@ struct UseSearch {
     UseSearch(EditorDocument& d, const SearchState& state) : document(d), original(d.search) { d.search = state; }
     ~UseSearch() { document.search = std::move(original); }
 };
+}
+SearchDialog::~SearchDialog() {
+    if (replaceWork) {
+        replaceWork->cancel.store(true);
+        try { if (replaceWork->task.Valid()) replaceWork->task.Get(); } catch (...) {}
+    }
 }
 BOOL SearchDialog::PreTranslateMessage(MSG* message) {
     if (!hwnd || (message->hwnd != hwnd && !IsChild(hwnd, message->hwnd))) return FALSE;
@@ -48,6 +56,7 @@ void SearchDialog::Open(MainFrame& frame, EditorDocument& target, bool replace) 
 }
 void SearchDialog::Close() {
     if (hwnd && IsWindow(hwnd)) {
+        if (ordinaryTask) FinishSearch(true);
         if (fileRunning) FinishFiles(true);
         if (document && owner && std::any_of(owner->documents.begin(), owner->documents.end(), [&](const auto& d) { return d.get() == document; })) ReadFields();
         owner->settings.WriteString(L"Search", L"TransparentAlways", transparentAlways ? L"1" : L"0");
@@ -173,6 +182,7 @@ void SearchDialog::WatchMappedTask() {
 }
 void SearchDialog::Status(const std::wstring& text) { SetDlgItemTextW(hwnd, IDC_SEARCH_STATUS, text.c_str()); }
 void SearchDialog::SetPage(int value) {
+    if (ordinaryTask) FinishSearch(true);
     if (fileRunning) FinishFiles(true);
     page = value; replacing = page == 1;
     TabCtrl_SetCurSel(GetDlgItem(hwnd, IDC_SEARCH_TABS), page);
@@ -200,6 +210,7 @@ void SearchDialog::SetPage(int value) {
     ResizeHeight();
 }
 void SearchDialog::Execute(int command) {
+    if (ordinaryTask) { Status(L"A search is running. Close to cancel."); return; }
     if (fileRunning) { Status(L"A file search is running. Close to cancel."); return; }
     // Resolve synchronously too: WM_MDIACTIVATE notifications are posted and
     // may still be queued when a button or accelerator invokes this command.
@@ -239,39 +250,8 @@ void SearchDialog::Execute(int command) {
             (target.search.regex || target.search.wildcard) && target.search.replaceText != L"^c", selection);
         WatchMappedTask(); Status(L"Replacing… Press Esc in the document to cancel."); return;
     }
-    if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) {
-        size_t count = 0, files = 0;
-        if (command != IDC_SEARCH_COUNT) owner->searchResults.Begin(target.search.findText);
-        auto collect = [&](EditorDocument& d, bool inSelection) {
-            if (d.FastView()) {
-                auto snapshot = d.fastView->Model().Capture(); auto hits = d.fastView->ArchiveMatches(d.MappedSearchOptions(), inSelection);
-                count += hits->Count(); if (hits->Count()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.AddMapped(d, snapshot, hits); }
-            } else {
-                auto matches = d.CollectMatches(inSelection); count += matches.size();
-                if (!matches.empty()) { ++files; if (command != IDC_SEARCH_COUNT) owner->searchResults.Add(d, matches); }
-            }
-        };
-        if (command == IDC_SEARCH_ALL_OPEN) {
-            for (int i = 0; i < owner->tabs.GetPageCount(); ++i) {
-                auto& d = *static_cast<EditorDocument*>(owner->tabs.GetPageData(i)); UseSearch state(d, target.search); collect(d, false);
-            }
-        } else collect(target, selection);
-        if (command != IDC_SEARCH_COUNT) owner->searchResults.Finish(count, files);
-        Status(std::to_wstring(count) + L" matches in " + std::to_wstring(files) + L" documents."); return;
-    }
-    if (command == IDC_SEARCH_MARK) {
-        const auto matches = target.CollectMatches(selection);
-        target.Send(SCI_SETINDICATORCURRENT, 12); target.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX);
-        target.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
-        if (IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED) {
-            target.Send(SCI_INDICATORCLEARRANGE, 0, target.Send(SCI_GETLENGTH));
-            if (target.search.bookmarkMatches) target.Send(SCI_MARKERDELETEALL, 0);
-        }
-        for (const auto& m : matches) {
-            target.Send(SCI_INDICATORFILLRANGE, m.start, m.end - m.start);
-            if (target.search.bookmarkMatches) target.Send(SCI_MARKERADD, m.line, 0);
-        }
-        Status(std::to_wstring(matches.size()) + L" matches marked."); return;
+    if (command == IDC_SEARCH_COUNT || command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN || command == IDC_SEARCH_MARK) {
+        StartSearch(command, selection); return;
     }
     if (command == IDC_REPLACEALL || command == IDC_SEARCH_REPLACE_OPEN) {
         if (command == IDC_SEARCH_REPLACE_OPEN && MessageBoxW(hwnd, L"Replace all matches in all opened documents? Each document can be undone separately.", L"Replace", MB_OKCANCEL | MB_ICONQUESTION) != IDOK) return;
@@ -291,7 +271,120 @@ void SearchDialog::Execute(int command) {
     if (target.FastView() && found) WatchMappedTask();
     Status(target.FastView() && found ? L"Searching… Press Esc in the document to cancel." : found ? (replaced ? L"Replaced. Next match found." : L"Match found.") : L"No further match found."); owner->Refresh();
 }
+void SearchDialog::StartSearch(int command, bool selection) {
+    ordinaryTask = std::make_unique<SearchTask>(); auto& task = *ordinaryTask;
+    task.token = ++nextSearchToken;
+    task.command = command; task.state = document->search; task.selection = selection;
+    task.purge = IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED;
+    if (command == IDC_SEARCH_ALL_OPEN) {
+        for (int i = 0; i < owner->tabs.GetPageCount(); ++i)
+            task.documents.push_back(static_cast<EditorDocument*>(owner->tabs.GetPageData(i))->searchIdentity);
+    } else task.documents.push_back(document->searchIdentity);
+    if (command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) owner->searchResults.Begin(task.state.findText);
+    task.generation = owner->searchResults.generation;
+    Status(L"Searching… Close to cancel."); SetTimer(hwnd, 3, 20, nullptr);
+    ContinueSearch();
+}
+void SearchDialog::ContinueSearch() {
+    SearchStep();
+    if (ordinaryTask && !ordinaryTask->mapped) PostMessageW(hwnd, ContinueOrdinarySearch, ordinaryTask->token, 0);
+}
+void SearchDialog::FinishSearch(bool interrupted) {
+    if (!ordinaryTask) return;
+    auto task = std::move(ordinaryTask); KillTimer(hwnd, 3);
+    if (task->mapped) {
+        auto found = owner->tabs.documentsById.find(task->identity);
+        if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
+    }
+    if ((task->command == IDC_FINDALL || task->command == IDC_SEARCH_ALL_OPEN) && task->generation == owner->searchResults.generation)
+        owner->searchResults.Finish(task->count, task->files);
+    Status((interrupted ? L"Interrupted. " : L"Completed. ") + std::to_wstring(task->count) + L" matches in " + std::to_wstring(task->files) + L" documents.");
+}
+void SearchDialog::SearchStep() {
+    if (!ordinaryTask) return;
+    auto& task = *ordinaryTask;
+    const bool finder = task.command == IDC_FINDALL || task.command == IDC_SEARCH_ALL_OPEN;
+    if (finder && task.generation != owner->searchResults.generation) { FinishSearch(true); return; }
+    if (task.mapped && task.mappedDone) { task.mapped = false; ++task.next; }
+    if (task.next >= task.documents.size()) { FinishSearch(false); return; }
+    const auto identity = task.documents[task.next];
+    auto found = owner->tabs.documentsById.find(identity);
+    if (found == owner->tabs.documentsById.end()) { FinishSearch(true); return; }
+    auto& target = *found->second;
+    if (task.identity != identity) {
+        task.identity = identity; task.revision = target.style.revision;
+        UseSearch state(target, task.state);
+        if (target.FastView()) {
+            task.mapped = true; task.mappedDone = false;
+            target.fastView->StartEnumerate(target.MappedSearchOptions(), task.selection && task.command != IDC_SEARCH_ALL_OPEN,
+                [this, identity](const auto& snapshot, const auto& hits) {
+                    if (!ordinaryTask || ordinaryTask->identity != identity) return;
+                    auto& current = *ordinaryTask;
+                    auto found = owner->tabs.documentsById.find(identity);
+                    if (found == owner->tabs.documentsById.end()) return;
+                    if ((current.command == IDC_FINDALL || current.command == IDC_SEARCH_ALL_OPEN) && current.generation != owner->searchResults.generation) return;
+                    if (current.command == IDC_SEARCH_MARK) found->second->fastView->SetMarks(snapshot, hits, current.state.bookmarkMatches, current.purge);
+                    else if (current.command != IDC_SEARCH_COUNT && hits->Count()) owner->searchResults.AddMapped(*found->second, snapshot, hits);
+                    current.count += hits->Count(); if (hits->Count()) ++current.files;
+                    current.mappedDone = true;
+                }, task.command != IDC_SEARCH_COUNT, finder);
+            return;
+        }
+        task.cursor = target.BeginMatches(task.selection && task.command != IDC_SEARCH_ALL_OPEN);
+        task.result = std::make_shared<OrdinarySearchResult>();
+        task.result->hits = std::make_shared<large::HitArchive>(task.command != IDC_SEARCH_COUNT);
+    }
+    if (task.mapped) {
+        if (!target.FastView() || (!target.fastView->Busy() && !task.mappedDone)) { FinishSearch(true); return; }
+        return;
+    }
+    if (target.FastView() || target.style.revision != task.revision) { FinishSearch(true); return; }
+    auto& result = *task.result;
+    const bool done = target.MatchStep(task.cursor, [&](LRESULT start, LRESULT end) {
+        if (task.command == IDC_SEARCH_COUNT) { result.hits->AddCount(1); return; }
+        const auto line = finder || task.state.bookmarkMatches ? target.Send(SCI_LINEFROMPOSITION, start) : 0;
+        const auto lineStart = finder ? target.Send(SCI_POSITIONFROMLINE, line) : 0;
+        result.hits->Append({static_cast<large::Position>(start), static_cast<large::Position>(end), {}, static_cast<large::Position>(line), static_cast<large::Position>(lineStart)});
+        if (finder) {
+            const auto limit = (std::max)(end, target.Send(SCI_GETLINEENDPOSITION, line));
+            if (result.lines.empty() || result.lines.back().number != line)
+                result.lines.push_back({line, lineStart, std::make_shared<const std::string>(target.Range(lineStart, limit - lineStart))});
+            else if (static_cast<size_t>(limit - lineStart) > result.lines.back().text->size())
+                result.lines.back().text = std::make_shared<const std::string>(target.Range(lineStart, limit - lineStart));
+        }
+    });
+    if (!done) return;
+    if (task.command == IDC_SEARCH_MARK) {
+        struct Span { LRESULT start, end; };
+        std::vector<Span> spans; spans.reserve(result.hits->Count());
+        std::vector<LRESULT> bookmarks;
+        for (size_t offset = 0; offset < result.hits->Count(); offset += 512)
+            for (const auto& hit : result.hits->Page(offset, 512)) {
+                spans.push_back({static_cast<LRESULT>(hit.start), static_cast<LRESULT>(hit.end)});
+                if (task.state.bookmarkMatches && (bookmarks.empty() || bookmarks.back() != static_cast<LRESULT>(hit.line))) bookmarks.push_back(static_cast<LRESULT>(hit.line));
+            }
+        {
+            struct Batch { EditorDocument& document;
+                Batch(EditorDocument& value) : document(value) { document.Send(BeginIndicatorBatch); }
+                ~Batch() { document.Send(EndIndicatorBatch); }
+            } batch(target);
+            target.Send(SCI_SETINDICATORCURRENT, 12); target.Send(SCI_INDICSETSTYLE, 12, INDIC_ROUNDBOX);
+            target.Send(SCI_INDICSETFORE, 12, RGB(235, 160, 0));
+            if (task.purge) {
+                target.Send(SCI_INDICATORCLEARRANGE, 0, target.Send(SCI_GETLENGTH));
+            }
+            for (const auto& span : spans) target.Send(SCI_INDICATORFILLRANGE, span.start, span.end - span.start);
+        }
+        if (task.purge && task.state.bookmarkMatches) target.Send(SCI_MARKERDELETEALL, 0);
+        for (const auto line : bookmarks) target.Send(SCI_MARKERADD, line, 0);
+    } else if (finder && result.hits->Count()) owner->searchResults.AddOrdinary(target, task.result);
+    task.count += result.hits->Count(); if (result.hits->Count()) ++task.files;
+    task.result.reset(); ++task.next;
+    if (task.next == task.documents.size()) FinishSearch(false);
+}
 void SearchDialog::StartFiles(bool replace) {
+    ServiceReplacement();
+    if (replaceWork) { Status(L"The previous replacement is stopping. Please retry shortly."); return; }
     auto path = std::filesystem::path(Field(hwnd, IDC_SEARCH_DIRECTORY));
     std::error_code error;
     if (!std::filesystem::is_directory(path, error)) { Status(L"Select an existing directory."); return; }
@@ -304,7 +397,11 @@ void SearchDialog::StartFiles(bool replace) {
     hidden = IsDlgButtonChecked(hwnd, IDC_SEARCH_HIDDEN) == BST_CHECKED;
     fileHits = foundFiles = fileErrors = 0;
     files::DirectorySearchOptions options{std::filesystem::absolute(path), fileFilter, recursive, hidden};
-    if (replace) replaceWalker = std::make_unique<files::SearchWalker>(options);
+    if (replace) {
+        replacePattern = document->SearchReplacePattern();
+        replaceWalker = std::make_shared<files::SearchWalker>(options);
+        SetTimer(owner->m_hWnd, 0x282, 10, nullptr);
+    }
     else {
         std::vector<std::filesystem::path> openPaths;
         for (const auto& d : owner->documents) if (!d->path.empty()) openPaths.push_back(d->path);
@@ -326,8 +423,9 @@ void SearchDialog::FinishFiles(bool cancelled) {
         openSearch.reset();
     }
     if (fileTask) { fileTask->Stop(); fileErrors += fileTask->Errors(); fileTask.reset(); }
+    if (replaceWork) replaceWork->cancel.store(true);
     replaceWalker.reset();
-    if (owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
+    if ((!replaceFiles || !replaceWork) && owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
     Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
 }
@@ -408,34 +506,176 @@ void SearchDialog::FileStep() {
     if (!openSearch && fileTask->Done()) FinishFiles(false);
 
 }
-void SearchDialog::ReplaceFileStep() {
-    std::atomic<bool> cancel{false};
-    auto path = replaceWalker->Next(cancel, fileErrors);
-    if (!path) { FinishFiles(false); return; }
-    std::filesystem::directory_entry entry(*path);
-    std::error_code error;
-    try {
-        EditorDocument* open = nullptr;
-        for (const auto& d : owner->documents) if (!d->path.empty() && std::filesystem::equivalent(d->path, entry.path(), error)) { open = d.get(); break; }
-        auto process = [&](EditorDocument& d) {
-            UseSearch state(d, fileSearch); auto matches = d.CollectMatches();
-            if (!matches.empty()) {
-                owner->searchResults.Add(d, matches); ++foundFiles; fileHits += matches.size();
-                if (replaceFiles) d.ReplaceAll();
-            }
-            return !matches.empty();
-        };
-        if (open) process(*open);
-        else {
-            auto text = files::Read(entry.path());
-            if (text.utf8.find('\0') != std::string::npos) return; // binary input
-            EditorDocument temporary;
-            if (!temporary.Create(hwnd)) throw std::runtime_error("Cannot create file search buffer.");
-            ShowWindow(temporary.hwnd, SW_HIDE); temporary.path = entry.path(); temporary.Load(text);
-            if (process(temporary) && replaceFiles) { text.utf8 = temporary.Text(); files::WriteAtomic(entry.path(), text); }
+bool SearchDialog::CommittingReplacement() const {
+    return replaceWork && replaceWork->stage == ReplaceWork::Stage::Commit && replaceWork->task.Valid();
+}
+bool SearchDialog::DeferOpen(const std::filesystem::path& path, std::optional<files::Encoding> encoding) {
+    if (!CommittingReplacement()) return false;
+    deferredOpens.push_back({path, encoding}); return true;
+}
+void SearchDialog::ServiceReplacement() {
+    if (fileRunning && replaceFiles) return;
+    if (replaceWork && (!replaceWork->task.Valid() || replaceWork->task.Ready())) {
+        auto task = replaceWork;
+        try { if (task->task.Valid()) task->task.Get(); }
+        catch (...) { if (!task->cancel.load() || task->committed) ++fileErrors; }
+        fileErrors += std::exchange(task->errors, 0);
+        if (task->committed) {
+            fileHits += task->result.hits.archive->Count(); ++foundFiles;
+            if (owner->searchResults.generation == fileGeneration) owner->searchResults.AddFile(std::move(task->result.hits));
         }
-        Status(L"Searching: " + entry.path().wstring());
-    } catch (const std::exception&) { ++fileErrors; }
+        replaceWork.reset();
+        if (owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
+        if (hwnd && IsWindow(hwnd) && page == 2 && owner->searchResults.generation == fileGeneration) {
+            Status(L"Stopped. " + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
+        }
+    }
+    if (!CommittingReplacement()) {
+        auto pending = std::move(deferredOpens); deferredOpens.clear();
+        for (const auto& request : pending) owner->Open(request.path, request.encoding);
+    }
+    if (!replaceWork && deferredOpens.empty()) KillTimer(owner->m_hWnd, 0x282);
+}
+void SearchDialog::ReplaceFileStep() {
+    if (!replaceWork) {
+        replaceWork = std::make_shared<ReplaceWork>();
+        auto task = replaceWork; auto walker = replaceWalker;
+        task->task = work::Submit([task = task.get(), walker] { task->path = walker->Next(task->cancel, task->errors); });
+        return;
+    }
+    auto task = replaceWork;
+    if (task->task.Valid() && !task->task.Ready()) return;
+    try {
+        if (task->task.Valid()) task->task.Get();
+        fileErrors += std::exchange(task->errors, 0);
+        if (task->stage == ReplaceWork::Stage::Commit) {
+            if (task->committed) {
+                fileHits += task->result.hits.archive->Count(); ++foundFiles;
+                owner->searchResults.AddFile(std::move(task->result.hits));
+            }
+            replaceWork.reset();
+            auto pending = std::move(deferredOpens); deferredOpens.clear();
+            for (const auto& request : pending) owner->Open(request.path, request.encoding);
+            return;
+        }
+        if (!task->path) { replaceWork.reset(); FinishFiles(false); return; }
+        EditorDocument* open = nullptr;
+        for (const auto& d : owner->documents) {
+            std::error_code error;
+            if (!d->path.empty() && std::filesystem::equivalent(d->path, *task->path, error)) { open = d.get(); break; }
+        }
+        if (task->stage == ReplaceWork::Stage::Walk) {
+            Status(L"Replacing: " + task->path->wstring());
+            if (open) {
+                if (open->FastView()) {
+                    // Mapped documents retain their owner-thread matcher and native encoding semantics.
+                    UseSearch state(*open, fileSearch); auto matches = open->CollectMatches();
+                    if (!matches.empty()) { fileHits += open->ReplaceAll(); ++foundFiles; owner->searchResults.Add(*open, matches); }
+                    replaceWork.reset(); return;
+                }
+                task->identity = open->searchIdentity; task->revision = open->style.revision;
+                task->length = static_cast<size_t>(open->Send(SCI_GETLENGTH));
+                task->input = std::make_shared<std::string>();
+            }
+            task->stage = ReplaceWork::Stage::Prepare;
+        }
+        if (task->input && !task->result.hits.archive) {
+            auto found = owner->tabs.documentsById.find(task->identity);
+            if (found == owner->tabs.documentsById.end() || found->second->style.revision != task->revision)
+                throw std::runtime_error("Replacement conflict; buffer changed.");
+            if (task->offset < task->length) {
+                auto bytes = found->second->Range(task->offset, (std::min)(size_t(256 * 1024), task->length - task->offset));
+                task->offset += bytes.size(); task->input->append(bytes); return;
+            }
+        }
+        if (!task->result.hits.archive) {
+            const auto pattern = replacePattern;
+            task->task = work::Submit([task = task.get(), pattern] {
+                files::Text input;
+                if (task->input) input.utf8 = std::move(*task->input);
+                else {
+                    task->version = files::ReplacementVersion(*task->path);
+                    input = files::ReadReplacement(*task->path, task->cancel);
+                    if (input.utf8.find('\0') != std::string::npos) { task->result.hits.archive = std::make_shared<large::HitArchive>(); return; } // Closed binary files are excluded; open buffers support NUL.
+                    if (files::ReplacementVersion(*task->path) != task->version) throw std::runtime_error("Replacement conflict; file changed.");
+                }
+                task->result = files::ReplaceContents(std::move(input), pattern, task->cancel);
+                task->result.hits.path = *task->path;
+                task->result.hits.originalSize = task->version.size; task->result.hits.originalWriteTime = task->version.write;
+                if (!task->result.hits.archive) task->result.hits.archive = std::make_shared<large::HitArchive>();
+            }); return;
+        }
+        if (!task->result.replacements) { replaceWork.reset(); return; }
+        if (task->identity) {
+            auto found = owner->tabs.documentsById.find(task->identity);
+            if (found == owner->tabs.documentsById.end() || found->second->style.revision != task->revision || found->second->FastView())
+                throw std::runtime_error("Replacement conflict; buffer changed.");
+            auto& target = *found->second;
+            if (target.Send(SCI_GETREADONLY)) throw std::runtime_error("Replacement buffer is read-only.");
+            // Validate every spooled instruction before touching the owner-thread document.
+            const auto& prepared = task->result;
+            auto length = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
+            size_t first = 0;
+            while (first < prepared.edits->Count()) {
+                const auto edits = prepared.edits->Page(first, 4096);
+                for (const auto& edit : edits) {
+                    if (edit.sourceEnd < edit.sourceStart || edit.resultEnd < edit.resultStart || edit.resultEnd > prepared.text.utf8.size() ||
+                        edit.resultStart > length || edit.sourceEnd - edit.sourceStart > length - edit.resultStart)
+                        throw std::runtime_error("Invalid prepared replacement; buffer retained.");
+                    length = length - (edit.sourceEnd - edit.sourceStart) + (edit.resultEnd - edit.resultStart);
+                }
+                first += edits.size();
+            }
+            if (length != prepared.text.utf8.size()) throw std::runtime_error("Incomplete prepared replacement; buffer retained.");
+            bool changed = false;
+            auto appliedLength = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
+            target.Send(SCI_BEGINUNDOACTION);
+            try {
+                for (first = 0; first < prepared.edits->Count();) {
+                    const auto edits = prepared.edits->Page(first, 4096);
+                    for (const auto& edit : edits) {
+                        const auto oldLength = edit.sourceEnd - edit.sourceStart, size = edit.resultEnd - edit.resultStart;
+                        target.Send(SCI_SETTARGETRANGE, edit.resultStart, edit.resultStart + oldLength);
+                        const auto inserted = target.Send(SCI_REPLACETARGET, size, reinterpret_cast<LPARAM>(prepared.text.utf8.data() + edit.resultStart));
+                        const auto expectedLength = appliedLength - oldLength + size;
+                        const auto actualLength = static_cast<large::Position>(target.Send(SCI_GETLENGTH));
+                        changed |= actualLength != appliedLength || (oldLength && inserted);
+                        if (inserted != static_cast<LRESULT>(size) || actualLength != expectedLength) throw std::runtime_error("Cannot apply complete replacement.");
+                        appliedLength = actualLength;
+                    }
+                    first += edits.size();
+                }
+            } catch (...) {
+                target.Send(SCI_ENDUNDOACTION);
+                if (changed) target.Send(SCI_UNDO);
+                throw;
+            }
+            target.Send(SCI_ENDUNDOACTION);
+            fileHits += task->result.hits.archive->Count(); ++foundFiles;
+            owner->searchResults.AddFile(std::move(task->result.hits), task->identity, target.style.revision); replaceWork.reset(); owner->Refresh(); return;
+        }
+        if (open) throw std::runtime_error("Replacement conflict; file became open.");
+        // New opens are queued from this owner-thread check until commit completion.
+        task->stage = ReplaceWork::Stage::Commit;
+        task->task = work::Submit([task = task.get()] {
+            files::CommitReplacement(*task->path, task->result.text, task->version, task->cancel, [task] {
+                task->committed = true;
+                const auto version = files::ReplacementVersion(*task->path);
+                task->result.hits.originalSize = version.size; task->result.hits.originalWriteTime = version.write;
+            });
+        });
+    } catch (const std::exception& error) {
+        ++fileErrors;
+        if (task->committed) {
+            fileHits += task->result.hits.archive->Count(); ++foundFiles;
+            if (owner->searchResults.generation == fileGeneration) owner->searchResults.AddFile(std::move(task->result.hits));
+        }
+        if (task->path && owner->searchResults.generation == fileGeneration)
+            owner->searchResults.Skipped(*task->path, error.what());
+        replaceWork.reset();
+        auto pending = std::move(deferredOpens); deferredOpens.clear();
+        for (const auto& request : pending) owner->Open(request.path, request.encoding);
+    }
 }
 INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LPARAM l) {
     auto* dialog = reinterpret_cast<SearchDialog*>(GetWindowLongPtrW(window, DWLP_USER));
@@ -487,7 +727,21 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
         }
         if (!dialog) return FALSE;
         if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
-        if (message == WM_NCDESTROY) { dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == WM_NCDESTROY) { if (dialog->ordinaryTask) dialog->FinishSearch(true); dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == ContinueOrdinarySearch) {
+            if (dialog->ordinaryTask && dialog->ordinaryTask->token == w) {
+                // Posted work must let queued input and paint run before continuing.
+                if (HIWORD(GetQueueStatus(QS_INPUT | QS_PAINT))) dialog->ordinaryTask->yielding = true;
+                else dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
+        if (message == WM_TIMER && w == 3) {
+            if (dialog->ordinaryTask && (dialog->ordinaryTask->mapped || dialog->ordinaryTask->yielding)) {
+                dialog->ordinaryTask->yielding = false; dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
         if (message == WM_TIMER && w == 2) {
             auto found = std::find_if(dialog->owner->documents.begin(), dialog->owner->documents.end(), [&](const auto& d) { return d->searchIdentity == dialog->pendingIdentity; });
             if (found == dialog->owner->documents.end() || !(*found)->FastView()) { KillTimer(window, 2); return TRUE; }
@@ -590,7 +844,7 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
             dialog->Execute(id); return TRUE;
         }
     } catch (const std::exception& error) {
-        if (dialog) { if (dialog->fileRunning) dialog->FinishFiles(true); dialog->Status(files::FromUtf8(error.what())); }
+        if (dialog) { if (dialog->ordinaryTask) dialog->FinishSearch(true); if (dialog->fileRunning) dialog->FinishFiles(true); dialog->Status(files::FromUtf8(error.what())); }
         return TRUE;
     }
     return FALSE;

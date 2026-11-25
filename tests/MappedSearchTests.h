@@ -168,6 +168,125 @@ inline void RunMappedSearchTests(MainFrame& frame, const std::filesystem::path& 
         document->search.regex = true; document->search.findText = L"(中😀) (one|two)"; document->search.replaceText = L"$2:$1";
         require(document->ReplaceAll() == 2 && content() == "one:中😀 two:中😀"); document->Send(SCI_UNDO);
     }
+    // Viewport coordinates survive supplementary characters, edits and retained mark groups.
+    std::vector<files::Encoding> coordinateEncodings{files::Encoding::Utf16LEPlain, files::Encoding::Utf16BEPlain};
+    for (auto page : {932u, 54936u}) if (IsValidCodePage(page)) coordinateEncodings.push_back(files::FromCodePage(page));
+    for (auto encoding : coordinateEncodings) {
+        const std::string character = files::CodePage(encoding) == 932 ? "ソ" : "中😀";
+        const auto nativeCharacter = files::Encode({character, encoding}).size();
+        load(character + " one\n" + character + " two", encoding);
+        auto& view = *document->fastView;
+        view.ShowSelection(0, nativeCharacter);
+        require(document->Range(0, document->Send(SCI_GETSELECTIONEND)) == character);
+        require(view.GlobalSelection().anchor == 0 && view.GlobalSelection().caret == nativeCharacter);
+        document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("X"));
+        require(content() == "X one\n" + character + " two");
+        document->Send(SCI_UNDO); require(content() == character + " one\n" + character + " two");
+        require(view.GlobalSelection().anchor == 0 && view.GlobalSelection().caret == nativeCharacter);
+        document->Send(SCI_REDO); require(content() == "X one\n" + character + " two");
+        document->Send(SCI_UNDO);
+        auto snapshot = view.Model().Capture();
+        const auto second = files::Encode({character + " one\n", encoding}).size();
+        view.SetMarks(snapshot, std::vector<large::SearchHit>{{second, view.Size(), {}}}, true);
+        auto earlier = std::make_shared<large::HitArchive>(); earlier->Append({0, nativeCharacter, {}});
+        view.SetMarks(snapshot, earlier, true, false);
+        require(document->Send(SCI_INDICATORVALUEAT, 12, 0) != 0);
+        require(document->Send(SCI_INDICATORVALUEAT, 12, character.size() + 5) != 0);
+        require(document->Send(SCI_MARKERGET, 0) & 1); require(document->Send(SCI_MARKERGET, 1) & 1);
+        // Both viewport edges clip separately in each retained group after seeking.
+        std::string manyLines; for (int i = 0; i < 120000; ++i) manyLines += character + "\n";
+        load(manyLines, encoding); auto& largeView = *document->fastView;
+        snapshot = largeView.Model().Capture(); largeView.Seek(largeView.Size() / 2);
+        require(largeView.Begin() > 0 && largeView.End() < largeView.Size());
+        largeView.SetMarks(snapshot, std::vector<large::SearchHit>{{0, largeView.Begin() + nativeCharacter, {}}}, true);
+        auto repeated = std::make_shared<large::HitArchive>(); repeated->Append({largeView.End() - files::Encode({"\n", encoding}).size(), largeView.Size(), {}});
+        const auto readBeforePaint = largeView.BytesRead();
+        largeView.SetMarks(snapshot, repeated, true, false);
+        require(largeView.BytesRead() == readBeforePaint);
+        require(document->Send(SCI_INDICATORVALUEAT, 12, 0) != 0);
+        require(document->Send(SCI_INDICATORVALUEAT, 12, document->Send(SCI_GETLENGTH) / 2) == 0);
+        require(document->Send(SCI_INDICATORVALUEAT, 12, document->Send(SCI_GETLENGTH) - 1) != 0);
+        require(document->Send(SCI_MARKERGET, 0) & 1);
+        // The global selection extends beyond the visible text; replacement stays atomic.
+        largeView.Seek(0);
+        const auto selected = largeView.End() + files::Encode({character + "\n", encoding}).size();
+        const auto selectedUtf8 = largeView.ReadUtf8(0, static_cast<size_t>(selected)).size();
+        largeView.ShowSelection(0, selected);
+        require(largeView.GlobalSelection().anchor == 0 && largeView.GlobalSelection().caret == selected);
+        document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("X"));
+        require(content() == "X" + manyLines.substr(selectedUtf8));
+        document->Send(SCI_UNDO); require(content() == manyLines);
+        require(largeView.GlobalSelection().anchor == 0 && largeView.GlobalSelection().caret == selected);
+        document->Send(SCI_REDO); require(content() == "X" + manyLines.substr(selectedUtf8));
+        document->Send(SCI_UNDO); require(content() == manyLines);
+    }
+    load("中 word", files::Encoding::Utf16LEPlain);
+    {
+        auto& view = *document->fastView;
+        SCNotification invalid{}; invalid.modificationType = SC_MOD_INSERTTEXT; invalid.position = 1; invalid.length = 1; invalid.text = "X";
+        bool rejected = false; try { view.OnModified(invalid); } catch (const std::runtime_error&) { rejected = true; }
+        require(rejected && content() == "中 word");
+    }
+    // Less common installed multibyte encodings keep their original conversion path.
+    for (auto page : {20932u, 51949u}) {
+        if (!IsValidCodePage(page)) continue;
+        const auto encoding = files::FromCodePage(page);
+        const std::string sample = page == 20932 ? "日本 word" : "한국 word";
+        load(sample, encoding); auto& view = *document->fastView;
+        const auto native = files::Encode({sample, encoding}).size();
+        view.ShowSelection(0, native); require(view.GlobalSelection().caret == native);
+        require(document->Range(0, document->Send(SCI_GETLENGTH)) == sample);
+        document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("X")); require(content() == "X");
+        document->Send(SCI_UNDO); require(content() == sample);
+    }
+    // Paired warm-cache viewport paint workload; baseline is the previous prefix decoder.
+    if (GetEnvironmentVariableW(L"MULTIPAD4_VIEWPORT_BENCHMARK", nullptr, 0)) {
+        std::string text; for (int i = 0; i < 4096; ++i) text += "中😀 hit\n";
+        load(text, files::Encoding::Utf16LEPlain);
+        auto& view = *document->fastView;
+        std::vector<large::SearchHit> hits;
+        for (size_t i = 0; i < 4096; ++i) hits.push_back({i * 16 + 8, i * 16 + 14, {}});
+        auto archive = std::make_shared<large::HitArchive>(); for (const auto& hit : hits) archive->Append(hit);
+        const auto snapshot = view.Model().Capture();
+        std::vector<double> before, after;
+        auto measure = [&](bool baseline) {
+            const auto read = view.BytesRead();
+            const auto started = std::chrono::steady_clock::now();
+            if (baseline) {
+                document->Send(SCI_SETINDICATORCURRENT, 12); document->Send(SCI_INDICATORCLEARRANGE, 0, text.size());
+                for (const auto& hit : hits) {
+                    const auto first = files::Decode(view.Model().Read(0, static_cast<size_t>(hit.start)), document->encoding, false).utf8.size();
+                    const auto last = files::Decode(view.Model().Read(0, static_cast<size_t>(hit.end)), document->encoding, false).utf8.size();
+                    document->Send(SCI_INDICATORFILLRANGE, first, last - first);
+                }
+            } else view.SetMarks(snapshot, archive, false);
+            document->Send(SCI_GETLENGTH); UpdateWindow(document->hwnd);
+            const auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+            if (!baseline) require(view.BytesRead() == read);
+            require(document->Send(SCI_INDICATORVALUEAT, 12, 8) != 0);
+            return ms;
+        };
+        for (int i = 0; i < 21; ++i) { before.push_back(measure(true)); after.push_back(measure(false)); }
+        std::sort(before.begin(), before.end()); std::sort(after.begin(), after.end());
+        fprintf(stdout, "Viewport UTF16LE 64KiB/4096 hits warm: prefix vs checkpoints ms median %.3f/%.3f p95 %.3f/%.3f p99/max %.3f/%.3f; decoded bytes per repaint 268460032/0.\n",
+            before[10], after[10], before[19], after[19], before[20], after[20]);
+        std::vector<double> typing, seeking;
+        for (int i = 0; i < 21; ++i) {
+            view.ShowSelection(0, 0);
+            auto started = std::chrono::steady_clock::now();
+            document->Send(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("X"));
+            require(view.GlobalSelection().caret == 2); UpdateWindow(document->hwnd);
+            typing.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+            document->Send(SCI_UNDO);
+            const auto read = view.BytesRead(); started = std::chrono::steady_clock::now();
+            view.Seek(0); UpdateWindow(document->hwnd);
+            seeking.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+            require(view.BytesRead() - read == 65536);
+        }
+        std::sort(typing.begin(), typing.end()); std::sort(seeking.begin(), seeking.end());
+        fprintf(stdout, "Viewport new typing ms median %.3f p95 %.3f p99/max %.3f; seek/decode ms median %.3f p95 %.3f p99/max %.3f; native bytes decoded per seek 65536, typed prefix 0.\n",
+            typing[10], typing[19], typing[20], seeking[10], seeking[19], seeking[20]);
+    }
     load(std::string(1024 * 1024 - 5, 'A') + "nEeDlE_mArKeR" + std::string(1024 * 1024, 'B') + "NEEDLE_MARKER");
     document->search.findText = L"needle_marker"; document->search.replaceText = L"found";
     require(document->ReplaceAll() == 2 && content() == std::string(1024 * 1024 - 5, 'A') + "found" + std::string(1024 * 1024, 'B') + "found"); document->Send(SCI_UNDO);

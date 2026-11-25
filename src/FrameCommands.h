@@ -9,7 +9,7 @@ void RememberDocumentPreferences(MainFrame& frame, EditorDocument& document, UIN
 void SaveFramePreferences(MainFrame& frame);
 void UpdateToolbarImages(MainFrame& frame);
 void TickBackgroundWork(MainFrame& frame);
-void CheckExternalChanges(MainFrame& frame);
+void CheckExternalChanges(MainFrame& frame, bool retryPendingChanges = true);
 void SnapshotDocument(EditorDocument& document);
 void BackupDocuments(MainFrame& frame, bool force = false);
 void RemoveDocumentRecovery(MainFrame& frame, EditorDocument& document, bool keepBackup = false);
