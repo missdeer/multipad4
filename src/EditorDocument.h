@@ -1,6 +1,7 @@
 #pragma once
 #include "App.h"
 #include "FileIO.h"
+#include "FileSearch.h"
 #include "StyleState.h"
 #include "AppRuntime.h"
 #include "FileVariables.h"
@@ -9,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include "StatusStatistics.h"
+namespace files { struct ReplacePattern; }
 struct SearchState {
     std::wstring findText, replaceText;
     int flags = 0;
@@ -29,6 +31,13 @@ struct SearchMatch {
     std::string preview;
     std::shared_ptr<const large::Document::Snapshot> diskSource;
     unsigned long long sourceRevision = 0, sourceSize = 0, sourceWriteTime = 0;
+    LRESULT sourceBase = 0;
+    std::optional<files::ReplacementTarget> replacementTarget;
+};
+struct OrdinarySearchResult {
+    struct Line { LRESULT number, start; std::shared_ptr<const std::string> text; };
+    std::shared_ptr<large::HitArchive> hits;
+    std::vector<Line> lines;
 };
 struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
@@ -82,11 +91,20 @@ struct EditorDocument {
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     large::SearchOptions MappedSearchOptions() const;
     std::string SearchReplacement();
+    files::ReplacePattern SearchReplacePattern();
     void ValidateSearch(bool replacing = false);
     std::vector<SearchMatch> MappedMatches(const large::Document::Snapshot& snapshot, const std::vector<large::SearchHit>& hits);
     bool ReplaceOne();
     size_t ReplaceAll(bool selectionOnly = false);
     std::vector<SearchMatch> CollectMatches(bool selectionOnly = false);
+    struct MatchCursor {
+        std::string needle;
+        LRESULT next = 0, limit = 0;
+        int flags = 0;
+        bool done = false;
+    };
+    MatchCursor BeginMatches(bool selectionOnly = false);
+    bool MatchStep(MatchCursor& cursor, const std::function<void(LRESULT, LRESULT)>& consume);
     size_t FindAll(bool selectAll = false, bool bookmark = false);
     void SetEncoding(files::Encoding value);
 };

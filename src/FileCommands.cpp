@@ -280,18 +280,31 @@ bool SelectDocumentEncoding(MainFrame& frame,EditorDocument& document,files::Enc
     if(encoding==files::Encoding::Ansi){auto converted=files::Decode(files::EncodeLossy({original,encoding}),encoding).utf8;if(converted!=original)ReplaceEncodingText(document,converted);}
     document.SetEncoding(encoding);return true;
 }
-bool PrepareEncodingSave(MainFrame& frame,EditorDocument& document,files::Text& output,bool copy){
-    output={document.Text(),document.encoding};
-    try{files::Encode(output);return true;}catch(const std::runtime_error&){
-        if(!LegacyEncoding(output.encoding)||!IsValidCodePage(files::CodePage(output.encoding)))throw;
-        auto converted=files::Decode(files::EncodeLossy(output),output.encoding).utf8;
-        if(converted==output.utf8)throw;
-        if(!copy&&document.Send(SCI_GETREADONLY)){
-            ShowInfoDialog(frame.m_hWnd,frame.settings,L"This document is read only. Turn off Read Only Mode before converting unsupported characters, or use Save Copy.",L"Encoding",MB_OK|MB_ICONINFORMATION);
+bool PrepareEncodingSave(MainFrame& frame, EditorDocument& document, std::string& output, bool copy) {
+    const auto revision = document.style.revision;
+    files::Text text{document.Text(), document.encoding};
+    if (text.encoding == files::Encoding::Utf8) {
+        files::EncodeChunks(text, [](std::string_view) {});
+        output = std::move(text.utf8);
+        return true;
+    }
+    try { output = files::Encode(text); return true; }
+    catch (const std::runtime_error&) {
+        if (!LegacyEncoding(text.encoding) || !IsValidCodePage(files::CodePage(text.encoding))) throw;
+        auto bytes = files::EncodeLossy(text);
+        auto converted = files::Decode(bytes, text.encoding).utf8;
+        if (converted == text.utf8) throw;
+        if (!copy && document.Send(SCI_GETREADONLY)) {
+            ShowInfoDialog(frame.m_hWnd, frame.settings, L"This document is read only. Turn off Read Only Mode before converting unsupported characters, or use Save Copy.", L"Encoding", MB_OK | MB_ICONINFORMATION);
             return false;
         }
-        if(ShowInfoDialog(frame.m_hWnd,frame.settings,EncodingMessage(IDS_ERR_UNICODE2),L"Encoding",MB_OKCANCEL|MB_ICONWARNING,L"MsgConv3")!=IDOK)return false;
-        output.utf8=converted;if(!copy)ReplaceEncodingText(document,converted);return true;
+        if (ShowInfoDialog(frame.m_hWnd, frame.settings, EncodingMessage(IDS_ERR_UNICODE2), L"Encoding", MB_OKCANCEL | MB_ICONWARNING, L"MsgConv3") != IDOK) return false;
+        // Modal confirmation can dispatch edits; approval belongs to this exact version.
+        if (document.style.revision != revision || document.encoding != text.encoding || (!copy && document.Send(SCI_GETREADONLY)))
+            throw std::runtime_error("Document changed during encoding confirmation; save again.");
+        if (!copy) ReplaceEncodingText(document, converted);
+        output = std::move(bytes);
+        return true;
     }
 }
 files::Text ReadFileForReload(MainFrame& frame,const EditorDocument& document){

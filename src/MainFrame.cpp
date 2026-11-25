@@ -210,6 +210,7 @@ EditorDocument* MainFrame::AddDocument(std::unique_ptr<EditorDocument> document)
     return raw;
 }
 bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::Encoding> forcedEncoding) {
+    if (searchDialog.DeferOpen(input, forcedEncoding)) return false;
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
         for (int i = 0; i < tabs.GetPageCount(); ++i) {
@@ -244,6 +245,9 @@ bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
     return SaveTo(document, path, mode == SaveMode::Copy, keepBackup);
 }
 bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& input, bool copy, bool keepBackup) {
+    if (searchDialog.CommittingReplacement()) {
+        ::MessageBoxW(m_hWnd, L"A file replacement is committing. Please retry saving shortly.", L"Replace in Files", MB_OK | MB_ICONINFORMATION); return false;
+    }
     CancelDocumentBackup(*this, document);
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
@@ -264,11 +268,13 @@ bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& in
             return true;
         }
         PrepareFileSave(*this, document);
-        if (document.LargeFile()) document.SaveStreaming(path);
+        if (document.LargeFile() && (document.encoding == files::Encoding::Utf8 || document.encoding == files::Encoding::Utf8Bom
+            || document.encoding == files::Encoding::Utf16LE || document.encoding == files::Encoding::Utf16BE
+            || document.encoding == files::Encoding::Utf16LEPlain || document.encoding == files::Encoding::Utf16BEPlain)) document.SaveStreaming(path);
         else {
-            files::Text output;
+            std::string output;
             if (!PrepareEncodingSave(*this, document, output, copy)) return false;
-            files::WriteAtomic(path, output);
+            files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) { consume(output); });
         }
         if (copy) return true; // A copy must retain path, lexer, encoding and dirty state.
         document.path = path; document.ConfigureLexer(); document.Send(SCI_SETSAVEPOINT); document.encodingDirty = false;

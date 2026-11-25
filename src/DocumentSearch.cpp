@@ -1,3 +1,4 @@
+#include "FileReplace.h"
 #include "EditClipboard.h"
 #include "EditSelection.h"
 #include "EditorDocument.h"
@@ -121,6 +122,9 @@ large::SearchOptions EditorDocument::MappedSearchOptions() const {
         (search.flags & SCFIND_WHOLEWORD) != 0, (search.flags & SCFIND_WORDSTART) != 0, search.dotMatchesNewline};
 }
 std::string EditorDocument::SearchReplacement() { return Replacement(*this); }
+files::ReplacePattern EditorDocument::SearchReplacePattern() {
+    return {Needle(*this), Replacement(*this), Flags(*this), ReplaceMessage(*this) == SCI_REPLACETARGETRE};
+}
 void EditorDocument::ValidateSearch(bool replacing) {
     if (FastView()) {
         large::Search pattern(fastView->Model().Capture(), encoding, MappedSearchOptions());
@@ -135,7 +139,20 @@ std::vector<SearchMatch> EditorDocument::MappedMatches(const large::Document::Sn
     std::vector<SearchMatch> matches;
     auto shared = std::make_shared<const large::Document::Snapshot>(snapshot);
     large::Search reader(snapshot, encoding, {L"", false, true});
+    large::Position cachedStart = 0, cachedEnd = 0, cachedLine = 0, cachedLineStart = 0;
+    std::string cachedText;
+    std::vector<size_t> decodedOffsets;
     for (const auto& hit : hits) {
+        if (hit.start >= cachedStart && hit.end <= cachedEnd && hit.start < cachedEnd && !decodedOffsets.empty()) {
+            const auto prefix = decodedOffsets[static_cast<size_t>(hit.start - cachedStart)];
+            const auto end = decodedOffsets[static_cast<size_t>(hit.end - cachedStart)];
+            if (prefix != SIZE_MAX && end != SIZE_MAX) {
+                SearchMatch match; match.start = static_cast<LRESULT>(prefix); match.end = static_cast<LRESULT>(end);
+                match.line = static_cast<LRESULT>(cachedLine); match.mappedSource = shared;
+                match.nativeStart = hit.start; match.nativeEnd = hit.end; match.nativeLineStart = cachedLineStart; match.preview = cachedText;
+                matches.push_back(std::move(match)); continue;
+            }
+        }
         const auto line = large::Document::LineFromPosition(snapshot, hit.start);
         const auto lineStart = large::Document::PositionFromLine(snapshot, line);
         const auto unit = encoding == files::Encoding::Utf16LE || encoding == files::Encoding::Utf16LEPlain || encoding == files::Encoding::Utf16BE || encoding == files::Encoding::Utf16BEPlain ? 2u : 1u;
@@ -163,8 +180,36 @@ std::vector<SearchMatch> EditorDocument::MappedMatches(const large::Document::Sn
         }
         auto text = files::Decode(rawPreview, encoding, false).utf8;
         auto newline = text.find_first_of("\r\n"); if (newline != std::string::npos) text.resize(newline);
-        auto prefix = reader.Utf8(previewStart, hit.start - previewStart).size();
-        auto length = hit.end <= previewStart + rawPreview.size() ? reader.Utf8(hit.start, hit.end - hit.start).size() : text.size();
+        decodedOffsets.assign(rawPreview.size() + 1, SIZE_MAX);
+        size_t native = 0, decoded = 0;
+        while (native < rawPreview.size() && decoded < text.size()) {
+            decodedOffsets[native] = decoded;
+            size_t nativeWidth = unit;
+            const auto byte = static_cast<unsigned char>(rawPreview[native]);
+            if (unicode8) nativeWidth = byte < 0x80 ? 1 : byte < 0xE0 ? 2 : byte < 0xF0 ? 3 : 4;
+            else if (unit == 2 && native + 3 < rawPreview.size()) {
+                const auto other = static_cast<unsigned char>(rawPreview[native + 1]);
+                const auto value = encoding == files::Encoding::Utf16LE || encoding == files::Encoding::Utf16LEPlain ? byte | (other << 8) : (byte << 8) | other;
+                if (value >= 0xD800 && value <= 0xDBFF) nativeWidth = 4;
+            } else if (unit == 1) {
+                const auto page = files::CodePage(encoding); nativeWidth = IsDBCSLeadByteEx(page, byte) ? 2 : 1;
+                if (page == 54936 && byte >= 0x81 && byte <= 0xFE && native + 1 < rawPreview.size()) {
+                    const auto second = static_cast<unsigned char>(rawPreview[native + 1]); nativeWidth = second >= 0x30 && second <= 0x39 ? 4 : 2;
+                }
+            }
+            const auto lead = static_cast<unsigned char>(text[decoded]);
+            const size_t decodedWidth = lead < 0x80 ? 1 : lead < 0xE0 ? 2 : lead < 0xF0 ? 3 : 4;
+            if (nativeWidth > rawPreview.size() - native || decodedWidth > text.size() - decoded) break;
+            decoded += decodedWidth;
+            native += nativeWidth;
+        }
+        decodedOffsets[native] = decoded;
+        cachedStart = previewStart; cachedEnd = previewStart + native;
+        cachedLine = line; cachedLineStart = lineStart; cachedText = text;
+        auto prefix = hit.start >= cachedStart && hit.start <= cachedEnd && decodedOffsets[static_cast<size_t>(hit.start - cachedStart)] != SIZE_MAX
+            ? decodedOffsets[static_cast<size_t>(hit.start - cachedStart)] : reader.Utf8(previewStart, hit.start - previewStart).size();
+        auto length = hit.end >= hit.start && hit.end <= cachedEnd && decodedOffsets[static_cast<size_t>(hit.end - cachedStart)] != SIZE_MAX
+            ? decodedOffsets[static_cast<size_t>(hit.end - cachedStart)] - prefix : hit.end <= previewStart + rawPreview.size() ? reader.Utf8(hit.start, hit.end - hit.start).size() : text.size();
         SearchMatch match; match.start = static_cast<LRESULT>(prefix); match.end = static_cast<LRESULT>(prefix + length);
         match.line = static_cast<LRESULT>(line); match.lineStart = 0; match.mappedSource = shared;
         match.nativeStart = hit.start; match.nativeEnd = hit.end; match.nativeLineStart = lineStart;
@@ -339,7 +384,37 @@ size_t EditorDocument::FindAll(bool selectAll, bool bookmark) {
     return search.matches;
 }
 
-// Shared enumeration for Count, Mark and Finder. Positions are UTF-8 byte offsets.
+EditorDocument::MatchCursor EditorDocument::BeginMatches(bool selectionOnly) {
+    MatchCursor cursor;
+    cursor.needle = Needle(*this); cursor.flags = Flags(*this);
+    cursor.next = selectionOnly ? Send(SCI_GETSELECTIONSTART) : 0;
+    cursor.limit = selectionOnly ? Send(SCI_GETSELECTIONEND) : Send(SCI_GETLENGTH);
+    cursor.done = cursor.needle.empty();
+    return cursor;
+}
+bool EditorDocument::MatchStep(MatchCursor& cursor, const std::function<void(LRESULT, LRESULT)>& consume) {
+    const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);
+    struct Restore { EditorDocument& d; LRESULT flags, from, to;
+        ~Restore() { d.Send(SCI_SETSEARCHFLAGS, flags); d.Send(SCI_SETTARGETRANGE, from, to); }
+    } restore{*this, flags, from, to};
+    const auto deadline = GetTickCount64() + 4;
+    Send(SCI_SETSEARCHFLAGS, cursor.flags);
+    for (size_t batch = 0; !cursor.done && cursor.next <= cursor.limit && batch < 512; ++batch) {
+        Send(SCI_SETSTATUS, SC_STATUS_OK); Send(SCI_SETTARGETRANGE, cursor.next, cursor.limit);
+        const auto found = Send(SCI_SEARCHINTARGET, cursor.needle.size(), reinterpret_cast<LPARAM>(cursor.needle.data()));
+        if (Send(SCI_GETSTATUS) == SC_STATUS_WARN_REGEX) throw std::runtime_error("Invalid regular expression.");
+        if (found < 0) { cursor.done = true; break; }
+        const auto end = Send(SCI_GETTARGETEND);
+        consume(found, end);
+        if (end == found) {
+            if (end >= cursor.limit) cursor.done = true;
+            else { cursor.next = Send(SCI_POSITIONAFTER, end); cursor.done = cursor.next > cursor.limit; }
+        } else { cursor.next = end; cursor.done = cursor.next > cursor.limit; }
+        if (GetTickCount64() >= deadline) break;
+    }
+    return cursor.done;
+}
+// Synchronous snapshot enumeration remains for replacement and compatibility callers.
 std::vector<SearchMatch> EditorDocument::CollectMatches(bool selectionOnly) {
     if (FastView()) { auto snapshot = fastView->Model().Capture(); auto hits = fastView->Matches(MappedSearchOptions(), selectionOnly); return MappedMatches(snapshot, hits); }
     const auto flags = Send(SCI_GETSEARCHFLAGS), from = Send(SCI_GETTARGETSTART), to = Send(SCI_GETTARGETEND);

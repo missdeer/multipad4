@@ -39,6 +39,7 @@ public:
 };
 inline constexpr size_t SampleLookahead = 8;
 // Incomplete samples include SampleLookahead bytes beyond the probe boundary.
+Encoding DetectEncoding(std::string_view bytes, const ReadOptions& options);
 Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options);
 using ChunkConsumer = std::function<void(std::string_view)>;
 // Wall-clock milliseconds. Mapping first-touch faults are charged to the
@@ -53,7 +54,7 @@ struct ReadStats {
 Encoding ReadChunks(const std::filesystem::path& path, const ChunkConsumer& consume,
     const ReadOptions& options = {}, std::optional<Encoding> forced = {}, ReadStats* stats = nullptr);
 void WriteAtomicChunks(const std::filesystem::path& path,
-    const std::function<void(const ChunkConsumer&)>& produce);
+    const std::function<void(const ChunkConsumer&)>& produce, const std::function<void()>& validate = {}, const std::function<void()>& committed = {});
 Text Read(const std::filesystem::path& path);
 Text Read(const std::filesystem::path& path, const ReadOptions& options);
 Text ReadWithEncoding(const std::filesystem::path& path, Encoding encoding);
@@ -62,6 +63,8 @@ Encoding FromCodePage(unsigned codePage);
 unsigned CodePage(Encoding encoding);
 bool ParseEncodingName(const std::wstring& name, Encoding& encoding);
 std::string Encode(const Text& text);
+// Synchronous: borrowed UTF-8 bytes remain owned by text until consume returns.
+void EncodeChunks(const Text& text, const ChunkConsumer& consume);
 std::string EncodeLossy(const Text& text);
 Text Decode(std::string_view bytes, Encoding encoding, bool stripBom = true);
 struct FileTimes { unsigned long long creation = 0, access = 0, write = 0; };

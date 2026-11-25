@@ -19,11 +19,13 @@ public:
     void Clear();
     void Begin(const std::wstring& query);
     void Add(EditorDocument& document, const std::vector<SearchMatch>& matches);
+    void AddOrdinary(EditorDocument& document, std::shared_ptr<OrdinarySearchResult> result);
     void Add(const std::filesystem::path& path, unsigned long long identity, const std::vector<SearchMatch>& matches, const std::wstring& title = {});
     void AddMapped(EditorDocument& document, large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> hits);
     void AddFile(files::FileSearchResult result, unsigned long long identity = 0, unsigned long long revision = 0);
     bool LoadMore(size_t archive);
     void Finish(size_t hits, size_t files);
+    void Skipped(const std::filesystem::path& path, const std::string& reason);
     bool Navigate(size_t line, size_t matchIndex = 0);
     BOOL PreTranslateMessage(MSG* message);
     LRESULT Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
@@ -43,7 +45,7 @@ public:
     LRESULT OnNotify(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnContext(UINT, WPARAM, LPARAM, BOOL&);
 private:
-    struct MappedPage { unsigned long long identity; std::filesystem::path path; large::Document::Snapshot snapshot; std::shared_ptr<large::HitArchive> hits; size_t next = 0; files::FileSearchResult disk; unsigned long long revision = 0; bool file = false; };
+    struct MappedPage { unsigned long long identity; std::filesystem::path path; large::Document::Snapshot snapshot; std::shared_ptr<large::HitArchive> hits; size_t next = 0; files::FileSearchResult disk; unsigned long long revision = 0; bool file = false; std::shared_ptr<OrdinarySearchResult> ordinary; std::wstring title; };
     std::vector<MappedPage> archives;
     size_t header = 0;
     void Append(const std::string& text, SearchResultLexer::Line style, Target target);

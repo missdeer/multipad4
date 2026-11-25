@@ -39,6 +39,11 @@ void SearchResultsPane::Begin(const std::wstring& query) {
     auto text = files::ToUtf8(query); std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
     Append("Search \"" + text + "\"", {SearchResultLexer::SearchHeader}, {}); Reveal();
 }
+void SearchResultsPane::Skipped(const std::filesystem::path& path, const std::string& reason) {
+    auto text = "  Skipped " + files::ToUtf8(path.wstring()) + ": " + reason;
+    std::replace(text.begin(), text.end(), '\r', ' '); std::replace(text.begin(), text.end(), '\n', ' ');
+    Append(text, {SearchResultLexer::FileHeader}, {});
+}
 void SearchResultsPane::Add(EditorDocument& document, const std::vector<SearchMatch>& matches) {
     if (matches.empty()) return;
     Add(document.path, document.searchIdentity, matches, document.Title());
@@ -49,9 +54,9 @@ void SearchResultsPane::Add(const std::filesystem::path& path, unsigned long lon
     Append("  " + files::ToUtf8(path.empty() ? title : path.wstring()) + " (" + std::to_string(matches.size()) + " hits)", {SearchResultLexer::FileHeader}, target);
     for (size_t i = 0; i < matches.size();) {
         const auto& match = matches[i]; target.match = match; target.matches.clear();
-        auto lineText = (match.mappedSource || match.diskSource) ? match.preview : match.source->substr(match.lineStart,
-            match.source->find_first_of("\r\n", match.lineStart) == std::string::npos ? std::string::npos :
-            match.source->find_first_of("\r\n", match.lineStart) - match.lineStart);
+        auto lineText = (match.mappedSource || match.diskSource) ? match.preview : match.source->substr(match.lineStart - match.sourceBase,
+            match.source->find_first_of("\r\n", match.lineStart - match.sourceBase) == std::string::npos ? std::string::npos :
+            match.source->find_first_of("\r\n", match.lineStart - match.sourceBase) - (match.lineStart - match.sourceBase));
         auto number = std::to_string(match.line + 1);
         std::string prefix = "\tLine " + number + ": ";
         SearchResultLexer::Line style; style.numberStart = 6; style.numberEnd = 6 + number.size();
@@ -62,6 +67,11 @@ void SearchResultsPane::Add(const std::filesystem::path& path, unsigned long lon
         } while (!match.mappedSource && i < matches.size() && matches[i].line == match.line && matches[i].lineStart == match.lineStart);
         Append(prefix + lineText, std::move(style), target);
     }
+}
+void SearchResultsPane::AddOrdinary(EditorDocument& document, std::shared_ptr<OrdinarySearchResult> result) {
+    MappedPage page{document.searchIdentity, document.path, {}, result->hits};
+    page.ordinary = std::move(result); page.title = document.Title();
+    archives.push_back(std::move(page)); LoadMore(archives.size() - 1);
 }
 void SearchResultsPane::AddMapped(EditorDocument& document, large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> hits) {
     archives.push_back({document.searchIdentity, document.path, std::move(snapshot), std::move(hits), 0});
@@ -76,10 +86,32 @@ void SearchResultsPane::AddFile(files::FileSearchResult result, unsigned long lo
 bool SearchResultsPane::LoadMore(size_t archive) {
     if (archive >= archives.size()) return false;
     auto& page = archives[archive]; if (page.next >= page.hits->Count()) return false;
+    if (page.ordinary) {
+        auto hits = page.hits->Page(page.next, 64);
+        std::vector<SearchMatch> matches;
+        for (const auto& hit : hits) {
+            const auto& sources = page.ordinary->lines;
+            auto source = std::lower_bound(sources.begin(), sources.end(), hit.line,
+                [](const auto& line, auto number) { return static_cast<large::Position>(line.number) < number; });
+            SearchMatch match;
+            match.start = static_cast<LRESULT>(hit.start); match.end = static_cast<LRESULT>(hit.end);
+            match.line = static_cast<LRESULT>(hit.line); match.lineStart = static_cast<LRESULT>(hit.lineStart);
+            match.source = source->text; match.sourceBase = source->start;
+            matches.push_back(std::move(match));
+        }
+        Add(page.path, page.identity, matches, page.title); page.next += hits.size();
+        if (page.next < page.hits->Count()) {
+            Target target; target.identity = page.identity; target.path = page.path; target.archive = archive;
+            Append("  Load next results page (" + std::to_string(page.next) + " / " + std::to_string(page.hits->Count()) + " displayed)", {SearchResultLexer::Default}, std::move(target));
+        }
+        return true;
+    }
     if (page.file) {
         const auto dirty = lines.size();
         auto hits = page.hits->Page(page.next, 64);
         std::vector<SearchMatch> matches;
+        const auto replacementTargets = page.disk.replacementTargets ? page.disk.replacementTargets->Page(page.next, hits.size()) : std::vector<files::ReplacementTarget>{};
+        size_t targetIndex = 0;
         for (const auto& hit : hits) {
             auto begin = (std::max)(hit.lineStart, hit.start > 256 ? hit.start - 256 : 0);
             auto preview = large::Document::Read(page.snapshot, begin, 2048);
@@ -98,6 +130,7 @@ bool SearchResultsPane::LoadMore(size_t archive) {
             match.nativeLineStart = hit.lineStart; match.nativeStart = hit.start; match.nativeEnd = hit.end;
             match.diskSource = page.disk.snapshot; match.sourceRevision = page.revision;
             match.sourceSize = page.disk.originalSize; match.sourceWriteTime = page.disk.originalWriteTime;
+            if (!replacementTargets.empty()) match.replacementTarget = replacementTargets[targetIndex++];
             match.preview = std::move(preview); matches.push_back(std::move(match));
         }
         Add(page.path, page.identity, matches); page.next += hits.size();
@@ -151,7 +184,15 @@ bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
         }
         if (!valid) { ::MessageBoxW(m_hWnd, L"This result has changed. Run the search again.", L"Search results", MB_OK | MB_ICONINFORMATION); return false; }
         for (int i = 0; i < owner->tabs.GetPageCount(); ++i) if (owner->tabs.GetPageData(i) == document) owner->tabs.SetActivePage(i);
-        if (document->FastView()) document->fastView->StartExternalMatch(*match.diskSource, match.line, match.nativeLineStart, match.nativeStart, match.nativeEnd);
+        if (match.replacementTarget) {
+            const auto& destination = *match.replacementTarget;
+            if (document->FastView()) document->fastView->ShowSelection(destination.nativeStart, destination.nativeEnd - destination.nativeStart);
+            else {
+                document->Send(SCI_ENSUREVISIBLE, document->Send(SCI_LINEFROMPOSITION, destination.utf8Start));
+                document->Send(SCI_SETSEL, destination.utf8Start, destination.utf8End);
+                document->Send(SCI_SCROLLCARET);
+            }
+        } else if (document->FastView()) document->fastView->StartExternalMatch(*match.diskSource, match.line, match.nativeLineStart, match.nativeStart, match.nativeEnd);
         else {
             // Verify the displayed context before using UTF-8 coordinates from a disk snapshot.
             if (document->Range(match.lineStart, match.preview.size()) != match.preview) return false;
@@ -171,14 +212,14 @@ bool SearchResultsPane::Navigate(size_t line, size_t matchIndex) {
     auto lineStart = document->Send(SCI_POSITIONFROMLINE, target.match.line);
     auto lineEnd = document->Send(SCI_GETLINEENDPOSITION, target.match.line);
     if (lineStart < 0 || lineEnd < lineStart || lineEnd > document->Send(SCI_GETLENGTH) ||
-        document->Range(lineStart, lineEnd - lineStart) != target.match.source->substr(target.match.lineStart,
-            target.match.source->find_first_of("\r\n", target.match.lineStart) == std::string::npos ? std::string::npos :
-            target.match.source->find_first_of("\r\n", target.match.lineStart) - target.match.lineStart)) {
+        document->Range(lineStart, lineEnd - lineStart) != target.match.source->substr(target.match.lineStart - target.match.sourceBase,
+            target.match.source->find_first_of("\r\n", target.match.lineStart - target.match.sourceBase) == std::string::npos ? std::string::npos :
+            target.match.source->find_first_of("\r\n", target.match.lineStart - target.match.sourceBase) - (target.match.lineStart - target.match.sourceBase))) {
         ::MessageBoxW(m_hWnd, L"This result has changed. Run the search again.", L"Search results", MB_OK | MB_ICONINFORMATION); return false;
     }
     auto start = lineStart + target.match.start - target.match.lineStart;
     auto end = min<LRESULT>(document->Send(SCI_GETLENGTH), start + target.match.end - target.match.start);
-    if (document->Range(start, end - start) != target.match.source->substr(target.match.start, target.match.end - target.match.start)) return false;
+    if (document->Range(start, end - start) != target.match.source->substr(target.match.start - target.match.sourceBase, target.match.end - target.match.start)) return false;
     for (int i = 0; i < owner->tabs.GetPageCount(); ++i) if (owner->tabs.GetPageData(i) == document) owner->tabs.SetActivePage(i);
     document->Send(SCI_ENSUREVISIBLE, target.match.line); document->Send(SCI_SETSEL, start, end); document->Send(SCI_SCROLLCARET);
     ::SetFocus(document->hwnd); owner->Refresh(); return true;

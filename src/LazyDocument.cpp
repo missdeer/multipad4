@@ -143,6 +143,33 @@ class Source {
         if (full) tree.summary = result;
         return result;
     }
+    std::optional<Position> Select(Index& tree, Position first, Position last, Position begin, Position end, Position line, Summary& prefix) {
+        CheckCancel();
+        const auto regionBegin = first * IndexBlockBytes, regionEnd = (std::min)(size, last * IndexBlockBytes);
+        if (end <= regionBegin || begin >= regionEnd) return {};
+        const bool full = begin <= regionBegin && end >= regionEnd;
+        if (full && tree.summary && Join(prefix, *tree.summary).breaks < line) { prefix = Join(prefix, *tree.summary); return {}; }
+        if (last - first == 1) {
+            const auto left = (std::max)(begin, regionBegin), right = (std::min)(end, regionEnd);
+            const auto summary = Query(tree, first, last, left, right);
+            const auto combined = Join(prefix, summary);
+            if (combined.breaks < line) { prefix = combined; return {}; }
+            const auto& ends = tree.block->ends;
+            auto candidate = std::upper_bound(ends.begin(), ends.end(), static_cast<uint32_t>(left - regionBegin));
+            auto ordinal = line - prefix.breaks;
+            if (prefix.bytes && prefix.last == '\r' && summary.first == '\n') ++ordinal;
+            const auto remaining = static_cast<Position>(ends.end() - candidate);
+            // A piece ending between CR and LF has a break not yet in ends.
+            if (ordinal > remaining || regionBegin + candidate[static_cast<size_t>(ordinal - 1)] > right) return right;
+            return regionBegin + candidate[static_cast<size_t>(ordinal - 1)];
+        }
+        const auto middle = first + (last - first) / 2;
+        if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>();
+        auto result = Select(*tree.left, first, middle, begin, end, line, prefix);
+        if (!result) result = Select(*tree.right, middle, last, begin, end, line, prefix);
+        if (full && tree.left->summary && tree.right->summary) tree.summary = Join(*tree.left->summary, *tree.right->summary);
+        return result;
+    }
 public:
     unsigned Width() const { return width; }
     bool Little() const { return little; }
@@ -208,6 +235,10 @@ public:
     Summary Describe(Position offset, Position length) {
         if (!length) return {};
         std::lock_guard guard(indexMutex); return Query(index, 0, blockCount, offset, offset + length);
+    }
+    std::optional<Position> Select(Position offset, Position length, Position line, Summary& prefix) {
+        if (!length) return {};
+        std::lock_guard guard(indexMutex); return Select(index, 0, blockCount, offset, offset + length, line, prefix);
     }
 };
 struct Piece { std::shared_ptr<Source> source; Position offset = 0, length = 0; };
@@ -315,6 +346,20 @@ struct Document::Impl {
         result = Join(result, node->piece.source->Describe(node->piece.offset, count));
         if (length > left + count) result = Join(result, Prefix(node->right, length - left - count));
         return result;
+    }
+    static std::optional<Position> SelectLine(const Root& node, Position base, Position line, Summary& prefix) {
+        if (!node) return {};
+        CheckCancel();
+        {
+            std::lock_guard guard(node->mutex);
+            if (node->summary && Join(prefix, *node->summary).breaks < line) { prefix = Join(prefix, *node->summary); return {}; }
+        }
+        if (auto found = SelectLine(node->left, base, line, prefix)) return found;
+        const auto pieceBase = base + Length(node->left);
+        if (auto found = node->piece.source->Select(node->piece.offset, node->piece.length, line, prefix)) return pieceBase + *found - node->piece.offset;
+        auto found = SelectLine(node->right, pieceBase + node->piece.length, line, prefix);
+        if (!found) Describe(node); // All source blocks in this subtree are now cached.
+        return found;
     }
 };
 Document::Document(std::shared_ptr<files::MappedFile> file, files::Encoding encoding, std::string signature) : impl(std::make_unique<Impl>()) {
@@ -428,14 +473,27 @@ Document::Metrics Document::Statistics() const { return {impl->counters->read.lo
 Position Document::LineCount(const Snapshot& snapshot, const std::atomic<bool>* cancel) { CancelScope scope(cancel); return Impl::Describe(snapshot.root).breaks + 1; }
 Position Document::PositionFromLine(const Snapshot& snapshot, Position line, const std::atomic<bool>* cancel) {
     CancelScope scope(cancel); if (!line) return 0;
-    const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
-    while (high < size && Impl::Prefix(snapshot.root, high).breaks < line) { low = high; high = (std::min)(size, high * 2); }
-    if (Impl::Prefix(snapshot.root, high).breaks < line) return size;
+#ifdef MULTIPAD4_LINE_BENCHMARK
+    extern bool lineLookupBaseline;
+    if (lineLookupBaseline) {
+        const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
+        while (high < size && Impl::Prefix(snapshot.root, high).breaks < line) { low = high; high = (std::min)(size, high * 2); }
+        if (Impl::Prefix(snapshot.root, high).breaks < line) return size;
+        const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
+        const bool little = !snapshot.root || snapshot.root->piece.source->Little();
+        low /= width; high /= width;
+        while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width).breaks >= line) high = middle; else low = middle + 1; }
+        low *= width;
+        if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
+        return low;
+    }
+#endif
+    const auto size = Size(snapshot); Summary prefix;
+    const auto found = Impl::SelectLine(snapshot.root, 0, line, prefix);
+    if (!found) return size;
+    auto low = *found;
     const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
     const bool little = !snapshot.root || snapshot.root->piece.source->Little();
-    low /= width; high /= width;
-    while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width).breaks >= line) high = middle; else low = middle + 1; }
-    low *= width;
     if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
     return low;
 }
