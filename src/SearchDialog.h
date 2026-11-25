@@ -30,9 +30,10 @@ public:
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
 private:
     struct SearchTask {
+        uintptr_t token = 0;
         int command;
         SearchState state;
-        bool selection = false, purge = false, mapped = false, mappedDone = false;
+        bool selection = false, purge = false, mapped = false, mappedDone = false, yielding = false;
         unsigned long long generation = 0, identity = 0, revision = 0;
         std::vector<unsigned long long> documents;
         size_t next = 0, count = 0, files = 0;
@@ -40,6 +41,8 @@ private:
         std::shared_ptr<OrdinarySearchResult> result;
     };
     std::unique_ptr<SearchTask> ordinaryTask;
+    uintptr_t nextSearchToken = 0;
+    void ContinueSearch();
     void StartSearch(int command, bool selection);
     void SearchStep();
     void FinishSearch(bool interrupted);

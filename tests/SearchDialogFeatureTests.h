@@ -5,7 +5,9 @@
 inline void WaitForOrdinarySearch(SearchDialog& dialog) {
     const auto deadline = GetTickCount64() + 30000;
     while (dialog.SearchBusy()) {
-        SendMessageW(dialog.hwnd, WM_TIMER, 3, 0);
+        MSG message{};
+        if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+        else MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
         if (GetTickCount64() >= deadline) throw std::runtime_error("Ordinary search did not complete.");
     }
 }

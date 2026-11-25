@@ -62,6 +62,9 @@ inline void RunOrdinarySearchTests(MainFrame& frame) {
     d->Send(SCI_SETSEL, 0, 2); auto boundary = d->BeginMatches(true); size_t boundaryHits = 0;
     while (!d->MatchStep(boundary, [&](auto start, auto end) { require(start <= 2 && end <= 2); ++boundaryHits; })) {}
     require(boundaryHits > 0 && boundary.done);
+    d->search.findText = L"\\r\\n"; d->search.useBoostRegex = true; boundary = d->BeginMatches(true); boundaryHits = 0;
+    for (int attempt = 0; !boundary.done && attempt < 8; ++attempt) d->MatchStep(boundary, [&](auto, auto) { ++boundaryHits; });
+    require(boundary.done && boundaryHits == 1);
     // A large unfinished mark must not purge existing marks on edit or cancellation.
     d->Load({std::string(20000, 'a')}); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"a");
     d->Send(SCI_SETINDICATORCURRENT, 12); d->Send(SCI_INDICATORFILLRANGE, 15000, 1);
@@ -82,11 +85,20 @@ inline void RunOrdinarySearchTests(MainFrame& frame) {
     dialog.Execute(IDC_SEARCH_COUNT); require(dialog.SearchBusy()); DestroyWindow(dialog.hwnd); require(!dialog.SearchBusy());
     frame.ShowSearch(false); require(dialog.hwnd != nullptr);
     std::string dense(2000000, ' '); for (size_t i = 0; i < dense.size(); i += 2) dense[i] = 'a';
-    d->Load({dense}); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"a");
+    d->Load({dense}); d->Send(SCI_SETSEL, 0, 0); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"a");
     const auto started = std::chrono::steady_clock::now(); double longest = 0;
     dialog.Execute(IDC_SEARCH_MARK);
+    frame.ShowWindow(SW_SHOWNORMAL);
+    InvalidateRect(d->hwnd, nullptr, FALSE);
+    PostMessageW(d->hwnd, WM_KEYDOWN, VK_RIGHT, 0);
+    const auto inputDeadline = GetTickCount64() + 1000;
+    while (d->Send(SCI_GETCURRENTPOS) == 0 || GetUpdateRect(d->hwnd, nullptr, FALSE)) {
+        MSG message{}; if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+        require(dialog.SearchBusy() && GetTickCount64() < inputDeadline);
+    }
     while (dialog.SearchBusy()) {
-        const auto slice = std::chrono::steady_clock::now(); SendMessageW(dialog.hwnd, WM_TIMER, 3, 0);
+        const auto slice = std::chrono::steady_clock::now();
+        MSG message{}; if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
         longest = (std::max)(longest, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - slice).count());
     }
     require(d->Send(SCI_INDICATORVALUEAT, 12, 1999998) != 0 && d->Send(SCI_INDICATORVALUEAT, 12, 1999999) == 0);
@@ -140,8 +152,11 @@ inline void RunOrdinarySearchBenchmark(MainFrame& frame, const wchar_t* output) 
                 auto step = Clock::now(); dialog.Execute(mark ? IDC_SEARCH_MARK : finder ? IDC_FINDALL : IDC_SEARCH_COUNT);
                 longest = std::chrono::duration<double, std::milli>(Clock::now() - step).count();
                 while (dialog.SearchBusy()) {
-                    step = Clock::now(); SendMessageW(dialog.hwnd, WM_TIMER, 3, 0);
-                    longest = (std::max)(longest, std::chrono::duration<double, std::milli>(Clock::now() - step).count());
+                    MSG message{};
+                    if (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+                        step = Clock::now(); TranslateMessage(&message); DispatchMessageW(&message);
+                        longest = (std::max)(longest, std::chrono::duration<double, std::milli>(Clock::now() - step).count());
+                    } else MsgWaitForMultipleObjects(0, nullptr, FALSE, 10, QS_ALLINPUT);
                 }
                 wchar_t status[256]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, status, 256);
                 if (swscanf_s(status, L"Completed. %zu matches", &hits) != 1) throw std::runtime_error("Benchmark search interrupted.");

@@ -364,7 +364,7 @@ bool EditorDocument::MatchStep(MatchCursor& cursor, const std::function<void(LRE
         if (end == found) {
             if (end >= cursor.limit) cursor.done = true;
             else { cursor.next = Send(SCI_POSITIONAFTER, end); cursor.done = cursor.next > cursor.limit; }
-        } else cursor.next = end;
+        } else { cursor.next = end; cursor.done = cursor.next > cursor.limit; }
         if (GetTickCount64() >= deadline) break;
     }
     return cursor.done;

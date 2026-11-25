@@ -7,6 +7,7 @@
 #include <shlwapi.h>
 #include "ScintillaBatch.h"
 namespace {
+constexpr UINT ContinueOrdinarySearch = WM_APP + 0x210;
 std::wstring Field(HWND window, int id) {
     HWND control = GetDlgItem(window, id); int length = GetWindowTextLengthW(control);
     std::wstring value(static_cast<size_t>(length) + 1, L'\0');
@@ -266,6 +267,7 @@ void SearchDialog::Execute(int command) {
 }
 void SearchDialog::StartSearch(int command, bool selection) {
     ordinaryTask = std::make_unique<SearchTask>(); auto& task = *ordinaryTask;
+    task.token = ++nextSearchToken;
     task.command = command; task.state = document->search; task.selection = selection;
     task.purge = IsDlgButtonChecked(hwnd, IDC_SEARCH_PURGE) == BST_CHECKED;
     if (command == IDC_SEARCH_ALL_OPEN) {
@@ -274,8 +276,12 @@ void SearchDialog::StartSearch(int command, bool selection) {
     } else task.documents.push_back(document->searchIdentity);
     if (command == IDC_FINDALL || command == IDC_SEARCH_ALL_OPEN) owner->searchResults.Begin(task.state.findText);
     task.generation = owner->searchResults.generation;
-    Status(L"Searching… Close to cancel."); SetTimer(hwnd, 3, 1, nullptr);
+    Status(L"Searching… Close to cancel."); SetTimer(hwnd, 3, 20, nullptr);
+    ContinueSearch();
+}
+void SearchDialog::ContinueSearch() {
     SearchStep();
+    if (ordinaryTask && !ordinaryTask->mapped) PostMessageW(hwnd, ContinueOrdinarySearch, ordinaryTask->token, 0);
 }
 void SearchDialog::FinishSearch(bool interrupted) {
     if (!ordinaryTask) return;
@@ -567,7 +573,20 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
         if (!dialog) return FALSE;
         if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
         if (message == WM_NCDESTROY) { if (dialog->ordinaryTask) dialog->FinishSearch(true); dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
-        if (message == WM_TIMER && w == 3) { dialog->SearchStep(); return TRUE; }
+        if (message == ContinueOrdinarySearch) {
+            if (dialog->ordinaryTask && dialog->ordinaryTask->token == w) {
+                // Posted work must let queued input and paint run before continuing.
+                if (HIWORD(GetQueueStatus(QS_INPUT | QS_PAINT))) dialog->ordinaryTask->yielding = true;
+                else dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
+        if (message == WM_TIMER && w == 3) {
+            if (dialog->ordinaryTask && (dialog->ordinaryTask->mapped || dialog->ordinaryTask->yielding)) {
+                dialog->ordinaryTask->yielding = false; dialog->ContinueSearch();
+            }
+            return TRUE;
+        }
         if (message == WM_TIMER && w == 2) {
             auto found = std::find_if(dialog->owner->documents.begin(), dialog->owner->documents.end(), [&](const auto& d) { return d->searchIdentity == dialog->pendingIdentity; });
             if (found == dialog->owner->documents.end() || !(*found)->FastView()) { KillTimer(window, 2); return TRUE; }
