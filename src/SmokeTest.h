@@ -1,5 +1,6 @@
 #pragma once
 #include "MainFrame.h"
+#include "../tests/ResultPageTests.h"
 #include "FileAssociations.h"
 #include <stdexcept>
 #include <source_location>
@@ -118,6 +119,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunRuntimeDialogTests(frame);
         RunSearchDialogFeatureTests(frame);
         RunSearchResultTargetTests(frame);
+        RunResultPageTests(frame);
         RunToolbarOpenTests(frame);
         RunSessionFeatureTests(frame);
         RunAutoSaveFeatureTests(frame);

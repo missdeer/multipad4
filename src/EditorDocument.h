@@ -1,6 +1,7 @@
 #pragma once
 #include "App.h"
 #include "FileIO.h"
+#include "FileSearch.h"
 #include "StyleState.h"
 #include "AppRuntime.h"
 #include "FileVariables.h"
@@ -9,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include "StatusStatistics.h"
+namespace files { struct ReplacePattern; }
 struct SearchState {
     std::wstring findText, replaceText;
     int flags = 0;
@@ -30,6 +32,7 @@ struct SearchMatch {
     std::shared_ptr<const large::Document::Snapshot> diskSource;
     unsigned long long sourceRevision = 0, sourceSize = 0, sourceWriteTime = 0;
     LRESULT sourceBase = 0;
+    std::optional<files::ReplacementTarget> replacementTarget;
 };
 struct OrdinarySearchResult {
     struct Line { LRESULT number, start; std::shared_ptr<const std::string> text; };
@@ -88,6 +91,7 @@ struct EditorDocument {
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     large::SearchOptions MappedSearchOptions() const;
     std::string SearchReplacement();
+    files::ReplacePattern SearchReplacePattern();
     void ValidateSearch(bool replacing = false);
     std::vector<SearchMatch> MappedMatches(const large::Document::Snapshot& snapshot, const std::vector<large::SearchHit>& hits);
     bool ReplaceOne();

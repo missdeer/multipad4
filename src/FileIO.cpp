@@ -202,10 +202,8 @@ std::string ReadBytes(const std::filesystem::path& path) {
 }
 Text ReadWithEncoding(const std::filesystem::path& path, Encoding encoding) { return Decode(ReadBytes(path), encoding); }
 Text Read(const std::filesystem::path& path) { return Read(path, {}); }
-Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options) {
-    const auto decode = [&](Encoding encoding) {
-        return Decode(std::string_view(bytes).substr(0, ChunkEnd(bytes, encoding, complete)), encoding);
-    };
+namespace {
+Text DetectUsing(std::string_view bytes, const ReadOptions& options, const std::function<Text(Encoding)>& decode) {
     if (bytes.starts_with("\xEF\xBB\xBF")) {
         try { return decode(Encoding::Utf8Bom); }
         catch (const InvalidByteSequence&) { return decode(Latin1); }
@@ -213,7 +211,9 @@ Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& op
     if (bytes.starts_with("\xFF\xFE")) return decode(Encoding::Utf16LE);
     if (bytes.starts_with("\xFE\xFF")) return decode(Encoding::Utf16BE);
     if (options.fileVariables) {
-        auto region=filevars::Region(bytes);std::string name;
+        auto first = std::string(bytes.substr(0, 512));
+        auto region = filevars::Recognized(first) || bytes.size() <= 512 ? std::move(first) : std::string(bytes.substr(bytes.size() - 512));
+        std::string name;
         int enabled=1;
         const bool parse= !filevars::Integer(region,"enable-local-variables",enabled)||enabled!=0;
         if(parse)for(auto key:{"encoding","charset","coding","fileencoding","/*!40101 SET NAMES "})if(!(name=filevars::String(region,key)).empty())break;
@@ -248,6 +248,40 @@ Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& op
     try { return decode(Encoding::Utf8); } catch(const std::runtime_error&) {}
     try { return decode(options.fallback); }
     catch (const InvalidByteSequence&) { return decode(Latin1); }
+}
+}
+Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options) {
+    return DetectUsing(bytes, options, [&](Encoding encoding) {
+        return Decode(std::string_view(bytes).substr(0, ChunkEnd(bytes, encoding, complete)), encoding);
+    });
+}
+namespace {
+struct ReadCancelled final : std::exception {
+    const char* what() const noexcept override { return "File read cancelled."; }
+};
+}
+Encoding DetectEncoding(std::string_view bytes, const ReadOptions& options) {
+    return DetectUsing(bytes, options, [&](Encoding encoding) {
+        const auto page = CodePage(encoding);
+        if (page == CP_UTF7 || page == 50220 || page == 50221 || page == 50222) {
+            if (options.cancel && options.cancel->load()) throw ReadCancelled{};
+            Decode(bytes, encoding); // Stateful decoders require the complete encoded stream.
+            return Text{{}, encoding};
+        }
+        for (size_t offset = 0; offset < bytes.size();) {
+            if (options.cancel && options.cancel->load()) throw ReadCancelled{};
+            auto chunk = bytes.substr(offset, ConversionChunk + SampleLookahead);
+            auto count = ChunkEnd(chunk, encoding, offset + chunk.size() == bytes.size());
+            if (!count) throw InvalidByteSequence("Invalid byte sequence for selected encoding.");
+            auto text = chunk.substr(0, count);
+            if (encoding == Encoding::Utf8 || encoding == Encoding::Utf8Bom) {
+                if (!offset && text.starts_with("\xEF\xBB\xBF")) text.remove_prefix(3);
+                Validate(text);
+            } else Decode(text, encoding, offset == 0);
+            offset += count;
+        }
+        return Text{{}, encoding};
+    }).encoding;
 }
 Text Read(const std::filesystem::path& path, const ReadOptions& options) { return DetectSample(ReadBytes(path), true, options); }
 namespace {
@@ -533,7 +567,7 @@ void WriteNew(const std::filesystem::path& path,const Text& text) {
     if(!ok){DeleteFileW(path.c_str());Fail("Cannot write complete backup file.");}
 }
 namespace {
-bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(const ChunkConsumer&)>& produce) {
+bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(const ChunkConsumer&)>& produce, const std::function<void()>& validate, const std::function<void()>& committed) {
     const auto stream=path.native().find(L':',path.root_path().native().size());
     HANDLE probe=CreateFileW(path.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,0,nullptr);
     if(probe==INVALID_HANDLE_VALUE)Fail("Cannot inspect destination file identity; original retained.");
@@ -546,6 +580,7 @@ bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(
     HANDLE rollback=INVALID_HANDLE_VALUE;std::filesystem::path backup;
     try {
         GetFileInformationByHandle(original,&attributes);
+        if (validate) validate();
         for(unsigned i=0;i<100 && rollback==INVALID_HANDLE_VALUE;++i){backup=stream==std::wstring::npos?path:std::filesystem::path(path.native().substr(0,stream));backup+=L".multipad4-rollback-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(i)+L".bak";
             rollback=CreateFileW(backup.c_str(),GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL|FILE_FLAG_WRITE_THROUGH,nullptr);
             if(rollback==INVALID_HANDLE_VALUE&&GetLastError()!=ERROR_FILE_EXISTS)break;
@@ -559,6 +594,7 @@ bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(
             return SetEndOfFile(destination)&&FlushFileBuffers(destination);
         };
         if(!copy(original,rollback))Fail("Cannot complete hard-link rollback copy; original retained.");
+        if (validate) validate();
         bool saved=SetFilePointerEx(original,zero,nullptr,FILE_BEGIN)!=FALSE;
         try {
             produce([&](std::string_view bytes) {
@@ -574,6 +610,7 @@ bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(
             throw std::runtime_error("Save and rollback failed. Recover original bytes from: "+ToUtf8(backup.wstring()));
         }
         CloseHandle(original);original=INVALID_HANDLE_VALUE;CloseHandle(rollback);rollback=INVALID_HANDLE_VALUE;
+        if (committed) committed();
         if(!DeleteFileW(backup.c_str()))throw std::runtime_error("Hard-linked file saved, but rollback copy could not be removed: "+ToUtf8(backup.wstring()));
         return true;
     }catch(...){
@@ -587,13 +624,14 @@ void WriteAtomic(const std::filesystem::path& path, const Text& text) {
     const auto bytes = Encode(text);
     WriteAtomicChunks(path, [&](const ChunkConsumer& consume) { consume(bytes); });
 }
-void WriteAtomicChunks(const std::filesystem::path& path, const std::function<void(const ChunkConsumer&)>& produce) {
+void WriteAtomicChunks(const std::filesystem::path& path, const std::function<void(const ChunkConsumer&)>& produce, const std::function<void()>& validate, const std::function<void()>& committed) {
+    if (validate) validate();
     auto absolute = std::filesystem::absolute(path);
     const DWORD originalAttributes = GetFileAttributesW(absolute.c_str());
     const bool stream=absolute.native().find(L':',absolute.root_path().native().size())!=std::wstring::npos;
     if(originalAttributes != INVALID_FILE_ATTRIBUTES && (originalAttributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY)))
         Fail("Destination is read-only or is a directory; original retained.");
-    if(originalAttributes != INVALID_FILE_ATTRIBUTES && WriteLinkedFile(absolute,produce))return;
+    if(originalAttributes != INVALID_FILE_ATTRIBUTES && WriteLinkedFile(absolute,produce,validate,committed))return;
 
     // CREATE_NEW prevents collisions; the temporary file stays on the same volume.
     std::filesystem::path temporary;
@@ -618,11 +656,14 @@ void WriteAtomicChunks(const std::filesystem::path& path, const std::function<vo
     if(ok)ok=FlushFileBuffers(file)!=FALSE;
     CloseHandle(file);
     if (!ok) { DeleteFileW(temporary.c_str()); Fail("Cannot write complete file; original retained."); }
-    if (stream) return; // A newly created ADS has no previous contents to replace.
+    if (stream) { if (committed) committed(); return; } // A newly created ADS has no previous contents to replace.
+    try { if (validate) validate(); }
+    catch (...) { DeleteFileW(temporary.c_str()); throw; }
     bool exists = GetFileAttributesW(absolute.c_str()) != INVALID_FILE_ATTRIBUTES;
     ok = exists ? ReplaceFileW(absolute.c_str(), temporary.c_str(), nullptr, 0, nullptr, nullptr) != FALSE
                 : MoveFileExW(temporary.c_str(), absolute.c_str(), MOVEFILE_WRITE_THROUGH) != FALSE;
     if (!ok) { DeleteFileW(temporary.c_str()); Fail("Cannot replace destination; original retained."); }
+    if (committed) committed();
     if(originalAttributes != INVALID_FILE_ATTRIBUTES) {
         // ReplaceFile merges the destination security descriptor and creation
         // metadata; explicitly preserve user-visible DOS attributes too.
