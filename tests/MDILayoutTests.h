@@ -284,7 +284,8 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     frame.SetWindowPos(nullptr, 0, 0, saved.right - saved.left + 73, saved.bottom - saved.top + 41,
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     checkMaximized(first);
-    frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
+    frame.SetWindowPos(nullptr, 0, 0, MulDiv(900, control.TitleDpi(), 96), saved.bottom - saved.top,
+        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     frame.tabs.SetActivePage(0);
     control.SetFixedTabWidth(DocumentTabStrip::maxTabWidth);
     frame.UpdateLayout();
@@ -307,11 +308,22 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     CaptureQAWindow(frame, L"MDI-tab-navigation");
     scrollClick(false);
     require(scrollPosition() == startPosition);
-    SendMessageW(close, BM_CLICK, 0, 0);
+    RECT clippedTab{};
+    require(control.GetItemRect(0, &clippedTab) != FALSE);
+    POINT viewportEdge{scrollRect.left, scrollRect.top};
+    ::ScreenToClient(control, &viewportEdge);
+    require(clippedTab.right > viewportEdge.x);
+    const LPARAM clippedLabel = MAKELPARAM(viewportEdge.x - MulDiv(10, control.TitleDpi(), 96),
+        (clippedTab.top + clippedTab.bottom) / 2);
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, clippedLabel);
+    control.SendMessage(WM_LBUTTONUP, 0, clippedLabel);
     MSG closeRequest{};
+    require(!PeekMessageW(&closeRequest, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE));
+    SendMessageW(close, BM_CLICK, 0, 0);
     require(PeekMessageW(&closeRequest, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE) != FALSE);
     require(reinterpret_cast<HWND>(closeRequest.wParam) == first);
     frame.ApplyTabWidth();
+    frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
 
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }

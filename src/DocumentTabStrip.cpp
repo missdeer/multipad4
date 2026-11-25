@@ -394,8 +394,8 @@ RECT DocumentTabStrip::TabCloseRect(int index, const RECT& viewport) const {
     RECT clipped{};
     if (!IntersectRect(&clipped, &tab, &viewport)) return {};
     const int size = std::min<LONG>(MulDiv(14, TitleDpi(), 96), clipped.bottom - clipped.top);
-    const LONG right = clipped.right - MulDiv(3, TitleDpi(), 96);
-    if (right - size < clipped.left || size < MulDiv(10, TitleDpi(), 96)) return {};
+    const LONG right = tab.right - MulDiv(3, TitleDpi(), 96);
+    if (right > clipped.right || right - size < clipped.left || size < MulDiv(10, TitleDpi(), 96)) return {};
     const LONG top = (clipped.top + clipped.bottom - size) / 2;
     return {right - size, top, right, top + size};
 }
