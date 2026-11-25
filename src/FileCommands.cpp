@@ -184,11 +184,10 @@ files::Text ReadFileForFrame(MainFrame& frame,const std::filesystem::path& path)
     const bool unicodeDefault=fallback==files::Encoding::Utf16LE||fallback==files::Encoding::Utf16BE||fallback==files::Encoding::Utf16LEPlain||fallback==files::Encoding::Utf16BEPlain;
     auto detectionFallback=preferred.value_or(unicodeDefault||fallback==files::Encoding::Utf8||fallback==files::Encoding::Utf8Bom?files::Encoding::Ansi:fallback);
     auto text=files::Read(path,{!option(L"SkipUnicodeDetection"),!option(L"IgnoreEncodingTags"),detectionFallback});
-    const bool ascii=simd::IsAscii(text.utf8);
     if(!preferred&&(extension==L".sh"||text.utf8.starts_with("#!/")))preferred=files::Encoding::Utf8;
     bool declared=false;auto region=filevars::Region(text.utf8);int enabled=1;
     if(!option(L"IgnoreEncodingTags")&&(!filevars::Integer(region,"enable-local-variables",enabled)||enabled))for(auto key:{"encoding","charset","coding","fileencoding","/*!40101 SET NAMES "}){auto name=filevars::String(region,key);files::Encoding encoding=files::Encoding::Utf8;if(!name.empty()&&files::ParseEncodingName(files::FromUtf8(name),encoding)){declared=encoding!=files::Encoding::Utf16LE&&encoding!=files::Encoding::Utf16BE&&encoding!=files::Encoding::Utf16LEPlain&&encoding!=files::Encoding::Utf16BEPlain;if(declared)break;}}
-    if(text.encoding==files::Encoding::Utf8&&ascii){
+    if(text.encoding==files::Encoding::Utf8&&(preferred||(!declared&&!option(L"ASCIIAsUTF8",L"1")))&&simd::IsAscii(text.utf8)){
         if(preferred)text.encoding=*preferred;
         else if(!declared&&!option(L"ASCIIAsUTF8",L"1"))text.encoding=unicodeDefault?files::Encoding::Ansi:fallback==files::Encoding::Utf8Bom&&!text.utf8.empty()?files::Encoding::Utf8:fallback;
     }
@@ -228,9 +227,12 @@ void InitializeFileDocument(MainFrame& frame,EditorDocument& document){
     if(document.LargeFile()){document.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);return;}
     if(frame.settings.ReadString(L"File Settings",L"WarnInconsistentEOL",L"0")!=L"1")return;
     EolWarning warning{document};
-    auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
-    auto data = reinterpret_cast<const char*>(document.Send(SCI_GETCHARACTERPOINTER));
-    const auto endings = simd::AnalyzeLineEndings(std::string_view(data, length));
+    auto endings = document.loadMetrics.endings;
+    if (document.loadMetrics.document != document.Send(SCI_GETDOCPOINTER) || document.loadMetrics.revision != document.style.revision) {
+        auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
+        auto data = reinterpret_cast<const char*>(document.Send(SCI_GETCHARACTERPOINTER));
+        endings = simd::AnalyzeLineEndings(std::string_view(data, length));
+    }
     warning.crlf = endings.linesCount[0]; warning.cr = endings.linesCount[1]; warning.lf = endings.linesCount[2];
     if((warning.crlf!=0)+(warning.cr!=0)+(warning.lf!=0)<=1)return;
     DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_WARNLINEENDS),frame.m_hWnd,EolProcedure,reinterpret_cast<LPARAM>(&warning));
