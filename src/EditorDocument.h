@@ -129,7 +129,7 @@ public:
     void* GetPageData(int i) const { auto* child = Child(i); return child ? child->document : nullptr; }
     int GetActivePage() const { return control ? control->GetCurSel() : -1; }
     void SetActivePage(int i) {
-        ::SendMessageW(m_hWnd, WM_MDIACTIVATE, reinterpret_cast<WPARAM>(GetPageHWND(i)), 0);
+        if (control) control->Activate(i);
         ::PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
     }
     std::wstring GetPageTitle(int i) const {

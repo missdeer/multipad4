@@ -331,7 +331,18 @@ int DocumentTabStrip::HitTest(POINT point) const {
 }
 
 void DocumentTabStrip::Activate(int index) {
-    if (auto child = ChildAt(index)) ::SendMessageW(mdi, WM_MDIACTIVATE, reinterpret_cast<WPARAM>(child), 0);
+    const HWND child = ChildAt(index);
+    if (!child) return;
+    BOOL maximized = FALSE;
+    const auto active = reinterpret_cast<HWND>(::SendMessageW(mdi, WM_MDIGETACTIVE, 0, reinterpret_cast<LPARAM>(&maximized)));
+    // Native MDI briefly restores the outgoing child before maximizing the incoming one.
+    const bool pauseRedraw = maximized && active != child && (GetWindowLongPtrW(mdi, GWL_STYLE) & WS_VISIBLE);
+    if (pauseRedraw) ::SendMessageW(mdi, WM_SETREDRAW, FALSE, 0);
+    ::SendMessageW(mdi, WM_MDIACTIVATE, reinterpret_cast<WPARAM>(child), 0);
+    if (pauseRedraw) {
+        ::SendMessageW(mdi, WM_SETREDRAW, TRUE, 0);
+        RedrawWindow(mdi, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
+    }
 }
 
 LRESULT CALLBACK DocumentTabStrip::WindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
