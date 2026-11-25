@@ -64,8 +64,13 @@ bool ChangeNotepadReplacement(HWND window, const std::wstring& executable, bool 
     CloseHandle(launch.hProcess);
     if (status == ERROR_SUCCESS) return true;
     if (status == ERROR_ALREADY_EXISTS) {
-        MessageBoxW(window, L"Another application is registered as the Notepad replacement. "
-            L"Remove that replacement before enabling MultiPad4.", L"MultiPad4", MB_ICONERROR);
+        const bool chinese = PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE;
+        MessageBoxW(window, chinese
+            ? L"Windows 记事本已被其他程序替换。要改用 MultiPad4，请先在原程序中取消替换。\n\n"
+              L"如果只想设置右键菜单或任务栏跳转列表，请取消勾选“通过注册表替换 Windows 记事本”后再保存。"
+            : L"Another application is registered as the Windows Notepad replacement. Turn off the replacement in that application first.\n\n"
+              L"To save only the Explorer context menu or Jump List settings, clear the Notepad replacement checkbox and try again.",
+            L"MultiPad4", MB_ICONERROR);
     } else {
         ShowError(window, L"Could not update the Windows Notepad replacement.", status);
     }
