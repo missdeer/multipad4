@@ -284,7 +284,8 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     frame.SetWindowPos(nullptr, 0, 0, saved.right - saved.left + 73, saved.bottom - saved.top + 41,
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     checkMaximized(first);
-    frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
+    frame.SetWindowPos(nullptr, 0, 0, MulDiv(900, control.TitleDpi(), 96), saved.bottom - saved.top,
+        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     frame.tabs.SetActivePage(0);
     control.SetFixedTabWidth(DocumentTabStrip::maxTabWidth);
     frame.UpdateLayout();
@@ -307,15 +308,57 @@ inline void RunMDILayoutTests(MainFrame& frame) {
     CaptureQAWindow(frame, L"MDI-tab-navigation");
     scrollClick(false);
     require(scrollPosition() == startPosition);
-    SendMessageW(close, BM_CLICK, 0, 0);
+    RECT clippedTab{};
+    require(control.GetItemRect(0, &clippedTab) != FALSE);
+    POINT viewportEdge{scrollRect.left, scrollRect.top};
+    ::ScreenToClient(control, &viewportEdge);
+    require(clippedTab.right > viewportEdge.x);
+    const LPARAM clippedLabel = MAKELPARAM(viewportEdge.x - MulDiv(10, control.TitleDpi(), 96),
+        (clippedTab.top + clippedTab.bottom) / 2);
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, clippedLabel);
+    control.SendMessage(WM_LBUTTONUP, 0, clippedLabel);
     MSG closeRequest{};
+    require(!PeekMessageW(&closeRequest, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE));
+    SendMessageW(close, BM_CLICK, 0, 0);
     require(PeekMessageW(&closeRequest, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE) != FALSE);
     require(reinterpret_cast<HWND>(closeRequest.wParam) == first);
     frame.ApplyTabWidth();
+    frame.SetWindowPos(nullptr, &saved, SWP_NOZORDER | SWP_NOACTIVATE);
 
     frame.tabs.SetActivePage(savedSelection); frame.MDIMaximize(frame.tabs.GetPageHWND(savedSelection));
 }
+inline void RunPerTabCloseTest(MainFrame& frame) {
+    auto require = [](bool ok, std::source_location where = std::source_location::current()) {
+        if (!ok) throw std::runtime_error("Per-tab close assertion at line " + std::to_string(where.line()));
+    };
+    auto& control = frame.GetMDITabCtrl();
+    require(frame.tabs.GetPageCount() == 0);
+    require(frame.NewDocument() != nullptr);
+    const HWND inactive = frame.tabs.GetPageHWND(0);
+    require(frame.NewDocument() != nullptr);
+    const HWND active = frame.tabs.GetPageHWND(1);
+    require(frame.MDIGetActive() == active);
+    RECT tab{};
+    require(control.GetItemRect(0, &tab) != FALSE);
+    const LPARAM button = MAKELPARAM(tab.right - MulDiv(10, control.TitleDpi(), 96), (tab.top + tab.bottom) / 2);
+    const LPARAM label = MAKELPARAM(tab.left + 4, (tab.top + tab.bottom) / 2);
+    CaptureQAWindow(frame, L"MDI-per-tab-close");
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, button);
+    control.SendMessage(WM_LBUTTONUP, 0, label);
+    MSG close{};
+    require(!PeekMessageW(&close, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE));
+    require(frame.MDIGetActive() == active);
+    control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, button);
+    control.SendMessage(WM_LBUTTONUP, 0, button);
+    require(PeekMessageW(&close, frame, WM_CLOSE_TAB, WM_CLOSE_TAB, PM_REMOVE) != FALSE);
+    require(reinterpret_cast<HWND>(close.wParam) == inactive && frame.MDIGetActive() == active);
+    DispatchMessageW(&close);
+    require(frame.tabs.GetPageCount() == 1 && frame.MDIGetActive() == active);
+    require(frame.Close(0));
+}
+
 inline void RunTabCloseTests(MainFrame& frame, const std::filesystem::path& dir) {
+    RunPerTabCloseTest(frame);
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Tab close assertion at line " + std::to_string(where.line()));
     };

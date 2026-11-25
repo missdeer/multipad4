@@ -39,6 +39,11 @@ private:
     static LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l);
     static LRESULT CALLBACK TabProcedure(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data);
     void LayoutCloseButton(int width, int height);
+    std::wstring NativeTitle(std::wstring title) const;
+    RECT TabViewport() const;
+    RECT TabCloseRect(int index, const RECT& viewport) const;
+    HWND TabCloseAt(POINT point) const;
+    void PaintTabCloses(HDC dc) const;
     int HitTest(POINT point) const;
     HWND frame = nullptr, mdi = nullptr, layoutWindow = nullptr, bar = nullptr, control = nullptr, close = nullptr;
     HFONT titleFont = nullptr;
@@ -46,5 +51,6 @@ private:
     std::wstring tooltip;
     int titlePoints = 0, fixedTabWidth = 0, dragIndex = -1;
     POINT dragOrigin{};
+    HWND pressedClose = nullptr, hotClose = nullptr;
     bool dragging = false;
 };
