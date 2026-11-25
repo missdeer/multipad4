@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <vector>
 #include <limits>
+#include <array>
+#include <cstring>
 #include "VectorISA.h"
 namespace large {
 namespace {
@@ -27,10 +29,35 @@ unsigned Unit(std::string_view bytes, size_t offset, unsigned width, bool little
     if (width == 1) return a;
     auto b = static_cast<unsigned char>(bytes[offset + 1]); return little ? a | (b << 8) : (a << 8) | b;
 }
+constexpr size_t AppendBlockBytes = 64 * 1024;
+#ifdef MULTIPAD4_APPEND_TEST
+Position journalWrites = 0, failJournalAfter = UINT64_MAX;
+#endif
 class Journal {
     HANDLE file = INVALID_HANDLE_VALUE;
-    Position size = 0;
+    Position size = 0, persisted = 0;
+    std::array<char, AppendBlockBytes> pending{};
+    size_t used = 0;
     std::mutex mutex;
+    void Persist(std::string_view bytes) {
+        LARGE_INTEGER position{}; position.QuadPart = persisted;
+        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
+        try {
+            for (size_t offset = 0; offset < bytes.size();) {
+                DWORD written = 0, count = static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(16 * 1024 * 1024)));
+#ifdef MULTIPAD4_APPEND_TEST
+                if (failJournalAfter == 0) throw std::runtime_error("Injected partial journal write failure.");
+                count = static_cast<DWORD>((std::min)(Position(count), failJournalAfter));
+                failJournalAfter -= count; ++journalWrites;
+#endif
+                if (!WriteFile(file, bytes.data() + offset, count, &written, nullptr) || !written) throw std::runtime_error("Cannot write edit journal.");
+                offset += written;
+            }
+        } catch (...) { SetFilePointerEx(file, position, nullptr, FILE_BEGIN); SetEndOfFile(file); throw; }
+        persisted += bytes.size();
+    }
+    void Flush() { if (used) { Persist(std::string_view(pending.data(), used)); used = 0; } }
+
 public:
     Journal() {
         wchar_t directory[32768]{}, name[32768]{};
@@ -41,28 +68,30 @@ public:
     }
     ~Journal() { if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
     Position Append(std::string_view bytes) {
-        std::lock_guard guard(mutex); auto begin = size;
-        LARGE_INTEGER position{}; position.QuadPart = size;
-        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
-        try {
-            for (size_t offset = 0; offset < bytes.size();) {
-                DWORD written = 0, count = static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(16 * 1024 * 1024)));
-                if (!WriteFile(file, bytes.data() + offset, count, &written, nullptr) || !written) throw std::runtime_error("Cannot write edit journal.");
-                offset += written;
-            }
-        } catch (...) { SetFilePointerEx(file, position, nullptr, FILE_BEGIN); SetEndOfFile(file); throw; }
+        std::lock_guard guard(mutex); const auto begin = size;
+#ifdef MULTIPAD4_APPEND_BASELINE
+        Persist(bytes);
+#else
+        if (bytes.size() > pending.size() - used) Flush();
+        if (bytes.size() >= pending.size()) Persist(bytes);
+        else { memcpy(pending.data() + used, bytes.data(), bytes.size()); used += bytes.size(); }
+#endif
         size += bytes.size(); return begin;
     }
     std::string Read(Position offset, size_t length) {
         std::lock_guard guard(mutex);
         if (offset > size || length > size - offset) throw std::runtime_error("Invalid journal range.");
-        LARGE_INTEGER position{}; position.QuadPart = offset;
-        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
+        const auto diskLength = offset < persisted ? static_cast<size_t>((std::min)(Position(length), persisted - offset)) : 0;
+        if (diskLength) {
+            LARGE_INTEGER position{}; position.QuadPart = offset;
+            if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
+        }
         std::string bytes(length, '\0');
-        for (size_t done = 0; done < length;) {
-            DWORD got = 0, count = static_cast<DWORD>((std::min)(length - done, size_t(16 * 1024 * 1024)));
+        for (size_t done = 0; done < diskLength;) {
+            DWORD got = 0, count = static_cast<DWORD>((std::min)(diskLength - done, size_t(16 * 1024 * 1024)));
             if (!ReadFile(file, bytes.data() + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
         }
+        if (length > diskLength) memcpy(bytes.data() + diskLength, pending.data() + static_cast<size_t>(offset + diskLength - persisted), length - diskLength);
         return bytes;
     }
 };
@@ -148,6 +177,12 @@ public:
         journal(std::move(changes)), journalBegin(begin), counters(std::move(values)), blockCount((length + IndexBlockBytes - 1) / IndexBlockBytes), width(unitWidth), little(isLittle), size(length) {}
     Source(std::shared_ptr<const std::string> text, std::shared_ptr<Counters> values) :
         memory(std::move(text)), counters(std::move(values)), blockCount((memory->size() + IndexBlockBytes - 1) / IndexBlockBytes), width(1), little(true), size(memory->size()) {}
+    std::shared_ptr<Source> Combined(Position offset, Position length, const Source& next, Position nextOffset, Position nextLength) {
+        if (!journal || journal != next.journal || journalBegin + offset + length != next.journalBegin + nextOffset) return {};
+        const auto first = journalBegin + offset, last = first + length + nextLength;
+        if (first / AppendBlockBytes != (last - 1) / AppendBlockBytes) return {};
+        return std::make_shared<Source>(journal, first, length + nextLength, width, little, counters);
+    }
     std::string Read(Position offset, size_t count, ReadSessions* sessions = nullptr) {
         if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
         if (memory) return memory->substr(static_cast<size_t>(offset), count);
@@ -218,6 +253,26 @@ struct Document::Impl {
         if (position == end) return {Make(node->piece, node->left, {}, node->priority), node->right};
         auto first = node->piece, second = first; first.length = position - left; second.offset += first.length; second.length -= first.length;
         return {Merge(node->left, Make(first)), Merge(Make(second), node->right)};
+    }
+    Root PopLast(const Root& node) { return node->right ? Make(node->piece, node->left, PopLast(node->right), node->priority) : node->left; }
+    Root PopFirst(const Root& node) { return node->left ? Make(node->piece, PopFirst(node->left), node->right, node->priority) : node->right; }
+    Root Concat(Root a, Root b) {
+#ifdef MULTIPAD4_APPEND_BASELINE
+        return Merge(a, b);
+#else
+        if (!a) return b; if (!b) return a;
+        auto last = a.get(), first = b.get();
+        while (last->right) last = last->right.get();
+        while (first->left) first = first->left.get();
+        auto piece = last->piece;
+        if (piece.source == first->piece.source && piece.offset + piece.length == first->piece.offset) piece.length += first->piece.length;
+        else {
+            auto combined = piece.source->Combined(piece.offset, piece.length, *first->piece.source, first->piece.offset, first->piece.length);
+            if (!combined) return Merge(a, b);
+            piece = {std::move(combined), 0, piece.length + first->piece.length};
+        }
+        return Merge(Merge(PopLast(a), Make(std::move(piece))), PopFirst(b));
+#endif
     }
     static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
         if (!node || !length) return;
@@ -312,7 +367,13 @@ void Document::Replace(Position offset, Position length, std::string_view native
     const bool single = !impl->depth;
     if (single) Begin({offset, offset});
     try {
-        auto [left, rest] = impl->Split(impl->root, offset); auto [removed, right] = impl->Split(rest, length);
+        auto [left, rest] = impl->Split(impl->root, offset);
+        Impl::Root right;
+#ifdef MULTIPAD4_APPEND_BASELINE
+        right = impl->Split(rest, length).second;
+#else
+        if (length) right = impl->Split(rest, length).second; else right = std::move(rest);
+#endif
         Impl::Root added;
         if (!nativeBytes.empty()) {
             if (!impl->journal) impl->journal = std::make_shared<Journal>();
@@ -320,7 +381,7 @@ void Document::Replace(Position offset, Position length, std::string_view native
             auto source = std::make_shared<Source>(impl->journal, begin, nativeBytes.size(), impl->width, impl->little, impl->counters);
             added = impl->Make({source, 0, nativeBytes.size()}); impl->counters->added += nativeBytes.size();
         }
-        impl->root = impl->Merge(impl->Merge(left, added), right);
+        impl->root = impl->Concat(impl->Concat(left, added), right);
     } catch (...) { if (single) End({offset, offset}); throw; }
     if (single) End({offset + nativeBytes.size(), offset + nativeBytes.size()});
 }
@@ -348,7 +409,17 @@ Position Document::FileSize() const { return Size() + impl->signature.size(); }
 void Document::Write(const files::ChunkConsumer& consume) const {
     const auto snapshot = Capture();
     consume(impl->signature);
+#ifdef MULTIPAD4_APPEND_BASELINE
     Impl::Stream(snapshot.root, consume);
+#else
+    std::string pending; pending.reserve(AppendBlockBytes);
+    auto flush = [&] { if (!pending.empty()) { consume(pending); pending.clear(); } };
+    Impl::Stream(snapshot.root, [&](std::string_view bytes) {
+        if (bytes.size() >= AppendBlockBytes) { flush(); consume(bytes); }
+        else { if (bytes.size() > AppendBlockBytes - pending.size()) flush(); pending.append(bytes); }
+    });
+    flush();
+#endif
 }
 void Document::Save(const std::filesystem::path& path, bool copy) {
     files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) { Write(consume); });
