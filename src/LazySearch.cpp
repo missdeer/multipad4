@@ -15,6 +15,9 @@
 namespace large {
 namespace {
 constexpr Position CacheBytes = 64 * 1024;
+#ifdef MULTIPAD4_REGEX_ITERATOR_TEST
+unsigned long long decodedCharacters = 0;
+#endif
 void FoldAscii(std::string& text) {
     size_t at = 0;
     const auto lower = _mm_set1_epi8('A' - 1), upper = _mm_set1_epi8('Z' + 1), bit = _mm_set1_epi8(32);
@@ -40,6 +43,7 @@ struct Reader {
     struct Cache { Position begin = 0; std::string bytes; unsigned long long stamp = 0; };
     mutable std::array<Cache, 4> cache;
     mutable unsigned long long clock = 0, visits = 0;
+    mutable size_t hot = 0;
     mutable std::map<Position, Position> checkpoints{{0, 0}};
     mutable std::map<Position, std::vector<Position>> boundaries;
     unsigned width = 1, codePage = CP_UTF8;
@@ -63,13 +67,24 @@ struct Reader {
     }
     unsigned char Byte(Position position) const {
         if (position >= Size()) throw std::runtime_error("Search iterator out of bounds.");
-        for (auto& block : cache) if (!block.bytes.empty() && position >= block.begin && position - block.begin < block.bytes.size()) { block.stamp = ++clock; return static_cast<unsigned char>(block.bytes[static_cast<size_t>(position - block.begin)]); }
+#ifndef MULTIPAD4_REGEX_ITERATOR_BASELINE
+        const auto& recent = cache[hot];
+        if (!recent.bytes.empty() && position >= recent.begin && position - recent.begin < recent.bytes.size()) {
+            cache[hot].stamp = ++clock;
+            return static_cast<unsigned char>(recent.bytes[static_cast<size_t>(position - recent.begin)]);
+        }
+#endif
+        for (auto& block : cache) if (!block.bytes.empty() && position >= block.begin && position - block.begin < block.bytes.size()) { block.stamp = ++clock; hot = static_cast<size_t>(&block - cache.data()); return static_cast<unsigned char>(block.bytes[static_cast<size_t>(position - block.begin)]); }
         Check(); auto* slot = &*std::min_element(cache.begin(), cache.end(), [](const auto& a, const auto& b) { return a.stamp < b.stamp; });
+        hot = static_cast<size_t>(slot - cache.data());
         slot->begin = position / CacheBytes * CacheBytes; slot->bytes = Read(slot->begin, static_cast<size_t>((std::min)(CacheBytes + 8, Size() - slot->begin))); slot->stamp = ++clock;
         return static_cast<unsigned char>(slot->bytes[static_cast<size_t>(position - slot->begin)]);
     }
     unsigned Unit(Position position) const { auto a = Byte(position), b = Byte(position + 1); return little ? a | (b << 8) : (a << 8) | b; }
     Character At(Position position) const {
+#ifdef MULTIPAD4_REGEX_ITERATOR_TEST
+        ++decodedCharacters;
+#endif
         if ((++visits & 1023) == 0) Check(); Character result;
         if (width == 2) { result.value[0] = static_cast<wchar_t>(Unit(position)); result.bytes = 2; return result; }
         auto first = Byte(position);
@@ -85,11 +100,12 @@ struct Reader {
         if (!units) throw std::runtime_error("Invalid encoded search input.");
         result.units = units; result.bytes = count; return result;
     }
-    Position Next(Position position) const {
-        if (position >= Size()) return Size(); auto value = At(position); auto next = position + value.bytes;
+    Position Next(Position position, Character value) const {
+        auto next = position + value.bytes;
         if (dbcs && next / CacheBytes != position / CacheBytes) checkpoints[next / CacheBytes] = next;
         return next;
     }
+    Position Next(Position position) const { return position >= Size() ? Size() : Next(position, At(position)); }
     Position Previous(Position position) const {
         if (!position) return 0;
         if (width == 2) return position - 2;
@@ -134,17 +150,57 @@ struct Iterator {
     Reader* reader = nullptr;
     Position position = 0;
     unsigned part = 0;
-    wchar_t operator*() const { return reader->At(position).value[part]; }
-    Iterator& operator++() { auto c = reader->At(position); if (part + 1 < c.units) ++part; else { position = reader->Next(position); part = 0; } return *this; }
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+    Reader::Character Current() const { return reader->At(position); }
+#else
+    mutable Reader::Character current;
+    mutable bool decoded = false;
+    const Reader::Character& Current() const {
+        if ((++reader->visits & 1023) == 0) reader->Check();
+        if (!decoded) { current = reader->At(position); decoded = true; }
+        return current;
+    }
+#endif
+    wchar_t operator*() const { return Current().value[part]; }
+    Iterator& operator++() {
+        const auto c = Current();
+        if (part + 1 < c.units) ++part;
+        else {
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+            position = reader->Next(position);
+#else
+            position = reader->Next(position, c); decoded = false;
+#endif
+            part = 0;
+        }
+        return *this;
+    }
     Iterator operator++(int) { auto copy = *this; ++*this; return copy; }
-    Iterator& operator--() { if (part) --part; else { position = reader->Previous(position); part = reader->At(position).units - 1; } return *this; }
+    Iterator& operator--() {
+        if (part) --part;
+        else {
+            position = reader->Previous(position);
+#ifndef MULTIPAD4_REGEX_ITERATOR_BASELINE
+            decoded = false;
+#endif
+            part = Current().units - 1;
+        }
+        return *this;
+    }
     Iterator operator--(int) { auto copy = *this; --*this; return copy; }
     bool operator==(const Iterator& other) const { return reader == other.reader && position == other.position && part == other.part; }
     bool operator!=(const Iterator& other) const { return !(*this == other); }
-    Position Start() const { if (reader->width == 2 && position && position < reader->Size() && reader->Unit(position) >= 0xDC00 && reader->Unit(position) <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position - 2; return position; }
+    unsigned CurrentUnit() const {
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+        return reader->Unit(position);
+#else
+        return Current().value[0];
+#endif
+    }
+    Position Start() const { if (reader->width == 2 && position && position < reader->Size() && CurrentUnit() >= 0xDC00 && CurrentUnit() <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position - 2; return position; }
     Position End() const {
-        if (part) return position + reader->At(position).bytes;
-        if (reader->width == 2 && position && position < reader->Size() && reader->Unit(position) >= 0xDC00 && reader->Unit(position) <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position + 2;
+        if (part) return position + Current().bytes;
+        if (reader->width == 2 && position && position < reader->Size() && CurrentUnit() >= 0xDC00 && CurrentUnit() <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position + 2;
         return position;
     }
 };
