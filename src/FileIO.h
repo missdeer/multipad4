@@ -37,7 +37,9 @@ public:
     // Borrowed mapped view; the callback must finish before another access.
     void Visit(unsigned long long offset, size_t count, const std::function<void(std::string_view)>& consume);
 };
-Text DetectSample(const std::string& bytes, const ReadOptions& options = {});
+inline constexpr size_t SampleLookahead = 8;
+// Incomplete samples include SampleLookahead bytes beyond the probe boundary.
+Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options);
 using ChunkConsumer = std::function<void(std::string_view)>;
 // Wall-clock milliseconds. Mapping first-touch faults are charged to the
 // operation that accesses the page. pageFaults includes soft faults and callbacks.

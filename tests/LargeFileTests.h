@@ -346,6 +346,19 @@ inline void RunLargeFileTests(MainFrame& frame) {
             preview.fastView->LoadForEditing();
             require(files::Encode({preview.Text(), preview.encoding}) == bytes);
         }
+        if (IsValidCodePage(932)) {
+            const auto path = directory / L"shift-jis.txt";
+            const auto encoding = files::FromCodePage(932);
+            const files::ReadOptions options{false, false, encoding};
+            for (size_t prefix : {4091, 4095}) {
+                const auto expected = std::string(prefix, 'x') + "も\n";
+                files::WriteAtomic(path, {expected, encoding});
+                std::filesystem::resize_file(path, 8192);
+                EditorDocument preview; preview.path = path; require(preview.Create(frame.tabs));
+                preview.OpenFastFile(path, options);
+                require(preview.encoding == encoding && preview.Range(0, expected.size()) == expected);
+            }
+        }
         // A late invalid sequence must not replace the fast viewport on upgrade.
         {
             auto broken = directory / L"late-invalid.txt";

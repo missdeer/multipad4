@@ -57,6 +57,11 @@ int wmain(int argc, wchar_t** argv) {
             const std::string text = std::string(16 * 1024 * 1024 - 1, 'a') + "日本語";
             const auto bytes = files::Encode({text, shiftJis});
             Require(files::Decode(bytes, shiftJis).utf8 == text, "DBCS character split at conversion boundary");
+            const auto probeText = std::string(1024 * 1024 - 1, 'x') + "も\nShift JIS";
+            files::WriteAtomic(path, {probeText, shiftJis});
+            std::string actual;
+            const auto encoding = files::ReadChunks(path, [&](std::string_view chunk) { actual += chunk; }, {false, false, shiftJis});
+            Require(encoding == shiftJis && actual == probeText, "DBCS character split at encoding probe boundary");
         }
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE, files::Encoding::Utf16BE, files::FromCodePage(1252)}) {
             const auto content = std::string(16 * 1024 * 1024 - 1, 'x') + "café\r\n" + "\xEF\xBB\xBF" + "tail";
