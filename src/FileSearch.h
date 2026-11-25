@@ -24,8 +24,6 @@ public:
 struct FileSearchMatch { size_t start, end, line, lineStart; };
 struct FileSearchResult {
     std::filesystem::path path;
-    std::shared_ptr<const std::string> text;
-    std::vector<FileSearchMatch> matches;
     bool openDocument = false;
     std::shared_ptr<const large::Document::Snapshot> snapshot;
     std::shared_ptr<large::HitArchive> archive;
