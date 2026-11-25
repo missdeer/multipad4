@@ -180,6 +180,31 @@ inline void RunMDILayoutTests(MainFrame& frame) {
         require((style & WS_OVERLAPPEDWINDOW) == WS_OVERLAPPEDWINDOW);
         checkMaximized(child);
     }
+    const auto observeRestore = [](HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR data) -> LRESULT {
+        if (message == WM_SIZE && w == SIZE_RESTORED)
+            *reinterpret_cast<bool*>(data) = GetPropW(GetParent(window), L"SysSetRedraw") != nullptr;
+        return DefSubclassProc(window, message, w, l);
+    };
+    for (int target : {0, 1}) {
+        const HWND outgoing = frame.MDIGetActive();
+        bool restoreWithoutRedraw = false;
+        require(SetWindowSubclass(outgoing, observeRestore, 0, reinterpret_cast<DWORD_PTR>(&restoreWithoutRedraw)) != FALSE);
+        if (target == 0) {
+            RECT tab{};
+            control.GetItemRect(target, &tab);
+            const LPARAM point = MAKELPARAM((tab.left + tab.right) / 2, (tab.top + tab.bottom) / 2);
+            control.SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, point);
+            control.SendMessage(WM_LBUTTONUP, 0, point);
+        } else {
+            frame.SendMessage(WM_COMMAND, ID_NEXTTAB);
+        }
+        RemoveWindowSubclass(outgoing, observeRestore, 0);
+        require(restoreWithoutRedraw);
+        const HWND incoming = frame.tabs.GetPageHWND(target);
+        require(frame.MDIGetActive() == incoming && ::IsZoomed(incoming) && frame.tabs.GetActivePage() == target);
+        require(!GetPropW(frame.m_hWndMDIClient, L"SysSetRedraw"));
+    }
+    CaptureQAWindow(frame, L"MDI-after-tab-switch");
     // New documents must inherit a usable maximized MDI layout as well.
     auto* added = frame.NewDocument(); require(added != nullptr);
     checkMaximized(frame.tabs.GetPageHWND(frame.tabs.GetActivePage()));

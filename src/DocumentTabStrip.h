@@ -19,6 +19,7 @@ public:
     void SetIcon(HWND child, HICON icon);
     void UpdateImages();
     void SyncSelection(HWND active = nullptr);
+    void Activate(int index);
     bool MoveItem(int from, int to);
     BOOL GetItemRect(int index, RECT* rect) const;
     void EnsureVisible(int index, bool, bool);
@@ -39,7 +40,6 @@ private:
     static LRESULT CALLBACK TabProcedure(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data);
     void LayoutCloseButton(int width, int height);
     int HitTest(POINT point) const;
-    void Activate(int index);
     HWND frame = nullptr, mdi = nullptr, layoutWindow = nullptr, bar = nullptr, control = nullptr, close = nullptr;
     HFONT titleFont = nullptr;
     HIMAGELIST icons = nullptr;
