@@ -75,3 +75,11 @@ subscription identities. Known-name additions/removals now request directory-wid
 reconciliation so this case cannot rely on stale captured identity. Ordinary
 modified-name events retain indexed dispatch. Rebuild and `directory_watch`
 passed again (2.74 s).
+
+PR review regression: two child directories `foo` and `FOO` beneath the enabled
+case-sensitive parent each contain `same.txt`. The test watches both concurrently
+and verifies a write in each directory reaches only its own subscription. Shared
+backend keys now use the opened directory handle's volume/file identity; when
+identity lookup is unavailable, the canonical path fallback retains exact case.
+The real NTFS case-sensitive checks and complete `directory_watch` suite passed
+(3.09 s) after this fix.

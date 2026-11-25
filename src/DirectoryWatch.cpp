@@ -10,12 +10,16 @@ std::wstring Fold(std::wstring value) {
     if (!value.empty()) CharUpperBuffW(value.data(), static_cast<DWORD>(value.size()));
     return value;
 }
+std::string FileIdentity(HANDLE file) {
+    FILE_ID_INFO info{};
+    if (!GetFileInformationByHandleEx(file, FileIdInfo, &info, sizeof(info))) return {};
+    return std::string(reinterpret_cast<const char*>(&info), sizeof(info));
+}
 std::string FileIdentity(const std::filesystem::path& path) {
     HANDLE file = CreateFileW(path.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     if (file == INVALID_HANDLE_VALUE) return {};
-    FILE_ID_INFO info{}; const auto ok = GetFileInformationByHandleEx(file, FileIdInfo, &info, sizeof(info)); CloseHandle(file);
-    return ok ? std::string(reinterpret_cast<const char*>(&info), sizeof(info)) : std::string();
+    auto identity = FileIdentity(file); CloseHandle(file); return identity;
 }
 struct Pending { bool posted = false; std::unordered_map<UINT_PTR, DirectoryWatch::Change> changes; };
 std::mutex pendingMutex;
@@ -123,10 +127,12 @@ DirectoryWatch::DirectoryWatch(HWND owner, UINT_PTR document, const std::filesys
     std::wstring key(32768, L'\0');
     auto length = GetFinalPathNameByHandleW(directory, key.data(), static_cast<DWORD>(key.size()), FILE_NAME_NORMALIZED);
     if (!length || length >= key.size()) { error = length ? ERROR_FILENAME_EXCED_RANGE : GetLastError(); CloseHandle(directory); return; }
-    key.resize(length); key = Fold(std::move(key));
+    key.resize(length);
+    const auto directoryIdentity = FileIdentity(directory);
+    const auto registryKey = directoryIdentity.empty() ? "path:" + std::string(reinterpret_cast<const char*>(key.data()), key.size() * sizeof(wchar_t)) : "id:" + directoryIdentity;
     // Subscriptions are created and destroyed on the UI thread; callbacks never touch the registry.
-    static std::unordered_map<HWND, std::unordered_map<std::wstring, std::weak_ptr<State>>> registry;
-    auto& entry = registry[owner][key]; state = entry.lock();
+    static std::unordered_map<HWND, std::unordered_map<std::string, std::weak_ptr<State>>> registry;
+    auto& entry = registry[owner][registryKey]; state = entry.lock();
     if (state) {
         bool usable;
         { std::lock_guard lock(state->mutex); usable = state->error == ERROR_SUCCESS && !state->stopping; }

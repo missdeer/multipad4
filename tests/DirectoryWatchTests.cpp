@@ -141,6 +141,19 @@ int main() {
         if (dir != INVALID_HANDLE_VALUE) CloseHandle(dir);
         fprintf(stdout, "Case-sensitive directory regression: %s.\n", enabled ? "enabled" : "unavailable on this system");
         if (enabled) {
+            // Distinct case-sensitive child directories must never share a backend.
+            const auto lowerDirectory = sensitive / L"foo", upperDirectory = sensitive / L"FOO";
+            std::filesystem::create_directory(lowerDirectory); std::filesystem::create_directory(upperDirectory);
+            const auto lowerFile = lowerDirectory / L"same.txt", upperFile = upperDirectory / L"same.txt";
+            Write(lowerFile, 0); Write(upperFile, 0);
+            DirectoryWatch lowerWatch(window, 204, lowerFile), upperWatch(window, 205, upperFile);
+            Require(lowerWatch.Arm() && upperWatch.Arm()); Pump(); changes.clear();
+            Write(lowerFile, 1); Wait([&] { return std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == lowerWatch.token; }); });
+            Require(std::all_of(changes.begin(), changes.end(), [&](auto c) { return c.token == lowerWatch.token; }));
+            Pump(); changes.clear();
+            Write(upperFile, 1); Wait([&] { return std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == upperWatch.token; }); });
+            Require(std::all_of(changes.begin(), changes.end(), [&](auto c) { return c.token == upperWatch.token; }));
+            Pump(); changes.clear();
             const auto watched = sensitive / L"watched.txt", unknown = sensitive / L"lowercase.txt";
             Write(watched, 0); Write(unknown, 0);
             DirectoryWatch caseWatch(window, 203, watched); Require(caseWatch.Arm()); Pump(); changes.clear();
