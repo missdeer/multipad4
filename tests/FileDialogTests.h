@@ -136,12 +136,24 @@ inline void RunFileDialogTests(MainFrame& frame) {
         frame.settings.WriteString(L"Files",L"OpenWithDirectory",(directory/L"OpenWith").wstring());
         frame.NewDocument();auto* document=frame.Active();document->path=directory/L"target.txt";document->Load({"target"});require(frame.Save(*document));
         document->Load({"a\r\nb\nc\r"});
+        require(document->loadMetrics.endings.linesCount[0] == 1 && document->loadMetrics.endings.linesCount[1] == 1 && document->loadMetrics.endings.linesCount[2] == 1);
+        document->LoadStream(8, 0, [&](const files::ChunkConsumer& consume) {
+            consume("a\r"); consume("\nb\nc\r"); return files::Encoding::Utf8;
+        });
+        require(document->loadMetrics.endings.linesCount[0] == 1 && document->loadMetrics.endings.linesCount[1] == 1 && document->loadMetrics.endings.linesCount[2] == 1);
         frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",L"1");
         filedialogtest::Run([](HWND dialog){SendDlgItemMessageW(dialog,IDC_EOLMODELIST,CB_SETCURSEL,SC_EOL_LF,0);PostMessageW(dialog,WM_COMMAND,IDOK,0);},[&]{InitializeFileDocument(frame,*document);});
         require(document->Text()=="a\nb\nc\n" && document->Send(SCI_GETEOLMODE)==SC_EOL_LF);
         document->Load({"a\r\nb\nc\r"});
         filedialogtest::Run([](HWND dialog){CheckDlgButton(dialog,IDC_WARNINCONSISTENTEOLS,BST_UNCHECKED);PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);},[&]{InitializeFileDocument(frame,*document);});
         require(document->Text()=="a\r\nb\nc\r" && frame.settings.ReadString(L"File Settings",L"WarnInconsistentEOL")==L"0");
+        document->Load({"single\n"}); document->Send(SCI_APPENDTEXT, 2, reinterpret_cast<LPARAM>("x\r"));
+        frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",L"1");
+        filedialogtest::Run([&](HWND dialog) {
+            wchar_t count[32]{}; GetDlgItemTextW(dialog, IDC_EOL_SUM_CR, count, 32); require(std::wstring(count) == L"1 line(s).");
+            PostMessageW(dialog, WM_COMMAND, IDCANCEL, 0);
+        }, [&] { InitializeFileDocument(frame, *document); });
+        document->Load({"a\r\nb\nc\r"});
         document->Send(SCI_SETREADONLY,TRUE);frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",L"1");
         filedialogtest::Run([&](HWND dialog){require(!IsWindowEnabled(GetDlgItem(dialog,IDOK)));SendDlgItemMessageW(dialog,IDC_EOLMODELIST,CB_SETCURSEL,SC_EOL_LF,0);PostMessageW(dialog,WM_COMMAND,IDOK,0);PostMessageW(dialog,WM_COMMAND,IDCANCEL,0);},[&]{InitializeFileDocument(frame,*document);});
         require(document->Text()=="a\r\nb\nc\r"&&document->Send(SCI_GETREADONLY));document->Send(SCI_SETREADONLY,FALSE);frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",L"0");

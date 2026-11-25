@@ -39,6 +39,9 @@ class FastFileView {
     void Layout();
     void UpdateBar();
     void CancelTask();
+    std::unique_ptr<large::Search> navigationSearch;
+    large::Document::Snapshot navigationSnapshot;
+    large::SearchOptions navigationOptions;
     large::Document::Snapshot matchSnapshot;
     std::optional<large::SearchHit> lastHit;
     large::SearchOptions lastOptions;
