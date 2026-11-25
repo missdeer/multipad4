@@ -6,8 +6,11 @@
 #include <functional>
 #include <optional>
 #include <memory>
+#include <stdexcept>
 namespace files {
 enum class Encoding : unsigned { Utf8, Utf8Bom, Utf16LE, Utf16BE, Utf16LEPlain, Utf16BEPlain, Ansi, Oem, CodePageBase = 0x10000 };
+inline constexpr auto Latin1 = static_cast<Encoding>(static_cast<unsigned>(Encoding::CodePageBase) + 28591);
+struct InvalidByteSequence : std::runtime_error { using std::runtime_error::runtime_error; };
 struct Text { std::string utf8; Encoding encoding = Encoding::Utf8; };
 enum class ReadBackend { Mapped, Buffered };
 struct ReadOptions {
@@ -34,7 +37,9 @@ public:
     // Borrowed mapped view; the callback must finish before another access.
     void Visit(unsigned long long offset, size_t count, const std::function<void(std::string_view)>& consume);
 };
-Text DetectSample(const std::string& bytes, const ReadOptions& options = {});
+inline constexpr size_t SampleLookahead = 8;
+// Incomplete samples include SampleLookahead bytes beyond the probe boundary.
+Text DetectSample(const std::string& bytes, bool complete, const ReadOptions& options);
 using ChunkConsumer = std::function<void(std::string_view)>;
 // Wall-clock milliseconds. Mapping first-touch faults are charged to the
 // operation that accesses the page. pageFaults includes soft faults and callbacks.

@@ -190,7 +190,14 @@ void EditorDocument::SaveStreaming(const std::filesystem::path& destination) con
 }
 
 void EditorDocument::OpenFastFile(const std::filesystem::path& source, const files::ReadOptions& options, std::optional<files::Encoding> forced) {
-    auto view = std::make_unique<FastFileView>(*this, source, options, forced);
-    view->Attach();
-    fastView = std::move(view);
+    auto open = [&](std::optional<files::Encoding> selected) {
+        auto view = std::make_unique<FastFileView>(*this, source, options, selected);
+        view->Attach();
+        fastView = std::move(view);
+    };
+    try { open(forced); }
+    catch (const files::InvalidByteSequence&) {
+        if (forced) throw;
+        open(files::Latin1);
+    }
 }

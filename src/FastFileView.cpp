@@ -1,7 +1,6 @@
 #include "FastFileView.h"
 #include "EditorDocument.h"
 #include "resource.h"
-#include "SimdText.h"
 #include "EditClipboard.h"
 #include <stdexcept>
 namespace {
@@ -21,20 +20,13 @@ unsigned Unit(std::string_view bytes, size_t i, files::Encoding e) {
 FastFileView::FastFileView(EditorDocument& d, const std::filesystem::path& path, const files::ReadOptions& readOptions, std::optional<files::Encoding> selected, bool deleteOnClose) :
     document(d), options(readOptions), forced(selected) {
     auto file = std::make_shared<files::MappedFile>(path, nullptr, true, deleteOnClose);
-    auto sample = file->Read(0, 4096);
+    const auto sample = file->Read(0, 4096 + files::SampleLookahead);
     std::string signature;
     if (forced) encoding = *forced;
     else if (sample.starts_with("\xFF\xFE")) encoding = files::Encoding::Utf16LE;
     else if (sample.starts_with("\xFE\xFF")) encoding = files::Encoding::Utf16BE;
     else if (sample.starts_with("\xEF\xBB\xBF")) encoding = files::Encoding::Utf8Bom;
-    else {
-        if (sample.size() == 4096 && !simd::DetectUtf16(sample)) {
-            size_t n = sample.size() - 4;
-            while (n && (static_cast<unsigned char>(sample[n]) & 0xC0) == 0x80) --n;
-            sample.resize(n);
-        }
-        encoding = files::DetectSample(sample, options).encoding;
-    }
+    else encoding = files::DetectSample(sample, sample.size() == file->Size(), options).encoding;
     if (Utf8(encoding) && sample.starts_with("\xEF\xBB\xBF")) signature = "\xEF\xBB\xBF";
     if ((encoding == files::Encoding::Utf16LE || encoding == files::Encoding::Utf16LEPlain) && sample.starts_with("\xFF\xFE")) signature = "\xFF\xFE";
     if ((encoding == files::Encoding::Utf16BE || encoding == files::Encoding::Utf16BEPlain) && sample.starts_with("\xFE\xFF")) signature = "\xFE\xFF";

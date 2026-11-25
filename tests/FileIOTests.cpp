@@ -57,6 +57,11 @@ int wmain(int argc, wchar_t** argv) {
             const std::string text = std::string(16 * 1024 * 1024 - 1, 'a') + "日本語";
             const auto bytes = files::Encode({text, shiftJis});
             Require(files::Decode(bytes, shiftJis).utf8 == text, "DBCS character split at conversion boundary");
+            const auto probeText = std::string(1024 * 1024 - 1, 'x') + "も\nShift JIS";
+            files::WriteAtomic(path, {probeText, shiftJis});
+            std::string actual;
+            const auto encoding = files::ReadChunks(path, [&](std::string_view chunk) { actual += chunk; }, {false, false, shiftJis});
+            Require(encoding == shiftJis && actual == probeText, "DBCS character split at encoding probe boundary");
         }
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf8Bom, files::Encoding::Utf16LE, files::Encoding::Utf16BE, files::FromCodePage(1252)}) {
             const auto content = std::string(16 * 1024 * 1024 - 1, 'x') + "café\r\n" + "\xEF\xBB\xBF" + "tail";
@@ -90,6 +95,24 @@ int wmain(int argc, wchar_t** argv) {
             { std::ofstream out(path, std::ios::binary); out.write(bytes.data(), bytes.size()); }
             bool rejected = false; try { files::Read(path); } catch (const std::exception&) { rejected = true; }
             Require(rejected, "Malformed or binary input accepted");
+        }
+        std::string byteValues;
+        for (unsigned value = 0; value <= 255; ++value) byteValues.push_back(static_cast<char>(value));
+        for (const auto& prefix : {std::string(), std::string("\xEF\xBB\xBF"), std::string("# coding: utf-8\n")}) {
+            const auto bytes = prefix + byteValues;
+            { std::ofstream out(path, std::ios::binary); out.write(bytes.data(), bytes.size()); }
+            const auto decoded = files::Read(path, {false, true, files::Encoding::Utf8});
+            Require(decoded.encoding == files::Latin1 && files::Encode(decoded) == bytes, "Binary fallback changed file bytes");
+            Require(files::ReadForReload(path, decoded.encoding).utf8 == decoded.utf8, "Reload changed binary fallback text");
+            bool rejected = false;
+            try { files::ReadWithEncoding(path, files::Encoding::Utf8); } catch (const files::InvalidByteSequence&) { rejected = true; }
+            Require(rejected, "Explicit UTF-8 accepted binary input");
+        }
+        if (IsValidCodePage(932)) {
+            const std::string bytes("x\x00\x82", 3);
+            { std::ofstream out(path, std::ios::binary); out.write(bytes.data(), bytes.size()); }
+            const auto decoded = files::Read(path, {false, true, files::FromCodePage(932)});
+            Require(decoded.encoding == files::Latin1 && files::Encode(decoded) == bytes, "Incomplete legacy byte sequence blocked binary open");
         }
         auto cp1252 = files::FromCodePage(1252);
         Require(files::Decode(files::Encode({"plain ASCII", files::Encoding::Ansi}), files::Encoding::Ansi).utf8 == "plain ASCII", "System ANSI code page round trip failed");

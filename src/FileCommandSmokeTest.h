@@ -3,6 +3,7 @@
 #include "FileCommands.h"
 #include "FileDialogs.h"
 #include "MainFrame.h"
+#include <fstream>
 #include <source_location>
 inline void RunFileCommandSmokeTest(MainFrame& frame) {
     auto require=[](bool ok,std::source_location where=std::source_location::current()){if(!ok)throw std::runtime_error("File command/CLI regression failed at line "+std::to_string(where.line()));};
@@ -82,6 +83,18 @@ inline void RunFileCommandSmokeTest(MainFrame& frame) {
         frame.settings.Set(IDM_ENCODING_SETDEFAULT,oldDefaultEncoding);frame.settings.WriteString(L"File Settings",L"ASCIIAsUTF8",oldAsciiMode);
         auto nfo=directory/L"art.nfo";files::WriteAtomic(nfo,{"Unicode BOM 中文",files::Encoding::Utf16LE});
         frame.settings.WriteString(L"File Settings",L"NFOAsOEM",L"1");require(ReadFileForFrame(frame,nfo).encoding==files::Encoding::Utf16LE);frame.settings.WriteString(L"File Settings",L"NFOAsOEM",L"0");
+        const auto binary = directory / L"binary.bin";
+        const std::string bytes("\xEF\xBB\xBF\x00\xFF", 5);
+        files::WriteAtomicChunks(binary, [&](const auto& write) { write(bytes); });
+        require(frame.Open(binary));
+        auto* binaryDocument = frame.Active();
+        require(binaryDocument->encoding == files::Latin1 && files::Encode({binaryDocument->Text(), binaryDocument->encoding}) == bytes);
+        const auto binaryCopy = directory / L"binary-copy.bin";
+        require(frame.Reload(*binaryDocument) && frame.SaveTo(*binaryDocument, binaryCopy, true));
+        std::ifstream copy(binaryCopy, std::ios::binary);
+        require(std::string(std::istreambuf_iterator<char>(copy), {}) == bytes);
+        copy.close();
+        require(frame.Close(frame.tabs.GetActivePage()));
         ParsedCommandLine command;command.files.push_back(path);command.sourceEncoding=files::FromCodePage(1252);command.line=2;command.column=2;command.readOnly=true;
         auto count=frame.tabs.GetPageCount();ApplyCommandLine(frame,command);auto* opened=frame.Active();
         require(opened && opened->Text()=="café\nsecond\nthird" && opened->Send(SCI_GETREADONLY));
