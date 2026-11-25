@@ -114,6 +114,12 @@ void MainFrame::CreateUpstreamUI() {
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSE, L"Close Document\tCtrl+W");
     InsertMenuW(file, GetMenuItemCount(file) - 1, MF_BYPOSITION | MF_STRING, ID_CLOSEALL, L"Close All Documents");
     const bool chinese = PRIMARYLANGID(GetThreadUILanguage()) == LANG_CHINESE;
+    if (appUpdater.enabled) {
+        InsertMenuW(GetMenu(), IDM_HELP_LATEST_RELEASE, MF_BYCOMMAND | MF_STRING,
+            ID_CHECK_UPDATES, chinese ? L"检查更新(&U)..." : L"Check for &Updates...");
+        InsertMenuW(GetMenu(), IDM_HELP_LATEST_RELEASE, MF_BYCOMMAND | MF_STRING,
+            ID_AUTO_CHECK_UPDATES, chinese ? L"自动检查更新" : L"Check for Updates Automatically");
+    }
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
         ID_RESTORE_EXIT_SESSION, chinese ? L"启动时恢复上次会话" : L"Restore Previous Session on Startup");
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
@@ -155,6 +161,8 @@ CommandState MainFrame::QueryState(UINT input) {
     switch (id) {
     case ID_NEW: case ID_OPEN: case ID_EXIT: case ID_ABOUT: case IDM_FILE_NEWWINDOW:
     case IDM_VIEW_CUSTOMIZE_TOOLBAR: return {true, true, false};
+    case ID_CHECK_UPDATES: return {appUpdater.enabled, appUpdater.enabled && (!appUpdater.Busy() || (appUpdater.check.valid() && !appUpdater.manual)), false};
+    case ID_AUTO_CHECK_UPDATES: return {appUpdater.enabled, appUpdater.enabled, settings.Get(ID_AUTO_CHECK_UPDATES, 1) != 0};
     case ID_SEARCH_RESULTS: return {true, true, searchResults.visible};
     case ID_FIND: case IDM_EDIT_REPLACE: return {true, true, false};
     case ID_SEARCH_FILES: case ID_SEARCH_MARK: return {true, d != nullptr, false};

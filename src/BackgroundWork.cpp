@@ -155,7 +155,12 @@ LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
     }
     if (id == 2) { UpdateStatus(); return 0; }
     if (id != 1) { handled = FALSE; return 0; }
-    TickBackgroundWork(*this); return 0;
+    TickBackgroundWork(*this);
+    if (appUpdater.enabled && IsWindowEnabled() && !runtime.operationDepth && !runtime.inBackgroundWork && !pendingPluginMaintenance) {
+        FrameOperation operation(runtime, m_hWnd);
+        appUpdater.Poll(*this);
+    }
+    return 0;
 }
 LRESULT MainFrame::OnActivateApp(UINT, WPARAM active, LPARAM, BOOL& handled) {
     SetFrameTransparency(*this, active != 0); if (active) { TickBackgroundWork(*this); CheckExternalChanges(*this); }

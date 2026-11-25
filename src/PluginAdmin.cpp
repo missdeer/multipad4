@@ -199,7 +199,7 @@ void PluginAdmin::Search() {
     MessageBeep(MB_ICONINFORMATION);
 }
 void PluginAdmin::Apply(int command) {
-    if (frame->runtime.operationDepth || frame->pendingPluginMaintenance) return;
+    if (frame->runtime.operationDepth || frame->pendingPluginMaintenance || frame->appUpdater.ready) return;
     FrameOperation operationGuard(frame->runtime, frame->m_hWnd);
     const auto operation = command == IDC_PLUGINADM_INSTALL ? PluginOperation::Install :
         command == IDC_PLUGINADM_UPDATE ? PluginOperation::Update :

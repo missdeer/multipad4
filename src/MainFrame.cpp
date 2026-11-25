@@ -549,6 +549,11 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
         SetWindowPos((GetExStyle() & WS_EX_TOPMOST) ? HWND_NOTOPMOST : HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE); break;
     case IDM_FILE_NEWWINDOW: Relaunch(false, true); break;
     case ID_ABOUT: ShowAboutDialog(m_hWnd); break;
+    case ID_CHECK_UPDATES: appUpdater.Check(true); break;
+    case ID_AUTO_CHECK_UPDATES:
+        settings.Set(id, !settings.Get(id, 1));
+        settings.SaveOption(id);
+        break;
     }
     Refresh(); return 0;
     } catch (const std::exception& error) { Error(error); return 0; }
@@ -563,13 +568,18 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
             ExitSessionContents::SavedOnly : ExitSessionContents::IncludeUnsaved);
     } catch (const std::exception& error) {
         pendingPluginMaintenance.reset();
+        appUpdater.ready.reset();
         Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
         runtime.pendingTabCloses.clear();
         plugins.Notify(NPPN_CANCELSHUTDOWN);
         return 0;
     }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) SaveFramePreferences(*this);
-    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession && !pendingPluginMaintenance)) { plugins.Notify(NPPN_CANCELSHUTDOWN); return 0; }
+    while (tabs.GetPageCount()) if (!Close(tabs.GetPageCount() - 1, !savedSession && !pendingPluginMaintenance)) {
+        appUpdater.ready.reset();
+        plugins.Notify(NPPN_CANCELSHUTDOWN);
+        return 0;
+    }
     if (settings.Get(IDM_VIEW_SAVESETTINGS, 1)) {
         settings.Save();
     }

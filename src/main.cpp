@@ -71,6 +71,19 @@ void FinishPluginMaintenance(const PluginMaintenance& task) {
 }
 }
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+    int count = 0;
+    std::unique_ptr<wchar_t*, decltype(&LocalFree)> arguments(CommandLineToArgvW(GetCommandLineW(), &count), LocalFree);
+    auto args = arguments.get();
+    if (count == 3 && wcscmp(args[1], L"--apply-update") == 0) {
+        StartupLock lock;
+        return lock.Acquire() ? RunAppUpdateWorker(args[2]) : 1;
+    }
+    const auto updateCleanup = TakeAppUpdateCleanup();
+    if (count == 3 && wcscmp(args[1], L"--app-update-test") == 0) {
+        try { TestAppUpdate(args[2]); }
+        catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); return 1; }
+        return 0;
+    }
     HRESULT hr = OleInitialize(nullptr);
     if (FAILED(hr)) return 1;
     INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_WIN95_CLASSES | ICC_BAR_CLASSES};
@@ -78,7 +91,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     SetCurrentProcessExplicitAppUserModelID(L"MultiPad4.Editor");
     extern UINT g_uSystemDPI; g_uSystemDPI = GetDpiForSystem();
     if (!Scintilla_RegisterClasses(instance)) { OleUninitialize(); return 2; }
-    int count = 0; LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
@@ -93,6 +105,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
     int result = 0;
     std::optional<PluginMaintenance> pendingPluginMaintenance;
+    std::unique_ptr<StagedAppUpdate> pendingUpdate;
     {
         MainFrame frame;
         StartupLock startupLock;
@@ -137,6 +150,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 auto text = files::FromUtf8(error.what()); MessageBoxW(nullptr, text.c_str(), L"Command Line", MB_ICONERROR); reused = true; result = 5;
             }
         }
+        frame.appUpdater.enabled = MULTIPAD4_UPDATE_ASSET[0] && frame.settings.persistent && !options.print && !options.help;
+        if (!updateCleanup.empty()) frame.appUpdater.nextCheck = std::chrono::steady_clock::now() + std::chrono::hours(24);
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
         else if (!frame.Create(rect, instance)) result = 3;
@@ -179,9 +194,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             try { ApplyCommandLine(frame, options); } catch (const std::exception& error) { frame.Error(error); }
             if (frame.documents.empty()) frame.NewDocument();
             frame.plugins.Ready();
+            startupLock.Release();
+            if (!updateCleanup.empty()) CleanUpAppUpdate(updateCleanup);
             if (options.help) ExecuteFrameCommand(frame, IDM_CMDLINE_HELP);
             if (options.print) frame.PostMessage(WM_CLOSE);
-            startupLock.Release();
             MSG message{};
             BOOL received;
             while ((received = GetMessageW(&message, nullptr, 0, 0)) > 0) {
@@ -190,11 +206,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 DispatchMessageW(&message);
             }
             result = received < 0 ? 7 : static_cast<int>(message.wParam);
-            if (!frame.IsWindow()) pendingPluginMaintenance = std::move(frame.pendingPluginMaintenance);
+            if (!frame.IsWindow()) {
+                pendingPluginMaintenance = std::move(frame.pendingPluginMaintenance);
+                pendingUpdate = std::move(frame.appUpdater.ready);
+            }
         }
     }
-    if (args) LocalFree(args);
     Scintilla_ReleaseResources(); OleUninitialize();
     if (pendingPluginMaintenance) FinishPluginMaintenance(*pendingPluginMaintenance);
+    if (pendingUpdate) LaunchAppUpdateWorker(*pendingUpdate);
     return result;
 }

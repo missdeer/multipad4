@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(MultiPad4 VERSION 0.4.0 LANGUAGES C CXX RC)
+if("$ENV{GITHUB_REF_TYPE}" STREQUAL "tag" AND "$ENV{GITHUB_REF_NAME}" MATCHES "^v([0-9]+\\.[0-9]+(\\.[0-9]+)?)$")
+  if(NOT PROJECT_VERSION VERSION_EQUAL CMAKE_MATCH_1)
+    message(FATAL_ERROR "Release tag $ENV{GITHUB_REF_NAME} does not match MultiPad4 ${PROJECT_VERSION}.")
+  endif()
+endif()
 # The local wrapper fixes RelWithDebInfo; allow an explicit build configuration
 # for reproducible Release measurements without bypassing that wrapper.
 if(DEFINED ENV{MULTIPAD4_BUILD_CONFIGURATION})
@@ -97,6 +102,16 @@ set_property(SOURCE src/MultiPad4.rc APPEND PROPERTY OBJECT_DEPENDS
   "${PROJECT_SOURCE_DIR}/config/themes/dark.xml")
 set(MULTIPAD4_OUTPUT_NAME "multipad4" CACHE STRING "Executable basename for local validation builds")
 set_target_properties(multipad4 PROPERTIES OUTPUT_NAME "${MULTIPAD4_OUTPUT_NAME}")
+set(MULTIPAD4_RELEASE_TOOLCHAIN "$ENV{MULTIPAD4_RELEASE_TOOLCHAIN}" CACHE STRING "GitHub release toolchain ID for app updates")
+if(MULTIPAD4_RELEASE_TOOLCHAIN AND NOT MULTIPAD4_RELEASE_TOOLCHAIN MATCHES "^(msvc|clang-cl|oneapi|mingw64|mingw64-clang|ucrt64|ucrt64-clang|clang64)$")
+  message(FATAL_ERROR "Unknown MultiPad4 release toolchain: ${MULTIPAD4_RELEASE_TOOLCHAIN}")
+endif()
+set(multipad4_update_asset "")
+if(MULTIPAD4_RELEASE_TOOLCHAIN)
+  set(multipad4_update_asset "multipad4-${MULTIPAD4_RELEASE_TOOLCHAIN}-x64-${MULTIPAD4_SIMD}.zip")
+endif()
+set_source_files_properties(src/AppUpdate.cpp src/main.cpp PROPERTIES COMPILE_DEFINITIONS
+  "MULTIPAD4_UPDATE_ASSET=\"${multipad4_update_asset}\"")
 target_include_directories(multipad4 PRIVATE src)
 target_include_directories(multipad4 PRIVATE "${NOTEPAD4_SOURCE_DIR}" "${NOTEPAD4_SOURCE_DIR}/EditLexers")
 set_source_files_properties("${PROJECT_BINARY_DIR}/Notepad4Resources.rc" PROPERTIES
@@ -174,6 +189,8 @@ if(BUILD_TESTING)
   target_link_libraries(plugin_maintenance_tests PRIVATE multipad_plugin_maintenance multipad_files)
   target_compile_options(plugin_maintenance_tests PRIVATE ${MULTIPAD4_WARNINGS})
   add_test(NAME plugin_maintenance COMMAND plugin_maintenance_tests)
+  add_test(NAME app_update COMMAND multipad4 --app-update-test "${PROJECT_BINARY_DIR}/app-update-test")
+  set_tests_properties(app_update PROPERTIES TIMEOUT 30)
   set_tests_properties(editor_integration PROPERTIES TIMEOUT 60)
   # Real binary compatibility checks are available when the supplied plugins exist.
   if(EXISTS "${PROJECT_BINARY_DIR}/plugins/JsonTools/JsonTools.dll" AND
