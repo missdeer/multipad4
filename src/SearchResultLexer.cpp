@@ -40,6 +40,8 @@ void Configure(HWND editor) {
 }
 void Colourise(HWND editor, const std::vector<Line>& lines, size_t first, size_t last) {
     auto send = [editor](UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageW(editor, m, w, l); };
+    const auto previous = send(SCI_GETENDSTYLED);
+    LRESULT endStyled = previous;
     for (size_t i = first; i < (std::min)(last, lines.size()); ++i) {
         auto start = send(SCI_POSITIONFROMLINE, i), length = send(SCI_LINELENGTH, i);
         const auto& line = lines[i];
@@ -59,6 +61,8 @@ void Colourise(HWND editor, const std::vector<Line>& lines, size_t first, size_t
             }
         }
         send(SCI_SETFOLDLEVEL, i, level);
+        endStyled = (std::max)(endStyled, start + length);
     }
+    send(SCI_STARTSTYLING, endStyled);
 }
 }

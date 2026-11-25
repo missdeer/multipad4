@@ -42,6 +42,10 @@
 
 ## 迁移边界
 
+选区沿用 notepad4 的半透明绘制（默认 alpha 为 95）。左侧修改标记可通过“查看 → 修改历史标记”（View → Change History Marker）开启，未保存的修改显示为蓝色，保存后显示为绿色；关闭显示不会清空撤销记录。首次开启须在编辑前进行（例如新建或重新打开文件后），已有撤销记录且尚未启动追踪时菜单不可用；大文件模式不启用修改追踪。
+
+![半透明选区与蓝色修改标记](screenshots/issue-78-selection-history.png)
+
 保留原始命令 ID、资源、图标和对话框过程。复用 `Edit.cpp`、`EditEncoding.cpp`、`EditAutoC.cpp`、`Styles.cpp`、`Dialogs.cpp` 等实现；将 `Notepad4.cpp` 中单主窗口的调度拆成 Win32 主窗口调度和文档调度。
 
 首先必须拆分文档上下文：`hwndEdit` / `g_hScintilla`、文件路径、编码与 EOL、`fvCurFile`、修改与只读标记、lexer 和语言索引、查找替换实例、自动保存记录、文件监视句柄和时间戳。随后审核对话框静态变量、通知、异步标记任务和定时器；仅替换一个全局编辑器句柄不足以完成 MDI 迁移。

@@ -2,10 +2,12 @@
 #include "EditorDocument.h"
 #include "SearchResources.h"
 #include "FileSearch.h"
+#include "FileReplace.h"
 #include "ThreadPool.h"
 class MainFrame;
 class SearchDialog {
 public:
+    ~SearchDialog();
     HWND hwnd = nullptr;
     MainFrame* owner = nullptr;
     EditorDocument* document = nullptr;
@@ -27,6 +29,9 @@ public:
     void Execute(int command);
     void Status(const std::wstring& text);
     bool SearchBusy() const { return ordinaryTask != nullptr; }
+    bool DeferOpen(const std::filesystem::path& path, std::optional<files::Encoding> encoding);
+    bool CommittingReplacement() const;
+    void ServiceReplacement();
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
 private:
     struct SearchTask {
@@ -67,7 +72,24 @@ private:
     std::wstring fileFilter;
     bool recursive = true, hidden = false;
     std::unique_ptr<files::FileSearch> fileTask;
-    std::unique_ptr<files::SearchWalker> replaceWalker;
+    std::shared_ptr<files::SearchWalker> replaceWalker;
+    struct ReplaceWork {
+        enum class Stage { Walk, Prepare, Commit } stage = Stage::Walk;
+        std::atomic<bool> cancel{false};
+        std::optional<std::filesystem::path> path;
+        files::ReplaceVersion version;
+        files::ReplaceResult result;
+        size_t errors = 0;
+        bool committed = false;
+        unsigned long long identity = 0, revision = 0;
+        std::shared_ptr<std::string> input;
+        size_t offset = 0, length = 0;
+        work::Task<void> task; // Declared last so destruction drains before payload fields are freed.
+    };
+    std::shared_ptr<ReplaceWork> replaceWork;
+    files::ReplacePattern replacePattern;
+    struct DeferredOpen { std::filesystem::path path; std::optional<files::Encoding> encoding; };
+    std::vector<DeferredOpen> deferredOpens;
     unsigned long long fileGeneration = 0;
     struct OpenSearch {
         unsigned long long identity = 0, revision = 0;
