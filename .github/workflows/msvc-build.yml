@@ -2,7 +2,7 @@ name: Windows Build
 
 on:
   push:
-    branches: ['**']
+    branches: ['master', 'main', 'dev']
     tags: ['**']
   pull_request:
   workflow_dispatch:
