@@ -416,6 +416,35 @@ void SearchDialog::FinishFiles(bool cancelled) {
     Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
 }
+EditorDocument* SearchDialog::FindOpenFile(const std::filesystem::path& path, bool live) {
+    std::vector<OpenFileState> state;
+    bool invalid = live;
+    for (const auto& d : owner->documents) if (!d->path.empty()) {
+        const auto& runtime = d->runtime;
+        state.push_back({d->searchIdentity, (static_cast<unsigned long long>(runtime.observedWriteTime.dwHighDateTime) << 32) | runtime.observedWriteTime.dwLowDateTime,
+            runtime.observedSize, d->path});
+        invalid |= runtime.externalChangePending || runtime.externalCheckPending;
+    }
+    if (invalid || !openFileIndex || state != indexedOpenFiles) {
+        indexedOpenFiles = std::move(state);
+        std::vector<std::filesystem::path> paths; paths.reserve(indexedOpenFiles.size());
+        for (const auto& file : indexedOpenFiles) paths.push_back(file.path);
+        openFileIndex = std::make_unique<files::OpenFileIndex>(std::move(paths));
+    }
+    // Exact path equality also handles atomic path replacement before watch delivery.
+    for (const auto& file : indexedOpenFiles) if (CompareStringOrdinal(file.path.c_str(), -1, path.c_str(), -1, TRUE) == CSTR_EQUAL) {
+        std::error_code error;
+        auto found = owner->tabs.documentsById.find(file.identity);
+        if (found != owner->tabs.documentsById.end() && std::filesystem::equivalent(found->second->path, path, error)) return found->second;
+    }
+    if (auto index = openFileIndex->Find(path)) {
+        auto found = owner->tabs.documentsById.find(indexedOpenFiles[*index].identity);
+        std::error_code error;
+        if (found != owner->tabs.documentsById.end() && std::filesystem::equivalent(found->second->path, path, error)) return found->second;
+        if (!live) { openFileIndex.reset(); return FindOpenFile(path, true); }
+    }
+    return nullptr;
+}
 void SearchDialog::FileStep() {
     if (!fileRunning) return;
     if (owner->searchResults.generation != fileGeneration) { FinishFiles(true); return; }
@@ -458,11 +487,7 @@ void SearchDialog::FileStep() {
     }
     files::FileSearchResult result;
     if (fileTask->Poll(result)) {
-        EditorDocument* open = nullptr;
-        for (const auto& d : owner->documents) {
-            std::error_code error;
-            if (!d->path.empty() && std::filesystem::equivalent(d->path, result.path, error)) { open = d.get(); break; }
-        }
+        EditorDocument* open = FindOpenFile(result.path);
         if (open) {
             UseSearch state(*open, fileSearch);
             if (open->FastView()) {
@@ -500,11 +525,11 @@ void SearchDialog::ReplaceFileStep() {
     std::filesystem::directory_entry entry(*path);
     std::error_code error;
     try {
-        EditorDocument* open = nullptr;
-        for (const auto& d : owner->documents) if (!d->path.empty() && std::filesystem::equivalent(d->path, entry.path(), error)) { open = d.get(); break; }
-        auto process = [&](EditorDocument& d) {
+        EditorDocument* open = FindOpenFile(entry.path());
+        auto process = [&](EditorDocument& d, bool closed = false) {
             UseSearch state(d, fileSearch); auto matches = d.CollectMatches();
             if (!matches.empty()) {
+                if (closed && FindOpenFile(entry.path(), true)) throw std::runtime_error("Replacement conflict; file became open.");
                 owner->searchResults.Add(d, matches); ++foundFiles; fileHits += matches.size();
                 if (replaceFiles) d.ReplaceAll();
             }
@@ -517,7 +542,9 @@ void SearchDialog::ReplaceFileStep() {
             EditorDocument temporary;
             if (!temporary.Create(hwnd)) throw std::runtime_error("Cannot create file search buffer.");
             ShowWindow(temporary.hwnd, SW_HIDE); temporary.path = entry.path(); temporary.Load(text);
-            if (process(temporary) && replaceFiles) { text.utf8 = temporary.Text(); files::WriteAtomic(entry.path(), text); }
+            if (process(temporary, true) && replaceFiles) {
+                text.utf8 = temporary.Text(); files::WriteAtomic(entry.path(), text);
+            }
         }
         Status(L"Searching: " + entry.path().wstring());
     } catch (const std::exception&) { ++fileErrors; }

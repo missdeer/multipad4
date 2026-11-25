@@ -1,5 +1,6 @@
 #pragma once
 #include "../src/MainFrame.h"
+#include "../src/FrameCommands.h"
 #include "QAArtifacts.h"
 #include <source_location>
 inline void WaitForOrdinarySearch(SearchDialog& dialog) {
@@ -246,6 +247,47 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     require(replaced.utf8 == "changed changed" && replaced.encoding == files::Encoding::Utf16LE);
     require(files::Read(directory / L"sub" / L"second.txt").encoding == files::Encoding::Utf8Bom);
     require(files::Read(directory / L"ignored.bin").utf8 == "one");
+    // Hard-link candidates resolve to the unsaved live buffer for both read and replacement.
+    const auto alias = directory / L"first.alias";
+    require(CreateHardLinkW(alias.c_str(), (directory / L"first.txt").c_str(), nullptr));
+    require(frame.Open(directory / L"first.txt")); auto* aliasDocument = frame.Active(); aliasDocument->Load({"needle in live buffer"});
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"*.alias"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    aliasDocument->runtime.monitorMode = 0; SnapshotDocument(*aliasDocument);
+    const auto external = directory / L"external.new"; files::WriteAtomic(external, {"changed changed"});
+    require(MoveFileExW(external.c_str(), aliasDocument->path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"updated");
+    auto replaceAlias = [&] {
+        const auto aliasTimer = SetTimer(nullptr, 0, 10, [](HWND, UINT, UINT_PTR, DWORD) {
+        EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+            wchar_t title[64]{}; GetWindowTextW(window, title, 64);
+            if (std::wstring(title) == L"Replace in Files" && GetDlgItem(window, IDOK)) PostMessageW(window, WM_COMMAND, IDOK, 0);
+            return TRUE;
+        }, 0);
+    });
+        require(aliasTimer != 0); dialog.Execute(IDC_SEARCH_REPLACE_FILES); KillTimer(nullptr, aliasTimer); WaitForFileSearch(dialog);
+    };
+    // A newly created alias misses the old ID cache; the final live check must publish no hits.
+    const auto currentAlias = directory / L"current.alias";
+    require(CreateHardLinkW(currentAlias.c_str(), aliasDocument->path.c_str(), nullptr));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"current.alias"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"changed");
+    results.Clear(); replaceAlias();
+    wchar_t conflict[512]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, conflict, 512);
+    require(std::wstring_view(conflict).find(L"0 matches") != std::wstring_view::npos && std::wstring_view(conflict).find(L"1 files/folders skipped") != std::wstring_view::npos);
+    require(aliasDocument->Text() == "needle in live buffer" && files::Read(currentAlias).utf8 == "changed changed");
+    require(results.targets.size() == 1);
+    require(DeleteFileW(currentAlias.c_str()));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    replaceAlias();
+    require(aliasDocument->Text() == "updated in live buffer" && files::Read(alias).utf8 == "changed changed");
+    aliasDocument->Send(SCI_UNDO); require(aliasDocument->Text() == "needle in live buffer"); aliasDocument->Send(SCI_SETSAVEPOINT);
+    const int aliasIndex = frame.tabs.GetActivePage();
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
+    frame.Refresh(); require(frame.Close(aliasIndex));
     dialog.Close(); require(!dialog.hwnd && !dialog.document);
     const auto originalLanguage = GetThreadUILanguage();
     struct RestoreSearchLanguage { LANGID language; ~RestoreSearchLanguage() { SetThreadUILanguage(language); } } languageRestore{originalLanguage};
