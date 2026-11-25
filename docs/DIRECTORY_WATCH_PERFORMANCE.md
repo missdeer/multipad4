@@ -83,3 +83,11 @@ backend keys now use the opened directory handle's volume/file identity; when
 identity lookup is unavailable, the canonical path fallback retains exact case.
 The real NTFS case-sensitive checks and complete `directory_watch` suite passed
 (3.09 s) after this fix.
+
+PR follow-up alias regression: an unsubscribed hard-link name exists before its
+original target is subscribed, then is deleted and relinked to another watched
+file. After draining lifecycle events and rearming, a later alias write must
+notify the new target and not the old target. Eager hard-link-name enumeration
+was removed; only subscription names/long names are cached. Other hard links
+resolve their current file identity on every notification. Full dedicated
+`directory_watch` passed (3.29 s), including this regression.

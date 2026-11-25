@@ -125,6 +125,21 @@ int main() {
             Wait([&] { return std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == survivor; }) &&
                 std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == aliasWatch->token; }); });
         }
+        // An unsubscribed alias can be relinked after its original target was opened.
+        const auto originalAliasTarget = path / L"original-alias-target.txt";
+        const auto newAliasTarget = path / L"new-alias-target.txt";
+        const auto movingAlias = path / L"moving-alias.txt";
+        Write(originalAliasTarget, 0); Write(newAliasTarget, 0);
+        if (CreateHardLinkW(movingAlias.c_str(), originalAliasTarget.c_str(), nullptr)) {
+            DirectoryWatch oldTargetWatch(window, 206, originalAliasTarget), newTargetWatch(window, 207, newAliasTarget);
+            Require(oldTargetWatch.Arm() && newTargetWatch.Arm()); Pump(); changes.clear();
+            Write(movingAlias, 1); Wait([&] { return std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == oldTargetWatch.token; }); });
+            std::filesystem::remove(movingAlias); Require(CreateHardLinkW(movingAlias.c_str(), newAliasTarget.c_str(), nullptr) != FALSE);
+            Pump(); Require(oldTargetWatch.Arm() && newTargetWatch.Arm()); Pump(); changes.clear();
+            Write(movingAlias, 2);
+            Wait([&] { return std::any_of(changes.begin(), changes.end(), [&](auto c) { return c.token == newTargetWatch.token; }); });
+            Require(std::none_of(changes.begin(), changes.end(), [&](auto c) { return c.token == oldTargetWatch.token; }));
+        }
         // Keep failed subscribers alive while replacing their backend from the registry.
         watches.back()->FailForTest(); Require(!aliasWatch->Arm());
         auto repaired = std::make_unique<DirectoryWatch>(window, 202, files[199]); Require(repaired->Arm());

@@ -150,22 +150,11 @@ DirectoryWatch::DirectoryWatch(HWND owner, UINT_PTR document, const std::filesys
         if (tokens.empty() || tokens.back() != token) tokens.push_back(token);
     };
     addName(path);
-    // Include known long/short aliases and hard links in this directory.
+    // Cache subscription names only; other hard links resolve their current identity on demand.
     std::wstring alias(32768, L'\0');
     auto count = GetLongPathNameW(path.c_str(), alias.data(), static_cast<DWORD>(alias.size()));
     if (count && count < alias.size()) { alias.resize(count); addName(alias); }
-    std::vector<wchar_t> link(32768); DWORD linkLength = static_cast<DWORD>(link.size());
-    HANDLE links = FindFirstFileNameW(path.c_str(), 0, &linkLength, link.data());
-    if (links != INVALID_HANDLE_VALUE) {
-        do {
-            const std::filesystem::path name(link.data());
-            auto parent = name.parent_path().wstring();
-            const auto longDirectory = key.size() > 6 && key[5] == L':' ? key.substr(6) : std::wstring();
-            if (Fold(parent) == Fold(longDirectory)) addName(name);
-            linkLength = static_cast<DWORD>(link.size());
-        } while (FindNextFileNameW(links, &linkLength, link.data()));
-        FindClose(links);
-    }
+
 }
 DirectoryWatch::~DirectoryWatch() {
     if (!state) return;
