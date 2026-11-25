@@ -1,14 +1,11 @@
 # Adapt the pinned UI at configure time; preserve the vendored resources.
-# Asset filenames and upstream download URLs retain their original identity.
 include("${PROJECT_SOURCE_DIR}/plugins/WebTools/Resources.cmake")
 include("${PROJECT_SOURCE_DIR}/plugins/TextTransliteration/Resources.cmake")
 include("${PROJECT_SOURCE_DIR}/plugins/SelectionActions/Resources.cmake")
+set(multipad4_icon "${PROJECT_SOURCE_DIR}/res/MultiPad4.ico")
 function(multipad4_adapt_resources variable locale)
   string(REPLACE "Notepad4" "MultiPad4" content "${${variable}}")
-  foreach(asset Notepad4.ico Notepad4_min.ico Notepad4.ver)
-    string(REPLACE "Notepad4" "MultiPad4" branded_asset "${asset}")
-    string(REPLACE "${branded_asset}" "${asset}" content "${content}")
-  endforeach()
+  string(REGEX REPLACE "\"[^\"\n]*/MultiPad4(_min)?\\.ico\"" "\"${multipad4_icon}\"" content "${content}")
   string(REGEX REPLACE "IDD_STYLECONFIG DIALOGEX[^\n]*\n([^E\n][^\n]*\n|\n)*END" "" content "${content}")
   string(REPLACE "Customize Schemes" "Language and Style" content "${content}")
   string(REPLACE "自定义语法高亮" "语言与样式" content "${content}")
@@ -82,3 +79,5 @@ foreach(locale de fr it ja ko pl pt-BR ru sl zh-Hans zh-Hant)
   file(WRITE "${output}" "${content}")
   list(APPEND NOTEPAD4_LOCALE_RESOURCES "${output}")
 endforeach()
+set_property(SOURCE "${PROJECT_BINARY_DIR}/Notepad4Resources.rc" ${NOTEPAD4_LOCALE_RESOURCES}
+  APPEND PROPERTY OBJECT_DEPENDS "${multipad4_icon}")
