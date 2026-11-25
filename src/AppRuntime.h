@@ -7,6 +7,7 @@
 #include <climits>
 #include <memory>
 #include "DirectoryWatch.h"
+#include <unordered_set>
 struct AutoSaveTask;
 struct DocumentRuntime {
     std::unique_ptr<DirectoryWatch> directoryWatch;
@@ -30,6 +31,7 @@ struct FrameRuntime {
     WINDOWPLACEMENT placement{sizeof(WINDOWPLACEMENT)};
     LONG_PTR windowStyle = 0;
     bool inBackgroundWork = false;
+    std::unordered_set<UINT_PTR> pendingExternalChecks;
     HWND pasteBoard = nullptr;
     DWORD clipboardSequence = 0;
     std::wstring titleOverride;

@@ -210,6 +210,7 @@ EditorDocument* MainFrame::AddDocument(std::unique_ptr<EditorDocument> document)
     return raw;
 }
 bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::Encoding> forcedEncoding) {
+    if (searchDialog.DeferOpen(input, forcedEncoding)) return false;
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
         for (int i = 0; i < tabs.GetPageCount(); ++i) {
@@ -244,6 +245,9 @@ bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
     return SaveTo(document, path, mode == SaveMode::Copy, keepBackup);
 }
 bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& input, bool copy, bool keepBackup) {
+    if (searchDialog.CommittingReplacement()) {
+        ::MessageBoxW(m_hWnd, L"A file replacement is committing. Please retry saving shortly.", L"Replace in Files", MB_OK | MB_ICONINFORMATION); return false;
+    }
     CancelDocumentBackup(*this, document);
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
