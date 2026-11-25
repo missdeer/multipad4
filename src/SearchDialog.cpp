@@ -596,6 +596,7 @@ void SearchDialog::ReplaceFileStep() {
                 else {
                     task->version = files::ReplacementVersion(*task->path);
                     input = files::ReadReplacement(*task->path, task->cancel);
+                    if (input.utf8.find('\0') != std::string::npos) { task->result.hits.archive = std::make_shared<large::HitArchive>(); return; } // Closed binary files are excluded; open buffers support NUL.
                     if (files::ReplacementVersion(*task->path) != task->version) throw std::runtime_error("Replacement conflict; file changed.");
                 }
                 task->result = files::ReplaceContents(std::move(input), pattern, task->cancel);
@@ -616,13 +617,17 @@ void SearchDialog::ReplaceFileStep() {
             target.Send(SCI_REPLACETARGET, task->result.text.utf8.size(), reinterpret_cast<LPARAM>(task->result.text.utf8.data()));
             target.Send(SCI_ENDUNDOACTION);
             fileHits += task->result.hits.archive->Count(); ++foundFiles;
-            owner->searchResults.AddFile(std::move(task->result.hits), task->identity, task->revision); replaceWork.reset(); owner->Refresh(); return;
+            owner->searchResults.AddFile(std::move(task->result.hits), task->identity, target.style.revision); replaceWork.reset(); owner->Refresh(); return;
         }
         if (open) throw std::runtime_error("Replacement conflict; file became open.");
         // New opens are queued from this owner-thread check until commit completion.
         task->stage = ReplaceWork::Stage::Commit;
         task->task = work::Submit([task = task.get()] {
-            files::CommitReplacement(*task->path, task->result.text, task->version, task->cancel, [task] { task->committed = true; });
+            files::CommitReplacement(*task->path, task->result.text, task->version, task->cancel, [task] {
+                task->committed = true;
+                const auto version = files::ReplacementVersion(*task->path);
+                task->result.hits.originalSize = version.size; task->result.hits.originalWriteTime = version.write;
+            });
         });
     } catch (const std::exception& error) {
         ++fileErrors;

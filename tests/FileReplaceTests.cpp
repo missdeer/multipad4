@@ -8,11 +8,12 @@
 #include <thread>
 #include <vector>
 #include <array>
+#include <source_location>
 #include <cmath>
 // Search and replacement do not invoke the host case-conversion command.
 char* EditMapTextCase(int, const char*, size_t&, UINT) noexcept { std::terminate(); }
 using Clock = std::chrono::steady_clock;
-static void Require(bool value) { if (!value) throw std::runtime_error("Replacement regression."); }
+static void Require(bool value, std::source_location where = std::source_location::current()) { if (!value) throw std::runtime_error("Replacement regression line " + std::to_string(where.line())); }
 struct Editor {
     HWND window = CreateWindowExW(0, L"Scintilla", L"", WS_POPUP, 0, 0, 1, 1, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
     Editor() { Require(window != nullptr); Send(SCI_SETCODEPAGE, SC_CP_UTF8); }
@@ -115,6 +116,33 @@ int main(int argc, char** argv) {
             auto hits = actual.hits.archive->Page(0, positions.size());
             for (size_t i = 0; i < hits.size(); ++i) Require(hits[i].start == positions[i][0] && hits[i].end == positions[i][1] && hits[i].line == positions[i][2] && hits[i].lineStart == positions[i][3]);
             if (actual.text.utf8 != expected.first || actual.replacements != expected.second) { fprintf(stderr, "Parity failure %s: expected %s got %s\n", pattern.needle.c_str(), expected.first.c_str(), actual.text.utf8.c_str()); return 2; }
+        }
+        {
+            auto result = files::ReplaceContents({std::string("a\0a", 3)}, {"a", "growing\n", 0, false}, cancel);
+            Require(result.replacements == 2 && result.text.utf8 == std::string("growing\n\0growing\n", 17));
+            auto targets = result.hits.replacementTargets->Page(0, 2);
+            Require(targets.size() == 2 && targets[0].utf8Start == 0 && targets[0].utf8End == 8 && targets[1].utf8Start == 9 && targets[1].utf8End == 17);
+            auto adjacent = files::ReplaceContents({"aa"}, {"a", "XYZ", 0, false}, cancel);
+            auto adjacentTargets = adjacent.hits.replacementTargets->Page(0, 2);
+            Require(adjacentTargets[0].utf8End == 3 && adjacentTargets[1].utf8Start == 3 && adjacentTargets[1].utf8End == 6);
+            auto growing = files::ReplaceContents({"one one", files::Encoding::Utf16LE}, {"one", "growing\nreplacement", 0, false}, cancel);
+            auto spans = growing.hits.replacementTargets->Page(0, 2);
+            Require(spans[0].nativeEnd == spans[0].utf8End * 2 && spans[1].nativeStart == spans[1].utf8Start * 2);
+            auto zero = files::ReplaceContents({"ab"}, {"(?=.)", "_", regex, true}, cancel);
+            auto zeroTargets = zero.hits.replacementTargets->Page(0, 2);
+            Require(zeroTargets[0].utf8Start == 0 && zeroTargets[0].utf8End == 1 && zeroTargets[1].utf8Start == 2 && zeroTargets[1].utf8End == 3);
+            auto adjacentZero = files::ReplaceContents({"foo"}, {"foo|$", "bar", regex, true}, cancel);
+            auto adjacentZeroTargets = adjacentZero.hits.replacementTargets->Page(0, 2);
+            Require(adjacentZeroTargets.size() == 2 && adjacentZeroTargets[0].utf8Start == 0 && adjacentZeroTargets[0].utf8End == 3 && adjacentZeroTargets[1].utf8Start == 3 && adjacentZeroTargets[1].utf8End == 6);
+            auto unreplaced = files::ReplaceContents({"ab"}, {"a|(?<=x)(?=b)|b", "x", regex, true}, cancel);
+            auto unreplacedTargets = unreplaced.hits.replacementTargets->Page(0, 2);
+            auto expectedUnreplaced = editor.Replace("ab", {"a|(?<=x)(?=b)|b", "x", regex, true});
+            Require(unreplaced.text.utf8 == expectedUnreplaced.first && unreplaced.replacements == expectedUnreplaced.second);
+            Require(unreplacedTargets.size() == 2 && unreplacedTargets[1].utf8Start == 1 && unreplacedTargets[1].utf8End == 2);
+            auto evolving = files::ReplaceContents({"aaa"}, {"(?<!b)a", "b", regex, true}, cancel);
+            Require(evolving.hits.archive->Count() == 3 && evolving.hits.replacementTargets->Count() == 3);
+            auto expectedEvolving = editor.Replace("aaa", {"(?<!b)a", "b", regex, true});
+            Require(evolving.text.utf8 == expectedEvolving.first && evolving.replacements == expectedEvolving.second);
         }
         bool regexFailed = false;
         try { files::ReplaceContents({"x\n" + std::string(100, 'a') + "!"}, {"x|(?:a+)+$", "_", regex, true}, cancel); }

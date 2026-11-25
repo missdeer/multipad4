@@ -56,7 +56,7 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
     using namespace Scintilla::Internal;
     ReplaceResult result;
     result.text.encoding = text.encoding;
-    if (text.utf8.find('\0') != std::string::npos || pattern.needle.empty()) return result;
+    if (pattern.needle.empty()) return result;
     auto source = std::make_shared<const std::string>(std::move(text.utf8));
     result.hits.snapshot = std::make_shared<const large::Document::Snapshot>(large::Document::FromUtf8(source)->Capture());
     result.hits.archive = std::make_shared<large::HitArchive>();
@@ -84,6 +84,8 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
         if (length) start = found + length;
         else { if (found == document.Length()) break; start = document.MovePositionOutsideChar(found + 1, 1, true); }
     }
+    // The temporary edit archive maps original UTF-8 spans to sequential replacement spans.
+    ReplacementTargets edits;
     Sci::Position delta = 0;
     size_t originalLine = 0, originalLineStart = 0, nextBreak = source->find_first_of("\r\n");
     for (Sci::Position start = 0; start <= document.Length();) {
@@ -106,12 +108,68 @@ ReplaceResult ReplaceContents(Text text, const ReplacePattern& pattern, const st
         // Substitute storage belongs to the matcher, and remains valid through these edits.
         document.DeleteChars(found, length);
         document.InsertString(found, replacement, size);
+        edits.Append({static_cast<large::Position>(found - delta), static_cast<large::Position>(found - delta + length),
+            static_cast<large::Position>(found), static_cast<large::Position>(found + size)});
         delta += size - length;
         ++result.replacements; start = found + size;
         if (!length) { if (start >= document.Length()) break; start = document.MovePositionOutsideChar(start + 1, 1, true); }
     }
     if (cancel.load()) throw std::runtime_error("Replacement cancelled.");
     result.text.utf8.assign(document.RangePointer(0, document.Length()), document.Length());
+    result.hits.replacementTargets = std::make_shared<ReplacementTargets>();
+    size_t editIndex = 0, editPageStart = 0;
+    auto editPage = edits.Page(0, (std::min)(size_t(4096), edits.Count()));
+    auto edit = [&]() -> const ReplacementTarget* {
+        if (editIndex >= edits.Count()) return nullptr;
+        if (editIndex >= editPageStart + editPage.size()) { editPageStart = editIndex; editPage = edits.Page(editIndex, 4096); }
+        return &editPage[editIndex - editPageStart];
+    };
+    Sci::Position shift = 0;
+    auto map = [&](large::Position position, bool end, bool zero) {
+        auto current = edit();
+        while (current && current->utf8End <= position && (current->utf8Start < position || (!end && !zero))) {
+            shift = static_cast<Sci::Position>(current->nativeEnd) - static_cast<Sci::Position>(current->utf8End);
+            ++editIndex; current = edit();
+        }
+        if (current && current->utf8Start <= position && position <= current->utf8End) {
+            if (end && position == current->utf8Start && (!zero || current->utf8Start != current->utf8End))
+                return static_cast<large::Position>(static_cast<Sci::Position>(position) + shift);
+            return end ? current->nativeEnd : current->nativeStart;
+        }
+        return static_cast<large::Position>(static_cast<Sci::Position>(position) + shift);
+    };
+    auto plain = result.text.encoding;
+    if (plain == Encoding::Utf8Bom) plain = Encoding::Utf8;
+    if (plain == Encoding::Utf16LE) plain = Encoding::Utf16LEPlain;
+    if (plain == Encoding::Utf16BE) plain = Encoding::Utf16BEPlain;
+    const auto pageCode = CodePage(plain);
+    const bool fullEditorOnly = pageCode == CP_UTF7 || pageCode == 50220 || pageCode == 50221 || pageCode == 50222;
+    large::Position converted = 0, native = 0;
+    auto encodedLength = [&](large::Position first, large::Position last) {
+        if (plain == Encoding::Utf8 || fullEditorOnly) return last - first;
+        large::Position length = 0;
+        while (first < last) {
+            if (cancel.load()) throw std::runtime_error("Replacement cancelled.");
+            auto end = (std::min)(last, first + 64 * 1024);
+            while (end < last && (static_cast<unsigned char>(result.text.utf8[end]) & 0xC0) == 0x80) --end;
+            length += Encode({result.text.utf8.substr(first, end - first), plain}).size(); first = end;
+        }
+        return length;
+    };
+    ReplacementTarget previous{};
+    for (size_t first = 0; first < result.hits.archive->Count();) {
+        const auto page = result.hits.archive->Page(first, 4096);
+        for (const auto& hit : page) {
+            const bool zero = hit.start == hit.end;
+            const auto start = map(hit.start, false, zero), end = map(hit.end, true, zero);
+            native += encodedLength(converted, start); converted = start;
+            const auto nativeEnd = previous.utf8Start == start && previous.utf8End == end ? previous.nativeEnd : native + encodedLength(start, end);
+            previous = {start, end, native, nativeEnd};
+            result.hits.replacementTargets->Append(previous);
+        }
+        first += page.size();
+    }
+
     return result;
 }
 ReplaceVersion ReplacementVersion(const std::filesystem::path& path) {

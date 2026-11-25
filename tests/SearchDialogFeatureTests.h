@@ -250,6 +250,27 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     require(replaced.utf8 == "changed changed" && replaced.encoding == files::Encoding::Utf16LE);
     require(files::Read(directory / L"sub" / L"second.txt").encoding == files::Encoding::Utf8Bom);
     require(files::Read(directory / L"ignored.bin").utf8 == "one");
+    auto replacementRow = [&](const std::filesystem::path& path) {
+        for (size_t i = results.targets.size(); i-- > 0;) if (results.targets[i].path == path && results.targets[i].match.replacementTarget) return i;
+        throw std::runtime_error("Missing replacement navigation target.");
+    };
+    // Closed UTF-16 results navigate using committed metadata and replacement spans.
+    require(results.Navigate(replacementRow(directory / L"first.txt"), 1));
+    require(frame.Active()->Range(frame.Active()->Send(SCI_GETSELECTIONSTART), frame.Active()->Send(SCI_GETSELECTIONEND) - frame.Active()->Send(SCI_GETSELECTIONSTART)) == "changed");
+    const int replacedIndex = frame.tabs.GetActivePage();
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
+    frame.Refresh(); require(frame.Close(replacedIndex));
+    const auto growingPath = directory / L"nav-growing.txt";
+    files::WriteAtomic(growingPath, {"one one", files::Encoding::Utf16LE});
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"nav-growing.txt");
+    SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"one"); SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"growing\nreplacement");
+    StartFileReplacement(dialog); WaitForFileSearch(dialog);
+    require(results.Navigate(replacementRow(growingPath), 1));
+    auto* growingDocument = frame.Active();
+    require(growingDocument->Range(growingDocument->Send(SCI_GETSELECTIONSTART), growingDocument->Send(SCI_GETSELECTIONEND) - growingDocument->Send(SCI_GETSELECTIONSTART)) == "growing\nreplacement");
+    const int growingIndex = frame.tabs.GetActivePage();
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
+    frame.Refresh(); require(frame.Close(growingIndex));
     // Open buffers use the searched revision and retain a single undo action.
     require(frame.Open(directory / L"first.txt"));
     auto* opened = frame.Active(); opened->Load({"changed unsaved changed", files::Encoding::Utf16LE});
@@ -260,7 +281,21 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     WaitForFileSearch(dialog);
     require(opened->Text() == "buffer unsaved buffer");
     require(files::Read(directory / L"first.txt").utf8 == "changed changed");
+    require(results.Navigate(replacementRow(opened->path), 1));
+    require(opened->Range(opened->Send(SCI_GETSELECTIONSTART), opened->Send(SCI_GETSELECTIONEND) - opened->Send(SCI_GETSELECTIONSTART)) == "buffer");
     opened->Send(SCI_UNDO); require(opened->Text() == "changed unsaved changed");
+    // NUL is valid editor content. Growing multiline replacements retain post-edit targets.
+    const std::string nulInput("changed\0changed", 15);
+    opened->Send(SCI_SETTARGETRANGE, 0, opened->Send(SCI_GETLENGTH));
+    opened->Send(SCI_REPLACETARGET, nulInput.size(), reinterpret_cast<LPARAM>(nulInput.data()));
+    SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"growing\nreplacement");
+    StartFileReplacement(dialog); WaitForFileSearch(dialog);
+    require(opened->Text() == std::string("growing\nreplacement\0growing\nreplacement", 39));
+    require(results.Navigate(replacementRow(opened->path), 1));
+    require(opened->Range(opened->Send(SCI_GETSELECTIONSTART), opened->Send(SCI_GETSELECTIONEND) - opened->Send(SCI_GETSELECTIONSTART)) == "growing\nreplacement");
+    opened->Send(SCI_UNDO); require(opened->Text() == nulInput);
+    SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"buffer");
+
     // Edit after the first snapshot slice: the batch must report a conflict and continue.
     opened->Load({std::string(1024 * 1024, 'x') + "changed"});
     StartFileReplacement(dialog);
