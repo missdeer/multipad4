@@ -123,7 +123,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool themeReport=count==4&&wcscmp(args[1],L"--theme-report")==0;
     bool benchmark=count==3&&wcscmp(args[1],L"--configuration-benchmark")==0;
     bool configurationMode=configurationTest||themeReport||benchmark;
-    bool smoke = ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
+    bool smoke = replacementTest || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
@@ -187,6 +188,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
                 else if(themeReport){RunThemeValidationReport(frame,args[2],args[3]);}
+                else if (replacementTest) { RunSearchDialogFeatureTests(frame); }
                 else if(benchmark){RunConfigurationBenchmark(frame,args[2]);}
                 else if (lexerBaseline) { RunLexerBaseline(frame, args[2], wcscmp(args[1], L"--check-lexer-baseline") == 0); }
                 else if (largeTest) { RunLargeFileTests(frame); }
