@@ -75,10 +75,10 @@ void DownloadPackage(const std::wstring& url, const std::filesystem::path& desti
     }
 }
 
-std::string DownloadReleaseMetadata(const std::wstring& url) {
+std::string DownloadPackageBytes(const std::wstring& url, size_t maximumBytes) {
     std::ostringstream output;
     output.exceptions(std::ios::failbit | std::ios::badbit);
     std::wstring host;
-    Download(url, output, host, 1024 * 1024);
+    Download(url, output, host, maximumBytes);
     return std::move(output).str();
 }

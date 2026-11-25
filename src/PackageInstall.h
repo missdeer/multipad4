@@ -14,5 +14,7 @@ std::filesystem::path NewDirectory(const std::filesystem::path& parent, const wc
 bool DirectoryExists(const std::filesystem::path& path);
 std::filesystem::path StageZip(const std::wstring& url, const std::wstring& hash,
     const std::filesystem::path& directory, size_t maximumBytes = SIZE_MAX);
+std::filesystem::path VerifyAndExtractZip(const std::filesystem::path& zip, const std::wstring& hash,
+    const std::filesystem::path& directory);
 void CommitMoves(std::vector<FileMove>& moves, const std::filesystem::path& staging, bool& keepStaging);
 }

@@ -17,6 +17,13 @@ constexpr wchar_t CleanupVariable[] = L"MULTIPAD4_UPDATE_CLEANUP";
 constexpr char ReleaseDownload[] = "https://github.com/missdeer/multipad4/releases/download/";
 constexpr auto NoWait = std::chrono::seconds(0);
 
+auto StartBackgroundRequest(auto request) {
+    std::packaged_task task(std::move(request));
+    auto result = task.get_future();
+    std::thread(std::move(task)).detach();
+    return result;
+}
+
 Version ReleaseVersion(std::string_view tag) {
     if (!tag.starts_with('v')) throw std::runtime_error("Invalid release version.");
     tag.remove_prefix(1);
@@ -102,14 +109,16 @@ void RemoveStage(const fs::path& directory) {
     fs::remove_all(directory, ignored);
 }
 
-std::unique_ptr<StagedAppUpdate> StageUpdate(const AppRelease& release, const fs::path& exe) {
+std::unique_ptr<StagedAppUpdate> StageUpdate(const AppRelease& release, const fs::path& exe, std::string_view bytes) {
     if (exe.filename() != AppFilename) throw std::runtime_error("The updater requires the original multipad4.exe filename.");
     const auto root = exe.parent_path();
-    // Check writability before downloading and keep moves on the same volume.
+    // Keep staged files and the installation on the same volume.
     packages::DirectoryExists(root);
     auto update = std::make_unique<StagedAppUpdate>();
     update->directory = packages::NewDirectory(root, StagePrefix);
-    const auto contents = packages::StageZip(release.url, release.hash, update->directory, 64 * 1024 * 1024);
+    const auto zip = update->directory / L"package.zip";
+    files::WriteAtomicChunks(zip, [&](const files::ChunkConsumer& write) { write(bytes); });
+    const auto contents = packages::VerifyAndExtractZip(zip, release.hash, update->directory);
     if (FileVersion(contents / AppFilename) != ReleaseVersion(files::ToUtf8(release.tag)))
         throw std::runtime_error("The update executable does not match the release version.");
     const auto runner = update->directory / L"runner";
@@ -175,6 +184,13 @@ void StartProcess(const fs::path& exe, std::wstring arguments) {
     CloseHandle(process.hProcess);
 }
 
+void RestartAfterUpdate(const fs::path& directory) {
+    const auto restart = std::to_wstring(GetCurrentProcessId()) + L" " + directory.filename().native();
+    if (!SetEnvironmentVariableW(CleanupVariable, restart.c_str()))
+        throw std::runtime_error("Cannot prepare update restart.");
+    StartProcess(directory.parent_path() / AppFilename, {});
+}
+
 void WaitForProcess(const wchar_t* processId) {
     wchar_t* end = nullptr;
     const auto pid = wcstoul(processId, &end, 10);
@@ -199,13 +215,10 @@ StagedAppUpdate::~StagedAppUpdate() {
 void AppUpdater::Check(bool userRequested) {
     if (check.valid()) { manual = manual || userRequested; return; }
     if (!enabled || Busy()) return;
-    std::packaged_task task([] {
+    check = StartBackgroundRequest([] {
         constexpr auto url = L"https://api.github.com/repos/missdeer/multipad4/releases/latest";
-        return SelectRelease(DownloadReleaseMetadata(url), FileVersion(ExecutablePath()), MULTIPAD4_UPDATE_ASSET);
+        return SelectRelease(DownloadPackageBytes(url, 1024 * 1024), FileVersion(ExecutablePath()), MULTIPAD4_UPDATE_ASSET);
     });
-    auto future = task.get_future();
-    std::thread(std::move(task)).detach(); // A background check never delays editor shutdown.
-    check = std::move(future);
     manual = userRequested;
     nextCheck = std::chrono::steady_clock::now() + std::chrono::hours(24);
 }
@@ -229,10 +242,20 @@ void AppUpdater::Poll(MainFrame& frame) {
                 ? L"MultiPad4 " + release->tag + L" 已发布。要下载、安装并重启吗？"
                 : L"MultiPad4 " + release->tag + L" is available. Download, install, and restart?";
             if (frame.MessageBox(prompt.c_str(), title, MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) != IDYES) return;
-            const auto exe = ExecutablePath();
             manual = true;
-            staging = std::async(std::launch::async, StageUpdate, std::move(*release), exe);
+            // Keep the download in memory so closing the editor leaves no partial package on disk.
+            download = StartBackgroundRequest([release = std::move(*release)]() mutable {
+                auto bytes = DownloadPackageBytes(release.url, 64 * 1024 * 1024);
+                return std::pair{std::move(release), std::move(bytes)};
+            });
             SetWindowTextW(frame.m_hWnd, chinese ? L"MultiPad4 — 正在下载更新" : L"MultiPad4 — Downloading update");
+        }
+        if (download.valid() && download.wait_for(NoWait) == std::future_status::ready) {
+            frame.Refresh();
+            auto [release, bytes] = download.get();
+            staging = std::async(std::launch::async, [release = std::move(release), bytes = std::move(bytes)] {
+                return StageUpdate(release, ExecutablePath(), bytes);
+            });
         }
         if (staging.valid() && staging.wait_for(NoWait) == std::future_status::ready) {
             frame.Refresh();
@@ -251,10 +274,12 @@ void AppUpdater::Poll(MainFrame& frame) {
 void LaunchAppUpdateWorker(StagedAppUpdate& update) {
     try {
         StartProcess(update.directory / L"runner" / AppFilename, L"--apply-update " + std::to_wstring(GetCurrentProcessId()));
-        update.handedOff = true;
     } catch (const std::exception& error) {
         ShowUpdateError(error);
+        try { RestartAfterUpdate(update.directory); }
+        catch (const std::exception& restartError) { ShowUpdateError(restartError); }
     }
+    update.handedOff = true;
 }
 
 int RunAppUpdateWorker(const wchar_t* parentPid) {
@@ -279,10 +304,7 @@ int RunAppUpdateWorker(const wchar_t* parentPid) {
         }
         if (!keepStaging) {
             try {
-                const auto cleanup = std::to_wstring(GetCurrentProcessId()) + L" " + directory.filename().native();
-                if (!SetEnvironmentVariableW(CleanupVariable, cleanup.c_str()))
-                    throw std::runtime_error("Cannot prepare update cleanup.");
-                StartProcess(root / AppFilename, {});
+                RestartAfterUpdate(directory);
             } catch (const std::exception& error) {
                 throw std::runtime_error(std::string(error.what()) + "\nUpdate files: " + files::ToUtf8(directory.wstring()));
             }
@@ -294,28 +316,48 @@ int RunAppUpdateWorker(const wchar_t* parentPid) {
     }
 }
 
-std::wstring TakeAppUpdateCleanup() {
+std::optional<AppUpdateRestart> TakeAppUpdateRestart() {
     wchar_t value[100];
     const auto length = GetEnvironmentVariableW(CleanupVariable, value, _countof(value));
     if (!length) return {};
     SetEnvironmentVariableW(CleanupVariable, nullptr);
-    return length < _countof(value) ? std::wstring(value, length) : std::wstring{};
+    if (length >= _countof(value)) return {};
+    const std::wstring_view restart(value, length);
+    const auto separator = restart.find(L' ');
+    if (separator == restart.npos || !ValidStageName(restart.substr(separator + 1))) return {};
+    try {
+        const auto path = ExecutablePath().parent_path() / restart.substr(separator + 1);
+        if (packages::DirectoryExists(path)) return AppUpdateRestart{path, std::wstring(restart.substr(0, separator))};
+    } catch (const std::exception&) {}
+    return {};
 }
 
-void CleanUpAppUpdate(const std::wstring& cleanup) {
-    const auto separator = cleanup.find(L' ');
-    if (separator == cleanup.npos) return;
-    const auto directory = cleanup.substr(separator + 1);
-    if (!ValidStageName(directory)) return;
+fs::path UpdateSessionPath(const MainFrame& frame, const fs::path& stage) {
+    return frame.settings.path.parent_path() / (stage.filename().native() + L".session");
+}
+
+void CleanUpAppUpdate(const AppUpdateRestart& restart) {
     try {
-        WaitForProcess(cleanup.substr(0, separator).c_str());
-        const auto path = ExecutablePath().parent_path() / directory;
-        if (packages::DirectoryExists(path)) RemoveStage(path);
+        WaitForProcess(restart.workerPid.c_str());
+        RemoveStage(restart.directory);
     } catch (const std::exception&) {}
 }
 
 void TestAppUpdate(const fs::path& scratch) {
     const auto require = [](bool ok) { if (!ok) throw std::runtime_error("App update check failed."); };
+    std::promise<void> resume;
+    std::promise<void> finished;
+    auto completion = finished.get_future();
+    {
+        auto request = StartBackgroundRequest([gate = resume.get_future(), finished = std::move(finished)]() mutable {
+            gate.get();
+            finished.set_value();
+        });
+        require(request.wait_for(NoWait) == std::future_status::timeout);
+    }
+    resume.set_value();
+    completion.get();
+
     const auto exe = ExecutablePath();
     constexpr auto fixture = R"({"draft":false,"prerelease":false,"tag_name":"v0.10","assets":[
         {"name":"multipad4-msvc-x64-AVX2.zip","state":"uploaded"},

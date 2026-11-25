@@ -78,7 +78,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         StartupLock lock;
         return lock.Acquire() ? RunAppUpdateWorker(args[2]) : 1;
     }
-    const auto updateCleanup = TakeAppUpdateCleanup();
+    const auto updateRestart = TakeAppUpdateRestart();
     if (count == 3 && wcscmp(args[1], L"--app-update-test") == 0) {
         try { TestAppUpdate(args[2]); }
         catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); return 1; }
@@ -133,7 +133,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 if (RelaunchElevatedIfRequested(options)) reused = true;
                 bool singleInstance = options.singleFileInstance || frame.settings.Get(IDM_VIEW_SINGLEFILEINSTANCE, 1) != 0;
                 bool reuse = options.reuseWindow >= 0 ? options.reuseWindow != 0 : singleInstance || frame.settings.Get(IDM_VIEW_REUSEWINDOW) != 0;
-                if (!reused && reuse) {
+                if (!reused && reuse && !updateRestart) {
                     HWND existing = FindWindowW(L"MultiPad4.MainFrame", nullptr);
                     if (existing) {
                         auto text = std::filesystem::current_path().wstring() + L"\n" + GetCommandLineW();
@@ -151,7 +151,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             }
         }
         frame.appUpdater.enabled = MULTIPAD4_UPDATE_ASSET[0] && frame.settings.persistent && !options.print && !options.help;
-        if (!updateCleanup.empty()) frame.appUpdater.nextCheck = std::chrono::steady_clock::now() + std::chrono::hours(24);
+        if (updateRestart) frame.appUpdater.nextCheck = std::chrono::steady_clock::now() + std::chrono::hours(24);
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
         else if (!frame.Create(rect, instance)) result = 3;
@@ -190,12 +190,23 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         } else {
             frame.ShowWindow(frame.runtime.restoredShowCmd == SW_SHOWMAXIMIZED ? SW_SHOWMAXIMIZED : show); frame.UpdateWindow();
             frame.exitSessionEligible = !options.print && !options.help && options.sessionFile.empty() && options.reuseWindow != 0;
-            try { RestoreExitSession(frame); } catch (const std::exception& error) { frame.Error(error); }
+            bool restoredUpdate = false;
+            try {
+                if (updateRestart) {
+                    const auto snapshot = UpdateSessionPath(frame, updateRestart->directory);
+                    if (std::filesystem::exists(snapshot)) {
+                        RestoreSessionSnapshot(frame, snapshot);
+                        std::error_code ignored;
+                        std::filesystem::remove(snapshot, ignored);
+                    }
+                    restoredUpdate = true;
+                } else RestoreExitSession(frame);
+            } catch (const std::exception& error) { frame.Error(error); }
             try { ApplyCommandLine(frame, options); } catch (const std::exception& error) { frame.Error(error); }
             if (frame.documents.empty()) frame.NewDocument();
             frame.plugins.Ready();
             startupLock.Release();
-            if (!updateCleanup.empty()) CleanUpAppUpdate(updateCleanup);
+            if (restoredUpdate) CleanUpAppUpdate(*updateRestart);
             if (options.help) ExecuteFrameCommand(frame, IDM_CMDLINE_HELP);
             if (options.print) frame.PostMessage(WM_CLOSE);
             MSG message{};

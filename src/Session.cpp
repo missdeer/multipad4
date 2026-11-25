@@ -330,8 +330,13 @@ struct ExitTab {
 bool SaveExitSession(MainFrame& frame, ExitSessionContents contents) {
     if (!frame.exitSessionEligible || !frame.settings.persistent || !frame.settings.Get(ID_RESTORE_EXIT_SESSION)) return false;
     if (!LockExitSession(frame)) return false;
+    SaveSessionSnapshot(frame, ExitSessionPath(frame), contents);
+    return true;
+}
+
+void SaveSessionSnapshot(MainFrame& frame, const std::filesystem::path& path, ExitSessionContents contents) {
     const int count = frame.tabs.GetPageCount();
-    files::WriteAtomicChunks(ExitSessionPath(frame), [&](const files::ChunkConsumer& consume) {
+    files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) {
         consume(ExitSessionVersion);
         WriteFields(consume, {uint64_t(count), uint64_t(frame.tabs.GetActivePage() + 1), frame.untitledCount});
         for (int i = 0; i < count; ++i) {
@@ -354,7 +359,6 @@ bool SaveExitSession(MainFrame& frame, ExitSessionContents contents) {
                 consume(document.Range(static_cast<size_t>(offset), SessionChunk));
         }
     });
-    return true;
 }
 
 void RestoreExitSession(MainFrame& frame) {
@@ -363,7 +367,11 @@ void RestoreExitSession(MainFrame& frame) {
     frame.exitSessionEligible = false;
     if (!LockExitSession(frame)) return;
     const auto path = ExitSessionPath(frame);
-    if (!std::filesystem::exists(path)) { frame.exitSessionEligible = true; return; }
+    if (std::filesystem::exists(path)) RestoreSessionSnapshot(frame, path);
+    frame.exitSessionEligible = true;
+}
+
+void RestoreSessionSnapshot(MainFrame& frame, const std::filesystem::path& path) {
     files::MappedFile snapshot(path);
     uint64_t cursor = 0;
     auto require = [](bool valid) {
@@ -469,5 +477,4 @@ void RestoreExitSession(MainFrame& frame) {
         break;
     }
     frame.Refresh();
-    frame.exitSessionEligible = true;
 }

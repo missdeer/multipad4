@@ -17,19 +17,26 @@ struct StagedAppUpdate {
     ~StagedAppUpdate();
 };
 
+struct AppUpdateRestart {
+    std::filesystem::path directory;
+    std::wstring workerPid;
+};
+
 struct AppUpdater {
     std::future<std::optional<AppRelease>> check;
+    std::future<std::pair<AppRelease, std::string>> download;
     std::future<std::unique_ptr<StagedAppUpdate>> staging;
     std::unique_ptr<StagedAppUpdate> ready;
     std::chrono::steady_clock::time_point nextCheck{};
     bool manual = false, enabled = false;
-    bool Busy() const { return check.valid() || staging.valid() || ready != nullptr; }
+    bool Busy() const { return check.valid() || download.valid() || staging.valid() || ready != nullptr; }
     void Check(bool userRequested);
     void Poll(MainFrame& frame);
 };
 
 int RunAppUpdateWorker(const wchar_t* parentPid);
 void LaunchAppUpdateWorker(StagedAppUpdate& update);
-std::wstring TakeAppUpdateCleanup();
-void CleanUpAppUpdate(const std::wstring& cleanup);
+std::optional<AppUpdateRestart> TakeAppUpdateRestart();
+std::filesystem::path UpdateSessionPath(const MainFrame& frame, const std::filesystem::path& stage);
+void CleanUpAppUpdate(const AppUpdateRestart& restart);
 void TestAppUpdate(const std::filesystem::path& scratch);

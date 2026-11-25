@@ -179,6 +179,10 @@ fs::path StageZip(const std::wstring& url, const std::wstring& hash, const fs::p
         !SameName(std::wstring_view(url).substr(0, 8), L"https://") || url.find(L'\0') != url.npos)
         throw std::runtime_error("Invalid package metadata.");
     DownloadPackage(url, zip, maximumBytes);
+    return VerifyAndExtractZip(zip, hash, directory);
+}
+
+fs::path VerifyAndExtractZip(const fs::path& zip, const std::wstring& hash, const fs::path& directory) {
     VerifyHash(zip, hash);
     auto extracted = directory / L"contents";
     fs::create_directory(extracted);

@@ -564,8 +564,15 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     plugins.Notify(NPPN_BEFORESHUTDOWN);
     bool savedSession = false;
     try {
-        savedSession = SaveExitSession(*this, pendingPluginMaintenance ?
-            ExitSessionContents::SavedOnly : ExitSessionContents::IncludeUnsaved);
+        if (appUpdater.ready) {
+            const auto snapshot = UpdateSessionPath(*this, appUpdater.ready->directory);
+            std::filesystem::create_directories(snapshot.parent_path());
+            SaveSessionSnapshot(*this, snapshot);
+            savedSession = true;
+        } else {
+            savedSession = SaveExitSession(*this, pendingPluginMaintenance ?
+                ExitSessionContents::SavedOnly : ExitSessionContents::IncludeUnsaved);
+        }
     } catch (const std::exception& error) {
         pendingPluginMaintenance.reset();
         appUpdater.ready.reset();
