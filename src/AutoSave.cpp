@@ -45,7 +45,7 @@ DWORD AutoSavePeriodMilliseconds(const MainFrame& frame) {
 }
 std::filesystem::path AutoSaveDirectory(const MainFrame& frame) {
     // Smoke tests and QA sessions must never write into the user's backup tree.
-    if (!frame.settings.persistent) return frame.settings.path.parent_path() / L"AutoSave";
+    if (!frame.settings.persistent || frame.settings.portable) return frame.settings.path.parent_path() / L"AutoSave";
     PWSTR folder = nullptr;
     if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, &folder))) {
         std::filesystem::path path(folder);

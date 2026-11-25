@@ -8,6 +8,8 @@ Builds from the current source show `v0.4` in the About dialog and report `0.4.0
 
 Official release builds check for updates automatically. Use **Help → Check for Updates** to check on demand or **Help → Check for Updates Automatically** to change the preference. If you accept an update, MultiPad4 verifies the matching compiler and SIMD package against the SHA-256 published by GitHub, then closes and restarts. The installation directory must be writable.
 
+To use portable mode, create an empty `.portable` file alongside `MultiPad4.exe` in a writable folder. On the next launch, MultiPad4 stores settings and the exit session in `data` and automatic backups of untitled drafts in `data/AutoSave`. This takes precedence over `MULTIPAD4_SETTINGS`. Close MultiPad4 before moving the entire folder.
+
 Behavioral parity with notepad4 is still being verified. See [project scope](docs/PROJECT_SCOPE.md), [migration history](docs/MIGRATION_STATUS.md), and [acceptance checks](docs/MIGRATION_ACCEPTANCE.md).
 
 ## Current features

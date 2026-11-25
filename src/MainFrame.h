@@ -16,6 +16,7 @@ class MainFrame;
 enum class SaveMode { Normal, As, Copy };
 class MainFrame : public WinWindow {
 public:
+    static constexpr auto PortableWindowProperty = L"MultiPad4.Portable";
     HWND m_hWndMDIClient = nullptr, m_hWndToolBar = nullptr, m_hWndStatusBar = nullptr;
     HWND Create(const RECT& position, HINSTANCE instance);
     HWND MDIGetActive(BOOL* maximized = nullptr) const;

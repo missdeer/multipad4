@@ -7,6 +7,7 @@ class AppSettings {
 public:
     std::filesystem::path path;
     bool persistent = true;
+    bool portable = false;
     void Initialize(bool testMode = false);
     int Get(UINT command, int fallback = 0) const;
     void Set(UINT command, int value);

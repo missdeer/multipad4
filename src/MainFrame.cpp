@@ -38,6 +38,7 @@ LRESULT CALLBACK MainFrame::WindowProcedure(HWND window, UINT message, WPARAM w,
     auto* frame = reinterpret_cast<MainFrame*>(GetWindowLongPtrW(window, GWLP_USERDATA));
     if (message == WM_NCCREATE) {
         frame = static_cast<MainFrame*>(reinterpret_cast<CREATESTRUCTW*>(l)->lpCreateParams);
+        if (frame->settings.portable && !SetPropW(window, PortableWindowProperty, window)) return FALSE;
         frame->m_hWnd = window;
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(frame));
     }
@@ -51,6 +52,7 @@ LRESULT CALLBACK MainFrame::WindowProcedure(HWND window, UINT message, WPARAM w,
     }
     const auto defaultResult = DefFrameProcW(window, frame->m_hWndMDIClient, message, w, l);
     if (message == WM_NCDESTROY) {
+        if (frame->settings.portable) RemovePropW(window, PortableWindowProperty);
         SetWindowLongPtrW(window, GWLP_USERDATA, 0);
         frame->m_hWnd = nullptr;
     }

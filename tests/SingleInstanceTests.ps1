@@ -46,9 +46,9 @@ $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('MultiPad4-instance-' + [Guid]
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 $settings = Join-Path $testRoot 'settings.ini'
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
-function Start-Editor([string]$arguments = '') {
+function Start-Editor([string]$arguments = '', [string]$editorExecutable = $Executable) {
     $info = [Diagnostics.ProcessStartInfo]::new()
-    $info.FileName = $Executable
+    $info.FileName = $editorExecutable
     $info.Arguments = $arguments
     $info.WorkingDirectory = $testRoot
     $info.UseShellExecute = $false
@@ -130,6 +130,60 @@ try {
     $survivor = if ($one.HasExited) { $two } else { $one }
     Wait-Until { $handle = [InstanceWindows]::MainWindow($survivor.Id); $handle -ne [IntPtr]::Zero -and @([InstanceWindows]::Editors($handle)).Count -eq 2 } 'Concurrent startup lost an open request'
     Write-Output 'PASS: empty launch, Unicode/relative/absolute paths, CLI options, duplicate/multiple files, /n, disabled setting, concurrent startup.'
+    Stop-Editors
+
+    # The marker in the working directory must not affect the ordinary copy.
+    New-Item -ItemType File -Path (Join-Path $testRoot '.portable') | Out-Null
+    "[Options]`r`nCommand40040=1`r`nCommand45164=1" | Set-Content -LiteralPath $settings -Encoding Unicode
+    $ordinary = Start-Editor 'other.txt'
+    Wait-Until { [InstanceWindows]::Title([InstanceWindows]::MainWindow($ordinary.Id)).Contains('other.txt') } 'Ordinary startup failed'
+    $script:window = [InstanceWindows]::MainWindow($ordinary.Id)
+    $portable = Join-Path $testRoot 'Portable copy'
+    $data = Join-Path $portable 'data'
+    New-Item -ItemType Directory -Path $data | Out-Null
+    $portableExe = Join-Path $portable 'MultiPad4.exe'
+    Copy-Item -LiteralPath $Executable -Destination $portableExe
+    New-Item -ItemType File -Path (Join-Path $portable '.portable') | Out-Null
+    $portableSettings = Join-Path $data 'MultiPad4.ini'
+    "[Options]`r`nCommand45164=1`r`nCommand40493=1`r`n[AutoSave]`r`nPeriodMilliseconds=50" |
+        Set-Content -LiteralPath $portableSettings -Encoding Unicode
+
+    $process = Start-Editor -editorExecutable $portableExe
+    Wait-Until { @([InstanceWindows]::Editors([InstanceWindows]::MainWindow($process.Id))).Count -eq 1 } 'Portable copy did not open its own draft'
+    $portableWindow = [InstanceWindows]::MainWindow($process.Id)
+    Assert-Forwarded ('"' + $unicodeFile + '"') $unicodeFile
+    $editor = [InstanceWindows]::Editors($portableWindow)[0]
+    $draft = 'portable draft'
+    foreach ($character in $draft.ToCharArray()) {
+        [void][InstanceWindows]::SendMessage($editor, 0x102, [IntPtr][int]$character, [IntPtr]::Zero)
+    }
+    $backupDirectory = Join-Path $data 'AutoSave'
+    Wait-Until { (Test-Path -LiteralPath $backupDirectory) -and
+        @(Get-ChildItem -LiteralPath $backupDirectory -Filter 'Untitled*.bak').Count -eq 1 } 'Portable draft was not backed up'
+    $reuse = Start-Editor -editorExecutable $portableExe
+    if (!$reuse.WaitForExit(15000) -or $reuse.ExitCode -ne 0) { throw 'Portable copy did not reuse its own window' }
+    [void][InstanceWindows]::PostMessage($portableWindow, 0x10, [IntPtr]::Zero, [IntPtr]::Zero)
+    if (!$process.WaitForExit(15000) -or $process.ExitCode -ne 0) { throw 'Portable copy did not close cleanly' }
+    if (!(Test-Path -LiteralPath ($portableSettings + '.session'))) { throw 'Portable session was not saved alongside its settings' }
+
+    $moved = Join-Path $testRoot 'Moved copy'
+    Move-Item -LiteralPath $portable -Destination $moved
+    $process = Start-Editor -editorExecutable (Join-Path $moved 'MultiPad4.exe')
+    Wait-Until { [InstanceWindows]::Title([InstanceWindows]::MainWindow($process.Id)).StartsWith('* ') } 'Moved draft was not marked as unsaved'
+    $editor = [InstanceWindows]::Editors([InstanceWindows]::MainWindow($process.Id))[0]
+    $length = [InstanceWindows]::SendMessage($editor, 2006, [IntPtr]::Zero, [IntPtr]::Zero).ToInt32()
+    if ($length -ne $draft.Length) { throw 'Moved draft lost its text' }
+    for ($index = 0; $index -lt $length; ++$index) {
+        $character = [InstanceWindows]::SendMessage($editor, 2007, [IntPtr]$index, [IntPtr]::Zero).ToInt32()
+        if ($character -ne [int]$draft[$index]) { throw 'Moved draft contents changed' }
+    }
+    $backup = Get-ChildItem -LiteralPath (Join-Path $moved 'data/AutoSave') -Filter 'Untitled*.bak' | Select-Object -First 1
+    if (!$backup -or [IO.File]::ReadAllText($backup.FullName) -ne $draft) { throw 'Moved backup contents changed' }
+    [void][InstanceWindows]::PostMessage($script:window, 0x10, [IntPtr]::Zero, [IntPtr]::Zero)
+    if (!$ordinary.WaitForExit(15000) -or $ordinary.ExitCode -ne 0) { throw 'Ordinary copy did not close cleanly' }
+    $ordinary = Start-Editor
+    Wait-Until { [InstanceWindows]::Title([InstanceWindows]::MainWindow($ordinary.Id)).Contains($unicodeFile) } 'Ordinary copy did not restore its own session'
+    Write-Output 'PASS: marker location, ordinary and portable window isolation, portable reuse, timed backup and both session restores.'
 } finally {
     Stop-Editors
     Remove-Item -LiteralPath $testRoot -Recurse -Force

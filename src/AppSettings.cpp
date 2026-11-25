@@ -30,9 +30,21 @@ std::wstring DecodeProfileValue(const std::wstring& value) {
 }
 void AppSettings::Initialize(bool testMode) {
     persistent = !testMode;
+    portable = false;
     if (testMode) {
         path = std::filesystem::temp_directory_path() / (L"MultiPad4-test-settings-" + std::to_wstring(GetCurrentProcessId())) / L"Settings.ini";
         return;
+    }
+    wchar_t executable[32768]{};
+    const auto length = GetModuleFileNameW(nullptr, executable, _countof(executable));
+    if (length && length < _countof(executable)) {
+        const auto directory = std::filesystem::path(executable).parent_path();
+        std::error_code error;
+        if (std::filesystem::is_regular_file(directory / L".portable", error)) {
+            portable = true;
+            path = directory / L"data" / L"MultiPad4.ini";
+            return;
+        }
     }
     wchar_t overridePath[32768]{};
     if (GetEnvironmentVariableW(L"MULTIPAD4_SETTINGS", overridePath, _countof(overridePath))) path = overridePath;
