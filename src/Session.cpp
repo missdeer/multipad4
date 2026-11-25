@@ -295,7 +295,7 @@ std::filesystem::path ExitSessionPath(const MainFrame& frame) {
 }
 
 bool LockExitSession(MainFrame& frame) {
-    if (frame.exitSessionLock.m_h) return true;
+    if (frame.exitSessionLock) return true;
     auto path = ExitSessionPath(frame);
     path += L".lock";
     std::filesystem::create_directories(path.parent_path());
@@ -307,7 +307,7 @@ bool LockExitSession(MainFrame& frame) {
         }
         throw std::runtime_error("Cannot lock the session file.");
     }
-    frame.exitSessionLock.Attach(lock);
+    frame.exitSessionLock.reset(lock);
     return true;
 }
 

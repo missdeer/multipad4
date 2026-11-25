@@ -6,18 +6,20 @@
 #include <span>
 class MainFrame;
 struct EditorDocument;
-class PluginPane : public dockwins::CTitleDockingWindowImpl<PluginPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
+class PluginPane : public PaneWindow<PluginPane> {
 public:
-    using Base = dockwins::CTitleDockingWindowImpl<PluginPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits>;
-    DECLARE_WND_CLASS_EX(L"MultiPad4.PluginPane", CS_DBLCLKS, COLOR_BTNFACE)
+    static constexpr auto WindowClass = L"MultiPad4.PluginPane";
     HWND client = nullptr, owner = nullptr;
     int dialogId = 0;
     std::wstring module;
-    BEGIN_MSG_MAP(PluginPane)
-        MESSAGE_HANDLER(WM_SIZE, OnSize)
-        MESSAGE_HANDLER(WM_CLOSE, OnClose)
-        CHAIN_MSG_MAP(Base)
-    END_MSG_MAP()
+    LRESULT Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
+        switch (message) {
+        case WM_SIZE: return OnSize(message, w, l, handled);
+        case WM_CLOSE: return OnClose(message, w, l, handled);
+        }
+        handled = FALSE;
+        return 0;
+    }
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& handled);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 };

@@ -1,9 +1,8 @@
+#include "../src/ComObject.h"
 // Windows ActiveScript evaluation follows notepad4 Bridge.cpp's engine order.
 #include "EditExpression.h"
 #include "FileIO.h"
 #include "EditSelection.h"
-#include <atlbase.h>
-#include <atlcomcli.h>
 #include <activscp.h>
 #include <stdexcept>
 namespace {
@@ -66,25 +65,25 @@ std::string EvaluateExpression(const std::string &text, bool math) {
     if (math)
         expression = L"with(Math){\n" + expression + L"}";
     constexpr GUID chakra = {0x1b7cd997, 0xe5ff, 0x4932, {0xa7, 0xa6, 0x2a, 0x9e, 0x63, 0x6d, 0xa3, 0x85}};
-    ATL::CComPtr<IActiveScript> engine;
+    ComObject<IActiveScript> engine;
     HRESULT status = CoCreateInstance(chakra, nullptr, CLSCTX_INPROC_SERVER, IID_IActiveScript,
-                                      reinterpret_cast<void **>(&engine.p));
+                                      reinterpret_cast<void **>(engine.Receive()));
     if (FAILED(status)) {
         CLSID clsid{};
         status = CLSIDFromProgID(L"JavaScript", &clsid);
         if (SUCCEEDED(status))
-            status = engine.CoCreateInstance(clsid);
+            status = CoCreateInstance(clsid, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(engine.Receive()));
     }
     if (FAILED(status))
         throw std::runtime_error("No Windows JavaScript engine is installed.");
     Site site;
     status = engine->SetScriptSite(&site);
-    ATL::CComPtr<IActiveScriptParse> parser;
+    ComObject<IActiveScriptParse> parser;
     if (SUCCEEDED(status))
-        status = engine->QueryInterface(IID_IActiveScriptParse, reinterpret_cast<void **>(&parser.p));
+        status = engine->QueryInterface(IID_IActiveScriptParse, reinterpret_cast<void **>(parser.Receive()));
     if (SUCCEEDED(status))
         status = parser->InitNew();
-    ATL::CComVariant value;
+    ComValue value;
     if (SUCCEEDED(status))
         status = parser->ParseScriptText(expression.c_str(), nullptr, nullptr, nullptr, 0, 0, SCRIPTTEXT_ISEXPRESSION,
                                          &value, nullptr);
@@ -98,15 +97,15 @@ std::string EvaluateExpression(const std::string &text, bool math) {
         status = value.pdispVal->GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &identifier);
         if (SUCCEEDED(status)) {
             DISPPARAMS args{};
-            ATL::CComVariant stringValue;
+            ComValue stringValue;
             status = value.pdispVal->Invoke(identifier, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &args, &stringValue,
                                             nullptr, nullptr);
             if (SUCCEEDED(status))
-                value = stringValue;
+                status = VariantCopy(&value, &stringValue);
         }
     }
-    ATL::CComVariant result;
-    status = VariantChangeType(&result, &value, 0, VT_BSTR);
+    ComValue result;
+    if (SUCCEEDED(status)) status = VariantChangeType(&result, &value, 0, VT_BSTR);
     engine->Close();
     if (FAILED(status))
         throw std::runtime_error("Expression result cannot be converted to text.");

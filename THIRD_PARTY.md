@@ -1,67 +1,24 @@
 # Third-party components
 
-## WTL
+## Redistribution status
 
-User-provided WTL 10.0 checkout at `3rdparty/wtl`, copyright Microsoft Corporation and WTL Team. Headers state the Microsoft Public License (MS-PL). No upstream changes.
+MultiPad4's original code is licensed under GPL-3.0-or-later. Imported
+material retains the terms documented below and in its upstream notices.
+The main executable compiles Notepad++ search and Plugins Admin code and
+resources. GPLv3 is a common version allowed by their GPL-3.0-or-later
+notices and the search-result lexer's GPL-2.0-or-later notice.
+[MultiPad4 license](LICENSE)
 
-## OpenATL (MinGW-w64 builds)
-
-Source: https://github.com/kkHAIKE/OpenATL, pinned at
-`e46308c1359bd6c2eaf0ee2981531bb4759738f7`, stored unchanged in
-`3rdparty/OpenATL`. MIT license; see `3rdparty/OpenATL/LICENSE`.
-MSVC builds continue to use Microsoft's ATL.
-
-MinGW builds use `cmake/CompilerCompatibility.cmake` and
-`cmake/FrameworkCompatibility.cmake` to generate framework copies.
-`cmake/MinGWCompatibility.py` applies the exact patches in `cmake/mingw/`
-to those copies, checking every context line. These patches qualify dependent
-base names and types, preserve publicly exposed template aliases, supply
-explicit-class window registration macros, add CString/CRect interfaces used
-by the editor, replace legacy tracker auto_ptr ownership with unique_ptr, and
-correct dormant syntax errors in the pinned frameworks. WTL registry-property
-specializations become standard C++ overloads, and newer EDIT wrappers are
-enabled only when the SDK declares their messages.
-
-`cmake/openatl/atlcoll.h` supplies the indexed CAtlArray subset used by the
-tabbing framework. Its standard C++ storage preserves elements through middle
-insertions and removals. This is a project compatibility layer, not a complete
-replacement for Microsoft's ATL collection library.
-
-For MinGW, `cmake/scintilla/CMakeLists.txt` also generates a copy of
-`VectorISA.h` that selects the upstream portable bit-test operations. The
-x86 `_bittest` helpers cast `uint32_t*` to `long*`, which violates GCC's aliasing
-rules and caused missed line endings under optimization. The dedicated
-`scintilla_line_index` regression checks all three EOL sequences and both line
-index widths across short inputs, SIMD blocks, and line-position batches.
-
-## WTL Tabbing Framework
-
-Daniel Bowen, copyright 2002–2005, with CustomTabCtrl/atlgdix contributions by Bjarke Viksoe. Snapshot: `3rdparty/TabbingFramework`.
-
-Source: https://github.com/simonsteele/pn/tree/618ea4ad538b26a8795b1cdaa684f08b72d31d09/pnwtl/TabbingFramework
-
-Each header contains its author and license notice. It permits compiled use and redistribution with the notice retained, with a restriction on selling the source file for profit without written author consent. Preserve the original notices; do not replace them with the host repository's license.
-
-## WTL Docking Framework
-
-Sergey Klimov, copyright 2000–2002, with subsequent contributions identified in the files. Snapshot: `3rdparty/DockingFramework`.
-
-Source: https://github.com/simonsteele/pn/tree/618ea4ad538b26a8795b1cdaa684f08b72d31d09/pnwtl/DockingFramework
-
-Per-file notices permit compiled use and redistribution of the unmodified file with author notices, with a restriction on selling the source for profit without author consent. Retain all original notices.
-
-Both framework snapshots are unmodified. `cmake/FrameworkCompatibility.cmake` produces build-directory compatibility copies. It adapts obsolete template declarations, qualifies dependent types, replaces bind2nd with a lambda, enables MSVC's auto_ptr compatibility for legacy tracker ownership, and corrects a Unicode ellipsis length and a missing virtual destructor. Layout container elements (`CPtrFrame`) use `std::shared_ptr`, matching the upstream Boost branch's shared ownership: copying a deque element must not steal another live frame's pointer. Modern MSVC compiles these legacy templates with permissive lookup. These build adaptations are separate from the upstream snapshot.
-
-The compatibility copies also support the Intel oneAPI LLVM frontend: the MDI client is forward-declared before its use in a default template argument, dependent item/comparator types and window handles are qualified, and the splitter traits and orientation lookup are made explicit. The splitter adopts WTL's newly created halftone brush through its raw handle so the owning `CBrush` still releases it. The editor integration regression repeatedly draws/cleans splitter previews and checks GDI object usage.
-
-Floating dock panes move their actual HWND during the framework's drag tracking,
-avoiding desktop XOR feedback that may disappear under composition. Screen-space
-grab offsets remain stable as the window moves; cancellation restores its original
-rectangle. Dock-target detection and final docking still use the original framework.
-Integration checks verify movement before release, repeated motion and cancellation.
-They also cover middle insertions in the owning layout deque, exactly-once frame
-destruction, and repeated DC_ACCEPT/DC_DOCK drops creating bars between existing
-panes, which follow a different path from menu docking.
+- The bundled themes, embedded plugin catalogue and upstream toolbar assets
+  have additional licensing questions documented below. Resolve these for the
+  files included in each release.
+- GPLv3 binary distribution also requires a compliant way to obtain the
+  corresponding source, including build and adaptation scripts, and preservation
+  of applicable license and attribution notices. The current build and release
+  workflow ships selected notices. Its package paths omit notices such as the
+  main executable's Notepad4 and Scintilla texts.
+  [GPLv3 sections 1, 5 and 6](https://www.gnu.org/licenses/gpl-3.0.html)
+  [Package workflow](.github/workflows/msvc-build.yml)
 
 ## notepad4 and its Scintilla fork
 
@@ -75,7 +32,21 @@ Source: https://github.com/zufuliu/notepad4 at commit `3fcfb70fd0d3c8802100c85f7
 
 Preserve these notices in source and binary distributions as required by each license. All eleven `locale/*/Notepad4.rc` files were added from the same pinned GitHub revision. The product loads the complete lexer configuration catalogue from reviewed XML; only the development baseline exporter compiles its original static objects; adapted editor algorithms retain their upstream provenance. Scintilla host services include custom transliteration and the bundled standalone Boost.Regex headers. Migration and behavioral validation status is tracked in `docs/MIGRATION_STATUS.md`.
 
-No license has been selected for the new MultiPad4 application code.
+Scintilla's compiled components also use Chromium-derived IME code
+(BSD 3-Clause), Boost.Regex (BSL-1.0), and input data from Julia and emoji-data
+(MIT). Their notices appear in the Notepad4 license. Scintilla's original
+regular expression engine credits public-domain routines. Scripts also
+derive character property tables from the Unicode Character Database,
+whose source data uses the Unicode License v3.
+[Unicode terms](https://www.unicode.org/license.txt)
+
+Notepad4's notices identify the Microsoft Visual Studio Image Library
+2017 and 2022. MultiPad4 compiles the imported toolbar bitmaps into its
+Windows resources. Microsoft separately licenses the image libraries and
+sets conditions on application redistribution and applying licenses that
+require source disclosure or modification rights to its images. Identify
+the derived bitmaps and confirm the applicable rights or replace those
+assets before a GPL release. [Microsoft Image Library and EULAs](https://www.microsoft.com/en-us/download/details.aspx?id=35825)
 
 The development baselines in `tests/baselines/lexer-catalog.xml` and
 `tests/baselines/lexer-behavior.txt` are derived from this same pinned notepad4
@@ -106,7 +77,7 @@ Reference: user-provided `tmp/notepad-plus-plus` checkout at
 resource IDs and LexSearchResult are preserved in `3rdparty/notepad-plus-plus`.
 `src/SearchDialog.rc` adapts the dialog layout (Copyright 2021 Don HO,
 GPL-3.0-or-later); `SearchDialog.cpp` and `SearchResultsPane.cpp` adapt its
-Find/Replace/Find in Files/Mark and Finder interaction to explicit WTL documents.
+Find/Replace/Find in Files/Mark and Finder interaction to explicit MDI documents.
 `SearchResultLexer.cpp` adapts LexSearchResult's style/fold model (Copyright
 1998-2001 Neil Hodgson, Copyright 2003 Don HO, GPL-2.0-or-later) using container
 styling rather than the private Lexilla markings-pointer ABI. The upstream
@@ -126,19 +97,6 @@ as references; it does not import Notepad++'s application or docking manager.
 Plugin DLLs in the generated build directory are user-provided runtime inputs,
 not redistributed source dependencies. Their own licenses continue to apply.
 
-Empty docking package windows are hidden synchronously when their last pane
-leaves. Destruction still uses the upstream posted `WM_CLOSE`, preserving the
-active docking callback. This prevents stale pane pixels from remaining visible
-while a nested drag or modal loop delays that close. The compatibility regression
-checks immediate invisibility and eventual HWND destruction with plugins loaded.
-
-Repeated docking requests now replace a package's existing HWND records, and
-undocking removes all records for that HWND. Same-bar ownership notifications
-are idempotent. This addresses a captured failure where Matepath was floating
-but a right-side package still referenced its HWND. Regressions inspect package
-membership independently of HWND parenting, exercise repeated registration and
-cancel/float transitions, and check deferred container destruction.
-
 ## Notepad++ Plugins Admin
 
 `src/PluginAdmin.*` adapts the Plugins Admin menu/handler, modeless dialog,
@@ -149,11 +107,15 @@ reserved from dynamic plugin commands and routed explicitly before their range.
 `src/PluginAdminWorker.ps1` supplies a MultiPad4-specific exit/wait, package
 verification, staging, rollback and restart adapter instead of N++'s GUP process.
 
-The bundled x64 catalogue comes from the official nppPluginList repository;
+The executable embeds `pl.x64.json` from the official nppPluginList repository.
 `CATALOG_REVISION` pins its source revision and `README.catalog.md` retains its
-upstream documentation. It is metadata, not a guarantee that every listed
-plugin works with MultiPad4's partial N++ host API. The JSON parser is unmodified
-nlohmann/json 3.12.0 from the reference checkout (MIT license included).
+upstream documentation. The pinned tree and catalogue contain no explicit
+license for the data. Confirm reuse and redistribution rights or supply a
+separately licensed catalogue.
+[Pinned nppPluginList source](https://github.com/notepad-plus-plus/nppPluginList/tree/55901005d3f42ea228ec64b200479d03c5ff0718)
+
+Plugin management compiles the unmodified nlohmann/json 3.12.0 header from the
+reference checkout. [MIT license](3rdparty/nlohmann-json/LICENSE.MIT)
 
 ## Notepad4 SIMD application routines
 
@@ -163,6 +125,7 @@ selection, indentation inference, UTF-16 Latin-extension detection, the
 Zach Wegner UTF-8 validator, and `CheckUTF7`'s ASCII scan. Original Notepad4
 licensing is retained under `3rdparty/notepad4/License.txt`; the UTF-8
 validator's MIT notice is also retained in `SimdText.cpp`.
+The file also credits Bjoern Hoehrmann's MIT-licensed UTF-8 decoder.
 
 `src/SimdGraphics.*` adapts `Helpers.cpp` bitmap alpha merge/blend and contrast
 verification, plus `Edit.cpp`'s UTF-16 HTML tag packing. GraphicUtils.h and
@@ -182,8 +145,17 @@ The same XML is embedded without a second handwritten C++ defaults table.
 code only reads the native schema and includes no Notepad++ XML compatibility
 layer or style binding table. Each converted file retains its original author
 credits and license comments (including individual MIT notices where present).
-The Notepad++ GPL-3.0-or-later license is shipped as
-`config/NOTEPADPLUSPLUS-LICENSE.txt`; `config/themes/README.md` lists the presets.
+The Notepad++ GPL text is shipped as `config/NOTEPADPLUSPLUS-LICENSE.txt`.
+The individual notices include CC-BY-3.0 in `Solarized.xml` and related
+presets, a `GPL2` label in `DarkModeDefault.xml` and `Zenburn.xml`, and
+imprecise GNU license references in some other presets. Verify the exact
+GNU terms where the file leaves the version or upgrade permission unclear.
+`DansLeRuSH-Dark.xml` contains both MIT-style permission text and a
+CC-BY-NC-SA-3.0 label. Confirm which grant applies or omit the preset from
+a distribution intended to permit commercial use.
+[Theme inventory](config/themes/README.md)
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
+[CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/)
 The native regression theme in `tests/fixtures/theme-native.xml` was written for
 this project.
 Windows XmlLite is an operating-system component, not a bundled parser library.
@@ -196,3 +168,24 @@ Plugin management uses the ZIP reader from the [miniz 3.1.2 release](https://git
 The upstream amalgamated sources and MIT license are preserved in
 `3rdparty/miniz/`. The build links the reader statically and ships the
 license as `Miniz.License.txt`.
+
+## Build tools and runtime libraries
+
+- MSVC-family builds use the Windows SDK. Redistributable
+  Microsoft runtimes are subject to Visual Studio terms and the REDIST list.
+  [Visual Studio 2022 redistribution terms](https://learn.microsoft.com/visualstudio/releases/2022/redistribution)
+- oneAPI packages explicitly include `libmmd.dll` and `svml_dispmd.dll`.
+  Check the installed toolchain's EULA and redistributable list for those DLLs.
+  [Intel developer tool license agreements](https://www.intel.com/content/www/us/en/developer/articles/license/end-user-license-agreement.html)
+- MinGW packages copy runtime DLLs according to PE imports. GCC runtimes such
+  as libgcc and libstdc++ use GPL terms with the GCC Runtime Library Exception.
+  LLVM runtimes such as libc++ use Apache-2.0 with LLVM exceptions. Use the
+  MSYS2 package metadata and notices to verify the DLLs in each published
+  variant and their exact terms. The GPL-licensed mingwdeployqt program runs
+  during packaging.
+  [GCC exception](https://www.gnu.org/licenses/gcc-exception-3.1.html)
+  [LLVM license](https://llvm.org/LICENSE.txt)
+  [mingwdeployqt license](https://github.com/missdeer/mingwdeployqt/blob/master/LICENSE)
+- The file icon generator uses Pillow (MIT-CMU) and Windows' installed
+  Segoe UI font. The repository ships generated icon images.
+  [Pillow license](https://pillow.readthedocs.io/en/stable/about.html#license)

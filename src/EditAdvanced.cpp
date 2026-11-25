@@ -267,7 +267,7 @@ INT_PTR CALLBACK OptionsProc(HWND window, UINT message, WPARAM w, LPARAM l) {
             SetDlgItemTextW(window, IDC_MODIFY_LINE_APPEND, files::FromUtf8(o->suffix).c_str());
             CheckDlgButton(window, IDC_MODIFY_LINE_SKIP_EMPTY, o->skip ? BST_CHECKED : BST_UNCHECKED);
         }
-        CWindow(window).CenterWindow(GetParent(window));
+        CenterWindow(window, GetParent(window));
         if (o->resource == IDD_MODIFYLINES || o->resource == IDD_ENCLOSESELECTION || o->resource == IDD_INSERTTAG) {
             PositionDialogResizeGrip(window, IDC_RESIZEGRIP2);
             RECT client{};
@@ -427,7 +427,7 @@ bool Dialog(EditorDocument &d, Options &options) {
     options.xml = GetDocumentLexer(d)->rid == NP2LEX_XML;
     options.controls.clear();
     options.layoutWidth = options.layoutHeight = 0;
-    if (DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(options.resource), GetAncestor(d.hwnd, GA_ROOT),
+    if (DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(options.resource), GetAncestor(d.hwnd, GA_ROOT),
                         OptionsProc, reinterpret_cast<LPARAM>(&options)) != IDOK)
         return false;
     auto normalize = [&](std::string &text) {

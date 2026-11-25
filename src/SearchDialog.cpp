@@ -1,4 +1,4 @@
-// Notepad++ FindReplaceDlg interaction adapted to WTL document contexts.
+// Notepad++ FindReplaceDlg interaction adapted to MDI document contexts.
 // Layout provenance and licensing: THIRD_PARTY.md.
 #include "SearchDialog.h"
 #include "MainFrame.h"
@@ -37,8 +37,8 @@ void SearchDialog::Open(MainFrame& frame, EditorDocument& target, bool replace) 
         SetDlgItemTextW(hwnd, IDC_FINDTEXT, target.search.findText.c_str());
     } else {
         Close(); owner = &frame; document = &target; replacing = replace; page = replace ? 1 : 0;
-        accelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
-        hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_SEARCH), frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
+        accelerators = LoadAcceleratorsW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_ACCFINDREPLACE));
+        hwnd = CreateDialogParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_SEARCH), frame.m_hWnd, Procedure, reinterpret_cast<LPARAM>(this));
     }
     if (hwnd) {
         ShowWindow(hwnd, SW_SHOW);
@@ -473,7 +473,7 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
             SendDlgItemMessageW(window, IDC_SEARCH_DIRECTORY, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(directory.c_str()));
             SetDlgItemTextW(window, IDC_SEARCH_DIRECTORY, directory.c_str());
             if (dialog->hasSavedPosition) SetWindowPos(window, nullptr, dialog->savedPosition.left, dialog->savedPosition.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-            else CWindow(window).CenterWindow(dialog->owner->m_hWnd);
+            else CenterWindow(window, dialog->owner->m_hWnd);
             RECT client{}; GetClientRect(window, &client); dialog->layoutWidth = client.right; dialog->layoutHeight = client.bottom;
             dialog->controls.clear();
             for (HWND child = GetWindow(window, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {

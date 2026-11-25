@@ -4,10 +4,9 @@
 #include "SearchResultLexer.h"
 #include "FileSearch.h"
 class MainFrame;
-class SearchResultsPane : public dockwins::CTitleDockingWindowImpl<SearchResultsPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits> {
+class SearchResultsPane : public PaneWindow<SearchResultsPane> {
 public:
-    using Base = dockwins::CTitleDockingWindowImpl<SearchResultsPane, CWindow, dockwins::COutlookLikeTitleDockingWindowTraits>;
-    DECLARE_WND_CLASS_EX(L"MultiPad4.SearchResults", CS_DBLCLKS, COLOR_WINDOW)
+    static constexpr auto WindowClass = L"MultiPad4.SearchResults";
     MainFrame* owner = nullptr;
     HWND editor = nullptr;
     struct Target { unsigned long long identity = 0; std::filesystem::path path; SearchMatch match; std::vector<SearchMatch> matches; size_t archive = static_cast<size_t>(-1); };
@@ -27,14 +26,17 @@ public:
     void Finish(size_t hits, size_t files);
     bool Navigate(size_t line, size_t matchIndex = 0);
     BOOL PreTranslateMessage(MSG* message);
-    BEGIN_MSG_MAP(SearchResultsPane)
-        MESSAGE_HANDLER(WM_CREATE, OnCreate)
-        MESSAGE_HANDLER(WM_SIZE, OnSize)
-        MESSAGE_HANDLER(WM_CLOSE, OnClose)
-        MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
-        MESSAGE_HANDLER(WM_CONTEXTMENU, OnContext)
-        CHAIN_MSG_MAP(Base)
-    END_MSG_MAP()
+    LRESULT Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
+        switch (message) {
+        case WM_CREATE: return OnCreate(message, w, l, handled);
+        case WM_SIZE: return OnSize(message, w, l, handled);
+        case WM_CLOSE: return OnClose(message, w, l, handled);
+        case WM_NOTIFY: return OnNotify(message, w, l, handled);
+        case WM_CONTEXTMENU: return OnContext(message, w, l, handled);
+        }
+        handled = FALSE;
+        return 0;
+    }
     LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);

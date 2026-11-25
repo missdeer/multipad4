@@ -1,6 +1,10 @@
 #pragma once
 #include "../3rdparty/notepad4/src/resource.h"
 #define IDR_MAINFRAME IDR_MAINWND
+#define ID_WINDOW_ARRANGE 0xE131
+#define ID_WINDOW_CASCADE 0xE132
+#define ID_WINDOW_TILE_HORZ 0xE133
+#define ID_WINDOW_TILE_VERT 0xE134
 // Application-only MDI commands live outside the upstream command ranges.
 #define ID_NEW IDM_FILE_NEW
 #define ID_OPEN IDM_FILE_OPEN

@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-**MultiPad4** 是面向 Windows x64 的标签式 MDI 文本编辑器，使用 C++20、WTL 和 notepad4 优化版 Scintilla。它将 notepad4 的编辑功能扩展到多文档工作流，支持按需大文件编辑、Notepad++ 风格的查找界面和可停靠插件面板。
+**MultiPad4** 是面向 Windows x64 的标签式 MDI 文本编辑器，使用 C++20、Win32 和 notepad4 优化版 Scintilla。它将 notepad4 的编辑功能扩展到多文档工作流，支持按需大文件编辑、Notepad++ 风格的查找界面和可停靠插件面板。
 
 从当前源码构建的程序在“关于”对话框中显示 `v0.4`，Windows 可执行文件的版本信息为 `0.4.0.0`。
 
@@ -59,21 +59,24 @@ Matepath 和 OpenDocuments 分别通过 `plugins/Config/Matepath.ini` 和 `plugi
 
 ## 框架与源码
 
-- WTL 10：`3rdparty/wtl`。
-- Daniel Bowen 的 WTL Tabbing Framework：`3rdparty/TabbingFramework`。
-- Sergey Klimov 的 WTL Docking Framework：`3rdparty/DockingFramework`。
 - notepad4 应用源码与资源基线：`3rdparty/notepad4`。
 - notepad4 优化版 Scintilla：`3rdparty/notepad4-scintilla/scintilla`。
 - Matepath Shell 目录列表：`3rdparty/matepath`。
 - Notepad++ 查找/插件管理参考资源与插件 API：`3rdparty/notepad-plus-plus`、`3rdparty/notepad-plus-plus-plugin-api`。
 
-主框架以 Docking Framework 的 `CDockingFrameImplBase` 包装 `CTabbedMDIFrameWindowImpl`；文档窗口派生自 `CTabbedMDIChildWindowImpl`。应用使用真实 `MDICLIENT` 和 `WS_EX_MDICHILD` 子窗口。原先自建的停靠算法及 `CTabViewImpl` 已退出正式实现。
+主窗口和文档窗口使用 Windows 原生 MDI API，文档标签使用 Windows 通用控件。停靠和浮动面板使用 Win32 窗口布局，并沿用插件原有的布局设置。
 
-第三方快照保持原样，`cmake/FrameworkCompatibility.cmake` 和 `cmake/Matepath.cmake` 在构建目录生成宿主兼容副本。notepad4 基线为 `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`；来源、固定提交和许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+`cmake/Matepath.cmake` 在构建目录中生成适配宿主的 Matepath 源码。notepad4 基线为 `3fcfb70fd0d3c8802100c85f7293ccb326aa8b64`。来源、版本和许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+
+## 许可证
+
+MultiPad4 原创代码采用 GNU GPL 第 3 版或任何后续版本（GPL-3.0-or-later）。第三方代码、数据和资源沿用原许可条款。[GPL 原文](LICENSE)
+
+第三方许可清单记录了随附主题、插件目录和工具栏资源的再分发条款及待确认事项。[第三方许可核查](THIRD_PARTY.md#redistribution-status)
 
 ## 构建
 
-需要 Windows 10/11、VS 2022 的 C++ 桌面开发组件（含 ATL 与 Windows SDK）、CMake 3.25+、Ninja 和 C++20。无需 Qt 或 MFC。
+需要 Windows 10/11、VS 2022 的 C++ 桌面开发组件（含 Windows SDK）、CMake 3.25+、Ninja 和 C++20。无需 Qt 或 MFC。
 
 在 x64 VS Developer Command Prompt 中切换到仓库根目录，执行以下命令。
 
@@ -88,10 +91,9 @@ ctest --preset msvc-x64
 
 Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`config/`、七个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
 
-### MinGW-w64 / OpenATL
+### MinGW-w64
 
-MinGW-w64 x64 构建使用仓库内固定版本、MIT 许可的 OpenATL，无需微软 ATL 或 Visual Studio。
-需要 GCC、binutils（windres）、CMake、Ninja 和 Python 3.10+。现有本地包装器会按构建目录名称选择 MinGW64：
+MinGW-w64 x64 构建需要 GCC、binutils（windres）、CMake 和 Ninja。现有本地包装器会按构建目录名称选择 MinGW64：
 
 ```powershell
 New-Item -ItemType Directory -Force cmake-mingw64-build
@@ -102,7 +104,6 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 
 其它机器可在 MSYS2 MinGW64 终端使用 `mingw64-x64` configure/build/test presets。
 运行程序时，需要将所用工具链的 `bin` 加入 PATH，或将相应运行库 DLL 放到程序旁边。
-OpenATL、WTL 和标签/停靠框架快照均保持原样，兼容补丁只应用到构建目录的副本；来源和适配说明见 [THIRD_PARTY.md](THIRD_PARTY.md)。
 
 ### SIMD 编译选项
 
@@ -126,7 +127,7 @@ OpenATL、WTL 和标签/停靠框架快照均保持原样，兼容补丁只应�
 |---|---|
 | `scintilla_line_index` | 三种换行、标量/SIMD 边界、两种行索引宽度下的行数和行起始位置 |
 | `fileio_roundtrip` | 编码、中文/emoji、换行、二进制文件无损回退、严格 UTF-8 校验及保存失败保护 |
-| `editor_integration` | WTL/Scintilla 窗口、MDI 隔离、标签命令、查找替换、样式、设置、自动保存、未保存标签恢复及随附插件 |
+| `editor_integration` | Win32/Scintilla 窗口、MDI 隔离、标签命令、查找替换、样式、设置、自动保存、未保存标签恢复及随附插件 |
 | `simd_boundaries` | 保护页、随机输入、非法/截断编码、跨块换行及图形尾部边界 |
 | `lazy_document` | 片段树、随机编辑、快照、事务、撤销/重做、索引复用及保存失败保护 |
 | `large_file_integration` | 按需视图编辑/保存、全文查找替换、取消、编码及完整编辑器转换 |

@@ -7,7 +7,7 @@ inline void Require(bool value, std::source_location location=std::source_locati
     if(!value)throw std::runtime_error("Encoding tree presentation regression at line "+std::to_string(location.line()));
 }
 inline std::wstring Resource(UINT id) {
-    wchar_t text[256]{};Require(LoadStringW(_Module.GetModuleInstance(),id,text,256)>0);return text;
+    wchar_t text[256]{};Require(LoadStringW(GetModuleHandleW(nullptr),id,text,256)>0);return text;
 }
 inline TVITEMW Item(HWND tree, HTREEITEM node, wchar_t (&text)[256]) {
     TVITEMW item{};item.hItem=node;item.mask=TVIF_TEXT|TVIF_PARAM|TVIF_IMAGE|TVIF_SELECTEDIMAGE|TVIF_STATE;

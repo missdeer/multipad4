@@ -9,14 +9,85 @@ namespace {
 using LoadClock = std::chrono::steady_clock;
 double LoadElapsed(LoadClock::time_point start) { return std::chrono::duration<double, std::milli>(LoadClock::now() - start).count(); }
 }
+
+bool EditorChild::Create(HWND mdi, const wchar_t* title) {
+    static constexpr auto name = L"MultiPad4.MdiDocument";
+    const auto instance = GetModuleHandleW(nullptr);
+    WNDCLASSW type{};
+    type.lpfnWndProc = WindowProcedure;
+    type.hInstance = instance;
+    type.lpszClassName = name;
+    type.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    if (!RegisterClassW(&type) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return false;
+    return CreateMDIWindowW(name, title, WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN | WS_MAXIMIZE,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, mdi, instance, reinterpret_cast<LPARAM>(this)) != nullptr;
+}
+
+void EditorChild::UpdateLayout() {
+    RECT area{};
+    GetClientRect(m_hWnd, &area);
+    if (m_hWndClient) SetWindowPos(m_hWndClient, nullptr, 0, 0, area.right, area.bottom, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void EditorChild::Notify(const NMHDR& notification) {
+    if (document && notification.hwndFrom == document->hwnd) {
+        const auto& sci = reinterpret_cast<const SCNotification&>(notification);
+        SendMessageW(owner, WM_APP + 0x120, 0, reinterpret_cast<LPARAM>(&sci));
+        HandleStyleNotification(*document, sci);
+    }
+    if (notification.code == SCN_SAVEPOINTLEFT || notification.code == SCN_SAVEPOINTREACHED || notification.code == SCN_ZOOM)
+        PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
+    else if (notification.code == SCN_UPDATEUI)
+        PostMessageW(owner, WM_DOCUMENT_CHANGED, 1, 0);
+}
+
+LRESULT CALLBACK EditorChild::WindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
+    if (message == WM_NCCREATE) {
+        auto* create = reinterpret_cast<const CREATESTRUCTW*>(l);
+        auto* mdi = static_cast<const MDICREATESTRUCTW*>(create->lpCreateParams);
+        auto* self = reinterpret_cast<EditorChild*>(mdi->lParam);
+        self->m_hWnd = window;
+        SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+    }
+    auto* self = reinterpret_cast<EditorChild*>(GetWindowLongPtrW(window, GWLP_USERDATA));
+    if (self) {
+        switch (message) {
+        case WM_CLOSE:
+            PostMessageW(self->owner, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(window), 0);
+            return 0;
+        case WM_NOTIFY:
+            self->Notify(*reinterpret_cast<const NMHDR*>(l));
+            break;
+        case WM_SIZE:
+            DefMDIChildProcW(window, message, w, l);
+            self->UpdateLayout();
+            return 0;
+        case WM_SETFOCUS:
+            if (self->m_hWndClient) SetFocus(self->m_hWndClient);
+            break;
+        case WM_MDIACTIVATE:
+            if (reinterpret_cast<HWND>(l) == window)
+                SendMessageW(self->owner, WM_TAB_ACTIVATED, 0, l);
+            PostMessageW(self->owner, WM_DOCUMENT_CHANGED, 0, 0);
+            break;
+        case WM_NCDESTROY:
+            SetWindowLongPtrW(window, GWLP_USERDATA, 0);
+            break;
+        }
+    }
+    return DefMDIChildProcW(window, message, w, l);
+}
+
 void EditorChild::UpdateFileIcon() {
     const int resource = DocumentIconResourceId(document->path);
     const UINT dpi = GetDpiForWindow(owner);
     if (resource == fileIconResource && dpi == fileIconDpi) return;
-    CIcon icon;
-    if (!icon.LoadIcon(resource, GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi))) return;
-    SetIcon(icon, FALSE);
-    fileIcon.Attach(icon.Detach());
+    const auto icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource), IMAGE_ICON,
+        GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi), 0));
+    if (!icon) return;
+    SendMessageW(m_hWnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(icon));
+    if (fileIcon) DestroyIcon(fileIcon);
+    fileIcon = icon;
     fileIconResource = resource;
     fileIconDpi = dpi;
     ::DrawMenuBar(owner);
@@ -26,7 +97,7 @@ std::wstring EditorDocument::Title() const {
 }
 bool EditorDocument::Create(HWND parent) {
     hwnd = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-        0, 0, 0, 0, parent, nullptr, _Module.GetModuleInstance(), nullptr);
+        0, 0, 0, 0, parent, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!hwnd) return false;
     directFunction = reinterpret_cast<SciFnDirect>(::SendMessageW(hwnd, SCI_GETDIRECTFUNCTION, 0, 0));
     directPointer = ::SendMessageW(hwnd, SCI_GETDIRECTPOINTER, 0, 0);
@@ -72,7 +143,7 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     // Scintilla reports allocation failure through SCI_GETSTATUS, not a C++
     // exception; clearing the live buffer first would lose its text/undo state.
     struct WindowOwner { HWND value; ~WindowOwner() { if (value) ::DestroyWindow(value); } } staging{
-        CreateWindowExW(0, L"Scintilla", nullptr, WS_CHILD, 0, 0, 1, 1, hwnd, nullptr, _Module.GetModuleInstance(), nullptr)};
+        CreateWindowExW(0, L"Scintilla", nullptr, WS_CHILD, 0, 0, 1, 1, hwnd, nullptr, GetModuleHandleW(nullptr), nullptr)};
     if (!staging.value) throw std::runtime_error("Cannot create a staging editor; the current document was retained.");
     auto stage = [&](UINT message, WPARAM w = 0, LPARAM l = 0) { return ::SendMessageW(staging.value, message, w, l); };
     stage(SCI_SETCODEPAGE, SC_CP_UTF8);

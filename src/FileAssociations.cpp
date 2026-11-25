@@ -158,7 +158,7 @@ void LoadImages(Dialog& dialog) {
     if (!images) return;
     for (auto& row : dialog.rows) {
         const int id = IconResourceId(row.extension);
-        HICON icon = id ? static_cast<HICON>(LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(id),
+        HICON icon = id ? static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(id),
             IMAGE_ICON, size, size, 0)) : nullptr;
         row.image = icon ? ImageList_AddIcon(images, icon) : -1;
         if (icon) DestroyIcon(icon);
@@ -249,7 +249,7 @@ INT_PTR CALLBACK Procedure(HWND window, UINT message, WPARAM wParam, LPARAM lPar
         SizeColumns(dialog.list);
         LoadImages(dialog);
         Populate(window, dialog);
-        CWindow(window).CenterWindow(GetParent(window));
+        CenterWindow(window, GetParent(window));
         return TRUE;
     }
     auto* dialog = reinterpret_cast<Dialog*>(GetWindowLongPtrW(window, DWLP_USER));
@@ -379,6 +379,6 @@ void ShowFileAssociations(HWND owner) {
     const DWORD length = GetModuleFileNameW(nullptr, executable, _countof(executable));
     if (!length || length == _countof(executable)) throw std::runtime_error("Cannot locate the MultiPad4 executable.");
     Dialog dialog{executable, CatalogFileTypes()};
-    if (DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_FILE_ASSOCIATIONS), owner,
+    if (DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_FILE_ASSOCIATIONS), owner,
         Procedure, reinterpret_cast<LPARAM>(&dialog)) == -1) throw std::runtime_error("Cannot open File Associations.");
 }

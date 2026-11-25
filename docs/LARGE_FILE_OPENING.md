@@ -299,7 +299,7 @@ return min(window, qword_141C52688);               // 再受「页文件一半�
 
 ### 4.1 技术栈与数据流
 
-MultiPad4 = C++20 + WTL + Scintilla（Notepad4 fork）。文件打开的真实路径：
+MultiPad4 = C++20 + Win32 + Scintilla（Notepad4 fork）。文件打开的真实路径：
 
 ```
 MainFrame::Open

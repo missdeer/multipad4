@@ -33,7 +33,7 @@ function(multipad4_adapt_resources variable locale)
   set(SELECTION_ACTIONS_MENU_STRINGS "${SELECTION_ACTIONS_MENU_STRINGS}" PARENT_SCOPE)
   set(TEXT_TRANSLITERATION_MENU_STRINGS "${TEXT_TRANSLITERATION_MENU_STRINGS}" PARENT_SCOPE)
 
-  # Insert the MDI menu before Help in the localized main menu WTL loads.
+  # Insert the MDI menu before Help in the localized main menu.
   set(window_menu_file "${PROJECT_SOURCE_DIR}/res/locale/${locale}/WindowMenu.rcinc")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${window_menu_file}")
   file(READ "${window_menu_file}" window_menu)
@@ -43,7 +43,7 @@ function(multipad4_adapt_resources variable locale)
   endif()
   string(REPLACE "${help_menu}" "\n${window_menu}${help_menu}" content "${content}")
   string(REGEX REPLACE "#include \"[^\"\n]*resource\\.h\""
-    "#include <atlres.h>\n#include \"${PROJECT_SOURCE_DIR}/src/resource.h\"" content "${content}")
+    "#include \"${PROJECT_SOURCE_DIR}/src/resource.h\"" content "${content}")
   set(${variable} "${content}" PARENT_SCOPE)
 endfunction()
 

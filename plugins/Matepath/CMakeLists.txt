@@ -3,20 +3,15 @@ include("${PROJECT_SOURCE_DIR}/cmake/Matepath.cmake")
 set(MATEPATH_VERSION "0.1.0.0")
 string(REPLACE "." "," MATEPATH_VERSION_COMMAS "${MATEPATH_VERSION}")
 configure_file(MatepathVersion.rc.in "${CMAKE_CURRENT_BINARY_DIR}/MatepathVersion.rc" @ONLY)
-add_library(Matepath SHARED Plugin.cpp MatepathPane.cpp MenuStrings.rc
+add_library(Matepath SHARED Plugin.cpp MatepathPane.cpp MenuStrings.rc ../../src/DockLayout.cpp
   "${CMAKE_CURRENT_BINARY_DIR}/MatepathVersion.rc"
   "${MATEPATH_COMPAT_DIR}/Dlapi.cpp" "${MATEPATH_SOURCE_DIR}/DropSource.cpp")
 target_include_directories(Matepath PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${MATEPATH_SOURCE_DIR}" "${MULTIPAD4_WTL_INCLUDE_DIR}"
-  "${FRAMEWORK_COMPAT_DIR}/DockingFramework" "${FRAMEWORK_COMPAT_DIR}/TabbingFramework"
+  "${MATEPATH_SOURCE_DIR}"
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")
-target_compile_definitions(Matepath PRIVATE _WTL_NO_CSTRING _ATL_NO_AUTOMATIC_NAMESPACE _HAS_AUTO_PTR_ETC=1)
 target_compile_options(Matepath PRIVATE ${MULTIPAD4_WARNINGS})
-if(MSVC)
-  target_compile_options(Matepath PRIVATE /permissive /Zc:twoPhase- /wd4996)
-else()
-  target_include_directories(Matepath BEFORE PRIVATE "${OPENATL_COMPAT_DIR}" "${PROJECT_SOURCE_DIR}/cmake/openatl")
+if(NOT MSVC)
   target_compile_options(Matepath PRIVATE -Wno-unknown-pragmas)
 endif()
 target_link_libraries(Matepath PRIVATE comctl32 shlwapi shell32 ole32 oleaut32 uuid uxtheme gdi32)

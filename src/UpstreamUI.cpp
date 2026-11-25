@@ -79,31 +79,34 @@ UINT NormalizeCommand(UINT id) {
 }
 void UpdateMenuCommands(MainFrame& frame, HMENU menu) { UpdateMenu(frame, menu); }
 void MainFrame::CreateUpstreamUI() {
-    CreateSimpleStatusBar();
-    CToolBarCtrl toolbar;
-    m_hWndToolBar = toolbar.Create(m_hWnd, rcDefault, nullptr,
-        WS_CHILD | WS_VISIBLE | CCS_TOP | CCS_NODIVIDER | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | CCS_ADJUSTABLE);
-    toolbar.SetButtonStructSize();
+    const auto instance = GetModuleHandleW(nullptr);
+    m_hWndStatusBar = CreateWindowExW(0, STATUSCLASSNAMEW, nullptr, WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
+        0, 0, 0, 0, m_hWnd, nullptr, instance, nullptr);
+    const HWND toolbar = m_hWndToolBar = CreateWindowExW(0, TOOLBARCLASSNAMEW, nullptr,
+        WS_CHILD | WS_VISIBLE | CCS_TOP | CCS_NODIVIDER | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | CCS_ADJUSTABLE,
+        0, 0, 0, 0, m_hWnd, nullptr, instance, nullptr);
+    ::SendMessageW(toolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
     // BTNS_DROPDOWN needs DRAWDDARROWS to keep the main button a command
     // target and reserve TBN_DROPDOWN for its arrow, as in Notepad4.
-    toolbar.SetExtendedStyle(toolbar.GetExtendedStyle() | TBSTYLE_EX_MIXEDBUTTONS | TBSTYLE_EX_DRAWDDARROWS);
+    ::SendMessageW(toolbar, TB_SETEXTENDEDSTYLE, 0,
+        ::SendMessageW(toolbar, TB_GETEXTENDEDSTYLE, 0, 0) | TBSTYLE_EX_MIXEDBUTTONS | TBSTYLE_EX_DRAWDDARROWS);
     int dpi = GetDpiForWindow(m_hWnd);
     int size = dpi >= 192 ? 32 : dpi >= 144 ? 24 : 16;
     UINT bitmap = size == 32 ? IDB_TOOLBAR32 : size == 24 ? IDB_TOOLBAR24 : IDB_TOOLBAR16;
-    toolbarImages = ImageList_LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(bitmap), size, 0, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION);
-    auto disabledBitmap = static_cast<HBITMAP>(LoadImageW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(bitmap), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+    toolbarImages = ImageList_LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(bitmap), size, 0, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION);
+    auto disabledBitmap = static_cast<HBITMAP>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(bitmap), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
     if (disabledBitmap) {
         if (simd::BitmapAlphaBlend(disabledBitmap, GetSysColor(COLOR_3DFACE), 0x60)) {
             toolbarDisabledImages = ImageList_Create(size, size, ILC_COLOR32 | ILC_MASK, 0, 0);
             if (toolbarDisabledImages) {
                 ImageList_AddMasked(toolbarDisabledImages, disabledBitmap, CLR_DEFAULT);
-                toolbar.SetDisabledImageList(toolbarDisabledImages);
+                ::SendMessageW(toolbar, TB_SETDISABLEDIMAGELIST, 0, reinterpret_cast<LPARAM>(toolbarDisabledImages));
             }
         }
         DeleteObject(disabledBitmap);
     }
-    toolbar.SetImageList(toolbarImages);
-    toolbar.SetBitmapSize(size, size);
+    ::SendMessageW(toolbar, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(toolbarImages));
+    ::SendMessageW(toolbar, TB_SETBITMAPSIZE, 0, MAKELPARAM(size, size));
     ResetToolbar(toolbar);
     HMENU file = GetSubMenu(GetMenu(), 0);
     InsertMenuW(file, 4, MF_BYPOSITION | MF_STRING, ID_SAVEALL, L"Save All\tCtrl+Alt+S");
@@ -117,7 +120,7 @@ void MainFrame::CreateUpstreamUI() {
         ID_FILE_ASSOCIATIONS, chinese ? L"文件关联(&F)..." : L"&File Associations...");
     InsertMenuW(GetMenu(), IDM_VIEW_SAVESETTINGS, MF_BYCOMMAND | MF_STRING,
         ID_TAB_SETTINGS, chinese ? L"文档标签设置(&D)..." : L"&Document Tab Settings...");
-    mdiAccelerators = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_MDIACCEL));
+    mdiAccelerators = LoadAcceleratorsW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_MDIACCEL));
 }
 CommandState MainFrame::State(UINT input) {
     return ConstrainUpstreamEditorState(Active(), NormalizeCommand(input), QueryState(input));
@@ -217,7 +220,7 @@ void MainFrame::UpdateStatus() {
                 column, columns, character, characters,
                 selectionCharacters, selectionBytes, StatusNumber(stats.selectedLines),
                 StatusNumber(d->style.markOccurrences ? d->style.occurrences : d->search.matches) + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"")};
-            if (LoadStringW(_Module.GetModuleInstance(), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
+            if (LoadStringW(GetModuleHandleW(nullptr), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
                 _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, format, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),
                     values[4].c_str(), values[5].c_str(), values[6].c_str(), values[7].c_str(), values[8].c_str(), values[9].c_str()) >= 0) {
                 const wchar_t* start = formatted;
@@ -287,7 +290,7 @@ LRESULT MainFrame::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
         case TBN_GETBUTTONINFOW:
             if (info->iItem < 0 || info->iItem >= 28) return FALSE;
             info->tbButton = UpstreamToolbarButton(info->iItem);
-            LoadStringW(_Module.GetModuleInstance(), info->tbButton.idCommand, info->pszText, info->cchText);
+            LoadStringW(GetModuleHandleW(nullptr), info->tbButton.idCommand, info->pszText, info->cchText);
             return TRUE;
         case TBN_RESET: ResetToolbar(m_hWndToolBar); toolbarState.clear(); UpdateCommandUI(); UpdateLayout(); return 0;
         case TBN_ENDADJUST: UpdateCommandUI(); UpdateLayout(); SaveFramePreferences(*this); return 0;
@@ -301,7 +304,7 @@ LRESULT MainFrame::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
                 }
                 if (!GetMenuItemCount(menu)) { DestroyMenu(root); return TBDDRET_TREATPRESSED; }
             } else {
-                root = LoadMenuW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_POPUPMENU)); menu = GetSubMenu(root, 3);
+                root = LoadMenuW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_POPUPMENU)); menu = GetSubMenu(root, 3);
             }
             for (int i = 0; i < GetMenuItemCount(menu); ++i) {
                 UINT id = GetMenuItemID(menu, i); auto state = State(id);
@@ -316,7 +319,7 @@ LRESULT MainFrame::OnNotify(UINT, WPARAM, LPARAM l, BOOL& handled) {
     }
     if (notification->code == TTN_GETDISPINFOW) {
         auto* info = reinterpret_cast<NMTTDISPINFOW*>(l);
-        LoadStringW(_Module.GetModuleInstance(), static_cast<UINT>(info->hdr.idFrom), info->szText, _countof(info->szText)); return 0;
+        LoadStringW(GetModuleHandleW(nullptr), static_cast<UINT>(info->hdr.idFrom), info->szText, _countof(info->szText)); return 0;
     }
     if (notification->hwndFrom == m_hWndStatusBar && notification->code == NM_CLICK) {
         auto* mouse = reinterpret_cast<NMMOUSE*>(l); auto* d = Active(); if (!d) return 0;

@@ -1,3 +1,4 @@
+#include "ComObject.h"
 #include "ShellContextMenu.h"
 #include <shlobj.h>
 #include "resource.h"
@@ -10,8 +11,8 @@ static_assert(lastShellCommand < ID_CLOSE && lastShellCommand < ID_CLOSEALL &&
     lastShellCommand < ID_CLOSE_OTHER_TABS);
 
 struct ShellMenuMessages {
-    ATL::CComPtr<IContextMenu3> menu3;
-    ATL::CComPtr<IContextMenu2> menu2;
+    ComObject<IContextMenu3> menu3;
+    ComObject<IContextMenu2> menu2;
 };
 
 LRESULT CALLBACK ShellMenuProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data) {
@@ -38,16 +39,16 @@ UINT TrackTabContextMenu(HWND owner, HMENU menu, POINT point, const std::filesys
     const DWORD attributes = GetFileAttributesW(path.c_str());
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) return trackTabCommands();
 
-    ATL::CComPtr<IShellItem> item;
-    ATL::CComPtr<IContextMenu> context;
-    if (FAILED(SHCreateItemFromParsingName(path.c_str(), nullptr, IID_PPV_ARGS(&item))) ||
-        FAILED(item->BindToHandler(nullptr, BHID_SFUIObject, IID_PPV_ARGS(&context)))) return trackTabCommands();
+    ComObject<IShellItem> item;
+    ComObject<IContextMenu> context;
+    if (FAILED(SHCreateItemFromParsingName(path.c_str(), nullptr, IID_PPV_ARGS(item.Receive()))) ||
+        FAILED(item->BindToHandler(nullptr, BHID_SFUIObject, IID_PPV_ARGS(context.Receive())))) return trackTabCommands();
 
     const int tabItemCount = GetMenuItemCount(menu);
     const HRESULT queried = context->QueryContextMenu(menu, tabItemCount, firstShellCommand, lastShellCommand, CMF_NORMAL);
     ShellMenuMessages messages;
-    if (FAILED(context->QueryInterface(IID_PPV_ARGS(&messages.menu3))))
-        context->QueryInterface(IID_PPV_ARGS(&messages.menu2));
+    if (FAILED(context->QueryInterface(IID_PPV_ARGS(messages.menu3.Receive()))))
+        context->QueryInterface(IID_PPV_ARGS(messages.menu2.Receive()));
     const UINT_PTR subclass = reinterpret_cast<UINT_PTR>(&messages);
     if (FAILED(queried) || HRESULT_CODE(queried) == 0 ||
         !SetWindowSubclass(owner, ShellMenuProc, subclass, reinterpret_cast<DWORD_PTR>(&messages))) {

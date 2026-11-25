@@ -19,8 +19,8 @@ inline void RunSelectionActionsPluginTests(MainFrame& frame, EditorDocument& doc
         [](const PluginHost::Plugin& candidate) { return candidate.module == L"SelectionActions.dll"; });
     const bool installed = frame.plugins.onlyModule == L"__bundled__";
     require((plugin != frame.plugins.plugins.end()) == installed);
-    CMenu root(LoadMenuW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_POPUPMENU)));
-    const HMENU context = GetSubMenu(root, 0);
+    UniqueMenu root(LoadMenuW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_POPUPMENU)));
+    const HMENU context = GetSubMenu(root.get(), 0);
     require(GetMenuState(context, CMD_OPEN_PATH_OR_LINK, MF_BYCOMMAND) == UINT(-1));
     const int contextItems = GetMenuItemCount(context);
     document.Load({"選択.txt:2:2"});

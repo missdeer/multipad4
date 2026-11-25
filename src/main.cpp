@@ -14,7 +14,6 @@
 #include "FrameCommands.h"
 #include "EditAdvanced.h"
 #include "../tests/QAArtifacts.h"
-WTL::CAppModule _Module;
 namespace {
 // Serialize discovery through initial command processing so simultaneous launches
 // cannot both decide that no main window exists yet.
@@ -76,10 +75,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (FAILED(hr)) return 1;
     INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_WIN95_CLASSES | ICC_BAR_CLASSES};
     InitCommonControlsEx(&controls);
-    _Module.Init(nullptr, instance);
     SetCurrentProcessExplicitAppUserModelID(L"MultiPad4.Editor");
     extern UINT g_uSystemDPI; g_uSystemDPI = GetDpiForSystem();
-    if (!Scintilla_RegisterClasses(instance)) { _Module.Term(); OleUninitialize(); return 2; }
+    if (!Scintilla_RegisterClasses(instance)) { OleUninitialize(); return 2; }
     int count = 0; LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
@@ -96,7 +94,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     int result = 0;
     std::optional<PluginMaintenance> pendingPluginMaintenance;
     {
-        CMessageLoop loop; _Module.AddMessageLoop(&loop);
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
@@ -142,7 +139,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         }
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
-        else if (!frame.CreateEx(nullptr, rect)) result = 3;
+        else if (!frame.Create(rect, instance)) result = 3;
         else if (largeTest || smoke || report || render || pluginTest) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
@@ -185,13 +182,19 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (options.help) ExecuteFrameCommand(frame, IDM_CMDLINE_HELP);
             if (options.print) frame.PostMessage(WM_CLOSE);
             startupLock.Release();
-            result = loop.Run();
+            MSG message{};
+            BOOL received;
+            while ((received = GetMessageW(&message, nullptr, 0, 0)) > 0) {
+                if (frame.PreTranslateMessage(&message)) continue;
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+            result = received < 0 ? 7 : static_cast<int>(message.wParam);
             if (!frame.IsWindow()) pendingPluginMaintenance = std::move(frame.pendingPluginMaintenance);
         }
-        _Module.RemoveMessageLoop();
     }
     if (args) LocalFree(args);
-    Scintilla_ReleaseResources(); _Module.Term(); OleUninitialize();
+    Scintilla_ReleaseResources(); OleUninitialize();
     if (pendingPluginMaintenance) FinishPluginMaintenance(*pendingPluginMaintenance);
     return result;
 }
