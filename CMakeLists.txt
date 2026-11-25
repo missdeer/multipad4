@@ -71,6 +71,8 @@ message(STATUS "MultiPad4 SIMD target: ${MULTIPAD4_SIMD}")
 add_subdirectory(cmake/scintilla)
 add_library(multipad_files STATIC src/FileSearch.cpp src/FileReplace.cpp src/LazySearch.cpp src/LazyDocument.cpp src/FileIO.cpp src/SimdText.cpp src/SimdGraphics.cpp)
 target_include_directories(multipad_files PUBLIC src PRIVATE 3rdparty/notepad4-scintilla/scintilla/include 3rdparty/notepad4-scintilla/scintilla/src 3rdparty/notepad4-scintilla/scintilla/lexlib)
+# Headless Document instances must use the same generated class layout as Scintilla.
+target_include_directories(multipad_files BEFORE PRIVATE "$<TARGET_PROPERTY:notepad4_scintilla,INCLUDE_DIRECTORIES>")
 target_compile_options(multipad_files PRIVATE ${MULTIPAD4_WARNINGS})
 target_link_libraries(multipad_files PUBLIC gdi32 shlwapi notepad4_scintilla)
 add_library(multipad_plugin_maintenance STATIC src/PluginMaintenance.cpp src/PluginDownload.cpp 3rdparty/miniz/miniz.c)
