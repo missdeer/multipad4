@@ -78,6 +78,19 @@ inline void RunFileAssociationRegistryTests() {
     read(extension, nullptr, other);
     read(L"Software\\Classes\\MultiPad4.File.cpp\\shell\\open\\command", nullptr, (L"\"" + executable.wstring() + L"\" \"%1\"").c_str());
     read(apps, L"MultiPad4", L"Software\\MultiPad4\\Capabilities");
+
+    const wchar_t* defaultIconKey = L"Software\\Classes\\MultiPad4.File.multipad4-test\\DefaultIcon";
+    const auto executableIcon = L"\"" + executable.wstring() + L"\",";
+    const auto oldDefaultIcon = executableIcon + L"0";
+    require(RegSetKeyValueW(fixture.key, defaultIconKey, nullptr, REG_SZ, oldDefaultIcon.c_str(),
+        static_cast<DWORD>((oldDefaultIcon.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS);
+    require(SetFileAssociation(fixture.key, L".multipad4-test", executable, true) == ERROR_SUCCESS);
+    read(defaultIconKey, nullptr, (executableIcon + std::to_wstring(-IDI_DEFAULT_FILE)).c_str());
+    icon = nullptr;
+    require(ExtractIconExW(filename, -IDI_DEFAULT_FILE, nullptr, &icon, 1) == 1 && icon != nullptr);
+    DestroyIcon(icon);
+    require(SetFileAssociation(fixture.key, L".multipad4-test", executable, false) == ERROR_SUCCESS);
+
     require(SetFileAssociation(fixture.key, L".py", executable, false) == ERROR_SUCCESS);
     require(SetFileAssociation(fixture.key, L".py", executable, false) == ERROR_SUCCESS);
     read(apps, L"MultiPad4", nullptr);

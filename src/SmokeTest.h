@@ -51,8 +51,8 @@ inline void RunSmokeTest(MainFrame& frame) {
         require((::GetWindowLongPtrW(frame.tabs.GetPageHWND(0), GWL_EXSTYLE) & WS_EX_MDICHILD) != 0);
         auto windowIcon = [&](int page) { return frame.tabs.Child(page)->GetIcon(FALSE); };
         const HICON untitledIcon = windowIcon(0);
-        require(untitledIcon && DocumentIconResourceId({}) == IDR_MAINFRAME);
-        require(DocumentIconResourceId(L".babelrc") != IDR_MAINFRAME);
+        require(untitledIcon && DocumentIconResourceId({}) == IDI_DEFAULT_FILE);
+        require(DocumentIconResourceId(L".babelrc") != IDI_DEFAULT_FILE);
         CaptureQAWindow(frame, L"MDI-icon-untitled");
         first->Send(SCI_ADDTEXT, 5, reinterpret_cast<LPARAM>("alpha"));
         require(first->Text() == "alpha" && first->Modified());
@@ -62,7 +62,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         require(first->language == L"C/C++");
         const HICON cppIcon = windowIcon(0);
         require(cppIcon && cppIcon != untitledIcon && DocumentIconResourceId(L"source.CPP") == DocumentIconResourceId(first->path) &&
-            DocumentIconResourceId(first->path) != IDR_MAINFRAME);
+            DocumentIconResourceId(first->path) != IDI_DEFAULT_FILE);
         CaptureQAWindow(frame, L"MDI-icon-cpp");
         first->Send(SCI_COLOURISE, 0, -1);
         frame.NewDocument(); auto* second = frame.Active(); require(second && second != first);
@@ -70,11 +70,11 @@ inline void RunSmokeTest(MainFrame& frame) {
         require(first->Text() == "alpha" && second->Text() == "beta");
         second->path = dir / L"second.txt"; require(frame.Save(*second));
         const HICON textIcon = windowIcon(1);
-        require(textIcon && textIcon != cppIcon && DocumentIconResourceId(second->path) != IDR_MAINFRAME);
+        require(textIcon && textIcon != cppIcon && DocumentIconResourceId(second->path) != IDI_DEFAULT_FILE);
         CaptureQAWindow(frame, L"MDI-icon-txt");
         const auto unknownPath = dir / L"unknown.multipad4-test";
         require(frame.SaveTo(*second, unknownPath, false));
-        require(windowIcon(1) && windowIcon(1) != textIcon && DocumentIconResourceId(unknownPath) == IDR_MAINFRAME);
+        require(windowIcon(1) && windowIcon(1) != textIcon && DocumentIconResourceId(unknownPath) == IDI_DEFAULT_FILE);
         CaptureQAWindow(frame, L"MDI-icon-unknown");
         require(frame.SaveTo(*second, dir / L"second.txt", false));
         RunCloseReentrancyTests(frame);

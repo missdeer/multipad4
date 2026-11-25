@@ -33,7 +33,7 @@ int IconResourceId(std::wstring_view extension) {
     for (const auto& icon : icons) {
         if (icon.extension == extension) return icon.id;
     }
-    return 0;
+    return IDI_DEFAULT_FILE;
 }
 
 std::wstring Quoted(const std::filesystem::path& path) {
@@ -158,8 +158,8 @@ void LoadImages(Dialog& dialog) {
     if (!images) return;
     for (auto& row : dialog.rows) {
         const int id = IconResourceId(row.extension);
-        HICON icon = id ? static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(id),
-            IMAGE_ICON, size, size, 0)) : nullptr;
+        HICON icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(id),
+            IMAGE_ICON, size, size, 0));
         row.image = icon ? ImageList_AddIcon(images, icon) : -1;
         if (icon) DestroyIcon(icon);
     }
@@ -342,8 +342,7 @@ int DocumentIconResourceId(const std::filesystem::path& path) {
         if (filename.starts_with(L'.')) extension = std::move(filename);
     }
     Lower(extension);
-    const int id = IconResourceId(extension);
-    return id ? id : IDR_MAINFRAME;
+    return IconResourceId(extension);
 }
 
 LSTATUS SetFileAssociation(HKEY root, const std::wstring& extension, const std::filesystem::path& executable, bool enable) {
