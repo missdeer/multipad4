@@ -29,8 +29,9 @@ void CreateShortcut(const std::filesystem::path& file,const std::filesystem::pat
     ComObject<IShellLinkW> shortcut;HRESULT result=CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(shortcut.Receive()));
     if(SUCCEEDED(result))result=shortcut->SetPath(file.c_str());
     if(SUCCEEDED(result))result=shortcut->SetWorkingDirectory(file.parent_path().c_str());
-    ComObject<IPersistFile> persist; shortcut->QueryInterface(IID_PPV_ARGS(persist.Receive()));
-    if(SUCCEEDED(result) && persist)result=persist->Save(link.c_str(),TRUE);
+    ComObject<IPersistFile> persist;
+    if (SUCCEEDED(result)) result = shortcut->QueryInterface(IID_PPV_ARGS(persist.Receive()));
+    if (SUCCEEDED(result)) result = persist->Save(link.c_str(), TRUE);
     if(FAILED(result))throw std::runtime_error("Cannot create shortcut.");
 }
 }

@@ -116,6 +116,13 @@ LRESULT MainFrame::Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
 }
 
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
+    if (msg->message == WM_KEYDOWN && msg->wParam == VK_ESCAPE) {
+        if (HWND pane = GetCapture(); pane && GetPropW(pane, dockPlacementProperty)) {
+            // Undocking during a drag can move keyboard focus away from the pane.
+            msg->hwnd = pane;
+            return FALSE;
+        }
+    }
     if (pluginAdmin.hwnd && ::IsWindowVisible(pluginAdmin.hwnd) && ::IsDialogMessageW(pluginAdmin.hwnd, msg)) return TRUE;
     if (plugins.PreTranslate(msg)) return TRUE;
     if (searchResults.PreTranslateMessage(msg)) return TRUE;

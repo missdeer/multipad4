@@ -38,6 +38,13 @@ inline void RunDockLayoutTests(MainFrame& frame) {
         ::ScreenToClient(pane, &screen);
         pane.SendMessage(WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(screen.x, screen.y));
     };
+    auto escape = [&](HWND target) {
+        require(PostMessageW(target, WM_KEYDOWN, VK_ESCAPE, 0x00010001) != FALSE);
+        MSG message{};
+        require(PeekMessageW(&message, target, WM_KEYDOWN, WM_KEYDOWN, PM_REMOVE) != FALSE);
+        require(!frame.PreTranslateMessage(&message) && message.hwnd == pane);
+        DispatchMessageW(&message);
+    };
     const auto grab = start();
     for (auto delta : {POINT{37, 23}, POINT{83, 51}, POINT{-41, -27}}) {
         move({grab.x + delta.x, grab.y + delta.y});
@@ -46,7 +53,7 @@ inline void RunDockLayoutTests(MainFrame& frame) {
         require(EqualRect(&actual, &expected) != FALSE);
     }
     CaptureQAWindow(pane, L"Dock-drag-before-cancel");
-    pane.SendMessage(WM_KEYDOWN, VK_ESCAPE, 0);
+    escape(pane);
     auto restored = rect(pane);
     require(EqualRect(&restored, &original) != FALSE && GetCapture() != pane);
     require(extra.Create(frame, floating.floating, L"Additional docking bar") != nullptr);
@@ -81,7 +88,7 @@ inline void RunDockLayoutTests(MainFrame& frame) {
     pane.SendMessage(WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(caption.x, caption.y));
     move({caption.x - 70, caption.y + 60});
     VerifyPaneLayoutMembership(frame, pane, false);
-    pane.SendMessage(WM_KEYDOWN, VK_ESCAPE, 0);
+    escape(frame);
     VerifyPaneLayoutMembership(frame, pane, true);
     auto reattached = rect(pane);
     require(EqualRect(&inner, &reattached) != FALSE);
@@ -95,6 +102,11 @@ inline void RunDockLayoutTests(MainFrame& frame) {
     move({splitter.x - 36, splitter.y});
     auto resized = rect(pane);
     require(resized.right - resized.left > dockedRect.right - dockedRect.left);
+    escape(pane);
+    resized = rect(pane);
+    require(EqualRect(&dockedRect, &resized) != FALSE && GetCapture() != pane);
+    pane.SendMessage(WM_NCLBUTTONDOWN, hit, MAKELPARAM(splitter.x, splitter.y));
+    move({splitter.x - 36, splitter.y});
     pane.SendMessage(WM_CANCELMODE, 0, 0);
     resized = rect(pane);
     require(EqualRect(&dockedRect, &resized) != FALSE);
