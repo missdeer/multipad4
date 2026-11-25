@@ -193,7 +193,7 @@ inline void RunUIRoutingTests(MainFrame& frame) {
     }
     unsigned acceleratorCount = 0;
     for (UINT resource : {static_cast<UINT>(IDR_MAINWND), static_cast<UINT>(IDR_ACCFINDREPLACE), static_cast<UINT>(IDR_MDIACCEL)}) {
-        auto table = LoadAcceleratorsW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(resource));
+        auto table = LoadAcceleratorsW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource));
         const int count = CopyAcceleratorTableW(table, nullptr, 0); require(count > 0);
         std::vector<ACCEL> entries(static_cast<size_t>(count));
         require(CopyAcceleratorTableW(table, entries.data(), count) == count);

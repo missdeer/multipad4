@@ -16,7 +16,7 @@
 #include "SplitVector.h"
 #include "CellBuffer.h"
 
-// Exercise line scanning/indexing directly, independently of the ATL host.
+// Exercise line scanning/indexing directly, independently of the editor host.
 int main() {
     bool passed = true;
     for (bool large : {false, true}) {

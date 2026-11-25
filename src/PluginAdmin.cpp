@@ -13,11 +13,11 @@ using nlohmann::json;
 namespace {
 std::wstring AdminText(UINT id) {
     wchar_t text[256]{};
-    LoadStringW(_Module.GetModuleInstance(), id, text, _countof(text));
+    LoadStringW(GetModuleHandleW(nullptr), id, text, _countof(text));
     return text;
 }
 std::string Resource(UINT id) {
-    auto instance = _Module.GetModuleInstance();
+    auto instance = GetModuleHandleW(nullptr);
     auto resource = FindResourceW(instance, MAKEINTRESOURCEW(id), RT_RCDATA);
     auto data = LoadResource(instance, resource);
     if (!resource || !data) throw std::runtime_error(files::ToUtf8(AdminText(IDS_PLUGINADM_RESOURCE_MISSING)));
@@ -131,7 +131,7 @@ void PluginAdmin::Show(MainFrame& owner) {
     frame = &owner;
     if (!IsWindow(hwnd)) {
         try { Load(); } catch (const std::exception& error) { owner.Error(error); return; }
-        hwnd = CreateDialogParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_PLUGINSADMIN_DLG), owner, DialogProc, reinterpret_cast<LPARAM>(this));
+        hwnd = CreateDialogParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_PLUGINSADMIN_DLG), owner, DialogProc, reinterpret_cast<LPARAM>(this));
     }
     if (hwnd) { ShowWindow(hwnd, SW_SHOW); SetForegroundWindow(hwnd); }
 }
@@ -250,7 +250,7 @@ INT_PTR CALLBACK PluginAdmin::DialogProc(HWND window, UINT message, WPARAM w, LP
             auto link = GetDlgItem(window, IDC_PLUGINLIST_ADDR);
             SetWindowLongPtrW(link, GWL_STYLE, GetWindowLongPtrW(link, GWL_STYLE) | SS_NOTIFY);
             RECT rect{8, 40, 492, 160}; MapDialogRect(window, &rect);
-            self->tab = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, window, reinterpret_cast<HMENU>(5514), _Module.GetModuleInstance(), nullptr);
+            self->tab = CreateWindowExW(0, WC_TABCONTROLW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, window, reinterpret_cast<HMENU>(5514), GetModuleHandleW(nullptr), nullptr);
             constexpr UINT tabs[] = {IDS_PLUGINADM_AVAILABLE, IDS_PLUGINADM_UPDATES, IDS_PLUGINADM_INSTALLED, IDS_PLUGINADM_INCOMPATIBLE, IDS_PLUGINADM_DISABLED};
             for (int index = 0; index < static_cast<int>(_countof(tabs)); ++index) {
                 auto label = AdminText(tabs[index]);
@@ -258,7 +258,7 @@ INT_PTR CALLBACK PluginAdmin::DialogProc(HWND window, UINT message, WPARAM w, LP
                 TabCtrl_InsertItem(self->tab, index, &item);
             }
             RECT body{}; GetClientRect(self->tab, &body); TabCtrl_AdjustRect(self->tab, FALSE, &body); MapWindowPoints(self->tab, window, reinterpret_cast<POINT*>(&body), 2);
-            self->list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS, body.left, body.top, body.right - body.left, body.bottom - body.top, window, reinterpret_cast<HMENU>(IDC_PLUGINADM_LISTVIEW), _Module.GetModuleInstance(), nullptr);
+            self->list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS, body.left, body.top, body.right - body.left, body.bottom - body.top, window, reinterpret_cast<HMENU>(IDC_PLUGINADM_LISTVIEW), GetModuleHandleW(nullptr), nullptr);
             auto font = SendMessageW(window, WM_GETFONT, 0, 0); SendMessageW(self->tab, WM_SETFONT, font, TRUE); SendMessageW(self->list, WM_SETFONT, font, TRUE);
             ListView_SetExtendedListViewStyle(self->list, LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
             auto pluginLabel = AdminText(IDS_PLUGINADM_PLUGIN), versionLabel = AdminText(IDS_PLUGINADM_VERSION);

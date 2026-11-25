@@ -1,3 +1,4 @@
+#include "ComObject.h"
 #include "SimdText.h"
 #include "FileCommands.h"
 #include "FileDialogs.h"
@@ -25,11 +26,12 @@ bool ReloadAs(MainFrame& frame, EditorDocument& document, files::Encoding encodi
 }
 void CopyText(EditorDocument& d,const std::wstring& text){auto utf8=files::ToUtf8(text);d.Send(SCI_COPYTEXT,utf8.size(),reinterpret_cast<LPARAM>(utf8.data()));}
 void CreateShortcut(const std::filesystem::path& file,const std::filesystem::path& link){
-    CComPtr<IShellLinkW> shortcut;HRESULT result=shortcut.CoCreateInstance(CLSID_ShellLink);
+    ComObject<IShellLinkW> shortcut;HRESULT result=CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(shortcut.Receive()));
     if(SUCCEEDED(result))result=shortcut->SetPath(file.c_str());
     if(SUCCEEDED(result))result=shortcut->SetWorkingDirectory(file.parent_path().c_str());
-    CComQIPtr<IPersistFile> persist(shortcut);
-    if(SUCCEEDED(result) && persist)result=persist->Save(link.c_str(),TRUE);
+    ComObject<IPersistFile> persist;
+    if (SUCCEEDED(result)) result = shortcut->QueryInterface(IID_PPV_ARGS(persist.Receive()));
+    if (SUCCEEDED(result)) result = persist->Save(link.c_str(), TRUE);
     if(FAILED(result))throw std::runtime_error("Cannot create shortcut.");
 }
 }
@@ -213,7 +215,7 @@ INT_PTR CALLBACK EolProcedure(HWND window,UINT message,WPARAM w,LPARAM l){
     if(message==WM_INITDIALOG){context=reinterpret_cast<EolWarning*>(l);SetWindowLongPtrW(window,DWLP_USER,l);
         SetDlgItemTextW(window,IDC_EOL_SUM_CRLF,(std::to_wstring(context->crlf)+L" line(s).").c_str());SetDlgItemTextW(window,IDC_EOL_SUM_CR,(std::to_wstring(context->cr)+L" line(s).").c_str());SetDlgItemTextW(window,IDC_EOL_SUM_LF,(std::to_wstring(context->lf)+L" line(s).").c_str());
         for(auto label:{L"Windows (CR+LF)",L"Classic Mac OS (CR)",L"Unix/macOS (LF)"})SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label));
-        SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_SETCURSEL,context->document.Send(SCI_GETEOLMODE),0);CheckDlgButton(window,IDC_WARNINCONSISTENTEOLS,BST_CHECKED);if(context->document.Send(SCI_GETREADONLY)){EnableWindow(GetDlgItem(window,IDOK),FALSE);EnableWindow(GetDlgItem(window,IDC_EOLMODELIST),FALSE);SetWindowTextW(window,L"Inconsistent Line Endings — Read Only");}CWindow(window).CenterWindow(GetParent(window));return TRUE;}
+        SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_SETCURSEL,context->document.Send(SCI_GETEOLMODE),0);CheckDlgButton(window,IDC_WARNINCONSISTENTEOLS,BST_CHECKED);if(context->document.Send(SCI_GETREADONLY)){EnableWindow(GetDlgItem(window,IDOK),FALSE);EnableWindow(GetDlgItem(window,IDC_EOLMODELIST),FALSE);SetWindowTextW(window,L"Inconsistent Line Endings — Read Only");}CenterWindow(window, GetParent(window));return TRUE;}
     if(!context || message!=WM_COMMAND)return FALSE;if(LOWORD(w)==IDOK&&context->document.Send(SCI_GETREADONLY))return TRUE;
     if(LOWORD(w)==IDOK||LOWORD(w)==IDCANCEL){context->always=IsDlgButtonChecked(window,IDC_WARNINCONSISTENTEOLS)!=0;
         if(LOWORD(w)==IDOK){auto mode=SendDlgItemMessageW(window,IDC_EOLMODELIST,CB_GETCURSEL,0,0);context->document.Send(SCI_CONVERTEOLS,mode);context->document.Send(SCI_SETEOLMODE,mode);}EndDialog(window,LOWORD(w));return TRUE;}return FALSE;
@@ -231,7 +233,7 @@ void InitializeFileDocument(MainFrame& frame,EditorDocument& document){
     const auto endings = simd::AnalyzeLineEndings(std::string_view(data, length));
     warning.crlf = endings.linesCount[0]; warning.cr = endings.linesCount[1]; warning.lf = endings.linesCount[2];
     if((warning.crlf!=0)+(warning.cr!=0)+(warning.lf!=0)<=1)return;
-    DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(IDD_WARNLINEENDS),frame.m_hWnd,EolProcedure,reinterpret_cast<LPARAM>(&warning));
+    DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_WARNLINEENDS),frame.m_hWnd,EolProcedure,reinterpret_cast<LPARAM>(&warning));
     frame.settings.WriteString(L"File Settings",L"WarnInconsistentEOL",warning.always?L"1":L"0");
 }
 
@@ -263,7 +265,7 @@ void ReplaceEncodingText(EditorDocument& document,const std::string& text){
     document.Send(SCI_BEGINUNDOACTION);document.Send(SCI_SETTARGETRANGE,0,document.Send(SCI_GETLENGTH));document.Send(SCI_REPLACETARGET,text.size(),reinterpret_cast<LPARAM>(text.data()));document.Send(SCI_ENDUNDOACTION);
     auto length=document.Send(SCI_GETLENGTH);document.Send(SCI_SETSEL,(std::min)(anchor,length),(std::min)(current,length));
 }
-std::wstring EncodingMessage(UINT resource){wchar_t text[4096]{};LoadStringW(_Module.GetModuleInstance(),resource,text,4096);return text;}
+std::wstring EncodingMessage(UINT resource){wchar_t text[4096]{};LoadStringW(GetModuleHandleW(nullptr),resource,text,4096);return text;}
 }
 bool SelectDocumentEncoding(MainFrame& frame,EditorDocument& document,files::Encoding encoding){
     if(document.encoding==encoding)return true;if(document.Send(SCI_GETREADONLY))return false;

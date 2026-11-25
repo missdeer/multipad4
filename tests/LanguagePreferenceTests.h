@@ -64,13 +64,13 @@ inline void RunWindowMenuTests(MainFrame& frame) {
 
     const auto language = GetThreadUILanguage();
     SetThreadUILanguage(MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED));
-    CMenu chineseMenu(LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME)));
+    UniqueMenu chineseMenu(LoadMenuW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_MAINFRAME)));
     SetThreadUILanguage(language);
-    require(chineseMenu.m_hMenu != nullptr);
-    require(menuText(chineseMenu, 0, MF_BYPOSITION) == L"文件(&F)");
-    const int position = chineseMenu.GetMenuItemCount() - 2;
-    require(menuText(chineseMenu, position, MF_BYPOSITION) == L"窗口(&W)");
-    const auto popup = GetSubMenu(chineseMenu, position);
+    require(chineseMenu != nullptr);
+    require(menuText(chineseMenu.get(), 0, MF_BYPOSITION) == L"文件(&F)");
+    const int position = GetMenuItemCount(chineseMenu.get()) - 2;
+    require(menuText(chineseMenu.get(), position, MF_BYPOSITION) == L"窗口(&W)");
+    const auto popup = GetSubMenu(chineseMenu.get(), position);
     require(menuText(popup, ID_NEXTTAB, MF_BYCOMMAND) == L"下一个标签页\tCtrl+Tab");
     require(menuText(popup, ID_WINDOW_TILE_VERT, MF_BYCOMMAND) == L"垂直平铺");
 }
@@ -150,7 +150,7 @@ inline void RunLanguagePreferenceTests(MainFrame& frame) {
     auto inspectPrompt = [&](HWND dialog) {
         require(GetDlgItem(dialog, IDYES) && GetDlgItem(dialog, IDNO) && GetDlgItem(dialog, IDCANCEL));
         wchar_t expected[1024]{}, actual[1024]{};
-        require(LoadStringW(_Module.GetModuleInstance(), IDS_CHANGE_LANG_RESTART, expected, _countof(expected)) > 0);
+        require(LoadStringW(GetModuleHandleW(nullptr), IDS_CHANGE_LANG_RESTART, expected, _countof(expected)) > 0);
         GetDlgItemTextW(dialog, 0xFFFF, actual, _countof(actual));
         require(std::wstring(actual) == expected);
         unchanged(); // No preference changes before an answer is accepted.

@@ -13,13 +13,140 @@
 #include "InfoDialog.h"
 #include "Session.h"
 #include "AutoSave.h"
+
+HWND MainFrame::Create(const RECT& position, HINSTANCE instance) {
+    constexpr auto name = L"MultiPad4.MainFrame";
+    WNDCLASSEXW type{sizeof(type)};
+    type.lpfnWndProc = WindowProcedure;
+    type.hInstance = instance;
+    type.lpszClassName = name;
+    type.lpszClassName = name;
+    type.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(IDR_MAINFRAME));
+    type.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    type.hbrBackground = GetSysColorBrush(COLOR_APPWORKSPACE);
+    if (!RegisterClassExW(&type) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return nullptr;
+    const HMENU menu = LoadMenuW(instance, MAKEINTRESOURCEW(IDR_MAINFRAME));
+    if (!menu) return nullptr;
+    const HWND window = CreateWindowExW(0, name, L"MultiPad4",
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, position.left, position.top,
+        position.right - position.left, position.bottom - position.top, nullptr, menu, instance, this);
+    if (!window && ::IsMenu(menu)) DestroyMenu(menu);
+    return window;
+}
+
+LRESULT CALLBACK MainFrame::WindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
+    auto* frame = reinterpret_cast<MainFrame*>(GetWindowLongPtrW(window, GWLP_USERDATA));
+    if (message == WM_NCCREATE) {
+        frame = static_cast<MainFrame*>(reinterpret_cast<CREATESTRUCTW*>(l)->lpCreateParams);
+        frame->m_hWnd = window;
+        SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(frame));
+    }
+    if (!frame) return DefWindowProcW(window, message, w, l);
+    BOOL handled = TRUE;
+    const auto result = frame->Dispatch(message, w, l, handled);
+    if (handled) return result;
+    if (message == WM_SIZE) {
+        if (w != SIZE_MINIMIZED) frame->UpdateLayout();
+        return 0;
+    }
+    const auto defaultResult = DefFrameProcW(window, frame->m_hWndMDIClient, message, w, l);
+    if (message == WM_NCDESTROY) {
+        SetWindowLongPtrW(window, GWLP_USERDATA, 0);
+        frame->m_hWnd = nullptr;
+    }
+    return defaultResult;
+}
+
+HWND MainFrame::MDIGetActive(BOOL* maximized) const {
+    return reinterpret_cast<HWND>(::SendMessageW(m_hWndMDIClient, WM_MDIGETACTIVE, 0, reinterpret_cast<LPARAM>(maximized)));
+}
+void MainFrame::MDIMaximize(HWND child) {
+    ::SendMessageW(m_hWndMDIClient, WM_MDIMAXIMIZE, reinterpret_cast<WPARAM>(child), 0);
+}
+void MainFrame::MDIRestore(HWND child) {
+    ::SendMessageW(m_hWndMDIClient, WM_MDIRESTORE, reinterpret_cast<WPARAM>(child), 0);
+}
+LRESULT MainFrame::Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
+    if (message >= NPPMSG && message <= NPPMSG + 999) return OnPluginMessage(message, w, l, handled);
+    if (message >= RUNCOMMAND_USER && message <= RUNCOMMAND_USER + 100) return OnPluginMessage(message, w, l, handled);
+    switch (message) {
+    case WM_APP + 0x120: return OnPluginNotify(message, w, l, handled);
+    case WM_CREATE: return OnCreate(message, w, l, handled);
+    case WM_CLOSE: return OnClose(message, w, l, handled);
+    case WM_DESTROY: return OnDestroy(message, w, l, handled);
+    case WM_DROPFILES: return OnDrop(message, w, l, handled);
+    case WM_DOCUMENT_CHANGED: return OnChanged(message, w, l, handled);
+    case WM_CLOSE_TAB: return OnCloseTab(message, w, l, handled);
+    case WM_TAB_CONTEXT: return OnTabContextMenu(message, w, l, handled);
+    case WM_TAB_ACTIVATED: return OnTabActivated(message, w, l, handled);
+    case WM_DOCK_LAYOUT: return OnDockLayout(message, w, l, handled);
+    case WM_INITMENUPOPUP: return OnMenu(message, w, l, handled);
+    case WM_DPICHANGED: return OnDpi(message, w, l, handled);
+    case WM_SIZE: return OnSize(message, w, l, handled);
+    case WM_NOTIFY: return OnNotify(message, w, l, handled);
+    case WM_TIMER: return OnTimer(message, w, l, handled);
+    case WM_FILE_CHANGE: return OnFileChange(message, w, l, handled);
+    case WM_ENABLE: return OnWatchEnable(message, w, l, handled);
+    case WM_ACTIVATEAPP: return OnActivateApp(message, w, l, handled);
+    case WM_POWERBROADCAST: return OnPower(message, w, l, handled);
+    case WM_QUERYENDSESSION: return OnQueryEndSession(message, w, l, handled);
+    case WM_ENDSESSION: return OnEndSession(message, w, l, handled);
+    case WM_APP + 0x103: return OnTray(message, w, l, handled);
+    case WM_APP + 0x104: return OnDeferredCommand(message, w, l, handled);
+    case WM_CLIPBOARDUPDATE: return OnClipboardUpdate(message, w, l, handled);
+    case WM_COPYDATA: return OnCopyData(message, w, l, handled);
+    case WM_CONTEXTMENU: return OnContextMenu(message, w, l, handled);
+    case WM_MENUSELECT: return OnMenuSelect(message, w, l, handled);
+    case WM_COMMAND: {
+        const WORD id = LOWORD(w), code = HIWORD(w);
+        const auto control = reinterpret_cast<HWND>(l);
+        if (id == IDM_SETTING_PLUGINADM) return OnPluginAdmin(code, id, control, handled);
+        if (id == IDM_SETTING_OPENPLUGINSDIR) return OnPluginAdmin(code, id, control, handled);
+        if (id >= 46000 && id <= 55999) return OnPluginCommand(code, id, control, handled);
+        if (id == ID_WINDOW_CASCADE) return OnArrangeMDI(code, id, control, handled);
+        if (id == ID_WINDOW_TILE_HORZ) return OnArrangeMDI(code, id, control, handled);
+        if (id == ID_WINDOW_TILE_VERT) return OnArrangeMDI(code, id, control, handled);
+        if (id == ID_WINDOW_ARRANGE) return OnArrangeMDI(code, id, control, handled);
+        if (id >= 40000 && id <= 45999) return OnCommand(code, id, control, handled);
+        break;
+    }
+    }
+    handled = FALSE;
+    return 0;
+}
+
 BOOL MainFrame::PreTranslateMessage(MSG* msg) {
+    if (msg->message == WM_KEYDOWN && msg->wParam == VK_ESCAPE) {
+        if (HWND pane = GetCapture(); pane && GetPropW(pane, dockPlacementProperty)) {
+            // Undocking during a drag can move keyboard focus away from the pane.
+            msg->hwnd = pane;
+            return FALSE;
+        }
+    }
     if (pluginAdmin.hwnd && ::IsWindowVisible(pluginAdmin.hwnd) && ::IsDialogMessageW(pluginAdmin.hwnd, msg)) return TRUE;
     if (plugins.PreTranslate(msg)) return TRUE;
     if (searchResults.PreTranslateMessage(msg)) return TRUE;
     if (searchDialog.PreTranslateMessage(msg)) return TRUE;
     if (mdiAccelerators && ::TranslateAcceleratorW(m_hWnd, mdiAccelerators, msg)) return TRUE;
-    return MainFrameBase::PreTranslateMessage(msg);
+    if (editorAccelerators && ::TranslateAcceleratorW(m_hWnd, editorAccelerators, msg)) return TRUE;
+    return TranslateMDISysAccel(m_hWndMDIClient, msg);
+}
+void MainFrame::UpdateLayout(BOOL resizeBars) {
+    RECT area{};
+    GetClientRect(&area);
+    auto barHeight = [resizeBars](HWND bar) -> LONG {
+        if (!bar || !(GetWindowLongPtrW(bar, GWL_STYLE) & WS_VISIBLE)) return 0;
+        if (resizeBars) ::SendMessageW(bar, WM_SIZE, 0, 0);
+        RECT rect{};
+        ::GetWindowRect(bar, &rect);
+        return rect.bottom - rect.top;
+    };
+    area.top = std::min(area.bottom, barHeight(m_hWndToolBar));
+    area.bottom = std::max(area.top, area.bottom - barHeight(m_hWndStatusBar));
+    LayoutDockPanes(m_hWnd, area);
+    if (tabStrip.LayoutWindow())
+        ::SetWindowPos(tabStrip.LayoutWindow(), nullptr, area.left, area.top, area.right - area.left, area.bottom - area.top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
 }
 EditorDocument* MainFrame::Active() {
     int i = tabs.GetActivePage();
@@ -31,6 +158,7 @@ void MainFrame::Error(const std::exception& error) {
 }
 LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     CreateUpstreamUI();
+    editorAccelerators = LoadAcceleratorsW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_MAINWND));
     HMENU searchMenu = GetSubMenu(GetMenu(), 2);
     AppendMenuW(searchMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(searchMenu, MF_STRING, ID_SEARCH_FILES, L"Find in Files...\tCtrl+Shift+F");
@@ -39,19 +167,20 @@ LRESULT MainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     auto schemeMenu = GetSubMenu(GetMenu(), 3);
     AppendMenuW(schemeMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(schemeMenu, MF_STRING, ID_RELOAD_CONFIGURATION, L"Reload language configuration");
-    InitializeDockingFrame();
-    SetTabOwnerParent(m_hWnd);
     // The localized main menu places Window immediately before Help.
     windowMenu = GetSubMenu(GetMenu(), GetMenuItemCount(GetMenu()) - 2);
-    CreateMDIClient(windowMenu);
-    m_tabbedClient.HideMDITabsWhenMDIChildNotMaximized(FALSE);
-    tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &GetMDITabCtrl();
+    CLIENTCREATESTRUCT client{windowMenu, 0xFF00};
+    m_hWndMDIClient = CreateWindowExW(0, L"MDICLIENT", nullptr,
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | MDIS_ALLCHILDSTYLES,
+        0, 0, 0, 0, m_hWnd, nullptr, GetModuleHandleW(nullptr), &client);
+    if (!m_hWndMDIClient || !tabStrip.Create(m_hWnd, m_hWndMDIClient)) return -1;
+    tabs.owner = m_hWnd; tabs.m_hWnd = m_hWndMDIClient; tabs.control = &tabStrip;
+    UpdateLayout();
     searchResults.CreatePane(*this);
     InitializeFramePreferences(*this);
     ApplyTabTitleFont();
     ApplyTabWidth();
     DragAcceptFiles(TRUE);
-    _Module.GetMessageLoop()->AddMessageFilter(this);
     SetTimer(1, 1000);
     AddClipboardFormatListener(m_hWnd);
     plugins.Initialize(*this);
@@ -102,10 +231,13 @@ bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::En
 bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
     auto path = document.path;
     if (mode != SaveMode::Normal || path.empty()) {
-        CFileDialog dialog(FALSE, L"txt", path.empty() ? nullptr : path.c_str(),
-            OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR, L"所有文件 (*.*)\0*.*\0\0", m_hWnd);
-        if (dialog.DoModal() != IDOK) return false;
-        path = dialog.m_szFileName;
+        wchar_t file[32768]{};
+        if (path.native().size() >= _countof(file)) return false;
+        wcscpy_s(file, path.c_str());
+        auto dialog = FileDialogOptions(m_hWnd, file, _countof(file),
+            OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR, L"所有文件 (*.*)\0*.*\0\0", L"txt");
+        if (!GetSaveFileNameW(&dialog)) return false;
+        path = file;
     }
     return SaveTo(document, path, mode == SaveMode::Copy, keepBackup);
 }
@@ -307,7 +439,7 @@ void MainFrame::Refresh() {
         }
         title = name + L" — MultiPad4";
     }
-    SetWindowText(title.c_str());
+    SetWindowTextW(m_hWnd, title.c_str());
     UpdateStatus(); UpdateMenuCommands(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu()); UpdateCommandUI();
 }
 void MainFrame::ShowSearch(bool replace) {
@@ -371,11 +503,10 @@ LRESULT MainFrame::OnCommand(WORD, WORD input, HWND, BOOL&) {
     switch (id) {
     case ID_NEW: NewDocument(); break;
     case ID_OPEN: {
-        wchar_t buffer[32768]{}; CFileDialog dialog(TRUE, nullptr, nullptr,
-            OFN_FILEMUSTEXIST | OFN_EXPLORER | OFN_ALLOWMULTISELECT | OFN_NOCHANGEDIR,
-            L"源代码与文本 (*.*)\0*.*\0\0", m_hWnd);
-        dialog.m_ofn.lpstrFile = buffer; dialog.m_ofn.nMaxFile = _countof(buffer);
-        if (dialog.DoModal() == IDOK) {
+        wchar_t buffer[32768]{};
+        auto dialog = FileDialogOptions(m_hWnd, buffer, _countof(buffer),
+            OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_NOCHANGEDIR, L"源代码与文本 (*.*)\0*.*\0\0");
+        if (GetOpenFileNameW(&dialog)) {
             std::filesystem::path first = buffer; const wchar_t* p = buffer + wcslen(buffer) + 1;
             if (!*p) Open(first);
             else for (; *p; p += wcslen(p) + 1) Open(first / p);
@@ -457,7 +588,7 @@ LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
     searchDialog.Close();
     if (toolbarDisabledImages) { ImageList_Destroy(toolbarDisabledImages); toolbarDisabledImages = nullptr; }
     if (toolbarImages) { ImageList_Destroy(toolbarImages); toolbarImages = nullptr; }
-    _Module.GetMessageLoop()->RemoveMessageFilter(this); PostQuitMessage(0); handled = FALSE; return 0;
+    PostQuitMessage(0); handled = FALSE; return 0;
 }
 LRESULT MainFrame::OnDrop(UINT, WPARAM w, LPARAM, BOOL&) {
     HDROP drop = reinterpret_cast<HDROP>(w); UINT n = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
@@ -506,15 +637,14 @@ void MainFrame::ApplyTabTitleFont() {
     wchar_t* end = nullptr;
     const auto points = wcstol(size.c_str(), &end, 10);
     GetMDITabCtrl().SetTitleFont(settings.ReadString(L"Tab Bar", L"Font"), end == size.data() + size.size() ? points : 0);
-    m_tabbedClient.GetTabOwner().CalcTabAreaHeight();
     UpdateLayout();
 }
 int MainFrame::TabWidthPreference() const {
     const auto text = settings.ReadString(L"Tab Bar", L"Width");
     wchar_t* end = nullptr;
     const auto width = wcstol(text.c_str(), &end, 10);
-    return end == text.data() + text.size() && width >= EditorTabCtrl::minTabWidth && width <= EditorTabCtrl::maxTabWidth
-        ? static_cast<int>(width) : EditorTabCtrl::defaultTabWidth;
+    return end == text.data() + text.size() && width >= DocumentTabStrip::minTabWidth && width <= DocumentTabStrip::maxTabWidth
+        ? static_cast<int>(width) : DocumentTabStrip::defaultTabWidth;
 }
 void MainFrame::ApplyTabWidth() {
     GetMDITabCtrl().SetFixedTabWidth(settings.ReadString(L"Tab Bar", L"FixedWidth") == L"1" ? TabWidthPreference() : 0);
@@ -522,10 +652,11 @@ void MainFrame::ApplyTabWidth() {
 LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     auto* r = reinterpret_cast<RECT*>(l);
     SetWindowPos(nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
-    if (GetMDITabCtrl().HasTitleFont()) ApplyTabTitleFont();
-    if (GetMDITabCtrl().HasFixedTabWidth()) ApplyTabWidth();
+    ApplyTabTitleFont();
+    ApplyTabWidth();
     for (auto& d : documents) if (d->Send(SCI_GETMARGINWIDTHN, 0)) d->Send(SCI_SETMARGINWIDTHN, 0, MulDiv(54, GetDpiForWindow(m_hWnd), 96));
     for (auto& child : tabs.children) child->UpdateFileIcon();
+    tabStrip.UpdateImages();
     UpdateToolbarImages(*this);
     return 0;
 }

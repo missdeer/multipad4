@@ -61,7 +61,7 @@ python tools/inventory_lexer_baseline.py
 未知样式资源、重复身份、错误名称长度、关键词属性宽度溢出及运行时缓冲区
 已修改都会拒绝导出。清单校验还会在上游结构增加字段而导出器尚未覆盖时失败。
 
-`--check-lexer-baseline FILE` 通过真实 WTL/Scintilla 窗口执行比较，使用临时设置，
+`--check-lexer-baseline FILE` 通过真实 Win32/Scintilla 窗口执行比较，使用临时设置，
 禁用插件并跳过单实例复用，不读写用户持久首选项。测试交替配置两个文档，
 验证样式/折叠/补全不串扰，并验证文档样式覆盖和后台编辑不会影响另一文档。
 现有 smoke tests 继续负责会话恢复、INI、补全交互及设置取消行为。

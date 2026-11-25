@@ -25,7 +25,7 @@ UINT_PTR CALLBACK SetupHook(HWND window,UINT message,WPARAM w,LPARAM){
     if(message==WM_INITDIALOG){
         for(int zoom:{50,75,100,125,150,175,200,250,300,400,500}){auto text=std::to_wstring(zoom);SendDlgItemMessageW(window,IDC_PAGESETUP_ZOOMLEVEL,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(text.c_str()));}
         SetDlgItemInt(window,IDC_PAGESETUP_ZOOMLEVEL,preferences.zoom,FALSE);
-        auto list=[&](UINT control,UINT resource,int selected){wchar_t text[1024]{};LoadStringW(_Module.GetModuleInstance(),resource,text,1024);std::wstring labels=text;size_t start=0,end=0;while(start<labels.size()){end=labels.find(L'|',start);auto label=labels.substr(start,end==std::wstring::npos?end:end-start);if(!label.empty())SendDlgItemMessageW(window,control,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));if(end==std::wstring::npos)break;start=end+1;}SendDlgItemMessageW(window,control,CB_SETCURSEL,selected,0);};
+        auto list=[&](UINT control,UINT resource,int selected){wchar_t text[1024]{};LoadStringW(GetModuleHandleW(nullptr),resource,text,1024);std::wstring labels=text;size_t start=0,end=0;while(start<labels.size()){end=labels.find(L'|',start);auto label=labels.substr(start,end==std::wstring::npos?end:end-start);if(!label.empty())SendDlgItemMessageW(window,control,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));if(end==std::wstring::npos)break;start=end+1;}SendDlgItemMessageW(window,control,CB_SETCURSEL,selected,0);};
         list(IDC_PAGESETUP_HEADER_LIST,IDS_PRINT_HEADER,preferences.header);list(IDC_PAGESETUP_FOOTER_LIST,IDS_PRINT_FOOTER,preferences.footer);list(IDC_PAGESETUP_COLOR_MODE_LIST,IDS_PRINT_COLOR,preferences.color);
     }
     if(message==WM_COMMAND && LOWORD(w)==IDOK){BOOL valid=FALSE;auto zoom=GetDlgItemInt(window,IDC_PAGESETUP_ZOOMLEVEL,&valid,FALSE);preferences.zoom=valid?(std::clamp)(static_cast<int>(zoom),10,500):100;
@@ -37,7 +37,7 @@ PrintPreferences CurrentPrintPreferences() { return preferences; }
 UINT_PTR CALLBACK PrintSetupHook(HWND window, UINT message, WPARAM w, LPARAM l) { return SetupHook(window,message,w,l); }
 void ConfigurePrinting(HWND owner, AppSettings* settings) {
     PreferencesIO(settings,false);auto savedPreferences=preferences;auto savedMargins=setup.rtMargin;
-    setup.hwndOwner=owner;setup.hInstance=_Module.GetModuleInstance();
+    setup.hwndOwner=owner;setup.hInstance=GetModuleHandleW(nullptr);
     setup.Flags=PSD_MARGINS|PSD_INHUNDREDTHSOFMILLIMETERS|PSD_ENABLEPAGESETUPHOOK|PSD_ENABLEPAGESETUPTEMPLATE;
     setup.lpPageSetupTemplateName=MAKEINTRESOURCEW(IDD_PAGESETUP);setup.lpfnPageSetupHook=SetupHook;
     if(!setup.rtMargin.left && !setup.rtMargin.right)setup.rtMargin={1500,1500,1500,1500};

@@ -2,8 +2,6 @@
 #include "MenuStrings.h"
 #include "../DockPaneState.h"
 #include <memory>
-#include <DockImpl.cpp>
-WTL::CAppModule _Module;
 namespace {
 HINSTANCE instance = nullptr;
 NppData host{};
@@ -13,7 +11,7 @@ std::filesystem::path configPath;
 void Start() {
     if (pane || !initialized) return;
     pane = std::make_unique<DockHost>();
-    pane->Create(host._nppHandle);
+    pane->Create(host._nppHandle, instance);
     if (!pane->pane.IsWindow()) pane.reset();
     if (pane) {
         if (!pluginLayout::Restore(configPath, L"OpenDocuments", pane->pane, host._nppHandle, pane->visible))
@@ -25,14 +23,13 @@ void Stop() {
     if (pane) {
         if (pane->pane.IsWindow()) {
             pluginLayout::Save(configPath, L"OpenDocuments", pane->pane, pane->visible);
-            if (pane->pane.IsDocking()) pane->pane.Undock();
             pane->pane.DestroyWindow();
         }
         pane.reset();
     }
     if (initialized) {
         UnregisterClassW(L"MultiPad4.OpenDocumentsPane", instance);
-        _Module.Term(); initialized = false;
+        initialized = false;
     }
 }
 void Toggle() { if (pane) pane->Toggle(); else { Start(); if (pane && !pane->visible) pane->Toggle(); } }
@@ -49,7 +46,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
 extern "C" __declspec(dllexport) BOOL isUnicode() { return TRUE; }
 extern "C" __declspec(dllexport) const wchar_t* getName() { return L"OpenDocuments"; }
 extern "C" __declspec(dllexport) void setInfo(NppData data) {
-    host = data; initialized = SUCCEEDED(_Module.Init(nullptr, instance));
+    host = data; initialized = instance != nullptr;
     configPath = pluginLayout::ConfigPath(host._nppHandle, L"OpenDocuments.ini");
 }
 extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count) {

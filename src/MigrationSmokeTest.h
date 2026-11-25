@@ -13,10 +13,10 @@ inline void RunMigrationSmokeTest(MainFrame& frame) {
         IDD_FAVORITES, IDD_ADDTOFAV, IDD_COLUMNWRAP, IDD_MODIFYLINES, IDD_INSERTTAG, IDD_ENCLOSESELECTION,
         IDD_INFOBOX, IDD_SORT, IDD_SELECT_ENCODING, IDD_ALIGN, IDD_ZOOMLEVEL, IDD_AUTOCOMPLETION,
         IDD_AUTOSAVE, IDD_CSV_OPTIONS})
-        require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(id), RT_DIALOG) != nullptr);
-    require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_FIND), RT_DIALOG) == nullptr);
-    require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_REPLACE), RT_DIALOG) == nullptr);
-    require(FindResourceW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_STYLECONFIG), RT_DIALOG) == nullptr);
+        require(FindResourceW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(id), RT_DIALOG) != nullptr);
+    require(FindResourceW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_FIND), RT_DIALOG) == nullptr);
+    require(FindResourceW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_REPLACE), RT_DIALOG) == nullptr);
+    require(FindResourceW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_STYLECONFIG), RT_DIALOG) == nullptr);
     require(ImageList_GetImageCount(frame.toolbarImages) == 27);
     require(::SendMessageW(frame.m_hWndToolBar, TB_COMMANDTOINDEX, IDT_FILE_SAVE, 0) >= 0);
     require(GetMenuState(frame.GetMenu(), IDM_EDIT_REPLACE, MF_BYCOMMAND) != static_cast<UINT>(-1));

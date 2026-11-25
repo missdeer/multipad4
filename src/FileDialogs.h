@@ -2,6 +2,8 @@
 #include "App.h"
 #include "FileIO.h"
 class MainFrame;
+OPENFILENAMEW FileDialogOptions(HWND owner, wchar_t* file, DWORD capacity, DWORD flags,
+    const wchar_t* filter, const wchar_t* extension = nullptr);
 bool SelectFileEncoding(HWND owner, files::Encoding& encoding);
 bool RunFileDialog(MainFrame& frame);
 bool OpenWithFileDialog(MainFrame& frame);

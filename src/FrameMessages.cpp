@@ -95,9 +95,9 @@ LRESULT MainFrame::OnTabContextMenu(UINT, WPARAM target, LPARAM coordinates, BOO
     const int anchor = findAnchor();
     if (anchor < 0) return 0;
 
-    CMenu root(LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_TAB_POPUP)));
+    UniqueMenu root(LoadMenuW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_TAB_POPUP)));
     if (!root) return 0;
-    const HMENU menu = ::GetSubMenu(root, 0);
+    const HMENU menu = ::GetSubMenu(root.get(), 0);
     if (anchor == 0) EnableMenuItem(menu, ID_CLOSE_LEFT_TABS, MF_BYCOMMAND | MF_GRAYED);
     if (anchor == tabs.GetPageCount() - 1) EnableMenuItem(menu, ID_CLOSE_RIGHT_TABS, MF_BYCOMMAND | MF_GRAYED);
     if (tabs.GetPageCount() == 1) EnableMenuItem(menu, ID_CLOSE_OTHER_TABS, MF_BYCOMMAND | MF_GRAYED);
@@ -118,7 +118,7 @@ LRESULT MainFrame::OnContextMenu(UINT, WPARAM source, LPARAM coordinates, BOOL&)
         auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
         if (d && (target == d->hwnd || ::IsChild(d->hwnd, target))) { tabs.SetActivePage(i); popup = 0; break; }
     }
-    HMENU root = LoadMenuW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDR_POPUPMENU));
+    HMENU root = LoadMenuW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDR_POPUPMENU));
     HMENU menu = GetSubMenu(root, popup); UpdateCommandUI();
     UpdateMenuCommands(*this, menu);
     if (popup == 0) plugins.PopulateEditorContextMenu(menu);
@@ -139,7 +139,7 @@ LRESULT MainFrame::OnMenuSelect(UINT, WPARAM w, LPARAM, BOOL&) {
         ::SendMessageW(m_hWndStatusBar, SB_SIMPLE, FALSE, 0); return 0;
     }
     wchar_t help[512]{};
-    if (LoadStringW(_Module.GetModuleInstance(), LOWORD(w), help, _countof(help))) {
+    if (LoadStringW(GetModuleHandleW(nullptr), LOWORD(w), help, _countof(help))) {
         ::SendMessageW(m_hWndStatusBar, SB_SIMPLE, TRUE, 0);
         ::SendMessageW(m_hWndStatusBar, SB_SETTEXTW, 255 | SBT_NOBORDERS, reinterpret_cast<LPARAM>(help));
     }

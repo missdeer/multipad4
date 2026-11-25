@@ -49,7 +49,7 @@ INT_PTR CALLBACK Procedure(HWND window, UINT message, WPARAM w, LPARAM) {
             CheckTokenMembership(nullptr, sid, &administrator); FreeSid(sid);
         }
         EnableWindow(GetDlgItem(window, IDC_REPLACE_WINDOWS_NOTEPAD), administrator);
-        CWindow(window).CenterWindow(GetParent(window)); return TRUE;
+        CenterWindow(window, GetParent(window)); return TRUE;
     }
     if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { EndDialog(window, IDCANCEL); return TRUE; }
     if (message != WM_COMMAND || LOWORD(w) != IDOK) return FALSE;
@@ -136,5 +136,5 @@ LSTATUS ApplyNotepadReplacement(HKEY hive, const wchar_t* path, const std::wstri
 }
 
 void ShowSystemIntegration(HWND owner) {
-    DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_SYSTEM_INTEGRATION), owner, Procedure, 0);
+    DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_SYSTEM_INTEGRATION), owner, Procedure, 0);
 }

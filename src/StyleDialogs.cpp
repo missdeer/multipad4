@@ -11,7 +11,7 @@ int globalTabWidth=4,globalIndentWidth=4;bool globalSpaces=false;
 std::map<int,std::array<int,3>> schemeTabs;
 std::wstring Text(HWND window,int id){auto control=GetDlgItem(window,id);int n=GetWindowTextLengthW(control);std::wstring s(n+1,L'\0');GetWindowTextW(control,s.data(),n+1);s.resize(n);return s;}
 void ComboResource(HWND window,int id,UINT resource,int selection){
-    wchar_t labels[4096]{};LoadStringW(_Module.GetModuleInstance(),resource,labels,4096);std::wistringstream stream(labels);std::wstring item;
+    wchar_t labels[4096]{};LoadStringW(GetModuleHandleW(nullptr),resource,labels,4096);std::wistringstream stream(labels);std::wstring item;
     while(std::getline(stream,item,L'|'))if(!item.empty())SendDlgItemMessageW(window,id,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(item.c_str()));
     SendDlgItemMessageW(window,id,CB_SETCURSEL,selection,0);
 }
@@ -50,7 +50,7 @@ INT_PTR CALLBACK Procedure(HWND window,UINT message,WPARAM w,LPARAM l){
             CheckRadioButton(window,IDC_CSV_QUALIFIER_DOUBLE,IDC_CSV_QUALIFIER_NONE,((option>>8)&127)=='"'?IDC_CSV_QUALIFIER_DOUBLE:((option>>8)&127)=='\''?IDC_CSV_QUALIFIER_SINGLE:IDC_CSV_QUALIFIER_NONE);
             Check(window,IDC_CSV_BACKSLASH_ESCAPE,(option&(1<<15))!=0);Check(window,IDC_CSV_MERGE_DELIMITER,(option&(1<<16))!=0);
         }
-        CWindow(window).CenterWindow(GetParent(window));return TRUE;
+        CenterWindow(window, GetParent(window));return TRUE;
     }
     if(!c)return FALSE;
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(w)==IDCANCEL)){EndDialog(window,IDCANCEL);return TRUE;}
@@ -102,7 +102,7 @@ void ApplyStyleTabSettings(EditorDocument& d,int scheme,int defaultWidth,int def
     d.style.tabWidth=current[0];d.style.indentWidth=current[1];d.style.tabsAsSpaces=current[2]!=0;
     d.Send(SCI_SETTABWIDTH,current[0]);d.Send(SCI_SETINDENT,current[1]);d.Send(SCI_SETUSETABS,!current[2]);
 }
-INT_PTR ShowStyleSettingsDialog(HWND owner,EditorDocument& document,UINT resource){Context context{document,resource};return DialogBoxParamW(_Module.GetModuleInstance(),MAKEINTRESOURCEW(resource),owner,Procedure,reinterpret_cast<LPARAM>(&context));}
+INT_PTR ShowStyleSettingsDialog(HWND owner,EditorDocument& document,UINT resource){Context context{document,resource};return DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(resource),owner,Procedure,reinterpret_cast<LPARAM>(&context));}
 void LoadStyleDialogPreferences(const std::filesystem::path& path){
     globalTabWidth=std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Tabs",L"Width",4,path.c_str())),1,256);
     globalIndentWidth=std::clamp(static_cast<int>(GetPrivateProfileIntW(L"Tabs",L"Indent",4,path.c_str())),0,256);

@@ -147,7 +147,7 @@ inline void RunPluginFeatureTests(MainFrame& frame) {
     require(::IsWindowVisible(panel->client), "restore plugin panel");
     panel->SendMessage(WM_CLOSE);
     require(!::IsWindowVisible(panel->client), "close plugin panel");
-    RunRepeatedDockRegistrationTests(frame);
+    RunDockLayoutTests(frame);
     for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == first) frame.tabs.SetActivePage(i);
     frame.Refresh(); first->Send(SCI_SELECTALL); command(L"mimeTools.dll", L"Base64 Encode with padding");
     require(first->Text() == "aXNvbGF0ZWQ=", "cached Scintilla handle follows active MDI tab");

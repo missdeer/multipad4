@@ -72,7 +72,7 @@ void FastFileView::RestoreSelection(large::Selection selection) {
 void FastFileView::Attach() {
     HWND parent = GetParent(document.hwnd);
     if (document.fastView) parent = GetParent(document.fastView->Window());
-    WNDCLASSW cls{}; cls.lpfnWndProc = WindowProc; cls.hInstance = _Module.GetModuleInstance();
+    WNDCLASSW cls{}; cls.lpfnWndProc = WindowProc; cls.hInstance = GetModuleHandleW(nullptr);
     cls.lpszClassName = L"MultiPad4.FastFileView"; cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     RegisterClassW(&cls);
     window = CreateWindowExW(0, cls.lpszClassName, nullptr, WS_CHILD | WS_CLIPCHILDREN | WS_VSCROLL,

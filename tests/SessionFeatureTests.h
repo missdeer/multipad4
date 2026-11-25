@@ -149,7 +149,7 @@ inline void RunExitSessionTests(MainFrame& frame, const std::filesystem::path& d
     frame.exitSessionEligible = true;
     auto cleanup = [&] {
         while (frame.tabs.GetPageCount()) frame.Close(frame.tabs.GetPageCount() - 1, false);
-        frame.exitSessionLock.Close();
+        frame.exitSessionLock.reset();
         frame.exitSessionEligible = false;
         frame.settings = settings;
         frame.untitledCount = untitledCount;

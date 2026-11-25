@@ -105,7 +105,11 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
         SendMessageW(pane, action, 0, 0);
         VerifyPaneLayoutMembership(frame, pane, side != 4);
     }
-    frame.UpdateLayout(); CaptureQAWindow(frame, L"Matepath-plugin-docked");
+    frame.UpdateLayout();
+    RECT dockedRect{}, mdiRect{}, overlap{};
+    require(GetWindowRect(pane, &dockedRect) && GetWindowRect(frame.m_hWndMDIClient, &mdiRect));
+    require(!IntersectRect(&overlap, &dockedRect, &mdiRect));
+    CaptureQAWindow(frame, L"Matepath-plugin-docked");
     SendMessageW(pane, action, 4, 0); CaptureQAWindow(pane, L"Matepath-plugin-floating");
     SendMessageW(pane, action, 2, 0);
     require(frame.Close(frame.tabs.GetActivePage()));

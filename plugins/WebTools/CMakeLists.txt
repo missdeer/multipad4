@@ -4,9 +4,6 @@ add_library(WebTools SHARED Plugin.cpp EditCodeFormat.cpp ../EditExpression.cpp
 target_include_directories(WebTools PRIVATE
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")
-if(MINGW)
-  target_include_directories(WebTools PRIVATE "${OPENATL_COMPAT_DIR}")
-endif()
 target_compile_options(WebTools PRIVATE ${MULTIPAD4_WARNINGS})
 target_link_libraries(WebTools PRIVATE multipad_files ole32 oleaut32 uuid)
 set_target_properties(WebTools PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/plugins/WebTools/$<0:>")

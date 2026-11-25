@@ -2,11 +2,11 @@
 
 ## Project Structure & Module Organization
 
-MultiPad4 is a Windows-only, tabbed MDI editor built with C++20, WTL, and Scintilla. `src/` contains the application, document model, file I/O, Win32 resources, and manifest. `tests/FileIOTests.cpp` covers file handling; `src/SmokeTest.h` provides editor integration checks. `3rdparty/` holds pinned upstream frameworks, notepad4 sources/assets, and Scintilla. `cmake/` contains build integration and compatibility transforms. `docs/PROJECT_SCOPE.md` defines migration requirements; `tools/inventory_notepad4.py` regenerates the UI inventory. Treat `cmake-msvc-build/` and `tmp/` as local generated directories.
+MultiPad4 is a Windows-only, tabbed MDI editor built with C++20, Win32, and Scintilla. `src/` contains the application, document model, file I/O, Win32 resources, and manifest. `tests/FileIOTests.cpp` covers file handling; `src/SmokeTest.h` provides editor integration checks. `3rdparty/` holds pinned notepad4, Scintilla, matepath and other third-party sources. `cmake/` contains build integration and compatibility transforms. `docs/PROJECT_SCOPE.md` defines migration requirements; `tools/inventory_notepad4.py` regenerates the UI inventory. Treat `cmake-msvc-build/` and `tmp/` as local generated directories.
 
 ## Build, Test, and Development Commands
 
-Install Windows 10/11, VS 2022 C++ desktop tools with ATL and Windows SDK, CMake 3.25+, and Ninja. Qt and MFC are unnecessary. From the repository root, create `cmake-msvc-build/` if absent, then use the existing local MSVC wrappers:
+Install Windows 10/11, VS 2022 C++ desktop tools with the Windows SDK, CMake 3.25+, and Ninja. Qt and MFC are unnecessary. From the repository root, create `cmake-msvc-build/` if absent, then use the existing local MSVC wrappers:
 
 ```powershell
 bash -lc "cmake-reconfigure cmake-msvc-build"
@@ -32,4 +32,4 @@ Git history is unavailable in this checkout, so no existing message convention c
 
 ## Architecture & Upstream Boundaries
 
-Follow `docs/PROJECT_SCOPE.md`: keep document state isolated and use the established MDI/tabbing/docking frameworks. Preserve vendored framework sources; implement MSVC compatibility changes in `cmake/FrameworkCompatibility.cmake`. Consult `THIRD_PARTY.md` for provenance/licenses. Resource inventory entries alone do not demonstrate implemented notepad4 functionality.
+Follow `docs/PROJECT_SCOPE.md`: keep document state isolated and use Win32 for MDI, tabs and docking. Preserve third-party notices when adapting imported sources. Consult `THIRD_PARTY.md` for provenance/licenses. Resource inventory entries alone do not demonstrate implemented notepad4 functionality.

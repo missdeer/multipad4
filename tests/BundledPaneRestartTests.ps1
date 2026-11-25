@@ -94,8 +94,7 @@ try {
                 if ((($style -band 0x40000000) -ne 0) -ne ($visible -eq 1 -and $docked -eq 1)) { throw 'Pane docking was not restored' }
             }
             [PaneRestartWindows]::PostMessage($main, 0x10, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
-            # WTL's chained frame destroy handler can post WM_QUIT with 1.
-            if (!$process.WaitForExit(15000) -or $process.ExitCode -notin @(0, 1)) { throw "Bundled pane shutdown failed: exit=$($process.ExitCode) visible=$visible docked=$docked launch=$launch" }
+            if (!$process.WaitForExit(15000) -or $process.ExitCode -ne 0) { throw "Bundled pane shutdown failed: exit=$($process.ExitCode) visible=$visible docked=$docked launch=$launch" }
             $process.Dispose(); $process = $null
             foreach ($plugin in @('Matepath', 'OpenDocuments')) {
                 $saved = Get-Content -LiteralPath (Join-Path $root "plugins/Config/$plugin.ini") | Where-Object { $_ -like 'DockLayout=*' }

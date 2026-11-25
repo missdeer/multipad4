@@ -54,7 +54,7 @@ INT_PTR CALLBACK EditorProcedure(HWND window, UINT message, WPARAM w, LPARAM l) 
             const int x = parent.right - (dialog.right - dialog.left) - ((parent.right - parent.left) - client.right) / 2;
             const int y = parent.bottom - (dialog.bottom - dialog.top) - ((parent.bottom - parent.top) - client.bottom) / 2;
             SetWindowPos(window, nullptr, x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
-        } else CWindow(window).CenterWindow(GetParent(window));
+        } else CenterWindow(window, GetParent(window));
         return TRUE;
     }
     if (!context) return FALSE;
@@ -105,7 +105,7 @@ const std::wstring BuildDetails = [] {
     swprintf_s(compiler, L"Visual C++ %d.%02d.%05d.%d", _MSC_VER / 100,
         _MSC_VER % 100, _MSC_FULL_VER % 100000, _MSC_BUILD);
 #endif
-    return std::wstring(L"Built with ") + compiler + L"\r\nWindows / C++20 / WTL / Scintilla";
+    return std::wstring(L"Built with ") + compiler + L"\r\nWin32 / C++20 / Scintilla";
 }();
 constexpr wchar_t AppVersion[] = L"MultiPad4 " MULTIPAD4_DISPLAY_VERSION;
 const std::wstring BuildInfo = std::wstring(AppVersion) + L"\r\n" + BuildDetails;
@@ -119,7 +119,7 @@ INT_PTR CALLBACK AboutProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
         SetDlgItemTextW(window, IDC_WEBPAGE_LINK, L"<a href=\"https://www.flos-freeware.ch\">www.flos-freeware.ch</a>");
         SetDlgItemTextW(window, IDC_EMAIL_LINK, L"florian.balmer@gmail.com");
         SetDlgItemTextW(window, IDC_SCI_PAGE_LINK, L"<a href=\"https://www.scintilla.org\">www.scintilla.org</a>");
-        CWindow(window).CenterWindow(GetParent(window)); return TRUE;
+        CenterWindow(window, GetParent(window)); return TRUE;
     }
     if (message == WM_COMMAND && (LOWORD(w) == IDOK || LOWORD(w) == IDCANCEL)) { EndDialog(window, LOWORD(w)); return TRUE; }
     if (message == WM_COMMAND && LOWORD(w) == IDC_COPY_BUILD_INFO) {
@@ -150,8 +150,8 @@ INT_PTR ShowStyleSettingsDialog(HWND,EditorDocument&,UINT);
 INT_PTR ShowEditorDialog(HWND owner, EditorDocument& document, UINT resource, bool bottomRight) {
     if(resource==IDD_TABSETTINGS || resource==IDD_WORDWRAP || resource==IDD_AUTOCOMPLETION || resource==IDD_CSV_OPTIONS)return ShowStyleSettingsDialog(owner,document,resource);
     DialogContext context{document, resource, bottomRight};
-    return DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(resource), owner, EditorProcedure, reinterpret_cast<LPARAM>(&context));
+    return DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource), owner, EditorProcedure, reinterpret_cast<LPARAM>(&context));
 }
 void ShowAboutDialog(HWND owner) {
-    DialogBoxParamW(_Module.GetModuleInstance(), MAKEINTRESOURCEW(IDD_ABOUT), owner, AboutProcedure, 0);
+    DialogBoxParamW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDD_ABOUT), owner, AboutProcedure, 0);
 }

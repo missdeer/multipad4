@@ -5314,49 +5314,49 @@
           ]
         },
         {
-          "line": 743,
+          "line": 752,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 804,
+          "line": 813,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 808,
+          "line": 817,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 819,
+          "line": 828,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 961,
+          "line": 970,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 969,
+          "line": 978,
           "symbols": [
             "GetCompletionCache"
           ]
         },
         {
-          "line": 1033,
+          "line": 1042,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 1034,
+          "line": 1043,
           "symbols": [
             "lexerCatalog"
           ]
@@ -5408,26 +5408,26 @@
       "path": "src/ThemeDialog.cpp",
       "references": [
         {
-          "line": 51,
+          "line": 52,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 71,
+          "line": 72,
           "symbols": [
             "LanguageCatalog",
             "LanguageDefinition"
           ]
         },
         {
-          "line": 311,
+          "line": 312,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
-          "line": 452,
+          "line": 455,
           "symbols": [
             "LanguageCatalog"
           ]
@@ -5438,7 +5438,7 @@
       "path": "src/UpstreamUI.cpp",
       "references": [
         {
-          "line": 333,
+          "line": 336,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -5449,7 +5449,7 @@
   "applicationBindings": [
     {
       "path": "src/StyleManager.cpp",
-      "sha256": "78e0a762cb758c99e870960970f597667e3c3bc423437ccf825ee78ea41f7f56",
+      "sha256": "84e4690827dcf54e5b9e4ea5c1b3669d2b869b025d592ca5dc146905a3919f5c",
       "rules": [
         {
           "line": 159,
@@ -5520,30 +5520,30 @@
           "text": "    bool rulesChanged=d.style.appliedRules!=lexer.rulesVersion||d.style.appliedLexer!=lexer.iLexer||previousDialect!=effective||d.Send(SCI_GETLEXER)!=(d.LargeFile()?SCLEX_NULL:lexer.iLexer);"
         },
         {
-          "line": 807,
+          "line": 816,
           "text": "    int scheme=SchemeForCommand(id);"
         },
         {
-          "line": 808,
+          "line": 817,
           "text": "    if(scheme){UINT selected=d?static_cast<UINT>(d->style.dialect?d->style.dialect:d->style.resolvedDialect):0;if(d && !selected)selected=DefaultSchemeCommand(*GetDocumentLexer(*d));return {true,d!=nullptr,d && ActualScheme(*d)==scheme && selected==id};}"
         },
         {
-          "line": 839,
+          "line": 848,
           "text": "    if(int scheme=SchemeForCommand(id)){"
         },
         {
-          "line": 1002,
+          "line": 1011,
           "text": "void LoadStylePreferences(const std::filesystem::path& path){"
         },
         {
-          "line": 1027,
+          "line": 1036,
           "text": "void SaveStylePreferences(const std::filesystem::path& path){"
         }
       ]
     },
     {
       "path": "src/Session.cpp",
-      "sha256": "cb9de02464846ad4a9a1adfe9874efb85e78cd4d4f69728763d85607dfe0eb0f",
+      "sha256": "add223bd74a9e999737099352491e03060b85e35aae9cdbdef17ca6f34a8cee8",
       "rules": [
         {
           "line": 24,
