@@ -22,6 +22,41 @@ int wmain(int argc, wchar_t** argv) {
         const std::wstring surrogateBoundary = std::wstring(16 * 1024 * 1024 - 1, L'a') + L"😀";
         Require(files::FromUtf8(files::ToUtf8(surrogateBoundary)) == surrogateBoundary, "Chunk boundary split a surrogate pair");
         auto path = dir / L"中文测试.txt";
+        for (const auto raw : {std::string(""), std::string("\xEF\xBB\xBF"), std::string("small ascii"), std::string("a\xFF", 2)}) {
+            { std::ofstream out(path, std::ios::binary); out.write(raw.data(), raw.size()); }
+            files::ReadStats stats; std::string output; bool failed = false;
+            try { files::ReadChunks(path, [&](auto value) { output += value; }, {}, files::Encoding::Utf8, &stats); } catch (const std::runtime_error&) { failed = true; }
+            Require(failed == (raw.find('\xFF') != std::string::npos), "Forced UTF8 validation changed");
+            Require(stats.sourceBytes == raw.size(), "Forced read still copied a detection probe");
+            if (failed) Require(files::DetectSample(raw, true, {false, false, files::Encoding::Utf8}).encoding == files::Latin1, "Sample detection lost invalid UTF8 fallback semantics");
+        }
+        for (const auto encoding : {files::Encoding::Utf16LEPlain, files::Encoding::Utf16BEPlain}) {
+            files::WriteAtomic(path, {"plain UTF16 中文\r\n", encoding}); std::string output;
+            Require(files::ReadChunks(path, [&](auto value) { output += value; }) == encoding && output == "plain UTF16 中文\r\n", "UTF16 probe validation changed");
+        }
+        {
+            std::string odd(1024 * 1024 + 9, '\0'); for (size_t i = 0; i < odd.size(); i += 2) odd[i] = 'a';
+            { std::ofstream out(path, std::ios::binary); out.write(odd.data(), odd.size()); }
+            std::string actual; files::ReadOptions options{false, false, files::Latin1};
+            auto expected = files::Read(path, options);
+            Require(files::ReadChunks(path, [&](auto value) { actual += value; }, options) == expected.encoding && actual == expected.utf8, "Odd file incorrectly selected UTF16 from an even sample");
+        }
+        for (bool first : {false, true}) {
+            std::string modelines(1024 * 1024 + files::SampleLookahead + 100, 'x');
+            if (first) modelines.replace(0, 17, "encoding: windows-1252\n");
+            modelines.replace(modelines.size() - 30, 22, "\nencoding: utf-8\n"); modelines.back() = '\xE9';
+            { std::ofstream out(path, std::ios::binary); out.write(modelines.data(), modelines.size()); }
+            bool rejected = false; std::string actual;
+            try { files::ReadChunks(path, [&](auto value) { actual += value; }); } catch (const std::runtime_error&) { rejected = true; }
+            Require(rejected != first, "First/last modeline precedence or overlapping probe tail changed");
+        }
+        {
+            std::string invalidBom = "\xEF\xBB\xBF" + std::string(17 * 1024 * 1024, 'a'); invalidBom.back() = '\xFF';
+            { std::ofstream out(path, std::ios::binary); out.write(invalidBom.data(), invalidBom.size()); }
+            size_t delivered = 0; bool rejected = false;
+            try { files::ReadChunks(path, [&](auto value) { delivered += value.size(); }); } catch (const std::runtime_error&) { rejected = true; }
+            Require(rejected && delivered == 0, "Automatic UTF8 BOM delivered bytes before full validation");
+        }
         // Exercise UTF-8 characters across both worker partitions and I/O blocks.
         auto parallelText = std::string(16 * 1024 * 1024 + 37, 'a');
         for (size_t boundary : {size_t(4 * 1024 * 1024), size_t(8 * 1024 * 1024), size_t(12 * 1024 * 1024), size_t(16 * 1024 * 1024)})
