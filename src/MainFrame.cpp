@@ -385,7 +385,7 @@ bool MainFrame::ConfirmClose(EditorDocument& document, bool keepBackup) {
     const bool confirmed = answer != IDCANCEL && (answer != IDYES || Save(document, SaveMode::Normal, keepBackup));
     // Cancel stops this close sequence, including child requests received by
     // its modal loop. External open requests retain their independent queue.
-    if (!confirmed) runtime.pendingTabCloses.clear();
+    if (!confirmed) runtime.ClearPendingTabCloses();
     return confirmed;
 }
 bool MainFrame::Relaunch(bool elevated, bool empty, bool closeCurrent) {
@@ -623,7 +623,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
         pendingPluginMaintenance.reset();
         appUpdater.ready.reset();
         Error(std::runtime_error(std::string("Cannot save the session. ") + error.what()));
-        runtime.pendingTabCloses.clear();
+        runtime.ClearPendingTabCloses();
         plugins.Notify(NPPN_CANCELSHUTDOWN);
         return 0;
     }
@@ -682,7 +682,7 @@ LRESULT MainFrame::OnChanged(UINT, WPARAM lightweight, LPARAM, BOOL&) {
 LRESULT MainFrame::OnCloseTab(UINT, WPARAM w, LPARAM, BOOL&) {
     const HWND child = reinterpret_cast<HWND>(w);
     if (runtime.operationDepth || runtime.inBackgroundWork || !IsWindowEnabled()) {
-        if (std::find(runtime.pendingTabCloses.begin(), runtime.pendingTabCloses.end(), child) == runtime.pendingTabCloses.end())
+        if (std::find(runtime.pendingTabCloses.begin()+static_cast<ptrdiff_t>(runtime.pendingTabCloseHead), runtime.pendingTabCloses.end(), child) == runtime.pendingTabCloses.end())
             runtime.pendingTabCloses.push_back(child);
         return 0;
     }

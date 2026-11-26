@@ -1,3 +1,6 @@
+#ifdef MULTIPAD4_SESSION_CAPTURE_TEST
+#include "../tests/SessionCaptureHooks.h"
+#endif
 #include "Session.h"
 #include "LanguageConfiguration.h"
 #include "ConfigurationXml.h"
@@ -92,6 +95,7 @@ void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bo
     if (!active) active = frame.Active();
     if (frame.searchDialog.hwnd) frame.searchDialog.ReadFields();
     AppSettings profile; profile.Initialize(true); profile.path = std::filesystem::absolute(path); profile.persistent = true;
+    const bool reuse = std::filesystem::exists(profile.path);
     profile.WriteString(L"Session", L"Owner", SessionOwner);
     profile.WriteString(L"Session", L"UntitledCount", std::to_wstring(frame.untitledCount));
     size_t count = 0, activeIndex = 0;
@@ -124,8 +128,14 @@ void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bo
         write(L"RectCaret", d->Send(SCI_GETRECTANGULARSELECTIONCARET)); write(L"RectAnchor", d->Send(SCI_GETRECTANGULARSELECTIONANCHOR));
         write(L"RectCaretVirtual", d->Send(SCI_GETRECTANGULARSELECTIONCARETVIRTUALSPACE)); write(L"RectAnchorVirtual", d->Send(SCI_GETRECTANGULARSELECTIONANCHORVIRTUALSPACE));
         std::wstring collapsed;
+#ifdef MULTIPAD4_SESSION_CAPTURE_TEST
+        if (sessioncapturetest::baseline) {
         for (LRESULT line = 0; line < d->Send(SCI_GETLINECOUNT); ++line)
             if ((d->Send(SCI_GETFOLDLEVEL, line) & SC_FOLDLEVELHEADERFLAG) && !d->Send(SCI_GETFOLDEXPANDED, line)) collapsed += std::to_wstring(line) + L" ";
+        } else
+#endif
+        for (LRESULT line = d->Send(SCI_CONTRACTEDFOLDNEXT, 0); line >= 0; line = d->Send(SCI_CONTRACTEDFOLDNEXT, line + 1))
+            collapsed += std::to_wstring(line) + L" ";
         profile.WriteString(section.c_str(), L"CollapsedFolds", collapsed);
         write(L"FirstVisibleLine", d->Send(SCI_GETFIRSTVISIBLELINE)); write(L"Zoom", d->Send(SCI_GETZOOM));
         write(L"ReadOnly", d->Send(SCI_GETREADONLY)); write(L"Wrap", d->Send(SCI_GETWRAPMODE));
@@ -149,9 +159,28 @@ void SaveRelaunchSession(MainFrame& frame, const std::filesystem::path& path, bo
             | (static_cast<unsigned>(d->search.useMonospaced) << 8) | (static_cast<unsigned>(d->search.transparent) << 9)
             | (static_cast<unsigned>(d->search.closeAfterFind) << 10) | (static_cast<unsigned>(d->search.closeAfterReplace) << 11);
         write(L"SearchOptions", searchOptions);
+#ifdef MULTIPAD4_SESSION_CAPTURE_TEST
+        if (sessioncapturetest::baseline) {
         for (size_t history = 0; history < 32; ++history) {
             profile.WriteString(section.c_str(), (L"FindHistory" + std::to_wstring(history)).c_str(), history < d->search.findHistory.size() ? d->search.findHistory[history] : L"");
             profile.WriteString(section.c_str(), (L"ReplaceHistory" + std::to_wstring(history)).c_str(), history < d->search.replaceHistory.size() ? d->search.replaceHistory[history] : L"");
+        }
+            sessioncapturetest::historyWrites += 64;
+        } else
+#endif
+        {
+            auto saveHistory = [&](const wchar_t* prefix, const std::vector<std::wstring>& values) {
+                const auto countKey = std::wstring(prefix) + L"Count";
+                const auto count = (std::min)(values.size(), size_t(32));
+                const auto previous = reuse ? static_cast<size_t>(std::clamp(Number(profile, section, countKey.c_str(), 32), 0LL, 32LL)) : 0;
+                write(countKey.c_str(), count);
+                for (size_t i = 0; i < (std::max)(count, previous); ++i)
+                    profile.WriteString(section.c_str(), (prefix + std::to_wstring(i)).c_str(), i < count ? values[i] : L"");
+#ifdef MULTIPAD4_SESSION_CAPTURE_TEST
+                sessioncapturetest::historyWrites += 1 + (std::max)(count, previous);
+#endif
+            };
+            saveHistory(L"FindHistory", d->search.findHistory); saveHistory(L"ReplaceHistory", d->search.replaceHistory);
         }
         write(L"LineSelectionMode", d->runtime.lineSelectionMode);
         profile.WriteString(section.c_str(), L"TimestampTemplate", d->runtime.timestampTemplate);
@@ -231,12 +260,14 @@ void RestoreRelaunchSession(MainFrame& frame, const std::filesystem::path& path)
         d->search.useMonospaced = (searchOptions & 256) != 0; d->search.transparent = (searchOptions & 512) != 0;
         d->search.closeAfterFind = (searchOptions & 1024) != 0; d->search.closeAfterReplace = (searchOptions & 2048) != 0;
         d->search.findHistory.clear(); d->search.replaceHistory.clear();
-        for (size_t history = 0; history < 32; ++history) {
-            auto find = profile.ReadString(section.c_str(), (L"FindHistory" + std::to_wstring(history)).c_str());
-            auto replace = profile.ReadString(section.c_str(), (L"ReplaceHistory" + std::to_wstring(history)).c_str());
-            if (!find.empty()) d->search.findHistory.push_back(find);
-            if (!replace.empty()) d->search.replaceHistory.push_back(replace);
-        }
+        auto restoreHistory = [&](const wchar_t* prefix, std::vector<std::wstring>& values) {
+            const auto count = std::clamp(read((std::wstring(prefix) + L"Count").c_str(), 32), 0LL, 32LL);
+            for (long long i = 0; i < count; ++i) {
+                auto value = profile.ReadString(section.c_str(), (prefix + std::to_wstring(i)).c_str());
+                if (!value.empty()) values.push_back(std::move(value));
+            }
+        };
+        restoreHistory(L"FindHistory", d->search.findHistory); restoreHistory(L"ReplaceHistory", d->search.replaceHistory);
         std::wistringstream bookmarks(profile.ReadString(section.c_str(), L"Bookmarks")); LRESULT line = 0;
         while (bookmarks >> line) if (line >= 0 && line < d->Send(SCI_GETLINECOUNT)) d->Send(SCI_MARKERADD, line, 0);
         if (d->FastView()) d->fastView->Seek(static_cast<unsigned long long>((std::max)(0LL, read(L"FastViewOffset", 0))));
