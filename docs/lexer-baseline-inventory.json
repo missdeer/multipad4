@@ -4981,7 +4981,7 @@
       "path": "src/PluginHost.cpp",
       "references": [
         {
-          "line": 264,
+          "line": 278,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -4992,25 +4992,25 @@
       "path": "src/Session.cpp",
       "references": [
         {
-          "line": 40,
+          "line": 43,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
-          "line": 42,
-          "symbols": [
-            "LanguageCatalog"
-          ]
-        },
-        {
-          "line": 71,
+          "line": 45,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
           "line": 74,
+          "symbols": [
+            "LanguageCatalog"
+          ]
+        },
+        {
+          "line": 77,
           "symbols": [
             "LanguageCatalog"
           ]
@@ -5591,102 +5591,102 @@
     },
     {
       "path": "src/Session.cpp",
-      "sha256": "3156c215c85c1acff9093f2ca2bba28502e4519ca4a441255ec6779f872de0fc",
+      "sha256": "568fbb9865bd253b0ba8da11d9e477143c95dfa65e4450e638977e6d99957b94",
       "rules": [
         {
-          "line": 24,
+          "line": 27,
           "text": "    X(csvConfigured) X(csvOptions) X(tabWidth) X(indentWidth) X(tabsAsSpaces) X(useSchemeTabs) \\"
         },
         {
-          "line": 31,
+          "line": 34,
           "text": "void SaveStyle(AppSettings& profile, const std::wstring& section, const DocumentStyleState& style) {"
         },
         {
-          "line": 32,
+          "line": 35,
           "text": "#define WRITE_NUMBER(field) profile.WriteString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), std::to_wstring(style.field));"
         },
         {
-          "line": 35,
+          "line": 38,
           "text": "#define WRITE_STRING(field) profile.WriteString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), style.field);"
         },
         {
-          "line": 38,
+          "line": 41,
           "text": "    if(!style.themePath.empty()){auto relative=std::filesystem::path(style.themePath).lexically_relative(profile.path.parent_path());if(!relative.empty()&&*relative.begin()!=L\"..\")profile.WriteString(section.c_str(),L\"Style.themePath\",relative.generic_wstring());}"
         },
         {
-          "line": 45,
+          "line": 48,
           "text": "    for(const auto& [id,value]:style.semanticOverrides){keys+=ConfigurationWide(id)+L\" \";profile.WriteString(section.c_str(),(L\"Style.Semantic.\"+ConfigurationWide(id)).c_str(),value);}"
         },
         {
-          "line": 46,
+          "line": 49,
           "text": "    profile.WriteString(section.c_str(),L\"Style.SemanticKeys\",keys);keys.clear();"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "        profile.WriteString(section.c_str(), (L\"Style.Override.\" + std::to_wstring(key)).c_str(), value);"
         },
         {
-          "line": 51,
+          "line": 54,
           "text": "    profile.WriteString(section.c_str(), L\"Style.OverrideKeys\", keys);"
         },
         {
-          "line": 54,
+          "line": 57,
           "text": "    profile.WriteString(section.c_str(), L\"Style.CompletionOptions\", keys);"
         },
         {
-          "line": 56,
+          "line": 59,
           "text": "void RestoreStyle(const AppSettings& profile, const std::wstring& section, DocumentStyleState& style) {"
         },
         {
-          "line": 57,
+          "line": 60,
           "text": "#define READ_NUMBER(field) style.field = static_cast<decltype(style.field)>(std::clamp(Number(profile, section, L\"Style.\" SESSION_WIDEN(#field), style.field), static_cast<long long>(INT_MIN), static_cast<long long>(INT_MAX)));"
         },
         {
-          "line": 60,
+          "line": 63,
           "text": "#define READ_STRING(field) style.field = profile.ReadString(section.c_str(), L\"Style.\" SESSION_WIDEN(#field), style.field.c_str());"
         },
         {
-          "line": 64,
+          "line": 67,
           "text": "    std::wistringstream overrides(profile.ReadString(section.c_str(), L\"Style.OverrideKeys\")); unsigned key;"
         },
         {
-          "line": 65,
+          "line": 68,
           "text": "    while (overrides >> key){auto value=profile.ReadString(section.c_str(), (L\"Style.Override.\" + std::to_wstring(key)).c_str());try{ValidateLegacyStyle(value);style.overrides[key]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}"
         },
         {
-          "line": 66,
+          "line": 69,
           "text": "    std::wistringstream options(profile.ReadString(section.c_str(), L\"Style.CompletionOptions\")); int option, value;"
         },
         {
-          "line": 72,
+          "line": 75,
           "text": "    style.semanticOverrides.clear();std::wistringstream semantic(profile.ReadString(section.c_str(),L\"Style.SemanticKeys\"));std::wstring id;"
         },
         {
-          "line": 73,
+          "line": 76,
           "text": "    while(semantic>>id){auto value=profile.ReadString(section.c_str(),(L\"Style.Semantic.\"+id).c_str());try{ValidateLegacyStyle(value);style.semanticOverrides[ConfigurationUtf8(id)]=std::move(value);}catch(const std::exception& error){RecordConfigurationDiagnostic(profile.path,error);}}"
         },
         {
-          "line": 75,
+          "line": 78,
           "text": "        unsigned index=key&255;if(index<language->iStyleCount)for(const auto& category:language->categories)if(category.group==ConfigurationUtf8(language->Styles[index].id))style.semanticOverrides.try_emplace(category.id,value);"
         },
         {
-          "line": 78,
+          "line": 81,
           "text": "    style.appliedTabScheme = -1;"
         },
         {
-          "line": 107,
+          "line": 111,
           "text": "        SaveStyle(profile, section, d->style);"
         },
         {
-          "line": 138,
+          "line": 148,
           "text": "        write(L\"Scheme\", d->style.scheme); write(L\"Dialect\", d->style.dialect); write(L\"Dark\", d->style.dark); write(L\"Folding\", d->style.folding);"
         },
         {
-          "line": 202,
+          "line": 231,
           "text": "        d->style.scheme = static_cast<int>(read(L\"Scheme\", 0)); d->style.dialect = static_cast<int>(read(L\"Dialect\", 0));"
         },
         {
-          "line": 204,
+          "line": 233,
           "text": "        d->style.fontKind = static_cast<int>(read(L\"FontKind\", -1)); RestoreStyle(profile, section, d->style); d->ConfigureLexer();"
         }
       ]

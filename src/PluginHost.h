@@ -4,6 +4,8 @@
 #include "../3rdparty/notepad-plus-plus-plugin-api/Docking.h"
 #include <filesystem>
 #include <span>
+#include <unordered_map>
+#include <map>
 class MainFrame;
 struct EditorDocument;
 class PluginPane : public PaneWindow<PluginPane> {
@@ -39,6 +41,13 @@ public:
         HMENU submenu = nullptr;
         bool supportsFastView = false;
     };
+    struct ModuleLess {bool operator()(const std::wstring& a,const std::wstring& b) const {return _wcsicmp(a.c_str(),b.c_str())<0;}};
+    struct CommandReference {size_t plugin=SIZE_MAX;int item=0;};
+    struct CommandTargets {CommandReference normal,fastView,shortcut;};
+    std::unordered_map<UINT,CommandTargets> commands;
+    std::map<std::wstring,size_t,ModuleLess> modules;
+    std::vector<size_t> pretranslators;
+    void IndexPlugin(size_t index);
     MainFrame* frame = nullptr;
     HWND proxy = nullptr, secondProxy = nullptr;
     HMENU menu = nullptr;
