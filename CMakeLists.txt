@@ -165,6 +165,9 @@ if(BUILD_TESTING)
   add_test(NAME file_replace COMMAND file_replace_tests)
   set_tests_properties(file_replace PROPERTIES TIMEOUT 60)
   add_test(NAME file_replacement_integration COMMAND multipad4-tests --file-replacement-test)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_INDENT_TEST)
+  add_test(NAME indent_read COMMAND multipad4-tests --indent-read-test)
+  set_tests_properties(indent_read PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
   # Development baseline only. The product must never generate its defaults
   # from this target during an ordinary build or overwrite reviewed XML.
   add_executable(lexer_baseline_export tools/ExportLexerBaseline.cpp src/CompletionEngine.cpp ${LEXER_CONFIGS})
