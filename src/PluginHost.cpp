@@ -72,6 +72,18 @@ LRESULT PluginHost::SciMessage(UINT msg, WPARAM w, LPARAM l) {
     }
     return d->Send(msg, w, l);
 }
+void PluginHost::IndexPlugin(size_t index) {
+    const auto& plugin=plugins[index];modules.try_emplace(plugin.module,index);
+    if(plugin.preTranslate)pretranslators.push_back(index);
+    for(int i=0;i<plugin.count;++i){
+        const auto& item=plugin.items[i];auto& entry=commands[static_cast<UINT>(item._cmdID)];
+        if(item._pFunc){
+            if(entry.normal.plugin==SIZE_MAX)entry.normal={index,i};
+            if(plugin.supportsFastView && entry.fastView.plugin==SIZE_MAX)entry.fastView={index,i};
+        }
+        if(item._pShKey && entry.shortcut.plugin==SIZE_MAX)entry.shortcut={index,i};
+    }
+}
 void PluginHost::Initialize(MainFrame& owner) {
     frame = &owner;
     if (!enabled) return;
@@ -146,7 +158,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         } else {
             AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(submenu), plugin.name.c_str());
         }
-        plugins.push_back(std::move(plugin));
+        plugins.push_back(std::move(plugin));IndexPlugin(plugins.size()-1);
     }
     if (!keys.empty()) accelerators = CreateAcceleratorTableW(keys.data(), static_cast<int>(keys.size()));
     if (plugins.empty()) {
@@ -185,6 +197,7 @@ void PluginHost::Shutdown() {
     panes.clear();
     for (HWND dialog : modeless) if (::IsWindow(dialog)) ::DestroyWindow(dialog);
     modeless.clear();
+    commands.clear();modules.clear();pretranslators.clear();
     for (auto it = plugins.rbegin(); it != plugins.rend(); ++it) FreeLibrary(it->library);
     plugins.clear();
     if (accelerators) { DestroyAcceleratorTable(accelerators); accelerators = nullptr; }
@@ -213,15 +226,16 @@ void PluginHost::PopulateEditorContextMenu(HMENU submenu) {
 }
 bool PluginHost::Execute(UINT id) {
     const bool fastView = frame->Active() && frame->Active()->FastView();
-    for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(id) && p.items[i]._pFunc && (!fastView || p.supportsFastView)) {
-        if (p.commandEnabled && !p.commandEnabled(id)) return false;
-        p.items[i]._pFunc(); frame->Refresh(); return true;
-    }
-    return false;
+    auto found=commands.find(id);if(found==commands.end())return false;
+    const auto target=fastView?found->second.fastView:found->second.normal;
+    if(target.plugin==SIZE_MAX)return false;
+    auto& p=plugins[target.plugin];
+    if(p.commandEnabled && !p.commandEnabled(id))return false;
+    p.items[target.item]._pFunc();frame->Refresh();return true;
 }
 bool PluginHost::PreTranslate(MSG* msg) {
     if (accelerators && TranslateAcceleratorW(*frame, accelerators, msg)) return true;
-    for (auto& plugin : plugins) if (plugin.preTranslate && plugin.preTranslate(msg)) return true;
+    for(auto index:pretranslators)if(plugins[index].preTranslate(msg))return true;
     for (HWND dialog : modeless) if (::IsWindow(dialog) && IsDialogMessageW(dialog, msg)) return true;
     return false;
 }
@@ -353,7 +367,9 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     }
     case NPPM_GETBOOKMARKID: return 0;
     case NPPM_GETSHORTCUTBYCMDID:
-        if (l) for (auto& p : plugins) for (int i = 0; i < p.count; ++i) if (p.items[i]._cmdID == static_cast<int>(w) && p.items[i]._pShKey) { *reinterpret_cast<ShortcutKey*>(l) = *p.items[i]._pShKey; return TRUE; }
+        if(l){auto found=commands.find(static_cast<UINT>(w));if(found!=commands.end()){
+            const auto target=found->second.shortcut;if(target.plugin!=SIZE_MAX){*reinterpret_cast<ShortcutKey*>(l)=*plugins[target.plugin].items[target.item]._pShKey;return TRUE;}
+        }}
         return FALSE;
     case NPPM_GETMENUHANDLE: return reinterpret_cast<LRESULT>(w == NPPPLUGINMENU ? menu : frame->GetMenu());
     case NPPM_SETMENUITEMCHECK: CheckMenuItem(frame->GetMenu(), static_cast<UINT>(w), MF_BYCOMMAND | (l ? MF_CHECKED : MF_UNCHECKED)); return TRUE;
@@ -412,7 +428,8 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     case NPPM_ADDSCNMODIFIEDFLAGS: for (auto& doc : frame->documents) doc->Send(SCI_SETMODEVENTMASK, doc->Send(SCI_GETMODEVENTMASK) | w); return TRUE;
     case NPPM_CREATESCINTILLAHANDLE: return reinterpret_cast<LRESULT>(CreateWindowW(L"Scintilla", L"", WS_CHILD, 0, 0, 0, 0, w ? reinterpret_cast<HWND>(w) : *frame, nullptr, GetModuleHandleW(nullptr), nullptr));
     case NPPM_DESTROYSCINTILLAHANDLE_DEPRECATED: return ::DestroyWindow(reinterpret_cast<HWND>(l));
-    case NPPM_MSGTOPLUGIN: if (w && l) for (auto& p : plugins) if (_wcsicmp(p.module.c_str(), reinterpret_cast<const wchar_t*>(w)) == 0) { p.message(msg, w, l); return TRUE; } return FALSE;
+    case NPPM_MSGTOPLUGIN:
+        if(w && l){auto found=modules.find(reinterpret_cast<const wchar_t*>(w));if(found!=modules.end()){plugins[found->second].message(msg,w,l);return TRUE;}}return FALSE;
     default: return FALSE;
     }
 }
