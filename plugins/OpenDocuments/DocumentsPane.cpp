@@ -4,7 +4,6 @@ LRESULT DockPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
         WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT, 0, 0, 0, 0, m_hWnd,
         reinterpret_cast<HMENU>(100), reinterpret_cast<HINSTANCE>(::GetWindowLongPtrW(m_hWnd, GWLP_HINSTANCE)), nullptr);
     if (!list) return -1;
-    ::SendMessageW(list, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
     handled = FALSE; return 0;
 }
 LRESULT DockPane::OnSize(UINT, WPARAM, LPARAM, BOOL& handled) {

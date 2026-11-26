@@ -68,6 +68,8 @@ public:
     int statusWidth = -1;
     UINT statusDpi = 0;
     HFONT statusFont = nullptr;
+    DpiGuiFont guiFont;
+    void UpdateGuiFonts(UINT dpi);
     BOOL PreTranslateMessage(MSG* msg);
     void UpdateLayout(BOOL resizeBars = TRUE);
     EditorDocument* Active();

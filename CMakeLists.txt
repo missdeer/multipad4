@@ -190,6 +190,8 @@ if(BUILD_TESTING)
   set_tests_properties(comment_commands PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
   add_test(NAME save_whitespace COMMAND multipad4-tests --save-whitespace-test)
   set_tests_properties(save_whitespace PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
+  add_test(NAME dpi_fonts COMMAND multipad4-tests --dpi-font-test)
+  set_tests_properties(dpi_fonts PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   add_test(NAME rich_text COMMAND multipad4-tests --rich-text-test)
   set_tests_properties(rich_text PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   # Development baseline only. The product must never generate its defaults

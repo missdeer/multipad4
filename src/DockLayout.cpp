@@ -297,7 +297,8 @@ void PaneInteraction::PaintCaption(HDC dc) {
     title.right = close.left - Scale(pane, 2);
     std::wstring text(static_cast<size_t>(GetWindowTextLengthW(pane)) + 1, L'\0');
     const int length = GetWindowTextW(pane, text.data(), static_cast<int>(text.size()));
-    SelectObject(dc, GetStockObject(DEFAULT_GUI_FONT));
+    const auto font = reinterpret_cast<HFONT>(SendMessageW(pane, WM_GETFONT, 0, 0));
+    SelectObject(dc, font ? font : GetStockObject(DEFAULT_GUI_FONT));
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, GetSysColor(COLOR_BTNTEXT));
     DrawTextW(dc, text.data(), length, &title, DT_SINGLELINE | DT_END_ELLIPSIS | DT_VCENTER | DT_NOPREFIX);

@@ -71,8 +71,6 @@ LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     wchar_t columnName[] = L"名称";
     LVCOLUMNW column{LVCF_TEXT | LVCF_WIDTH | LVCF_FMT, LVCFMT_LEFT, 280, columnName};
     ListView_InsertColumn(list, 0, &column);
-    for (HWND child = GetWindow(GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
-        ::SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
     DirList_Init(list);
     wchar_t path[MAX_PATH]{};
     if (GetModuleFileNameW(nullptr, path, MAX_PATH)) Navigate(std::filesystem::path(path).parent_path());
