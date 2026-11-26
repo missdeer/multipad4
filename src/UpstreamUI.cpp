@@ -105,6 +105,11 @@ UINT NormalizeCommand(UINT id) {
     return id;
 }
 void UpdateMenuCommands(MainFrame& frame, HMENU menu) { UpdateMenu(frame, menu); }
+void MainFrame::UpdateGuiFonts(UINT dpi) {
+    if (!guiFont.Update(dpi)) return;
+    guiFont.Apply(m_hWndStatusBar); guiFont.Apply(m_hWndToolBar);
+    guiFont.Apply(reinterpret_cast<HWND>(::SendMessageW(m_hWndToolBar, TB_GETTOOLTIPS, 0, 0)));
+}
 void MainFrame::CreateUpstreamUI() {
     const auto instance = GetModuleHandleW(nullptr);
     m_hWndStatusBar = CreateWindowExW(0, STATUSCLASSNAMEW, nullptr, WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
@@ -113,6 +118,7 @@ void MainFrame::CreateUpstreamUI() {
     const HWND toolbar = m_hWndToolBar = CreateWindowExW(0, TOOLBARCLASSNAMEW, nullptr,
         WS_CHILD | WS_VISIBLE | CCS_TOP | CCS_NODIVIDER | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | CCS_ADJUSTABLE,
         0, 0, 0, 0, m_hWnd, nullptr, instance, nullptr);
+    UpdateGuiFonts(GetDpiForWindow(m_hWnd));
     ::SendMessageW(toolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
     // BTNS_DROPDOWN needs DRAWDDARROWS to keep the main button a command
     // target and reserve TBN_DROPDOWN for its arrow, as in Notepad4.

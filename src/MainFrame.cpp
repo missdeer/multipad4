@@ -718,7 +718,8 @@ int MainFrame::TabWidthPreference() const {
 void MainFrame::ApplyTabWidth() {
     GetMDITabCtrl().SetFixedTabWidth(settings.ReadString(L"Tab Bar", L"FixedWidth") == L"1" ? TabWidthPreference() : 0);
 }
-LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
+LRESULT MainFrame::OnDpi(UINT, WPARAM w, LPARAM l, BOOL&) {
+    UpdateGuiFonts(HIWORD(w));
     auto* r = reinterpret_cast<RECT*>(l);
     SetWindowPos(nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
     ApplyTabTitleFont();

@@ -1,0 +1,5 @@
+dpi,expected_gui_height,address_height,filter_height,list_height,documents_height,status_height,editor_width
+96,12,12,12,12,12,12,144
+144,18,18,18,18,18,18,144
+192,24,24,24,24,24,24,144
+96,12,12,12,12,12,12,144

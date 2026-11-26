@@ -131,6 +131,9 @@ void FastFileView::RestoreSelection(large::Selection selection) {
     document.Send(SCI_SETSEL, anchor == caret ? utf8Caret : position(anchor), utf8Caret); document.Send(SCI_SCROLLCARET);
     if (caret < begin || caret > end || anchor < begin || anchor > end) extendedSelection = large::Selection{caret, anchor};
 }
+void FastFileView::UpdateGuiFont(UINT dpi) {
+    if (guiFont.Update(dpi)) { guiFont.Apply(label); guiFont.Apply(button); }
+}
 void FastFileView::Attach() {
     HWND parent = GetParent(document.hwnd);
     if (document.fastView) parent = GetParent(document.fastView->Window());
@@ -144,7 +147,7 @@ void FastFileView::Attach() {
         0, 0, 1, 1, window, nullptr, cls.hInstance, nullptr);
     button = CreateWindowExW(0, L"BUTTON", L"Full editor...", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
         0, 0, 1, 1, window, reinterpret_cast<HMENU>(ID_LOAD_FOR_EDITING), cls.hInstance, nullptr);
-    for (HWND control : {label, button}) SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+    UpdateGuiFont(GetDpiForWindow(window));
     // Prepare the prefix before reparenting or replacing an existing viewport.
     Seek(0);
     SetParent(document.hwnd, window);
@@ -626,6 +629,9 @@ LRESULT CALLBACK FastFileView::WindowProc(HWND window, UINT message, WPARAM w, L
     if (!self) return DefWindowProcW(window, message, w, l);
     try {
         if (message == WM_TIMER && w == 41) { self->CompleteTask(); return 0; }
+        if (message == WM_DPICHANGED || message == WM_DPICHANGED_AFTERPARENT || message == WM_SETTINGCHANGE) {
+            self->UpdateGuiFont(message == WM_DPICHANGED ? HIWORD(w) : GetDpiForWindow(window)); self->Layout();
+        }
         if (message == WM_SIZE) { self->Layout(); return 0; }
         if (message == WM_SETFOCUS) { SetFocus(self->document.hwnd); return 0; }
         if (message == WM_NOTIFY) {

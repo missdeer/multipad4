@@ -1,4 +1,5 @@
 #pragma once
+#include "DpiFont.h"
 #include "App.h"
 #include "FileIO.h"
 #include "LazyDocument.h"
@@ -29,6 +30,8 @@ class FastFileView {
     void UpdatePositions(size_t first, size_t last, std::string_view raw, std::string_view text);
     std::optional<large::Selection> extendedSelection;
     bool loading = false, readOnly = false;
+    DpiGuiFont guiFont;
+    void UpdateGuiFont(UINT dpi);
     unsigned editDepth = 0;
     struct TaskResult { large::Document::Snapshot snapshot; std::optional<large::Document::Match> match; std::string error; std::function<void()> apply; };
     work::SearchTask<TaskResult> worker;

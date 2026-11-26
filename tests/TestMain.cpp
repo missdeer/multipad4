@@ -1,6 +1,7 @@
 #include "../src/Application.h"
 #include "../src/MainFrame.h"
 #include "SmokeTest.h"
+#include "DpiFontTests.h"
 #include "ThemeEnumerationTests.h"
 #include "PrintingSeparatorTests.h"
 #include "DeferredQueueTests.h"
@@ -79,12 +80,14 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
     bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
     bool saveWhitespaceTest = count == 2 && (wcscmp(args[1], L"--save-whitespace-test") == 0 || wcscmp(args[1], L"--save-whitespace-benchmark") == 0);
     bool sessionCaptureTest = count == 2 && (wcscmp(args[1], L"--session-capture-test") == 0 || wcscmp(args[1], L"--session-capture-benchmark") == 0);
+    bool dpiFontTest=count==2&&wcscmp(args[1],L"--dpi-font-test")==0;
     bool themeEnumerationTest=count==2&&(wcscmp(args[1],L"--theme-enumeration-test")==0||wcscmp(args[1],L"--theme-enumeration-benchmark")==0);
     bool autosaveCaptureTest = count == 2 && (wcscmp(args[1], L"--autosave-capture-test") == 0 || wcscmp(args[1], L"--autosave-capture-benchmark") == 0);
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
     bool smoke =
+        dpiFontTest ||
         pluginIndexTest ||
         settingsProfileTest ||
         sessionCaptureTest ||
@@ -143,6 +146,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
             else if (modelineTest || modelineBenchmark) { RunModelinePreferenceTests(frame, modelineBenchmark); }
             else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
             else if (saveWhitespaceTest) { RunSaveWhitespaceTests(frame, wcscmp(args[1], L"--save-whitespace-benchmark") == 0); }
+            else if(dpiFontTest){RunDpiFontTests(frame);}
             else if (sessionCaptureTest) { RunSessionCaptureTests(frame, wcscmp(args[1], L"--session-capture-benchmark") == 0); }
             else if(themeEnumerationTest){RunThemeEnumerationTests(frame,wcscmp(args[1],L"--theme-enumeration-benchmark")==0);}
             else if (autosaveCaptureTest) { RunAutoSaveCaptureTests(frame, wcscmp(args[1], L"--autosave-capture-benchmark") == 0); }

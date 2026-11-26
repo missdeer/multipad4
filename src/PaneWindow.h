@@ -1,6 +1,7 @@
 #pragma once
 #include "DockLayout.h"
 #include "WinWindow.h"
+#include "DpiFont.h"
 
 template<class Derived>
 class PaneWindow : public WinWindow {
@@ -28,6 +29,15 @@ public:
 
 private:
     PaneInteraction interaction;
+    DpiGuiFont guiFont;
+    void UpdateGuiFont(UINT dpi) {
+        if (!guiFont.Update(dpi)) return;
+        for (HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
+            wchar_t type[32]{}; ::GetClassNameW(child, type, 32);
+            if (_wcsicmp(type, L"Scintilla") != 0) guiFont.Apply(child);
+        }
+        ::RedrawWindow(m_hWnd, nullptr, nullptr, RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
+    }
     void SetVisible(bool visible) {
         auto placement = Placement();
         if (placement.visible == visible) return;
@@ -45,10 +55,14 @@ private:
             self->interaction.Attach(window, create->hwndParent);
         }
         if (!self) return DefWindowProcW(window, message, w, l);
+        if (message == WM_GETFONT) return reinterpret_cast<LRESULT>(self->guiFont.Get());
+        if (message == WM_DPICHANGED || message == WM_DPICHANGED_AFTERPARENT || message == WM_SETTINGCHANGE)
+            self->UpdateGuiFont(message == WM_DPICHANGED ? HIWORD(w) : GetDpiForWindow(window));
         LRESULT result{};
         if (self->interaction.Dispatch(message, w, l, result)) return result;
         BOOL handled = TRUE;
         result = static_cast<Derived*>(self)->Dispatch(message, w, l, handled);
+        if (message == WM_CREATE && result != -1) self->UpdateGuiFont(GetDpiForWindow(window));
         if (handled) return result;
         if (message == WM_NCDESTROY) {
             ::SetWindowLongPtrW(window, GWLP_USERDATA, 0);
