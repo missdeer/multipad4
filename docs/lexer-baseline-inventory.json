@@ -4981,7 +4981,7 @@
       "path": "src/PluginHost.cpp",
       "references": [
         {
-          "line": 264,
+          "line": 278,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -5462,7 +5462,7 @@
       "path": "src/UpstreamUI.cpp",
       "references": [
         {
-          "line": 467,
+          "line": 473,
           "symbols": [
             "GetDocumentLexer"
           ]
