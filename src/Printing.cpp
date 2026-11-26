@@ -2,6 +2,11 @@
 #include <stdexcept>
 #include "AppSettings.h"
 #include "resource.h"
+void DrawPrintSeparator(HDC dc,int left,int right,int y) {
+    // GDI owns BLACK_PEN; restore the page's previous pen before body formatting.
+    const auto oldPen=SelectObject(dc,GetStockObject(BLACK_PEN));
+    MoveToEx(dc,left,y,nullptr);LineTo(dc,right,y);SelectObject(dc,oldPen);
+}
 namespace {
 PAGESETUPDLGW setup{sizeof(setup)};
 HGLOBAL CloneGlobal(HGLOBAL original) {
@@ -115,10 +120,10 @@ bool PrintDocument(HWND owner, const EditorDocument& document, AppSettings* sett
             int nameRight=range.rc.right;
             if(!dateText.empty()){SelectObject(dc,font);SIZE size{};GetTextExtentPoint32W(dc,dateText.c_str(),static_cast<int>(dateText.size()),&size);RECT dateArea{range.rc.right-size.cx,contentTop,range.rc.right,contentTop+headerHeight};DrawTextW(dc,dateText.c_str(),-1,&dateArea,DT_RIGHT|DT_SINGLELINE);nameRight=dateArea.left-MulDiv(12,dpiX,96);}
             SelectObject(dc,headerFont);RECT area{range.rc.left,contentTop,(std::max)(range.rc.left,nameRight),contentTop+headerHeight};DrawTextW(dc,header.c_str(),-1,&area,DT_LEFT|DT_SINGLELINE|DT_END_ELLIPSIS);
-            auto pen=CreatePen(PS_SOLID,1,RGB(0,0,0));auto oldPen=SelectObject(dc,pen);MoveToEx(dc,range.rc.left,range.rc.top-headerHeight/4,nullptr);LineTo(dc,range.rc.right,range.rc.top-headerHeight/4);SelectObject(dc,oldPen);DeleteObject(pen);
+            DrawPrintSeparator(dc,range.rc.left,range.rc.right,range.rc.top-headerHeight/4);
         }
         if(preferences.footer!=1){SelectObject(dc,font);auto text=L"Page "+std::to_wstring(page);RECT area{range.rc.left,contentBottom-footerHeight,range.rc.right,contentBottom};DrawTextW(dc,text.c_str(),-1,&area,DT_RIGHT|DT_SINGLELINE);
-            auto pen=CreatePen(PS_SOLID,1,RGB(0,0,0));auto oldPen=SelectObject(dc,pen);MoveToEx(dc,range.rc.left,range.rc.bottom+footerHeight/4,nullptr);LineTo(dc,range.rc.right,range.rc.bottom+footerHeight/4);SelectObject(dc,oldPen);DeleteObject(pen);
+            DrawPrintSeparator(dc,range.rc.left,range.rc.right,range.rc.bottom+footerHeight/4);
         }
 
         }

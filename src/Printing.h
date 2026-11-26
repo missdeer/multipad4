@@ -6,3 +6,5 @@ PrintPreferences CurrentPrintPreferences();
 UINT_PTR CALLBACK PrintSetupHook(HWND window, UINT message, WPARAM w, LPARAM l);
 void ConfigurePrinting(HWND owner, AppSettings* settings = nullptr);
 bool PrintDocument(HWND owner, const EditorDocument& document, AppSettings* settings = nullptr, bool defaultPrinter = false);
+
+void DrawPrintSeparator(HDC dc,int left,int right,int y);

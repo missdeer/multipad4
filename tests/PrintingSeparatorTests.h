@@ -1,0 +1,31 @@
+#pragma once
+#include "../src/Printing.h"
+#include <chrono>
+#include <fstream>
+inline void RunPrintingSeparatorTests(const std::filesystem::path& directory) {
+    auto require=[](bool ok){if(!ok)throw std::runtime_error("Printing separator assertion");};
+    auto before=[](HDC dc,int left,int right,int y){auto pen=CreatePen(PS_SOLID,1,RGB(0,0,0));auto old=SelectObject(dc,pen);MoveToEx(dc,left,y,nullptr);LineTo(dc,right,y);SelectObject(dc,old);DeleteObject(pen);};
+    HDC dc=CreateCompatibleDC(nullptr);require(dc!=nullptr);
+    BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=600;info.bmiHeader.biHeight=-800;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
+    void* pixels=nullptr;auto bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&pixels,nullptr,0);require(bitmap&&pixels);
+    auto oldBitmap=SelectObject(dc,bitmap);auto red=CreatePen(PS_DASH,3,RGB(255,0,0));auto oldPen=SelectObject(dc,red);
+    constexpr size_t bytes=600*800*4;
+    for(int scale:{1,2}){
+        SetMapMode(dc,MM_ANISOTROPIC);SetWindowExtEx(dc,600,800,nullptr);SetViewportExtEx(dc,600/scale,800/scale,nullptr);
+        memset(pixels,255,bytes);before(dc,30,570,60);before(dc,30,570,740);GdiFlush();
+        std::vector<unsigned char> expected(static_cast<unsigned char*>(pixels),static_cast<unsigned char*>(pixels)+bytes);
+        memset(pixels,255,bytes);DrawPrintSeparator(dc,30,570,60);DrawPrintSeparator(dc,30,570,740);GdiFlush();
+        require(memcmp(expected.data(),pixels,bytes)==0&&GetCurrentObject(dc,OBJ_PEN)==red);
+    }
+    SetMapMode(dc,MM_TEXT);std::filesystem::create_directories(directory);
+    std::ofstream report(directory/L"printing-separator-pairs.csv");report<<"mode,sample,pages,milliseconds,created_pens,deleted_pens\n";
+    const auto objects=GetGuiResources(GetCurrentProcess(),GR_GDIOBJECTS);
+    for(int sample=0;sample<7;++sample)for(bool baseline:{true,false}){
+        auto begin=std::chrono::steady_clock::now();
+        for(int page=0;page<10000;++page){if(baseline){before(dc,30,570,60);before(dc,30,570,740);}else{DrawPrintSeparator(dc,30,570,60);DrawPrintSeparator(dc,30,570,740);}}
+        GdiFlush();require(GetCurrentObject(dc,OBJ_PEN)==red);
+        report<<(baseline?"per-rule-pen":"stock-pen")<<','<<sample<<",10000,"<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()<<','<<(baseline?20000:0)<<','<<(baseline?20000:0)<<'\n';
+    }
+    require(GetGuiResources(GetCurrentProcess(),GR_GDIOBJECTS)==objects);
+    report.close();require(bool(report));SelectObject(dc,oldPen);DeleteObject(red);SelectObject(dc,oldBitmap);DeleteObject(bitmap);DeleteDC(dc);
+}
