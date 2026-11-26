@@ -1,7 +1,7 @@
 #pragma once
 #include "MainFrame.h"
 #include <source_location>
-#include "../tests/QAArtifacts.h"
+#include "QAArtifacts.h"
 // Regression checks execute real menu/toolbar IDs and modeless dialog callbacks.
 inline void RunMigrationSmokeTest(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {

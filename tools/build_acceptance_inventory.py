@@ -25,7 +25,7 @@ def main():
     ids = {name: int(value, 0) for name, value in re.findall(
         r"^#define\s+(\w+)\s+(0x[\da-fA-F]+|\d+)\s*(?://[^\n]*)?$", resource, re.M)}
     # MigrationSmokeTest's dialog-resource loop only verifies resource presence.
-    test_files = sorted((root / "tests").glob("*.h")) + [root / "src/SmokeTest.h", root / "src/FileCommandSmokeTest.h"]
+    test_files = sorted((root / "tests").glob("*.h"))
     references = {}
     for path in test_files:
         for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):

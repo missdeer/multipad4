@@ -116,7 +116,7 @@ set(multipad4_update_asset "")
 if(MULTIPAD4_RELEASE_TOOLCHAIN)
   set(multipad4_update_asset "multipad4-${MULTIPAD4_RELEASE_TOOLCHAIN}-x64-${MULTIPAD4_SIMD}.zip")
 endif()
-set_source_files_properties(src/AppUpdate.cpp src/main.cpp PROPERTIES COMPILE_DEFINITIONS
+set_source_files_properties(src/AppUpdate.cpp src/Application.cpp PROPERTIES COMPILE_DEFINITIONS
   "MULTIPAD4_UPDATE_ASSET=\"${multipad4_update_asset}\"")
 
 add_executable(multipad4-registry WIN32 tools/RegistryHelper.cpp tools/RegistryHelper.rc src/NotepadReplacement.cpp)
@@ -153,7 +153,7 @@ if(BUILD_TESTING)
   target_compile_definitions(multipad_app PRIVATE MULTIPAD4_TRANSFORM_TEST MULTIPAD4_MODELINE_TEST)
   target_compile_definitions(multipad_app PUBLIC MULTIPAD4_TAB_STRIP_TEST_HOOKS)
   target_compile_definitions(multipad_app PRIVATE MULTIPAD4_RICH_TEXT_TEST)
-  add_executable(multipad4-tests WIN32 src/main.cpp src/AppUpdate.cpp ${MULTIPAD4_RESOURCES})
+  add_executable(multipad4-tests WIN32 tests/TestMain.cpp src/AppUpdate.cpp ${MULTIPAD4_RESOURCES})
   # Override the static-library object only in the test executable to count actual status measurements.
   target_sources(multipad4-tests PRIVATE tests/EditAdvancedBaseline.cpp tests/ModelinePreferenceBaseline.cpp tests/EditRichTextBaseline.cpp src/UpstreamUI.cpp src/EditComments.cpp tests/EditCommentsBaseline.cpp)
   target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TRANSFORM_TEST MULTIPAD4_MODELINE_TEST MULTIPAD4_RICH_TEXT_TEST)
