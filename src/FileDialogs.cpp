@@ -236,10 +236,8 @@ bool ShouldUseSystemMRU(const MainFrame& frame) {
 }
 void RecordOpenedFile(MainFrame& frame,const std::filesystem::path& path){
     if(ShouldUseSystemMRU(frame))SHAddToRecentDocs(SHARD_PATHW,path.c_str());
-    if(!frame.settings.Get(IDM_VIEW_NOSAVERECENT,1))return;std::vector<std::wstring> paths{path.wstring()};
-    int count=(std::clamp)(frame.settings.Get(IDM_FILE_RECENT,32),32,4096);
-    for(int i=0;i<count;++i){auto old=frame.settings.ReadString(L"Recent Files",std::to_wstring(i).c_str());if(!old.empty() && CompareStringOrdinal(old.c_str(),-1,path.c_str(),-1,TRUE)!=CSTR_EQUAL)paths.push_back(old);}
-    for(int i=0;i<count;++i)frame.settings.WriteString(L"Recent Files",std::to_wstring(i).c_str(),static_cast<size_t>(i)<paths.size()?paths[i]:L"");
+    if(!frame.settings.Get(IDM_VIEW_NOSAVERECENT,1))return;
+    frame.settings.RecordRecentFile(path,frame.settings.Get(IDM_FILE_RECENT,32));
 }
 bool SelectHistoryFile(MainFrame& frame,bool favorites){HistoryContext context{frame,favorites,{},{}};auto section=favorites?L"Favorites":L"Recent Files";
     if(favorites){for(const auto& item:std::filesystem::directory_iterator(FavoritesDirectory(frame)))context.paths.push_back(item.path().wstring());std::sort(context.paths.begin(),context.paths.end());}
