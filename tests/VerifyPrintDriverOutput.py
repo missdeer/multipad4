@@ -15,5 +15,3 @@ for sample in range(3):
    pix=after[0].get_pixmap(clip=rect);assert min(pix.samples)<200
   print(sample,kind,'pages',len(after),'text+pixels identical')
 print((root/'print-driver-pairs.csv').read_text())
-
-

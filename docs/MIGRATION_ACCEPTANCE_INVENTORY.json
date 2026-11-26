@@ -2,11 +2,11 @@
   "upstream_revision": "3fcfb70fd0d3c8802100c85f7293ccb326aa8b64",
   "note": "All conditional resource variants included. Test references and runtime support are not behavioral acceptance. See MIGRATION_ACCEPTANCE.md for scenario results.",
   "runtime_report": "tmp/migration-status-check.json",
-  "runtime_report_sha256": "cc35f5f73e1e28e33055a933d75be73586241f7dd7e20bb664a77a6e938a81da",
+  "runtime_report_sha256": "cdcdcc5cd9c6447fe3e7b18b4361c76ae1694dce1c8755e7395a90c017bbf6a6",
   "counts": {
     "menu_commands": 418,
-    "menu_commands_routed": 418,
-    "menu_commands_with_test_references": 114,
+    "menu_commands_routed": 385,
+    "menu_commands_with_test_references": 139,
     "dialogs": 32,
     "toolbar_buttons": 27,
     "status_fields": 13,
@@ -141,7 +141,13 @@
       "id": "IDM_FILE_READONLY_FILE",
       "value": 40007,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/FrameRefreshTests.h:50",
+        "tests/FrameRefreshTests.h:51",
+        "tests/FrameRefreshTests.h:52",
+        "tests/FrameRefreshTests.h:54",
+        "tests/FrameRefreshTests.h:55"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -155,7 +161,11 @@
       "id": "IDM_FILE_READONLY_MODE",
       "value": 40024,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:59",
+        "tests/MigrationSmokeTest.h:65",
+        "tests/SessionFeatureTests.h:168"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -170,7 +180,7 @@
       "value": 40025,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:34"
+        "tests/FileCommandSmokeTest.h:35"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -200,7 +210,7 @@
       "value": 40559,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:108"
+        "tests/FileCommandSmokeTest.h:120"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -272,7 +282,7 @@
       "value": 40560,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:106"
+        "tests/FileCommandSmokeTest.h:118"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -343,7 +353,10 @@
       "id": "IDM_ENCODING_UNICODE",
       "value": 40101,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:62",
+        "tests/MigrationSmokeTest.h:67"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -386,11 +399,11 @@
       "value": 40107,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:70",
-        "src/FileCommandSmokeTest.h:71",
-        "src/FileCommandSmokeTest.h:74",
-        "src/FileCommandSmokeTest.h:76",
-        "src/FileCommandSmokeTest.h:82"
+        "tests/FileCommandSmokeTest.h:71",
+        "tests/FileCommandSmokeTest.h:72",
+        "tests/FileCommandSmokeTest.h:75",
+        "tests/FileCommandSmokeTest.h:77",
+        "tests/FileCommandSmokeTest.h:88"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -405,7 +418,9 @@
       "id": "IDM_LINEENDINGS_CRLF",
       "value": 40108,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:70"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -615,10 +630,10 @@
       "value": 40020,
       "runtime_supported": true,
       "test_references": [
-        "tests/FileDialogTests.h:140",
-        "tests/FileDialogTests.h:146",
-        "tests/FileDialogTests.h:147",
-        "tests/FileDialogTests.h:148"
+        "tests/FileDialogTests.h:161",
+        "tests/FileDialogTests.h:167",
+        "tests/FileDialogTests.h:168",
+        "tests/FileDialogTests.h:169"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -650,6 +665,13 @@
       "value": 40300,
       "runtime_supported": true,
       "test_references": [
+        "tests/FrameRefreshTests.h:37",
+        "tests/FrameRefreshTests.h:39",
+        "tests/FrameRefreshTests.h:40",
+        "tests/FrameRefreshTests.h:41",
+        "tests/FrameRefreshTests.h:42",
+        "tests/MigrationSmokeTest.h:43",
+        "tests/MigrationSmokeTest.h:50",
         "tests/UIConsistencyTests.h:184"
       ],
       "behavioral_acceptance": "pending",
@@ -795,8 +817,8 @@
       "value": 40307,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:219",
-        "tests/EditorFeatureTests.h:222"
+        "tests/EditorFeatureTests.h:211",
+        "tests/EditorFeatureTests.h:214"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -811,7 +833,10 @@
       "id": "IDM_EDIT_CLEARDOCUMENT",
       "value": 40398,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:61",
+        "tests/MigrationSmokeTest.h:63"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -881,7 +906,9 @@
       "id": "IDM_EDIT_COPYALL",
       "value": 40304,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/RichTextTests.h:112"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -896,7 +923,7 @@
       "value": 40305,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:216"
+        "tests/EditorFeatureTests.h:208"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -912,7 +939,8 @@
       "value": 40377,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:265"
+        "tests/EditorFeatureTests.h:249",
+        "tests/RichTextTests.h:112"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -956,6 +984,7 @@
       "value": 40354,
       "runtime_supported": true,
       "test_references": [
+        "tests/CommentTests.h:119",
         "tests/EditScopeTests.h:136",
         "tests/EditScopeTests.h:139",
         "tests/EditScopeTests.h:144",
@@ -978,6 +1007,7 @@
       "value": 40355,
       "runtime_supported": true,
       "test_references": [
+        "tests/CommentTests.h:34",
         "tests/EditScopeTests.h:167",
         "tests/EditScopeTests.h:170",
         "tests/EditScopeTests.h:180",
@@ -1027,7 +1057,7 @@
       "value": 40332,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:21",
+        "tests/EditorFeatureTests.h:28",
         "tests/EditScopeTests.h:39"
       ],
       "behavioral_acceptance": "pending",
@@ -1044,7 +1074,7 @@
       "value": 40330,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:26"
+        "tests/EditorFeatureTests.h:33"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1122,7 +1152,9 @@
       "test_references": [
         "tests/EditScopeTests.h:60",
         "tests/EditScopeTests.h:61",
-        "tests/EditScopeTests.h:68"
+        "tests/EditScopeTests.h:68",
+        "tests/EditTransformTests.h:133",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1138,15 +1170,16 @@
       "value": 40342,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:29",
-        "tests/EditorFeatureTests.h:248",
-        "tests/EditorFeatureTests.h:250",
-        "tests/EditorFeatureTests.h:255",
-        "tests/EditorFeatureTests.h:256",
+        "tests/EditorFeatureTests.h:36",
+        "tests/EditorFeatureTests.h:237",
+        "tests/EditorFeatureTests.h:239",
+        "tests/EditorFeatureTests.h:244",
+        "tests/EditorFeatureTests.h:245",
         "tests/EditScopeTests.h:69",
         "tests/EditScopeTests.h:70",
         "tests/EditScopeTests.h:73",
-        "tests/EditScopeTests.h:74"
+        "tests/EditScopeTests.h:74",
+        "tests/EditTransformTests.h:133"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1162,7 +1195,7 @@
       "value": 40329,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:236"
+        "tests/EditorFeatureTests.h:228"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1235,7 +1268,7 @@
       "value": 40571,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:192"
+        "tests/EditorFeatureTests.h:184"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1265,7 +1298,7 @@
       "value": 40573,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:196"
+        "tests/EditorFeatureTests.h:188"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1327,8 +1360,16 @@
         "tests/EditDialogTests.h:68",
         "tests/EditDialogTests.h:124",
         "tests/EditDialogTests.h:135",
-        "tests/EditorFeatureTests.h:249",
-        "tests/EditorFeatureTests.h:253"
+        "tests/EditorFeatureTests.h:238",
+        "tests/EditorFeatureTests.h:242",
+        "tests/EditTransformTests.h:67",
+        "tests/EditTransformTests.h:75",
+        "tests/EditTransformTests.h:133",
+        "tests/EditTransformTests.h:136",
+        "tests/EditTransformTests.h:137",
+        "tests/EditTransformTests.h:138",
+        "tests/EditTransformTests.h:142",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1368,7 +1409,14 @@
       "test_references": [
         "tests/EditDialogTests.h:61",
         "tests/EditDialogTests.h:103",
-        "tests/EditScopeTests.h:105"
+        "tests/EditScopeTests.h:105",
+        "tests/EditTransformTests.h:67",
+        "tests/EditTransformTests.h:73",
+        "tests/EditTransformTests.h:119",
+        "tests/EditTransformTests.h:139",
+        "tests/EditTransformTests.h:141",
+        "tests/EditTransformTests.h:142",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1471,7 +1519,13 @@
         "tests/EditDialogTests.h:61",
         "tests/EditDialogTests.h:110",
         "tests/EditDialogTests.h:116",
-        "tests/EditScopeTests.h:112"
+        "tests/EditScopeTests.h:112",
+        "tests/EditTransformTests.h:67",
+        "tests/EditTransformTests.h:74",
+        "tests/EditTransformTests.h:134",
+        "tests/EditTransformTests.h:135",
+        "tests/EditTransformTests.h:142",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1529,7 +1583,7 @@
       "value": 40208,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:48"
+        "tests/EditorFeatureTests.h:44"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1647,7 +1701,7 @@
       "value": 40392,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:65"
+        "tests/EditorFeatureTests.h:57"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1663,8 +1717,8 @@
       "value": 40391,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:68",
-        "tests/EditorFeatureTests.h:71"
+        "tests/EditorFeatureTests.h:60",
+        "tests/EditorFeatureTests.h:63"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1694,10 +1748,11 @@
       "value": 40373,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:70",
-        "tests/StyleFeatureTests.h:83",
-        "tests/StyleFeatureTests.h:86",
-        "tests/StyleFeatureTests.h:87"
+        "tests/CompletionBudgetTests.h:92",
+        "tests/StyleFeatureTests.h:104",
+        "tests/StyleFeatureTests.h:117",
+        "tests/StyleFeatureTests.h:120",
+        "tests/StyleFeatureTests.h:121"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1713,7 +1768,7 @@
       "value": 40380,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:151"
+        "tests/EditorFeatureTests.h:143"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -1743,7 +1798,7 @@
       "value": 40262,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:140"
+        "tests/EditorFeatureTests.h:132"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2165,7 +2220,7 @@
       "value": 40382,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:156"
+        "tests/EditorFeatureTests.h:148"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2181,7 +2236,7 @@
       "value": 40383,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:159"
+        "tests/EditorFeatureTests.h:151"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2253,8 +2308,8 @@
       "value": 40350,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:163",
-        "tests/EditorFeatureTests.h:170"
+        "tests/EditorFeatureTests.h:155",
+        "tests/EditorFeatureTests.h:162"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2312,7 +2367,7 @@
       "value": 40202,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:51"
+        "tests/EditorFeatureTests.h:47"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2328,7 +2383,7 @@
       "value": 40203,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:53"
+        "tests/EditorFeatureTests.h:49"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2344,8 +2399,8 @@
       "value": 40467,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:61",
-        "tests/EditorFeatureTests.h:143"
+        "tests/EditorFeatureTests.h:53",
+        "tests/EditorFeatureTests.h:135"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2375,7 +2430,7 @@
       "value": 40204,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:43"
+        "tests/EditorFeatureTests.h:39"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2391,7 +2446,7 @@
       "value": 40205,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:45"
+        "tests/EditorFeatureTests.h:41"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2463,7 +2518,7 @@
       "value": 40561,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:147"
+        "tests/EditorFeatureTests.h:139"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2537,6 +2592,11 @@
       "value": 40368,
       "runtime_supported": true,
       "test_references": [
+        "tests/MigrationSmokeTest.h:22",
+        "tests/SearchDialogFeatureTests.h:41",
+        "tests/SearchDialogFeatureTests.h:47",
+        "tests/SearchDialogFeatureTests.h:51",
+        "tests/SearchDialogFeatureTests.h:55",
         "tests/UIConsistencyTests.h:185"
       ],
       "behavioral_acceptance": "pending",
@@ -2608,7 +2668,9 @@
       "id": "IDM_EDIT_SELECTLINE",
       "value": 40312,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:53"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -2693,7 +2755,7 @@
       "value": 40254,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeFeatureTests.h:94"
+        "tests/RuntimeFeatureTests.h:227"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2751,7 +2813,7 @@
       "value": 40256,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeFeatureTests.h:96"
+        "tests/RuntimeFeatureTests.h:229"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2781,7 +2843,7 @@
       "value": 40485,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:61"
+        "tests/StyleFeatureTests.h:95"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2839,7 +2901,7 @@
       "value": 40489,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:65"
+        "tests/StyleFeatureTests.h:99"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2855,7 +2917,7 @@
       "value": 40490,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:63"
+        "tests/StyleFeatureTests.h:97"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2899,7 +2961,7 @@
       "value": 40403,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleDialogTests.h:99"
+        "tests/StyleDialogTests.h:84"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -2915,7 +2977,7 @@
       "value": 40421,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleDialogTests.h:101"
+        "tests/StyleDialogTests.h:86"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3050,7 +3112,9 @@
       "runtime_supported": true,
       "test_references": [
         "tests/LongLinePreferenceTests.h:100",
-        "tests/LongLinePreferenceTests.h:137"
+        "tests/LongLinePreferenceTests.h:137",
+        "tests/ModelinePreferenceTests.h:219",
+        "tests/ModelinePreferenceTests.h:221"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3099,7 +3163,9 @@
         "tests/RuntimeFeatureTests.h:17",
         "tests/RuntimeFeatureTests.h:23",
         "tests/RuntimeFeatureTests.h:26",
-        "tests/RuntimeFeatureTests.h:29"
+        "tests/RuntimeFeatureTests.h:29",
+        "tests/RuntimeFeatureTests.h:33",
+        "tests/RuntimeFeatureTests.h:37"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3171,7 +3237,7 @@
       "value": 40474,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:121"
+        "tests/StyleFeatureTests.h:157"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3187,7 +3253,7 @@
       "value": 40475,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:123"
+        "tests/StyleFeatureTests.h:159"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3203,7 +3269,7 @@
       "value": 40476,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:122"
+        "tests/StyleFeatureTests.h:158"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3233,7 +3299,7 @@
       "value": 40445,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:117"
+        "tests/StyleFeatureTests.h:153"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3249,7 +3315,7 @@
       "value": 40446,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:107"
+        "tests/StyleFeatureTests.h:141"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3265,7 +3331,7 @@
       "value": 40447,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:107"
+        "tests/StyleFeatureTests.h:141"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3365,7 +3431,8 @@
       "value": 40412,
       "runtime_supported": true,
       "test_references": [
-        "tests/LongLinePreferenceTests.h:106"
+        "tests/LongLinePreferenceTests.h:106",
+        "tests/MigrationSmokeTest.h:85"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3394,7 +3461,16 @@
       "id": "IDM_VIEW_CHANGE_HISTORY_MARKER",
       "value": 40422,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/StyleFeatureTests.h:52",
+        "tests/StyleFeatureTests.h:53",
+        "tests/StyleFeatureTests.h:56",
+        "tests/StyleFeatureTests.h:57",
+        "tests/StyleFeatureTests.h:62",
+        "tests/StyleFeatureTests.h:70",
+        "tests/StyleFeatureTests.h:72",
+        "tests/StyleFeatureTests.h:79"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -3409,8 +3485,8 @@
       "value": 40452,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:51",
-        "tests/StyleFeatureTests.h:53"
+        "tests/StyleFeatureTests.h:85",
+        "tests/StyleFeatureTests.h:87"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3774,7 +3850,9 @@
       "runtime_supported": true,
       "test_references": [
         "tests/ResizeGripTests.h:132",
-        "tests/StyleDialogTests.h:36",
+        "tests/StyleDialogTests.h:90",
+        "tests/StyleDialogTests.h:91",
+        "tests/StyleDialogTests.h:101",
         "tests/UIConsistencyTests.h:186"
       ],
       "behavioral_acceptance": "pending",
@@ -3791,9 +3869,15 @@
       "value": 40402,
       "runtime_supported": true,
       "test_references": [
-        "tests/ResizeGripTests.h:132",
-        "tests/StyleDialogTests.h:36",
-        "tests/UIConsistencyTests.h:186"
+        "tests/ConfigurationFeatureTests.h:249",
+        "tests/ConfigurationFeatureTests.h:278",
+        "tests/ConfigurationFeatureTests.h:280",
+        "tests/ConfigurationFeatureTests.h:285",
+        "tests/ConfigurationFeatureTests.h:295",
+        "tests/ConfigurationFeatureTests.h:318",
+        "tests/ConfigurationFeatureTests.h:350",
+        "tests/UIConsistencyTests.h:186",
+        "tests/UIConsistencyTests.h:201"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3810,7 +3894,7 @@
       "runtime_supported": true,
       "test_references": [
         "tests/ResizeGripTests.h:132",
-        "tests/StyleDialogTests.h:112"
+        "tests/StyleDialogTests.h:92"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3912,7 +3996,7 @@
       "value": 40703,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:35"
+        "tests/StyleFeatureTests.h:36"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -3928,7 +4012,7 @@
       "value": 40704,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:35"
+        "tests/StyleFeatureTests.h:36"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -4224,7 +4308,8 @@
       "value": 40724,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:39"
+        "tests/CompletionIndentBaseline.h:128",
+        "tests/StyleFeatureTests.h:40"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -4267,7 +4352,9 @@
       "id": "IDM_LEXER_CSHELL",
       "value": 40727,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/CompletionIndentBaseline.h:46"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -4438,6 +4525,13 @@
       "value": 40418,
       "runtime_supported": true,
       "test_references": [
+        "tests/MDILayoutTests.h:51",
+        "tests/ModelinePreferenceTests.h:125",
+        "tests/ModelinePreferenceTests.h:162",
+        "tests/ModelinePreferenceTests.h:221",
+        "tests/ModelinePreferenceTests.h:232",
+        "tests/ModelinePreferenceTests.h:233",
+        "tests/ModelinePreferenceTests.h:234",
         "tests/SettingsCancelTests.h:122",
         "tests/SettingsCancelTests.h:125",
         "tests/TabPreferenceTests.h:33"
@@ -4473,7 +4567,10 @@
       "value": 40420,
       "runtime_supported": true,
       "test_references": [
-        "tests/LongLinePreferenceTests.h:40"
+        "tests/LongLinePreferenceTests.h:40",
+        "tests/ModelinePreferenceTests.h:131",
+        "tests/ModelinePreferenceTests.h:163",
+        "tests/ModelinePreferenceTests.h:221"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -4546,9 +4643,7 @@
       "id": "IDM_SET_SELECTIONASFINDTEXT",
       "value": 40081,
       "runtime_supported": true,
-      "test_references": [
-        "tests/SearchDialogFeatureTests.h:22"
-      ],
+      "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -4887,12 +4982,12 @@
       "value": 40650,
       "runtime_supported": true,
       "test_references": [
-        "tests/LanguagePreferenceTests.h:59",
-        "tests/LanguagePreferenceTests.h:62",
-        "tests/LanguagePreferenceTests.h:85",
-        "tests/LanguagePreferenceTests.h:90",
-        "tests/LanguagePreferenceTests.h:91",
-        "tests/LanguagePreferenceTests.h:92"
+        "tests/LanguagePreferenceTests.h:141",
+        "tests/LanguagePreferenceTests.h:144",
+        "tests/LanguagePreferenceTests.h:167",
+        "tests/LanguagePreferenceTests.h:172",
+        "tests/LanguagePreferenceTests.h:173",
+        "tests/LanguagePreferenceTests.h:174"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -4922,12 +5017,12 @@
       "value": 40651,
       "runtime_supported": true,
       "test_references": [
-        "tests/LanguagePreferenceTests.h:59",
-        "tests/LanguagePreferenceTests.h:64",
-        "tests/LanguagePreferenceTests.h:65",
-        "tests/LanguagePreferenceTests.h:78",
-        "tests/LanguagePreferenceTests.h:82",
-        "tests/LanguagePreferenceTests.h:85"
+        "tests/LanguagePreferenceTests.h:141",
+        "tests/LanguagePreferenceTests.h:146",
+        "tests/LanguagePreferenceTests.h:147",
+        "tests/LanguagePreferenceTests.h:160",
+        "tests/LanguagePreferenceTests.h:164",
+        "tests/LanguagePreferenceTests.h:167"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5027,14 +5122,14 @@
       "value": 40654,
       "runtime_supported": true,
       "test_references": [
-        "tests/LanguagePreferenceTests.h:65",
-        "tests/LanguagePreferenceTests.h:76",
-        "tests/LanguagePreferenceTests.h:80",
-        "tests/LanguagePreferenceTests.h:81",
-        "tests/LanguagePreferenceTests.h:83",
-        "tests/LanguagePreferenceTests.h:84",
-        "tests/LanguagePreferenceTests.h:86",
-        "tests/LanguagePreferenceTests.h:87"
+        "tests/LanguagePreferenceTests.h:147",
+        "tests/LanguagePreferenceTests.h:158",
+        "tests/LanguagePreferenceTests.h:162",
+        "tests/LanguagePreferenceTests.h:163",
+        "tests/LanguagePreferenceTests.h:165",
+        "tests/LanguagePreferenceTests.h:166",
+        "tests/LanguagePreferenceTests.h:168",
+        "tests/LanguagePreferenceTests.h:169"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5163,7 +5258,9 @@
       "id": "IDM_VIEW_SHOWFILENAMEONLY",
       "value": 40430,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/FrameRefreshTests.h:96"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5205,7 +5302,15 @@
       "id": "IDM_VIEW_SHOWEXCERPT",
       "value": 40433,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/CommentTests.h:104",
+        "tests/FrameRefreshTests.h:44",
+        "tests/FrameRefreshTests.h:63",
+        "tests/FrameRefreshTests.h:99",
+        "tests/FrameRefreshTests.h:132",
+        "tests/ModelinePreferenceTests.h:175",
+        "tests/StatusPresentationTests.h:173"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5234,8 +5339,8 @@
       "value": 40429,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeDialogTests.h:58",
-        "tests/RuntimeDialogTests.h:65"
+        "tests/RuntimeDialogTests.h:98",
+        "tests/RuntimeDialogTests.h:105"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5251,6 +5356,9 @@
       "value": 40493,
       "runtime_supported": true,
       "test_references": [
+        "tests/AutoSaveCaptureTests.h:37",
+        "tests/AutoSaveCaptureTests.h:108",
+        "tests/AutoSaveCaptureTests.h:127",
         "tests/AutoSaveFeatureTests.h:15",
         "tests/AutoSaveFeatureTests.h:72",
         "tests/AutoSaveFeatureTests.h:82",
@@ -5262,11 +5370,17 @@
         "tests/AutoSaveSettingsTests.h:53",
         "tests/AutoSaveSettingsTests.h:68",
         "tests/AutoSaveSettingsTests.h:85",
-        "tests/RuntimeDialogTests.h:72",
-        "tests/RuntimeDialogTests.h:77",
-        "tests/RuntimeDialogTests.h:78",
-        "tests/RuntimeFeatureTests.h:36",
-        "tests/SessionFeatureTests.h:20"
+        "tests/CommentTests.h:104",
+        "tests/EditTransformTests.h:128",
+        "tests/MigrationSmokeTest.h:23",
+        "tests/ModelinePreferenceTests.h:174",
+        "tests/PerformanceFeatureTests.h:18",
+        "tests/RichTextTests.h:197",
+        "tests/RuntimeDialogTests.h:112",
+        "tests/RuntimeDialogTests.h:117",
+        "tests/RuntimeDialogTests.h:118",
+        "tests/RuntimeFeatureTests.h:101",
+        "tests/SessionFeatureTests.h:22"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5281,7 +5395,11 @@
       "id": "IDM_VIEW_NOESCFUNC",
       "value": 40434,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/CompletionBudgetTests.h:134",
+        "tests/CompletionBudgetTests.h:135",
+        "tests/CompletionBudgetTests.h:136"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5324,8 +5442,8 @@
       "value": 40438,
       "runtime_supported": true,
       "test_references": [
-        "tests/FileDialogTests.h:146",
-        "src/FileCommandSmokeTest.h:49"
+        "tests/FileCommandSmokeTest.h:50",
+        "tests/FileDialogTests.h:167"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5639,10 +5757,10 @@
       "value": 40044,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:57",
-        "src/FileCommandSmokeTest.h:59",
-        "src/FileCommandSmokeTest.h:65",
-        "src/FileCommandSmokeTest.h:69"
+        "tests/FileCommandSmokeTest.h:58",
+        "tests/FileCommandSmokeTest.h:60",
+        "tests/FileCommandSmokeTest.h:66",
+        "tests/FileCommandSmokeTest.h:70"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5672,7 +5790,7 @@
       "value": 40027,
       "runtime_supported": true,
       "test_references": [
-        "tests/LanguagePreferenceTests.h:39"
+        "tests/LanguagePreferenceTests.h:40"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5744,9 +5862,10 @@
     {
       "id": "CMD_OPEN_PATH_OR_LINK",
       "value": 40586,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [
-        "src/FileCommandSmokeTest.h:96"
+        "tests/SelectionActionsPluginTests.h:12",
+        "tests/SelectionActionsPluginTests.h:24"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5765,8 +5884,10 @@
     {
       "id": "CMD_OPEN_CONTAINING_FOLDER",
       "value": 40587,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5779,8 +5900,10 @@
     {
       "id": "CMD_CALCULATE_EXPR",
       "value": 40588,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5793,8 +5916,10 @@
     {
       "id": "CMD_ONLINE_SEARCH_GOOGLE",
       "value": 40562,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5807,8 +5932,10 @@
     {
       "id": "CMD_ONLINE_SEARCH_BING",
       "value": 40563,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5821,8 +5948,10 @@
     {
       "id": "CMD_ONLINE_SEARCH_WIKI",
       "value": 40564,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5835,8 +5964,10 @@
     {
       "id": "CMD_CUSTOM_ACTION1",
       "value": 40565,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5849,8 +5980,10 @@
     {
       "id": "CMD_CUSTOM_ACTION2",
       "value": 40566,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5863,13 +5996,9 @@
     {
       "id": "IDM_EDIT_BASE64_ENCODE",
       "value": 40494,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [
-        "tests/EditorFeatureTests.h:32",
-        "tests/EditorFeatureTests.h:57",
-        "tests/EditorFeatureTests.h:243",
-        "tests/EditorFeatureTests.h:260",
-        "tests/EditorFeatureTests.h:261"
+        "tests/Base64PluginTests.h:11"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5883,7 +6012,7 @@
     {
       "id": "IDM_EDIT_BASE64_SAFE_ENCODE",
       "value": 40495,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5897,7 +6026,7 @@
     {
       "id": "IDM_EDIT_BASE64_HTML_EMBEDDED_IMAGE",
       "value": 40496,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5911,11 +6040,8 @@
     {
       "id": "IDM_EDIT_BASE64_DECODE",
       "value": 40497,
-      "runtime_supported": true,
-      "test_references": [
-        "tests/EditorFeatureTests.h:35",
-        "tests/EditorFeatureTests.h:59"
-      ],
+      "runtime_supported": false,
+      "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5928,7 +6054,7 @@
     {
       "id": "IDM_EDIT_BASE64_DECODE_AS_HEX",
       "value": 40498,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5942,8 +6068,10 @@
     {
       "id": "IDM_EDIT_MAP_FULLWIDTH",
       "value": 40211,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/TextTransliterationPluginTests.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -5956,7 +6084,7 @@
     {
       "id": "IDM_EDIT_MAP_HALFWIDTH",
       "value": 40212,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5970,7 +6098,7 @@
     {
       "id": "IDM_EDIT_MAP_SIMPLIFIED_CHINESE",
       "value": 40213,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5984,7 +6112,7 @@
     {
       "id": "IDM_EDIT_MAP_TRADITIONAL_CHINESE",
       "value": 40214,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5998,7 +6126,7 @@
     {
       "id": "IDM_EDIT_MAP_HIRAGANA",
       "value": 40215,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6012,7 +6140,7 @@
     {
       "id": "IDM_EDIT_MAP_KATAKANA",
       "value": 40216,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6026,8 +6154,10 @@
     {
       "id": "IDM_EDIT_MAP_HANJA_HANGUL",
       "value": 40222,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/TextTransliterationPluginTests.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6040,7 +6170,7 @@
     {
       "id": "IDM_EDIT_MAP_HANGUL_DECOMPOSITION",
       "value": 40221,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6054,7 +6184,7 @@
     {
       "id": "IDM_EDIT_MAP_BENGALI_LATIN",
       "value": 40220,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6068,7 +6198,7 @@
     {
       "id": "IDM_EDIT_MAP_CYRILLIC_LATIN",
       "value": 40219,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6082,7 +6212,7 @@
     {
       "id": "IDM_EDIT_MAP_DEVANAGARI_LATIN",
       "value": 40218,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6096,7 +6226,7 @@
     {
       "id": "IDM_EDIT_MAP_MALAYALAM_LATIN",
       "value": 40217,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6110,8 +6240,10 @@
     {
       "id": "IDM_EDIT_CODE_COMPRESS",
       "value": 40378,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6124,8 +6256,10 @@
     {
       "id": "IDM_EDIT_CODE_PRETTY",
       "value": 40379,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6138,8 +6272,10 @@
     {
       "id": "CMD_EVALUATE_JS_EXPR",
       "value": 40589,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6152,8 +6288,10 @@
     {
       "id": "IDM_EDIT_XHTML_ESCAPE_CHAR",
       "value": 40206,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6166,8 +6304,10 @@
     {
       "id": "IDM_EDIT_XHTML_UNESCAPE_CHAR",
       "value": 40207,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6180,8 +6320,10 @@
     {
       "id": "IDM_EDIT_URLENCODE",
       "value": 40356,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
         {
@@ -6194,9 +6336,9 @@
     {
       "id": "IDM_EDIT_URLCOMPONENTENCODE",
       "value": 40357,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [
-        "tests/EditorFeatureTests.h:38"
+        "tests/WebToolsPluginTests.h:14"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6210,9 +6352,9 @@
     {
       "id": "IDM_EDIT_URLDECODE",
       "value": 40343,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [
-        "tests/EditorFeatureTests.h:40"
+        "tests/WebToolsPluginTests.h:14"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -6369,7 +6511,9 @@
       "id": "IDD_ABOUT",
       "value": 100,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:10"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1072,
       "caption": "Notepad4"
@@ -6378,7 +6522,9 @@
       "id": "IDD_FIND",
       "value": 118,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:17"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1094,
       "caption": "Find Text"
@@ -6387,7 +6533,9 @@
       "id": "IDD_REPLACE",
       "value": 119,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:18"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1128,
       "caption": "Replace Text"
@@ -6397,6 +6545,7 @@
       "value": 102,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:10",
         "tests/ResizeGripTests.h:100",
         "tests/ResizeGripTests.h:110",
         "tests/ResizeGripTests.h:119"
@@ -6409,7 +6558,9 @@
       "id": "IDD_OPENWITH",
       "value": 101,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:10"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1181,
       "caption": "Open with..."
@@ -6418,7 +6569,9 @@
       "id": "IDD_SYSTEM_INTEGRATION",
       "value": 105,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:10"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1194,
       "caption": "System Integration"
@@ -6427,7 +6580,9 @@
       "id": "IDD_DEFENCODING",
       "value": 103,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1211,
       "caption": "Encoding"
@@ -6436,7 +6591,9 @@
       "id": "IDD_DEFEOLMODE",
       "value": 106,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1228,
       "caption": "Line Endings"
@@ -6445,7 +6602,9 @@
       "id": "IDD_WARNLINEENDS",
       "value": 129,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1242,
       "caption": "Inconsistent Line Endings"
@@ -6454,7 +6613,9 @@
       "id": "IDD_LINENUM",
       "value": 117,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1261,
       "caption": "Goto"
@@ -6463,7 +6624,9 @@
       "id": "IDD_FILEMRU",
       "value": 109,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1274,
       "caption": "Open Recent File"
@@ -6472,7 +6635,9 @@
       "id": "IDD_CHANGENOTIFY",
       "value": 110,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:11"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1289,
       "caption": "File Change Notification"
@@ -6481,7 +6646,9 @@
       "id": "IDD_STYLESELECT",
       "value": 120,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:12"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1304,
       "caption": "Select Scheme"
@@ -6490,7 +6657,9 @@
       "id": "IDD_STYLECONFIG",
       "value": 121,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:19"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1317,
       "caption": "Customize Schemes"
@@ -6500,6 +6669,7 @@
       "value": 124,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:12",
         "tests/StyleDialogTests.h:55"
       ],
       "behavioral_acceptance": "pending",
@@ -6511,6 +6681,7 @@
       "value": 123,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:12",
         "tests/StyleDialogTests.h:64"
       ],
       "behavioral_acceptance": "pending",
@@ -6522,6 +6693,7 @@
       "value": 122,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:12",
         "tests/StyleDialogTests.h:44"
       ],
       "behavioral_acceptance": "pending",
@@ -6534,7 +6706,8 @@
       "runtime_supported": null,
       "test_references": [
         "tests/FileDialogTests.h:96",
-        "tests/FileDialogTests.h:98"
+        "tests/FileDialogTests.h:98",
+        "tests/MigrationSmokeTest.h:12"
       ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1409,
@@ -6544,7 +6717,9 @@
       "id": "IDD_FAVORITES",
       "value": 107,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1451,
       "caption": "Favorites"
@@ -6554,6 +6729,7 @@
       "value": 108,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:13",
         "tests/ResizeGripTests.h:101",
         "tests/ResizeGripTests.h:111",
         "tests/ResizeGripTests.h:120"
@@ -6566,7 +6742,9 @@
       "id": "IDD_COLUMNWRAP",
       "value": 116,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1476,
       "caption": "Column Wrap"
@@ -6575,7 +6753,9 @@
       "id": "IDD_MODIFYLINES",
       "value": 111,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1487,
       "caption": "Modify Lines"
@@ -6584,7 +6764,9 @@
       "id": "IDD_INSERTTAG",
       "value": 114,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1511,
       "caption": "Insert HTML/XML Tag"
@@ -6593,7 +6775,9 @@
       "id": "IDD_ENCLOSESELECTION",
       "value": 113,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1525,
       "caption": "Enclose Selection"
@@ -6602,7 +6786,9 @@
       "id": "IDD_INFOBOX",
       "value": 126,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1539,
       "caption": "Notepad4"
@@ -6611,7 +6797,9 @@
       "id": "IDD_SORT",
       "value": 115,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1554,
       "caption": "Sort Lines"
@@ -6620,7 +6808,9 @@
       "id": "IDD_SELECT_ENCODING",
       "value": 104,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1574,
       "caption": "Select Encoding"
@@ -6629,7 +6819,9 @@
       "id": "IDD_ALIGN",
       "value": 112,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1586,
       "caption": "Align Lines"
@@ -6639,6 +6831,7 @@
       "value": 130,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:14",
         "tests/StyleDialogTests.h:62"
       ],
       "behavioral_acceptance": "pending",
@@ -6653,6 +6846,7 @@
         "tests/EditScopeTests.h:132",
         "tests/EditScopeTests.h:141",
         "tests/EditScopeTests.h:147",
+        "tests/MigrationSmokeTest.h:14",
         "tests/StyleDialogTests.h:69"
       ],
       "behavioral_acceptance": "pending",
@@ -6663,7 +6857,9 @@
       "id": "IDD_AUTOSAVE",
       "value": 132,
       "runtime_supported": null,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:15"
+      ],
       "behavioral_acceptance": "pending",
       "upstream_line": 1667,
       "caption": "AutoSave Settings"
@@ -6673,6 +6869,7 @@
       "value": 133,
       "runtime_supported": null,
       "test_references": [
+        "tests/MigrationSmokeTest.h:15",
         "tests/StyleDialogTests.h:75"
       ],
       "behavioral_acceptance": "pending",
@@ -6686,7 +6883,8 @@
       "value": 40600,
       "runtime_supported": true,
       "test_references": [
-        "tests/ToolbarOpenTests.h:149"
+        "tests/ToolbarOpenTests.h:143",
+        "tests/ToolbarOpenTests.h:162"
       ],
       "behavioral_acceptance": "pending"
     },
@@ -6698,8 +6896,8 @@
         "tests/ToolbarOpenTests.h:23",
         "tests/ToolbarOpenTests.h:27",
         "tests/ToolbarOpenTests.h:77",
-        "tests/ToolbarOpenTests.h:144",
-        "tests/ToolbarOpenTests.h:149"
+        "tests/ToolbarOpenTests.h:157",
+        "tests/ToolbarOpenTests.h:162"
       ],
       "behavioral_acceptance": "pending"
     },
@@ -6714,7 +6912,9 @@
       "id": "IDT_FILE_SAVE",
       "value": 40603,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:21"
+      ],
       "behavioral_acceptance": "pending"
     },
     {
@@ -6770,7 +6970,9 @@
       "id": "IDT_VIEW_WORDWRAP",
       "value": 40611,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:56"
+      ],
       "behavioral_acceptance": "pending"
     },
     {
@@ -6798,7 +7000,9 @@
       "id": "IDT_VIEW_SCHEMECONFIG",
       "value": 40615,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/ConfigurationFeatureTests.h:243"
+      ],
       "behavioral_acceptance": "pending"
     },
     {
@@ -6990,8 +7194,10 @@
     {
       "id": "CMD_CUSTOM_ACTION1",
       "value": 40565,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"1\"",
@@ -7010,8 +7216,10 @@
     {
       "id": "CMD_CUSTOM_ACTION2",
       "value": 40566,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/SelectionActionsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"2\"",
@@ -7022,7 +7230,7 @@
       "value": 40571,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:192"
+        "tests/EditorFeatureTests.h:184"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7116,7 +7324,7 @@
       "value": 40573,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:196"
+        "tests/EditorFeatureTests.h:188"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7141,7 +7349,9 @@
         "tests/RuntimeFeatureTests.h:17",
         "tests/RuntimeFeatureTests.h:23",
         "tests/RuntimeFeatureTests.h:26",
-        "tests/RuntimeFeatureTests.h:29"
+        "tests/RuntimeFeatureTests.h:29",
+        "tests/RuntimeFeatureTests.h:33",
+        "tests/RuntimeFeatureTests.h:37"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7162,7 +7372,9 @@
       "id": "IDM_EDIT_COPYALL",
       "value": 40304,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/RichTextTests.h:112"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"A\"",
@@ -7215,8 +7427,8 @@
       "value": 40391,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:68",
-        "tests/EditorFeatureTests.h:71"
+        "tests/EditorFeatureTests.h:60",
+        "tests/EditorFeatureTests.h:63"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7260,7 +7472,7 @@
       "value": 40203,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:53"
+        "tests/EditorFeatureTests.h:49"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7322,7 +7534,7 @@
       "value": 40392,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:65"
+        "tests/EditorFeatureTests.h:57"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7334,7 +7546,7 @@
       "value": 40305,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:216"
+        "tests/EditorFeatureTests.h:208"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7346,7 +7558,7 @@
       "value": 40204,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:43"
+        "tests/EditorFeatureTests.h:39"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7356,8 +7568,10 @@
     {
       "id": "IDM_EDIT_URLENCODE",
       "value": 40356,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:14"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"E\"",
@@ -7390,8 +7604,8 @@
       "value": 40452,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:51",
-        "tests/StyleFeatureTests.h:53"
+        "tests/StyleFeatureTests.h:85",
+        "tests/StyleFeatureTests.h:87"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7403,7 +7617,7 @@
       "value": 40476,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:122"
+        "tests/StyleFeatureTests.h:158"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7435,6 +7649,11 @@
       "value": 40368,
       "runtime_supported": true,
       "test_references": [
+        "tests/MigrationSmokeTest.h:22",
+        "tests/SearchDialogFeatureTests.h:41",
+        "tests/SearchDialogFeatureTests.h:47",
+        "tests/SearchDialogFeatureTests.h:51",
+        "tests/SearchDialogFeatureTests.h:55",
         "tests/UIConsistencyTests.h:185"
       ],
       "behavioral_acceptance": "pending",
@@ -7447,10 +7666,10 @@
       "value": 40020,
       "runtime_supported": true,
       "test_references": [
-        "tests/FileDialogTests.h:140",
-        "tests/FileDialogTests.h:146",
-        "tests/FileDialogTests.h:147",
-        "tests/FileDialogTests.h:148"
+        "tests/FileDialogTests.h:161",
+        "tests/FileDialogTests.h:167",
+        "tests/FileDialogTests.h:168",
+        "tests/FileDialogTests.h:169"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7460,8 +7679,10 @@
     {
       "id": "IDM_EDIT_XHTML_UNESCAPE_CHAR",
       "value": 40207,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"H\"",
@@ -7514,7 +7735,7 @@
       "value": 40475,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:123"
+        "tests/StyleFeatureTests.h:159"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7538,7 +7759,14 @@
       "test_references": [
         "tests/EditDialogTests.h:61",
         "tests/EditDialogTests.h:103",
-        "tests/EditScopeTests.h:105"
+        "tests/EditScopeTests.h:105",
+        "tests/EditTransformTests.h:67",
+        "tests/EditTransformTests.h:73",
+        "tests/EditTransformTests.h:119",
+        "tests/EditTransformTests.h:139",
+        "tests/EditTransformTests.h:141",
+        "tests/EditTransformTests.h:142",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7560,8 +7788,8 @@
       "value": 40307,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:219",
-        "tests/EditorFeatureTests.h:222"
+        "tests/EditorFeatureTests.h:211",
+        "tests/EditorFeatureTests.h:214"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7618,7 +7846,9 @@
       "runtime_supported": true,
       "test_references": [
         "tests/LongLinePreferenceTests.h:100",
-        "tests/LongLinePreferenceTests.h:137"
+        "tests/LongLinePreferenceTests.h:137",
+        "tests/ModelinePreferenceTests.h:219",
+        "tests/ModelinePreferenceTests.h:221"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7694,7 +7924,8 @@
       "value": 40412,
       "runtime_supported": true,
       "test_references": [
-        "tests/LongLinePreferenceTests.h:106"
+        "tests/LongLinePreferenceTests.h:106",
+        "tests/MigrationSmokeTest.h:85"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7722,8 +7953,16 @@
         "tests/EditDialogTests.h:68",
         "tests/EditDialogTests.h:124",
         "tests/EditDialogTests.h:135",
-        "tests/EditorFeatureTests.h:249",
-        "tests/EditorFeatureTests.h:253"
+        "tests/EditorFeatureTests.h:238",
+        "tests/EditorFeatureTests.h:242",
+        "tests/EditTransformTests.h:67",
+        "tests/EditTransformTests.h:75",
+        "tests/EditTransformTests.h:133",
+        "tests/EditTransformTests.h:136",
+        "tests/EditTransformTests.h:137",
+        "tests/EditTransformTests.h:138",
+        "tests/EditTransformTests.h:142",
+        "tests/EditTransformTests.h:150"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7767,7 +8006,7 @@
       "value": 40329,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:236"
+        "tests/EditorFeatureTests.h:228"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7803,6 +8042,7 @@
       "value": 40355,
       "runtime_supported": true,
       "test_references": [
+        "tests/CommentTests.h:34",
         "tests/EditScopeTests.h:167",
         "tests/EditScopeTests.h:170",
         "tests/EditScopeTests.h:180",
@@ -7842,7 +8082,7 @@
       "value": 40205,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:45"
+        "tests/EditorFeatureTests.h:41"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7852,9 +8092,9 @@
     {
       "id": "IDM_EDIT_URLDECODE",
       "value": 40343,
-      "runtime_supported": true,
+      "runtime_supported": false,
       "test_references": [
-        "tests/EditorFeatureTests.h:40"
+        "tests/WebToolsPluginTests.h:14"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -7910,6 +8150,13 @@
       "value": 40418,
       "runtime_supported": true,
       "test_references": [
+        "tests/MDILayoutTests.h:51",
+        "tests/ModelinePreferenceTests.h:125",
+        "tests/ModelinePreferenceTests.h:162",
+        "tests/ModelinePreferenceTests.h:221",
+        "tests/ModelinePreferenceTests.h:232",
+        "tests/ModelinePreferenceTests.h:233",
+        "tests/ModelinePreferenceTests.h:234",
         "tests/SettingsCancelTests.h:122",
         "tests/SettingsCancelTests.h:125",
         "tests/TabPreferenceTests.h:33"
@@ -7924,7 +8171,7 @@
       "value": 40332,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:21",
+        "tests/EditorFeatureTests.h:28",
         "tests/EditScopeTests.h:39"
       ],
       "behavioral_acceptance": "pending",
@@ -7981,7 +8228,7 @@
       "value": 40208,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:48"
+        "tests/EditorFeatureTests.h:44"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8051,7 +8298,7 @@
       "value": 40575,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:74"
+        "tests/EditorFeatureTests.h:66"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8073,6 +8320,13 @@
       "value": 40300,
       "runtime_supported": true,
       "test_references": [
+        "tests/FrameRefreshTests.h:37",
+        "tests/FrameRefreshTests.h:39",
+        "tests/FrameRefreshTests.h:40",
+        "tests/FrameRefreshTests.h:41",
+        "tests/FrameRefreshTests.h:42",
+        "tests/MigrationSmokeTest.h:43",
+        "tests/MigrationSmokeTest.h:50",
         "tests/UIConsistencyTests.h:184"
       ],
       "behavioral_acceptance": "pending",
@@ -8127,6 +8381,7 @@
       "value": 40354,
       "runtime_supported": true,
       "test_references": [
+        "tests/CommentTests.h:119",
         "tests/EditScopeTests.h:136",
         "tests/EditScopeTests.h:139",
         "tests/EditScopeTests.h:144",
@@ -8145,10 +8400,11 @@
       "value": 40373,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:70",
-        "tests/StyleFeatureTests.h:83",
-        "tests/StyleFeatureTests.h:86",
-        "tests/StyleFeatureTests.h:87"
+        "tests/CompletionBudgetTests.h:92",
+        "tests/StyleFeatureTests.h:104",
+        "tests/StyleFeatureTests.h:117",
+        "tests/StyleFeatureTests.h:120",
+        "tests/StyleFeatureTests.h:121"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8211,7 +8467,11 @@
       "id": "IDM_FILE_READONLY_MODE",
       "value": 40024,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:59",
+        "tests/MigrationSmokeTest.h:65",
+        "tests/SessionFeatureTests.h:168"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "VK_F10",
@@ -8263,7 +8523,9 @@
       "runtime_supported": true,
       "test_references": [
         "tests/ResizeGripTests.h:132",
-        "tests/StyleDialogTests.h:36",
+        "tests/StyleDialogTests.h:90",
+        "tests/StyleDialogTests.h:91",
+        "tests/StyleDialogTests.h:101",
         "tests/UIConsistencyTests.h:186"
       ],
       "behavioral_acceptance": "pending",
@@ -8276,9 +8538,15 @@
       "value": 40402,
       "runtime_supported": true,
       "test_references": [
-        "tests/ResizeGripTests.h:132",
-        "tests/StyleDialogTests.h:36",
-        "tests/UIConsistencyTests.h:186"
+        "tests/ConfigurationFeatureTests.h:249",
+        "tests/ConfigurationFeatureTests.h:278",
+        "tests/ConfigurationFeatureTests.h:280",
+        "tests/ConfigurationFeatureTests.h:285",
+        "tests/ConfigurationFeatureTests.h:295",
+        "tests/ConfigurationFeatureTests.h:318",
+        "tests/ConfigurationFeatureTests.h:350",
+        "tests/UIConsistencyTests.h:186",
+        "tests/UIConsistencyTests.h:201"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8290,7 +8558,7 @@
       "value": 40403,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleDialogTests.h:99"
+        "tests/StyleDialogTests.h:84"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8342,7 +8610,7 @@
       "value": 40254,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeFeatureTests.h:94"
+        "tests/RuntimeFeatureTests.h:227"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8354,7 +8622,7 @@
       "value": 40256,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeFeatureTests.h:96"
+        "tests/RuntimeFeatureTests.h:229"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8458,8 +8726,8 @@
       "value": 40350,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:163",
-        "tests/EditorFeatureTests.h:170"
+        "tests/EditorFeatureTests.h:155",
+        "tests/EditorFeatureTests.h:162"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8471,8 +8739,8 @@
       "value": 40429,
       "runtime_supported": true,
       "test_references": [
-        "tests/RuntimeDialogTests.h:58",
-        "tests/RuntimeDialogTests.h:65"
+        "tests/RuntimeDialogTests.h:98",
+        "tests/RuntimeDialogTests.h:105"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8484,7 +8752,7 @@
       "value": 40561,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:147"
+        "tests/EditorFeatureTests.h:139"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8580,7 +8848,7 @@
       "value": 40560,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:106"
+        "tests/FileCommandSmokeTest.h:118"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8592,7 +8860,7 @@
       "value": 40559,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:108"
+        "tests/FileCommandSmokeTest.h:120"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8664,6 +8932,7 @@
       "value": 40354,
       "runtime_supported": true,
       "test_references": [
+        "tests/CommentTests.h:119",
         "tests/EditScopeTests.h:136",
         "tests/EditScopeTests.h:139",
         "tests/EditScopeTests.h:144",
@@ -8682,10 +8951,11 @@
       "value": 40373,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:70",
-        "tests/StyleFeatureTests.h:83",
-        "tests/StyleFeatureTests.h:86",
-        "tests/StyleFeatureTests.h:87"
+        "tests/CompletionBudgetTests.h:92",
+        "tests/StyleFeatureTests.h:104",
+        "tests/StyleFeatureTests.h:117",
+        "tests/StyleFeatureTests.h:120",
+        "tests/StyleFeatureTests.h:121"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8697,7 +8967,7 @@
       "value": 40485,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:61"
+        "tests/StyleFeatureTests.h:95"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8749,7 +9019,7 @@
       "value": 40489,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:65"
+        "tests/StyleFeatureTests.h:99"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8803,7 +9073,7 @@
       "value": 40490,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:63"
+        "tests/StyleFeatureTests.h:97"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8837,7 +9107,7 @@
       "value": 40575,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:74"
+        "tests/EditorFeatureTests.h:66"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8872,7 +9142,9 @@
       "id": "IDM_EDIT_SELECTLINE",
       "value": 40312,
       "runtime_supported": true,
-      "test_references": [],
+      "test_references": [
+        "tests/MigrationSmokeTest.h:53"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "VK_SPACE",
@@ -8918,7 +9190,7 @@
       "value": 40574,
       "runtime_supported": true,
       "test_references": [
-        "tests/StyleFeatureTests.h:68"
+        "tests/StyleFeatureTests.h:102"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8930,7 +9202,7 @@
       "value": 40555,
       "runtime_supported": false,
       "test_references": [
-        "tests/UIConsistencyTests.h:207"
+        "tests/UIConsistencyTests.h:211"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -9018,8 +9290,10 @@
     {
       "id": "IDM_EDIT_XHTML_ESCAPE_CHAR",
       "value": 40206,
-      "runtime_supported": true,
-      "test_references": [],
+      "runtime_supported": false,
+      "test_references": [
+        "tests/WebToolsPluginTests.h:13"
+      ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
       "key": "\"X\"",
@@ -9030,7 +9304,7 @@
       "value": 40202,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:51"
+        "tests/EditorFeatureTests.h:47"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -9064,6 +9338,13 @@
       "value": 40300,
       "runtime_supported": true,
       "test_references": [
+        "tests/FrameRefreshTests.h:37",
+        "tests/FrameRefreshTests.h:39",
+        "tests/FrameRefreshTests.h:40",
+        "tests/FrameRefreshTests.h:41",
+        "tests/FrameRefreshTests.h:42",
+        "tests/MigrationSmokeTest.h:43",
+        "tests/MigrationSmokeTest.h:50",
         "tests/UIConsistencyTests.h:184"
       ],
       "behavioral_acceptance": "pending",
@@ -9076,6 +9357,13 @@
       "value": 40300,
       "runtime_supported": true,
       "test_references": [
+        "tests/FrameRefreshTests.h:37",
+        "tests/FrameRefreshTests.h:39",
+        "tests/FrameRefreshTests.h:40",
+        "tests/FrameRefreshTests.h:41",
+        "tests/FrameRefreshTests.h:42",
+        "tests/MigrationSmokeTest.h:43",
+        "tests/MigrationSmokeTest.h:50",
         "tests/UIConsistencyTests.h:184"
       ],
       "behavioral_acceptance": "pending",
@@ -9088,7 +9376,7 @@
       "value": 40330,
       "runtime_supported": true,
       "test_references": [
-        "tests/EditorFeatureTests.h:26"
+        "tests/EditorFeatureTests.h:33"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -9112,8 +9400,8 @@
       "value": 130,
       "runtime_supported": null,
       "test_references": [
-        "tests/SearchDialogFeatureTests.h:51",
-        "tests/UIConsistencyTests.h:204"
+        "tests/SearchDialogFeatureTests.h:142",
+        "tests/UIConsistencyTests.h:208"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_ACCFINDREPLACE",
@@ -9125,9 +9413,7 @@
       "id": "IDACC_REPLACE",
       "value": 131,
       "runtime_supported": null,
-      "test_references": [
-        "tests/SearchDialogFeatureTests.h:41"
-      ],
+      "test_references": [],
       "behavioral_acceptance": "pending",
       "table": "IDR_ACCFINDREPLACE",
       "key": "\"H\"",
@@ -9150,7 +9436,7 @@
       "value": 137,
       "runtime_supported": null,
       "test_references": [
-        "tests/UIConsistencyTests.h:204"
+        "tests/UIConsistencyTests.h:208"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_ACCFINDREPLACE",
@@ -9162,10 +9448,7 @@
       "id": "IDACC_FINDNEXT",
       "value": 132,
       "runtime_supported": null,
-      "test_references": [
-        "tests/SearchDialogFeatureTests.h:45",
-        "tests/SearchDialogFeatureTests.h:48"
-      ],
+      "test_references": [],
       "behavioral_acceptance": "pending",
       "table": "IDR_ACCFINDREPLACE",
       "key": "VK_F3",

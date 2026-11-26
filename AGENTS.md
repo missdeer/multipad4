@@ -4,7 +4,7 @@ While preserving full functionality, this project gives runtime performance the 
 
 ## Project Structure & Module Organization
 
-MultiPad4 is a Windows-only, tabbed MDI editor built with C++20, Win32, and Scintilla. `src/` contains the application, document model, file I/O, Win32 resources, and manifest. `tests/FileIOTests.cpp` covers file handling; `src/SmokeTest.h` provides editor integration checks. `3rdparty/` holds pinned notepad4, Scintilla, matepath and other third-party sources. `cmake/` contains build integration and compatibility transforms. `docs/PROJECT_SCOPE.md` defines migration requirements; `tools/inventory_notepad4.py` regenerates the UI inventory. Treat `cmake-msvc-build/` and `tmp/` as local generated directories.
+MultiPad4 is a Windows-only, tabbed MDI editor built with C++20, Win32, and Scintilla. `src/` contains the application, document model, file I/O, Win32 resources, and manifest. `tests/FileIOTests.cpp` covers file handling; `tests/SmokeTest.h` provides editor integration checks. `3rdparty/` holds pinned notepad4, Scintilla, matepath and other third-party sources. `cmake/` contains build integration and compatibility transforms. `docs/PROJECT_SCOPE.md` defines migration requirements; `tools/inventory_notepad4.py` regenerates the UI inventory. Treat `cmake-msvc-build/` and `tmp/` as local generated directories.
 
 ## Build, Test, and Development Commands
 

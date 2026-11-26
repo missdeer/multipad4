@@ -51,6 +51,13 @@ After integrating settings master `862e426`, the wrapper build linked and
 the DPI test itself took 1.11 s). The captured screenshots and metrics above
 precede that unrelated settings integration.
 
+The final test entry lives in `tests/TestMain.cpp`; production `src/main.cpp`
+remains four lines. DPI checks still load the bundled plugins, use isolated
+settings, and retain plugin shutdown/unload checks. After this entry migration,
+the actual wrapper build linked and `frame_refresh`, `dpi_fonts`,
+`theme_enumeration` and inventory coverage all passed (4/4, 3.49 s). Unchanged
+performance workloads were not repeated.
+
 The wrapper build linked successfully after removing an inapplicable legacy-OS
 loader call. Full editor smoke was attempted and failed at the existing timed
 Completion budget assertion (line 100); it is not reported as passed. Physical

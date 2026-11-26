@@ -637,7 +637,7 @@ Notepad++ 与 Notepad4 都没有走这条路。**不建议在 MultiPad4 里 fork
 - 校验大文件路径的 `SCI_GETLENGTH`、行数、首行/末行内容；
 - 校验 `SCI_GETDOCUMENTOPTIONS` 含 `TEXT_LARGE | STYLES_NONE`。
 
-在 `src/SmokeTest.h` / `FileCommandSmokeTest.h` 增加：
+在 `tests/SmokeTest.h` / `tests/FileCommandSmokeTest.h` 增加：
 
 - 打开 128 MiB 文件后 `SCI_GETLINECOUNT > 0`；
 - `SCI_GETLINEENDPOSITION(最后一行) == SCI_GETLENGTH`，且跳转到最后一行后
