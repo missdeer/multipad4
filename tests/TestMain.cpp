@@ -1,6 +1,7 @@
 #include "../src/Application.h"
 #include "../src/MainFrame.h"
 #include "SmokeTest.h"
+#include "PrintingSeparatorTests.h"
 #include "DeferredQueueTests.h"
 #include "PluginIndexTests.h"
 #include "SearchRetirementTests.h"
@@ -61,6 +62,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
     bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
+    bool printingSeparatorTest=count==3&&wcscmp(args[1],L"--printing-separator-test")==0;
     bool deferredQueueTest=count==3&&wcscmp(args[1],L"--deferred-queue-test")==0;
     bool pluginIndexTest=count==3&&wcscmp(args[1],L"--plugin-index-test")==0;
     bool settingsProfileTest=count==3&&wcscmp(args[1],L"--settings-profile-test")==0;
@@ -107,6 +109,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
         lexerBaseline ||
         noPluginsTest ||
         (count == 2 && wcscmp(args[1], L"--smoke-test") == 0) ||
+        printingSeparatorTest ||
         deferredQueueTest;
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     if (statusPresentation || statusPresentationBenchmark) smoke = true;
@@ -147,6 +150,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
             else if (commentTest || commentBenchmark) { RunCommentTests(frame, commentBenchmark); }
             else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
             else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
+            else if(printingSeparatorTest){RunPrintingSeparatorTests(frame,args[2]);}
             else if(deferredQueueTest){RunDeferredQueueTests(frame,args[2]);}
             else if(pluginIndexTest){RunPluginIndexTests(frame,args[2]);}
             else if(settingsProfileTest){RunSettingsProfileTests(args[2]);}
