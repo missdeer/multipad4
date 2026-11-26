@@ -65,10 +65,13 @@ inline void RunAutoSaveCaptureTests(MainFrame& frame, bool benchmark) {
 
         // An independent immutable write stays owned after close, without blocking it.
         auto* d = frame.NewDocument(); d->path = folder / L"independent.txt"; d->Load({"independent 中文"});
+        files::WriteNew(d->path, {"source before discarded edits"});
         d->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("x"));
         autosavetest::beforeWrite = Gate; StartWrite(frame, *d); Require(WaitForSingleObject(entered, 5000) == WAIT_OBJECT_0);
         auto started = std::chrono::steady_clock::now(); close(d);
         Require(Milliseconds(started) < 500 && !frame.runtime.autoSaveWrites.empty());
+        Require(frame.Open(folder / L"independent.txt")); auto* reopened = frame.Active();
+        Require(frame.SaveTo(*reopened, reopened->path)); Require(frame.Reload(*reopened)); close(reopened);
         SetEvent(release); autosavetest::beforeWrite = nullptr; Drain(frame);
         bool kept = false;
         for (const auto& file : std::filesystem::directory_iterator(folder))

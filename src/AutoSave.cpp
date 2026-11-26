@@ -146,7 +146,7 @@ void CancelDocumentBackup(MainFrame& frame, const EditorDocument& document, bool
     for (auto it = frame.runtime.autoSaveWrites.begin(); it != frame.runtime.autoSaveWrites.end();) {
         auto& task = **it;
         const bool sameDocument = task.identity == document.searchIdentity;
-        const bool samePath = !document.path.empty() && task.request.path == document.path;
+        const bool samePath = task.request.overwrite && !document.path.empty() && task.request.path == document.path;
         if (!sameDocument && !samePath) { ++it; continue; }
         if (task.request.overwrite && !task.request.path.empty()) {
             // Foreground save/reload/close must serialize against the same target.
