@@ -3,6 +3,7 @@
 #include <shlwapi.h>
 #include <algorithm>
 #include <stdexcept>
+#include <cstring>
 
 namespace files {
 namespace {
@@ -100,37 +101,91 @@ FileSearchResult SearchSnapshot(large::Document::Snapshot snapshot, large::Searc
     if (cancel.load()) throw std::runtime_error("Search cancelled.");
     return result;
 }
+std::optional<FileIdentity> QueryIdentity(const std::filesystem::path& path) {
+    HANDLE file = CreateFileW(path.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return {};
+    FILE_ID_INFO id{};
+    if (GetFileInformationByHandleEx(file, FileIdInfo, &id, sizeof(id))) {
+        FileIdentity value; value.volume = id.VolumeSerialNumber;
+        memcpy(&value.low, id.FileId.Identifier, 8); memcpy(&value.high, id.FileId.Identifier + 8, 8);
+        CloseHandle(file); return value;
+    }
+    CloseHandle(file); return {};
+}
+namespace {
+std::wstring IndexedPath(const std::filesystem::path& path) {
+    auto name = std::filesystem::absolute(path).lexically_normal().native();
+    if (name.starts_with(L"\\\\?\\UNC\\")) name = L"\\\\" + name.substr(8);
+    else if (name.starts_with(L"\\\\?\\")) name.erase(0, 4);
+    return name;
+}
+}
+OpenFileIndex::OpenFileIndex(std::vector<std::filesystem::path> open) : paths(std::move(open)) {
+    for (size_t i = 0; i < paths.size(); ++i) {
+        names[IndexedPath(paths[i])].push_back(i);
+        if (auto id = QueryIdentity(paths[i])) identities[*id].push_back(i);
+        else unresolved.push_back(i);
+    }
+}
+std::optional<size_t> OpenFileIndex::Find(const std::filesystem::path& path) const {
+    if (paths.empty()) return {};
+    auto equivalent = [&](size_t index) { std::error_code error; return std::filesystem::equivalent(paths[index], path, error); };
+    auto id = QueryIdentity(path);
+    if (id) if (auto found = identities.find(*id); found != identities.end())
+        for (const auto index : found->second) if (equivalent(index)) return index;
+    // Atomic saves change IDs while the same path still belongs to its live buffer.
+    if (auto found = names.find(IndexedPath(path)); found != names.end())
+        for (const auto index : found->second) if (equivalent(index)) return index;
+    // Retain equivalent's behavior when a provider cannot supply a stable file ID.
+    for (size_t i = 0; i < (id ? unresolved.size() : paths.size()); ++i) {
+        const auto index = id ? unresolved[i] : i; std::error_code error;
+        if (std::filesystem::equivalent(paths[index], path, error)) return index;
+    }
+    return {};
+}
+struct SearchWalker::Directory {
+    std::filesystem::path path;
+    HANDLE find = INVALID_HANDLE_VALUE;
+    WIN32_FIND_DATAW data{};
+    bool first = true;
+    DWORD error = ERROR_SUCCESS;
+    explicit Directory(std::filesystem::path value) : path(std::move(value)) {
+        const auto query = path / L"*";
+        find = FindFirstFileExW(query.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH);
+        if (find == INVALID_HANDLE_VALUE) error = GetLastError();
+        if (find == INVALID_HANDLE_VALUE && (error == ERROR_INVALID_PARAMETER || error == ERROR_NOT_SUPPORTED)) {
+            find = FindFirstFileExW(query.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, 0);
+            error = find == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+        }
+    }
+    ~Directory() { if (find != INVALID_HANDLE_VALUE) FindClose(find); }
+};
 SearchWalker::SearchWalker(DirectorySearchOptions value) : options(std::move(value)) {
     if (options.filter.empty()) options.filter = L"*.*";
     std::replace(options.filter.begin(), options.filter.end(), L' ', L';');
 }
+SearchWalker::~SearchWalker() = default;
 std::optional<std::filesystem::path> SearchWalker::Next(const std::atomic<bool>& cancel, size_t& errors) {
-    std::error_code error;
-    if (!started) {
-        started = true;
-        stack.emplace_back(options.root, error);
-        if (error) ++errors;
-    }
+    auto push = [&](const std::filesystem::path& path) {
+        auto directory = std::make_unique<Directory>(path);
+        if (directory->find == INVALID_HANDLE_VALUE) { if (directory->error != ERROR_FILE_NOT_FOUND) ++errors; }
+        else stack.push_back(std::move(directory));
+    };
+    if (!started) { started = true; push(options.root); }
     while (!stack.empty() && !cancel.load(std::memory_order_relaxed)) {
-        auto& iterator = stack.back();
-        if (iterator == std::filesystem::directory_iterator{}) { stack.pop_back(); continue; }
-        auto entry = *iterator;
-        iterator.increment(error);
-        if (error) { ++errors; iterator = {}; }
-        const auto attributes = GetFileAttributesW(entry.path().c_str());
-        if (attributes == INVALID_FILE_ATTRIBUTES) { ++errors; continue; }
-        if (!options.hidden && (attributes & FILE_ATTRIBUTE_HIDDEN)) continue;
-        if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-            if (options.recursive && !(attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
-                stack.emplace_back(entry.path(), error);
-                if (error) ++errors;
-            }
-            continue;
+        auto& directory = *stack.back();
+        if (!directory.first && !FindNextFileW(directory.find, &directory.data)) {
+            if (GetLastError() != ERROR_NO_MORE_FILES) ++errors;
+            stack.pop_back(); continue;
         }
-        // Do not follow file symlinks either: a recursive search stays in its root.
-        if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) continue;
-        if (!entry.is_regular_file(error)) { if (error) ++errors; continue; }
-        if (PathMatchSpecW(entry.path().filename().c_str(), options.filter.c_str())) return entry.path();
+        directory.first = false;
+        const auto& data = directory.data;
+        if (wcscmp(data.cFileName, L".") == 0 || wcscmp(data.cFileName, L"..") == 0) continue;
+        if (!options.hidden && (data.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) continue;
+        if (data.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DEVICE)) continue;
+        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) { if (options.recursive) push(directory.path / data.cFileName); continue; }
+        if (PathMatchSpecW(data.cFileName, options.filter.c_str())) return directory.path / data.cFileName;
     }
     return {};
 }
@@ -139,6 +194,8 @@ struct FileSearch::State {
     SearchWalker walker;
     large::SearchOptions pattern;
     std::vector<std::filesystem::path> openPaths;
+    std::unique_ptr<OpenFileIndex> openFiles;
+    std::once_flag openIndexOnce;
     std::atomic<bool> cancel{false};
     std::atomic<size_t> errors{0};
     std::mutex walkMutex, resultMutex;
@@ -197,6 +254,7 @@ bool FileSearch::Done() {
 }
 void FileSearch::State::Run() {
     try {
+        std::call_once(openIndexOnce, [&] { openFiles = std::make_unique<OpenFileIndex>(openPaths); });
         large::Search matcher({}, Encoding::Utf8, pattern, &cancel);
         while (!cancel.load()) {
             std::optional<std::filesystem::path> path;
@@ -209,9 +267,9 @@ void FileSearch::State::Run() {
             if (!path) break;
             try {
                 FileSearchResult result; result.path = *path;
-                for (const auto& open : openPaths) {
+                if (auto index = openFiles->Find(*path)) {
                     std::error_code error;
-                    if (std::filesystem::equivalent(open, *path, error)) { result.openDocument = true; break; }
+                    result.openDocument = std::filesystem::equivalent(openPaths[*index], *path, error);
                 }
                 if (result.openDocument) { Publish(std::move(result)); continue; }
                 matcher.Rebase({});

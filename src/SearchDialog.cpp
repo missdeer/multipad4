@@ -432,6 +432,35 @@ void SearchDialog::FinishFiles(bool cancelled, bool publish) {
     Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
 }
+EditorDocument* SearchDialog::FindOpenFile(const std::filesystem::path& path, bool live) {
+    std::vector<OpenFileState> state;
+    bool invalid = live;
+    for (const auto& d : owner->documents) if (!d->path.empty()) {
+        const auto& runtime = d->runtime;
+        state.push_back({d->searchIdentity, (static_cast<unsigned long long>(runtime.observedWriteTime.dwHighDateTime) << 32) | runtime.observedWriteTime.dwLowDateTime,
+            runtime.observedSize, d->path});
+        invalid |= runtime.externalChangePending || runtime.externalCheckPending;
+    }
+    if (invalid || !openFileIndex || state != indexedOpenFiles) {
+        indexedOpenFiles = std::move(state);
+        std::vector<std::filesystem::path> paths; paths.reserve(indexedOpenFiles.size());
+        for (const auto& file : indexedOpenFiles) paths.push_back(file.path);
+        openFileIndex = std::make_unique<files::OpenFileIndex>(std::move(paths));
+    }
+    // Exact path equality also handles atomic path replacement before watch delivery.
+    for (const auto& file : indexedOpenFiles) if (CompareStringOrdinal(file.path.c_str(), -1, path.c_str(), -1, TRUE) == CSTR_EQUAL) {
+        std::error_code error;
+        auto found = owner->tabs.documentsById.find(file.identity);
+        if (found != owner->tabs.documentsById.end() && std::filesystem::equivalent(found->second->path, path, error)) return found->second;
+    }
+    if (auto index = openFileIndex->Find(path)) {
+        auto found = owner->tabs.documentsById.find(indexedOpenFiles[*index].identity);
+        std::error_code error;
+        if (found != owner->tabs.documentsById.end() && std::filesystem::equivalent(found->second->path, path, error)) return found->second;
+        if (!live) { openFileIndex.reset(); return FindOpenFile(path, true); }
+    }
+    return nullptr;
+}
 void SearchDialog::FileStep() {
     if (!fileRunning) return;
     if (owner->searchResults.generation != fileGeneration) { FinishFiles(true); return; }
@@ -476,11 +505,9 @@ void SearchDialog::FileStep() {
     }
     files::FileSearchResult result;
     if (fileTask->Poll(result)) {
-        EditorDocument* open = nullptr;
-        for (const auto& d : owner->documents) {
-            std::error_code error;
-            if (!d->path.empty() && std::filesystem::equivalent(d->path, result.path, error)) { open = d.get(); break; }
-        }
+        EditorDocument* open = FindOpenFile(result.path);
+        // A fresh worker can recognize an alias created after the cached open-file identity changed.
+        if (!open && result.openDocument) open = FindOpenFile(result.path, true);
         if (open) {
             UseSearch state(*open, fileSearch);
             if (open->FastView()) {
@@ -565,11 +592,7 @@ void SearchDialog::ReplaceFileStep() {
             return;
         }
         if (!task->path) { replaceWork.reset(); FinishFiles(false); return; }
-        EditorDocument* open = nullptr;
-        for (const auto& d : owner->documents) {
-            std::error_code error;
-            if (!d->path.empty() && std::filesystem::equivalent(d->path, *task->path, error)) { open = d.get(); break; }
-        }
+        EditorDocument* open = task->stage == ReplaceWork::Stage::Walk ? FindOpenFile(*task->path) : nullptr;
         if (task->stage == ReplaceWork::Stage::Walk) {
             Status(L"Replacing: " + task->path->wstring());
             if (open) {
@@ -659,6 +682,11 @@ void SearchDialog::ReplaceFileStep() {
             target.Send(SCI_ENDUNDOACTION);
             fileHits += task->result.hits.archive->Count(); ++foundFiles;
             owner->searchResults.AddFile(std::move(task->result.hits), task->identity, target.style.revision); replaceWork.reset(); owner->Refresh(); return;
+        }
+        open = nullptr;
+        for (const auto& d : owner->documents) {
+            std::error_code error;
+            if (!d->path.empty() && std::filesystem::equivalent(d->path, *task->path, error)) { open = d.get(); break; }
         }
         if (open) throw std::runtime_error("Replacement conflict; file became open.");
         // New opens are queued from this owner-thread check until commit completion.

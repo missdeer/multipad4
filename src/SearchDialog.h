@@ -52,6 +52,14 @@ private:
     void StartSearch(int command, bool selection);
     void SearchStep();
     void FinishSearch(bool interrupted, bool publish = true);
+    struct OpenFileState {
+        unsigned long long identity, writeTime, size;
+        std::filesystem::path path;
+        bool operator==(const OpenFileState&) const = default;
+    };
+    std::vector<OpenFileState> indexedOpenFiles;
+    std::unique_ptr<files::OpenFileIndex> openFileIndex;
+    EditorDocument* FindOpenFile(const std::filesystem::path& path, bool live = false);
     unsigned long long pendingIdentity = 0;
     void WatchMappedTask();
     bool fileRunning = false, replaceFiles = false;

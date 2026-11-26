@@ -104,6 +104,12 @@ retirement UI and full editor checks passed again in 31.48 s (1.09/2.86/27.51 s)
 Both test-only CLI routes remain present in the separate test executable.
 After sharing the SMB fixture with the GUI test, console retirement, retirement UI
 and full editor regression checks passed again in 26.43 s (0.55/1.94/23.94 s).
+After merging #37 (`21477d7`), the build, all eight affected console checks
+(24.44 s), all five application checks (43.07 s), and the actual SMB frame-close
+check (3.86 s) passed. The open-file identity index stays inside the admitted
+shared state, is constructed on a worker, and retires together with native
+directory handles and result archives. The fresh-identity/cached-negative alias
+regression and final live replacement check remain intact.
 
 ## Paired measurements and limits
 
@@ -128,7 +134,7 @@ before and 2,330,624 after; handle peaks were 69 and 70 respectively. These
 include sampler/helper threads and are process-wide, not per-job allocation
 claims. The application regression observed eight
 blocked mapped groups at 11,403,264 private bytes and 242 handles. Its blocked
-mapped cancellation through synchronous application redraw took 2.205 ms.
+mapped cancellation through synchronous application redraw took 3.301 ms.
 Those application values are single-run observations, not tail-latency claims.
 Raw paired results are in `benchmarks/search-cancellation.csv`.
 
@@ -163,13 +169,13 @@ owned temporary files or test processes remained.
 
 The actual editor GUI test also transfers that blocked `SearchTask<FileSearchResult>`
 into the real search dialog's `openSearch`, then sends the main frame `WM_CLOSE`.
-The close callback returned in **33.0208 ms** and the complete shutdown callback
-in **33.0383 ms**. It destroyed the frame, retired/cleared the dialog's search,
+The close callback returned in **28.0434 ms** and the complete shutdown callback
+in **28.0572 ms**. It destroyed the frame, retired/cleared the dialog's search,
 and closed admission before acknowledgement. After the watchdog released the
 oplock, the late open result (again **0**) was discarded, all permits/payloads
 were released, and assertions confirmed that the destroyed frame and cleared
 search did not reappear. CTest observed the actual test-editor process exit
-normally with code 0 in 3.78 s; an independent process/file scan was empty.
+normally with code 0 in 3.86 s; an independent process/file scan was empty.
 This scenario uses the existing `--search-retirement-test` GUI entry and the
 same test-only fixture as the console check, with no product configuration.
 

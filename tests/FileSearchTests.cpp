@@ -6,6 +6,9 @@
 #include <source_location>
 #include <stdexcept>
 #include <thread>
+#include <psapi.h>
+#include <shlwapi.h>
+#include <atomic>
 #include <fstream>
 
 void Check(bool value, std::source_location where = std::source_location::current()) {
@@ -27,9 +30,66 @@ Results Collect(files::DirectorySearchOptions options, large::SearchOptions patt
 }
 std::vector<large::SearchHit> Hits(const files::FileSearchResult& result) { return result.archive->Page(0, result.archive->Count()); }
 std::string Text(const files::FileSearchResult& result) { return large::Document::Read(*result.snapshot, 0, static_cast<size_t>(large::Document::Size(*result.snapshot))); }
-int main() {
+int main(int argc, char** argv) {
     const auto root = std::filesystem::temp_directory_path() / (L"MultiPad4-file-search-" + std::to_wstring(GetCurrentProcessId()));
     try {
+        if (argc > 1) {
+            std::filesystem::create_directories(root);
+            std::vector<std::filesystem::path> paths, open;
+            for (int i = 0; i < 2000; ++i) { auto file = root / (std::to_wstring(i) + L".txt"); files::WriteAtomic(file, {"needle"}); paths.push_back(file); if (i < 128) open.push_back(file); }
+            const std::string mode = argv[1];
+            if (mode == "walk-baseline" || mode == "walk-optimized") {
+                const auto begin = std::chrono::steady_clock::now(); size_t count = 0, attributes = 0;
+                if (mode == "walk-baseline") {
+                    for (const auto& entry : std::filesystem::directory_iterator(root)) {
+                        const auto data = GetFileAttributesW(entry.path().c_str()); ++attributes;
+                        if (data != INVALID_FILE_ATTRIBUTES && !(data & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) && entry.is_regular_file() && PathMatchSpecW(entry.path().filename().c_str(), L"*.txt")) ++count;
+                    }
+                } else {
+                    files::SearchWalker walker({root, L"*.txt"}); std::atomic<bool> cancel{false}; size_t errors = 0;
+                    while (walker.Next(cancel, errors)) ++count; Check(errors == 0);
+                }
+                std::cout << mode << ",files=" << count << ",elapsed_ms=" << std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count() << ",extra_attribute_queries=" << attributes << "\n";
+                Check(count == 2000); std::filesystem::remove_all(root); return 0;
+            }
+            if (mode == "walker") {
+                files::SearchWalker walker({root, L"*.txt"}); std::atomic<bool> cancel{false};
+                std::mutex mutex; std::atomic<size_t> files{0}, failures{0}; std::atomic<long long> waitNs{0}, holdNs{0};
+                const auto begin = std::chrono::steady_clock::now(); std::vector<std::thread> workers;
+                for (int i = 0; i < 8; ++i) workers.emplace_back([&] {
+                    for (;;) {
+                        const auto before = std::chrono::steady_clock::now(); std::unique_lock lock(mutex);
+                        const auto acquired = std::chrono::steady_clock::now(); size_t errors = 0;
+                        auto path = walker.Next(cancel, errors); const auto after = std::chrono::steady_clock::now(); lock.unlock();
+                        waitNs.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(acquired-before).count());
+                        holdNs.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(after-acquired).count()); failures += errors;
+                        if (!path) break;
+                        Check(files::Read(*path).utf8 == "needle"); ++files;
+                    }
+                });
+                for (auto& worker : workers) worker.join();
+                std::cout << "walker,files=" << files << ",workers=8,elapsed_ms=" << std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()
+                    << ",aggregate_lock_wait_ms=" << waitNs.load()/1e6 << ",aggregate_lock_hold_ms=" << holdNs.load()/1e6 << ",errors=" << failures << "\n";
+                Check(files == 2000 && failures == 0); std::filesystem::remove_all(root); return 0;
+            }
+            const bool baseline = mode == "baseline";
+            FILETIME created{}, exited{}, kernelStart{}, userStart{}, kernelEnd{}, userEnd{};
+            GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernelStart, &userStart);
+            auto begin = std::chrono::steady_clock::now(); size_t matches = 0, calls = 0, comparisons = 0;
+            if (baseline) {
+                for (const auto& path : paths) for (const auto& item : open) { ++calls; ++comparisons; std::error_code error; if (std::filesystem::equivalent(item, path, error)) { ++matches; break; } }
+            } else {
+                files::OpenFileIndex index(open); calls += open.size();
+                for (const auto& path : paths) { ++calls; if (index.Find(path)) { ++matches; ++comparisons; } }
+            }
+            const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
+            GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernelEnd, &userEnd);
+            auto ticks = [](FILETIME t) { return (static_cast<unsigned long long>(t.dwHighDateTime) << 32) | t.dwLowDateTime; };
+            const auto cpu = (ticks(kernelEnd) + ticks(userEnd) - ticks(kernelStart) - ticks(userStart)) / 10000.0;
+            PROCESS_MEMORY_COUNTERS_EX memory{}; memory.cb = sizeof(memory); K32GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory));
+            std::cout << argv[1] << ",cpu_ms=" << cpu << ",peak_private=" << memory.PeakPagefileUsage << ",files=2000,tabs=128,elapsed_ms=" << elapsed << ",identity_operations=" << calls << ",equivalent_checks=" << comparisons << ",matches=" << matches << "\n";
+            Check(matches == 128); std::filesystem::remove_all(root); return 0;
+        }
         std::filesystem::create_directories(root / L"sub");
         std::filesystem::create_directories(root / L"hidden");
         Check(SetFileAttributesW((root / L"hidden").c_str(), FILE_ATTRIBUTE_HIDDEN));
@@ -54,6 +114,32 @@ int main() {
         }
         const auto& unicode = parallel.at(root / L"sub" / L"unicode.txt");
         Check(Hits(unicode).size() == 3 && Hits(unicode)[1].line == 1 && Hits(unicode)[2].line == 2);
+        {
+            auto alias = root / L"alias.link"; Check(CreateHardLinkW(alias.c_str(), (root / L"0.txt").c_str(), nullptr));
+            files::OpenFileIndex index({root / L"0.txt", root / L"missing.txt"});
+            Check(index.Find(alias) == 0); Check(index.Find(root / L"0.TXT") == 0); Check(!index.Find(root / L"1.txt"));
+            Check(!index.Find(root / L"missing.txt"));
+            // Native traversal excludes both file symlinks and directory reparse points.
+            const auto symlink = root / L"link.txt";
+            const bool links = CreateSymbolicLinkW(symlink.c_str(), (root / L"0.txt").c_str(), SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE) != FALSE;
+            if (links) { Check(Collect(options, pattern).size() == serial.size()); DeleteFileW(symlink.c_str()); }
+            DeleteFileW(alias.c_str());
+            const auto atomic = root / L"atomic.test", retainedAlias = root / L"retained.test";
+            files::WriteAtomic(atomic, {"disk miss"}); Check(CreateHardLinkW(retainedAlias.c_str(), atomic.c_str(), nullptr));
+            files::OpenFileIndex beforeTraversal({atomic, retainedAlias});
+            auto replacement = atomic; replacement += L".new";
+            files::WriteAtomic(replacement, {"another disk miss"});
+            Check(MoveFileExW(replacement.c_str(), atomic.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH));
+            std::atomic<bool> traversing{false}; size_t traversalErrors = 0;
+            files::SearchWalker traversal({root, L"atomic.test"}); auto replacedCandidate = traversal.Next(traversing, traversalErrors);
+            Check(replacedCandidate && traversalErrors == 0 && beforeTraversal.Find(*replacedCandidate) == 0);
+            // The first tab's path changed identity; retain the second tab's duplicate-ID entry.
+            Check(beforeTraversal.Find(retainedAlias) == 1);
+            Check(files::Read(atomic).utf8.find("needle") == std::string::npos);
+            DeleteFileW(atomic.c_str()); DeleteFileW(retainedAlias.c_str());
+            std::atomic<bool> stop{false}; size_t errors = 0;
+            files::SearchWalker missing({root / L"missing-directory", L"*"}); Check(!missing.Next(stop, errors) && errors == 1);
+        }
         options.recursive = false; Check(Collect(options, pattern).size() == 30);
         options.recursive = true; options.hidden = true; Check(Collect(options, pattern).size() == 32);
         options.filter = L"*.*"; Check(Collect(options, pattern).size() == 34);
@@ -68,6 +154,16 @@ int main() {
         pattern = {L"absent"};
         auto open = Collect(options, pattern, {root / L"0.txt"});
         Check(open.size() == 1 && open.begin()->second.openDocument);
+        {
+            struct Locked { HANDLE file = INVALID_HANDLE_VALUE; ~Locked() { if (file != INVALID_HANDLE_VALUE) CloseHandle(file); } } locked;
+            locked.file = CreateFileW((root / L"0.txt").c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr); Check(locked.file != INVALID_HANDLE_VALUE);
+            Check(!files::QueryIdentity(root / L"missing.txt"));
+            auto blockedOptions = options; blockedOptions.filter = L"0.txt";
+            files::FileSearch blocked(blockedOptions, {L"needle"});
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            while (!blocked.Done()) { files::FileSearchResult result; Check(!blocked.Poll(result)); Check(std::chrono::steady_clock::now() < deadline); std::this_thread::yield(); }
+            Check(blocked.Errors() == 1);
+        }
         bool invalid = false;
         try { files::FileSearch search(options, {L"[", true}); } catch (const std::exception&) { invalid = true; }
         Check(invalid);
