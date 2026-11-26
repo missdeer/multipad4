@@ -102,6 +102,10 @@ void PluginAdmin::Load() {
         entry.author = get("author"); entry.homepage = get("homepage"); entry.url = get("repository"); entry.hash = get("id");
         entry.compatible = Compatible(get("npp-compatible-versions")); entries.push_back(std::move(entry));
     }
+    std::map<std::wstring,std::array<size_t,2>,PluginHost::ModuleLess> rows;
+    for(size_t i=0;i<entries.size();++i)rows.emplace(entries[i].folder,std::array<size_t,2>{i,i});
+    std::map<std::wstring,size_t,PluginHost::ModuleLess> loadedModules;
+    for(size_t i=0;i<frame->plugins.plugins.size();++i)loadedModules[frame->plugins.plugins[i].module]=i;
     auto scan = [&](bool disabled) {
         auto root = frame->plugins.home; if (disabled) root /= L"disabled";
         if (!std::filesystem::exists(root)) return;
@@ -110,18 +114,21 @@ void PluginAdmin::Load() {
             auto folder = directory.path().filename().wstring();
             auto dll = directory.path() / (folder + L".dll");
             if (!ValidPluginFolder(folder) || !std::filesystem::is_regular_file(dll)) continue;
-            auto found = std::find_if(entries.begin(), entries.end(), [&](const auto& e) { return _wcsicmp(e.folder.c_str(), folder.c_str()) == 0 && (!e.present || e.disabled == disabled); });
+            auto [row,inserted]=rows.try_emplace(folder,std::array<size_t,2>{SIZE_MAX,SIZE_MAX});
+            auto index=row->second[disabled];
+            if(index!=SIZE_MAX && entries[index].present && entries[index].disabled!=disabled)index=SIZE_MAX;
             const auto metadata = ReadPluginFileInfo(dll);
-            if (found == entries.end()) {
+            if(index==SIZE_MAX){
                 Entry e; e.folder = folder; e.name = metadata.name.empty() ? folder : metadata.name;
-                entries.push_back(std::move(e)); found = entries.end() - 1;
+                index=entries.size();entries.push_back(std::move(e));
             }
+            row->second[disabled]=index;auto* found=&entries[index];
             found->present = true; found->disabled = disabled; found->installed = metadata.version;
             if (found->description.empty()) found->description = metadata.description;
             if (found->author.empty()) found->author = metadata.author;
             if (found->homepage.empty()) found->homepage = metadata.homepage;
             found->copyright = metadata.copyright; found->license = metadata.license;
-            for (const auto& plugin : frame->plugins.plugins) if (_wcsicmp(plugin.module.c_str(), (folder + L".dll").c_str()) == 0 && !disabled) { found->loaded = true; found->name = plugin.name; }
+            if(!disabled){auto loaded=loadedModules.find(folder+L".dll");if(loaded!=loadedModules.end()){found->loaded=true;found->name=frame->plugins.plugins[loaded->second].name;}}
         }
     };
     scan(false); scan(true);

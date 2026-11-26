@@ -1,6 +1,7 @@
 #include "FileIO.h"
 #include "FileReadBenchmark.h"
 #include "SaveEncodingBenchmark.h"
+#include "EncodingAliasTests.h"
 #include <windows.h>
 #include <fstream>
 #include <iostream>
@@ -9,6 +10,7 @@ void Require(bool ok, const char* message) { if (!ok) throw std::runtime_error(m
 int wmain(int argc, wchar_t** argv) {
     if (argc == 3) {
         try {
+            if (wcscmp(argv[1], L"--encoding-alias-test") == 0) {RunEncodingAliasTests(argv[2]);return 0;}
             if (wcscmp(argv[1], L"--benchmark-save") == 0) return RunSaveEncodingBenchmark(argv[2]);
             if (wcscmp(argv[1], L"--benchmark-read") == 0) return RunFileReadBenchmark(argv[2]);
             if (wcscmp(argv[1], L"--benchmark-read-paired") == 0) return RunPairedFileReadBenchmark(argv[2]);
@@ -17,6 +19,8 @@ int wmain(int argc, wchar_t** argv) {
     auto dir = std::filesystem::temp_directory_path() / (L"MultiPad4-tests-" + std::to_wstring(GetCurrentProcessId()));
     try {
         std::filesystem::create_directories(dir);
+        RunEncodingAliasTests(dir/L"aliases");
+        std::filesystem::remove_all(dir/L"aliases");
         const std::string boundary = std::string(16 * 1024 * 1024 - 1, 'a') + "😀";
         Require(files::ToUtf8(files::FromUtf8(boundary)) == boundary, "Chunk boundary split a Unicode character");
         const std::wstring surrogateBoundary = std::wstring(16 * 1024 * 1024 - 1, L'a') + L"😀";
