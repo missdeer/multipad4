@@ -271,6 +271,43 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     const int growingIndex = frame.tabs.GetActivePage();
     for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
     frame.Refresh(); require(frame.Close(growingIndex));
+    // Hard-link candidates resolve to the unsaved live buffer for both read and replacement.
+    const auto alias = directory / L"first.alias";
+    require(CreateHardLinkW(alias.c_str(), (directory / L"first.txt").c_str(), nullptr));
+    require(frame.Open(directory / L"first.txt")); auto* aliasDocument = frame.Active(); aliasDocument->Load({"needle in live buffer"});
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"*.alias"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    aliasDocument->runtime.monitorMode = 0; SnapshotDocument(*aliasDocument);
+    const auto external = directory / L"external.new"; files::WriteAtomic(external, {"changed changed"});
+    require(MoveFileExW(external.c_str(), aliasDocument->path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    SetDlgItemTextW(dialog.hwnd, IDC_REPLACETEXT, L"updated");
+    auto replaceAlias = [&] { StartFileReplacement(dialog); WaitForFileSearch(dialog); };
+    // A newly created alias misses the old ID cache; the final live check must publish no hits.
+    const auto currentAlias = directory / L"current.alias";
+    require(CreateHardLinkW(currentAlias.c_str(), aliasDocument->path.c_str(), nullptr));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"current.alias"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"changed");
+    results.Clear(); replaceAlias();
+    wchar_t conflict[512]{}; GetDlgItemTextW(dialog.hwnd, IDC_SEARCH_STATUS, conflict, 512);
+    require(std::wstring_view(conflict).find(L"0 matches") != std::wstring_view::npos && std::wstring_view(conflict).find(L"1 files/folders skipped") != std::wstring_view::npos);
+    require(aliasDocument->Text() == "needle in live buffer" && files::Read(currentAlias).utf8 == "changed changed");
+    require(std::none_of(results.lines.begin(), results.lines.end(), [](const auto& line) { return line.style == SearchResultLexer::Default; }));
+    // The worker's fresh identity index must recover a stale dialog miss for a new hard link.
+    SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    require(aliasDocument->Text() == "needle in live buffer" && files::Read(currentAlias).utf8 == "changed changed");
+    require(DeleteFileW(currentAlias.c_str()));
+    SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    replaceAlias();
+    require(aliasDocument->Text() == "updated in live buffer" && files::Read(alias).utf8 == "changed changed");
+    aliasDocument->Send(SCI_UNDO); require(aliasDocument->Text() == "needle in live buffer"); aliasDocument->Send(SCI_SETSAVEPOINT);
+    const int aliasIndex = frame.tabs.GetActivePage();
+    for (int i = 0; i < frame.tabs.GetPageCount(); ++i) if (frame.tabs.GetPageData(i) == other) frame.tabs.SetActivePage(i);
+    frame.Refresh(); require(frame.Close(aliasIndex));
     // Open buffers use the searched revision and retain a single undo action.
     require(frame.Open(directory / L"first.txt"));
     auto* opened = frame.Active(); opened->Load({"changed unsaved changed", files::Encoding::Utf16LE});

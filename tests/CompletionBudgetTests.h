@@ -129,6 +129,22 @@ inline void RunCompletionBudgetTests(MainFrame& frame) {
                 longestPosted=(std::max)(longestPosted,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
             }
         };
+        request();const auto cancelEpoch=d->completionEpoch;trace.styles=0;
+        MSG escape{};escape.hwnd=d->hwnd;escape.message=WM_KEYDOWN;escape.wParam=VK_ESCAPE;escape.lParam=1;
+        {const auto noEscapeFunction=frame.settings.Get(IDM_VIEW_NOESCFUNC);
+            struct RestoreEscapeSetting{MainFrame& frame;int value;~RestoreEscapeSetting(){frame.settings.Set(IDM_VIEW_NOESCFUNC,value);}}restoreEscape{frame,noEscapeFunction};
+            frame.settings.Set(IDM_VIEW_NOESCFUNC,2);const auto fullScreen=frame.runtime.fullScreen;
+            require(frame.PreTranslateMessage(&escape)!=FALSE);MSG close{};
+            require(!PeekMessageW(&close,frame,WM_CLOSE,WM_CLOSE,PM_NOREMOVE) && frame.runtime.fullScreen==fullScreen && !IsIconic(frame));
+        }
+        drainCompletion();frame.SendMessage(WM_TIMER,3);
+        require(!d->style.completionPending && !d->Send(SCI_AUTOCACTIVE) && d->completionEpoch!=cancelEpoch && trace.styles==0);
+        SendMessageW(d->hwnd,WM_CHAR,'u',1);require(d->Text()==distant+"u" && d->style.completionPending);
+        drainCompletion();frame.SendMessage(WM_TIMER,3);require(!d->style.completionPending && d->Send(SCI_AUTOCACTIVE));d->Send(SCI_AUTOCCANCEL);
+        request();SendMessageW(d->hwnd,WM_KEYDOWN,VK_ESCAPE,1);drainCompletion();frame.SendMessage(WM_TIMER,3);
+        require(!d->style.completionPending && !d->Send(SCI_AUTOCACTIVE));
+        request();SendMessageW(d->hwnd,SCI_CANCEL,0,0);drainCompletion();frame.SendMessage(WM_TIMER,3);
+        require(!d->style.completionPending && !d->Send(SCI_AUTOCACTIVE));
         auto finishPaint=[&]{
             const auto started=std::chrono::steady_clock::now();drainCompletion();InvalidateRect(d->hwnd,nullptr,TRUE);UpdateWindow(d->hwnd);
             frame.SendMessage(WM_DOCUMENT_CHANGED,1);

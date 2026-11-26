@@ -57,6 +57,11 @@ struct EditorDocument {
     DWORD editorThread = 0;
     std::filesystem::path path;
     std::wstring untitled;
+    bool titleDirty = true, publishedModified = false, publishedEncodingDirty = false;
+    unsigned long long excerptRevision = 0;
+    std::filesystem::path publishedPath;
+    std::wstring publishedUntitled, publishedTitle;
+    size_t publishedTabIndex = 0;
     files::Encoding encoding = files::Encoding::Utf8;
     std::wstring language = L"Text";
     SearchState search;

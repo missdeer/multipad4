@@ -16,6 +16,8 @@ void SnapshotDocument(EditorDocument& document) {
         if (!state.directoryWatch->Arm()) PostMessageW(owner, WM_FILE_CHANGE, document.searchIdentity, state.directoryWatch->token);
     }
     state.snapshotValid = !document.path.empty() && GetFileAttributesExW(document.path.c_str(), GetFileExInfoStandard, &data);
+    state.fileAttributes = state.snapshotValid ? data.dwFileAttributes : INVALID_FILE_ATTRIBUTES;
+    document.titleDirty = true;
     if (state.snapshotValid) {
         state.observedWriteTime = data.ftLastWriteTime;
         state.observedSize = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
@@ -92,7 +94,13 @@ void CheckExternalChanges(MainFrame& frame, bool retryPendingChanges) {
         if (!state.externalCheckPending && !retryPendingChanges) { frame.runtime.pendingExternalChecks.insert(identity); continue; }
         state.externalCheckPending = false;
         WIN32_FILE_ATTRIBUTE_DATA data{};
-        if (!GetFileAttributesExW(d.path.c_str(), GetFileExInfoStandard, &data)) continue;
+        if (!GetFileAttributesExW(d.path.c_str(), GetFileExInfoStandard, &data)) {
+            const bool wasValid = state.fileAttributes != INVALID_FILE_ATTRIBUTES; state.fileAttributes = INVALID_FILE_ATTRIBUTES;
+            if (wasValid && frame.Active() == &d) frame.Refresh();
+            continue;
+        }
+        const auto oldAttributes = state.fileAttributes; state.fileAttributes = data.dwFileAttributes;
+        if (oldAttributes != state.fileAttributes && frame.Active() == &d) frame.Refresh();
         ULONGLONG size = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
         bool changed = !state.snapshotValid || CompareFileTime(&data.ftLastWriteTime, &state.observedWriteTime) != 0 || size != state.observedSize;
         if (changed) {

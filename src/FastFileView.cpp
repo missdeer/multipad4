@@ -215,6 +215,7 @@ void FastFileView::Seek(unsigned long long offset, bool bottom) {
     SendMessageW(document.hwnd, SCI_SETVSCROLLBAR, FALSE, 0);
     SendMessageW(document.hwnd, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
     viewText = std::move(decoded); positions = std::move(decodedPositions); begin = start + first; end = begin + count;
+    ++document.excerptRevision;
     if (bottom) document.Send(SCI_GOTOPOS, document.Send(SCI_GETLENGTH));
     UpdateBar(); PaintMarks();
     PostMessageW(GetAncestor(document.hwnd, GA_ROOT), WM_DOCUMENT_CHANGED, 0, 0);

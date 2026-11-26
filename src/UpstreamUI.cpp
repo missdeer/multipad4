@@ -53,8 +53,11 @@ void UpdateMenu(MainFrame& frame, HMENU menu) {
         UINT id = GetMenuItemID(menu, i);
         if (id < 40000 || id >= 46000) continue;
         const auto state = frame.State(id);
-        EnableMenuItem(menu, id, MF_BYCOMMAND | (state.enabled ? MF_ENABLED : MF_GRAYED));
-        CheckMenuItem(menu, id, MF_BYCOMMAND | (state.checked ? MF_CHECKED : MF_UNCHECKED));
+        const auto native = GetMenuState(menu, id, MF_BYCOMMAND);
+        if ((((native & (MF_DISABLED | MF_GRAYED)) == 0) != state.enabled) || (!state.enabled && !(native & MF_GRAYED)))
+            EnableMenuItem(menu, id, MF_BYCOMMAND | (state.enabled ? MF_ENABLED : MF_GRAYED));
+        if (((native & MF_CHECKED) != 0) != state.checked)
+            CheckMenuItem(menu, id, MF_BYCOMMAND | (state.checked ? MF_CHECKED : MF_UNCHECKED));
     }
 }
 }

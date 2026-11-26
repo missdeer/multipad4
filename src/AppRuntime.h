@@ -12,6 +12,7 @@ struct AutoSaveTask;
 struct DocumentRuntime {
     std::unique_ptr<DirectoryWatch> directoryWatch;
     FILETIME observedWriteTime{};
+    DWORD fileAttributes = INVALID_FILE_ATTRIBUTES;
     ULONGLONG observedSize = 0, lastAutoSave = 0;
     bool snapshotValid = false, externalChangePending = false, externalCheckPending = false;
     int monitorMode = 2;

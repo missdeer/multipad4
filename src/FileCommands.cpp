@@ -50,13 +50,15 @@ CommandState FileCommandState(MainFrame& frame,UINT id){auto* d=frame.Active();b
     case IDM_FILE_SAVEORIGINALTIMESTAMP:case IDM_FILE_UPDATE_TIMESTAMP:
     case IDM_FILE_PROPERTIES:case IDM_FILE_OPEN_CONTAINING_FOLDER:case IDM_FILE_LAUNCH:case IDM_FILE_OPENWITH:
     case IDM_FILE_CREATELINK:case IDM_FILE_ADDTOFAV:return {true,path,false};
-    case IDM_FILE_READONLY_FILE:{DWORD attributes=path?GetFileAttributesW(d->path.c_str()):INVALID_FILE_ATTRIBUTES;return {true,path && attributes!=INVALID_FILE_ATTRIBUTES,path && attributes!=INVALID_FILE_ATTRIBUTES && (attributes&FILE_ATTRIBUTE_READONLY)!=0};}
+    case IDM_FILE_READONLY_FILE:{DWORD attributes=path?d->runtime.fileAttributes:INVALID_FILE_ATTRIBUTES;return {true,path && attributes!=INVALID_FILE_ATTRIBUTES,path && attributes!=INVALID_FILE_ATTRIBUTES && (attributes&FILE_ATTRIBUTE_READONLY)!=0};}
     case IDM_FILE_SAVEBACKUP:return {true,d && d->Send(SCI_GETLENGTH)>0,false};
     case IDM_FILE_PRINT:case CMD_COPYFILENAME:case CMD_COPYFILENAME_NOEXT:case CMD_COPYPATHNAME:return {true,d!=nullptr,false};
     default:return {};
     }
 }
-bool ExecuteFileCommand(MainFrame& frame,UINT id){auto state=FileCommandState(frame,id);if(!state.supported)return false;if(!state.enabled)return true;auto* d=frame.Active();
+bool ExecuteFileCommand(MainFrame& frame,UINT id){
+    if (id == IDM_FILE_READONLY_FILE) if (auto* document = frame.Active(); document && !document->path.empty()) document->runtime.fileAttributes = GetFileAttributesW(document->path.c_str());
+    auto state=FileCommandState(frame,id);if(!state.supported)return false;if(!state.enabled)return true;auto* d=frame.Active();
     try{
         if(id>=IDM_RECENT_HISTORY_START && id<IDM_RECENT_HISTORY_END){frame.Open(frame.settings.ReadString(L"Recent Files",std::to_wstring(id-IDM_RECENT_HISTORY_START).c_str()));return true;}
         switch(id){
@@ -91,7 +93,7 @@ bool ExecuteFileCommand(MainFrame& frame,UINT id){auto state=FileCommandState(fr
         case IDM_FILE_SAVEBACKUP:SaveDocumentBackup(frame,*d);break;
         case IDM_FILE_SAVEORIGINALTIMESTAMP:{auto times=files::GetTimes(d->path);if(frame.Save(*d)){files::SetTimes(d->path,times);SnapshotDocument(*d);}break;}
         case IDM_FILE_UPDATE_TIMESTAMP:files::Touch(d->path);SnapshotDocument(*d);break;
-        case IDM_FILE_READONLY_FILE:{auto attributes=GetFileAttributesW(d->path.c_str());if(!SetFileAttributesW(d->path.c_str(),attributes^FILE_ATTRIBUTE_READONLY))throw std::runtime_error("Cannot change file attributes.");d->Send(SCI_SETREADONLY,(attributes&FILE_ATTRIBUTE_READONLY)?FALSE:TRUE);break;}
+        case IDM_FILE_READONLY_FILE:{auto attributes=d->runtime.fileAttributes;if(!SetFileAttributesW(d->path.c_str(),attributes^FILE_ATTRIBUTE_READONLY))throw std::runtime_error("Cannot change file attributes.");d->runtime.fileAttributes=attributes^FILE_ATTRIBUTE_READONLY;d->Send(SCI_SETREADONLY,(attributes&FILE_ATTRIBUTE_READONLY)?FALSE:TRUE);break;}
         case IDM_FILE_PROPERTIES:{SHELLEXECUTEINFOW info{sizeof(info)};info.hwnd=frame.m_hWnd;info.fMask=SEE_MASK_INVOKEIDLIST;info.lpVerb=L"properties";info.lpFile=d->path.c_str();info.nShow=SW_SHOWNORMAL;if(!ShellExecuteExW(&info))throw std::runtime_error("Cannot open file properties.");break;}
         case IDM_FILE_OPEN_CONTAINING_FOLDER:OpenFolderRequest(frame,d->path,FolderOpenRequest::ContainingFolder);break;
         case IDM_FILE_LAUNCH:if(frame.settings.Get(IDM_VIEW_SAVEBEFORERUNNINGTOOLS,1) && d->Modified() && !frame.Save(*d))break;if(reinterpret_cast<INT_PTR>(ShellExecuteW(frame.m_hWnd,L"open",d->path.c_str(),nullptr,d->path.parent_path().c_str(),SW_SHOWNORMAL))<=32)throw std::runtime_error("Cannot launch this file.");break;

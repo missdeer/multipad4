@@ -152,6 +152,7 @@ bool DocumentTabStrip::Insert(HWND child, const wchar_t* title) {
     item.lParam = reinterpret_cast<LPARAM>(child);
     item.iImage = -1;
     if (TabCtrl_InsertItem(control, GetItemCount(), &item) < 0) return false;
+    ++structureRevision;
     SyncSelection();
     ApplyLayout();
     return true;
@@ -162,6 +163,7 @@ void DocumentTabStrip::Remove(int index) {
     item.mask = TCIF_IMAGE;
     if (TabCtrl_GetItem(control, index, &item) && item.iImage >= 0) TabCtrl_RemoveImage(control, item.iImage);
     TabCtrl_DeleteItem(control, index);
+    ++structureRevision;
     SyncSelection();
     ApplyLayout();
 }
@@ -232,6 +234,7 @@ bool DocumentTabStrip::MoveItem(int from, int to) {
     const int inserted = TabCtrl_InsertItem(control, to + (from < to), &item);
     if (inserted < 0) return false;
     TabCtrl_DeleteItem(control, from + (inserted <= from));
+    ++structureRevision;
     SyncSelection();
     ::PostMessageW(frame, WM_DOCUMENT_CHANGED, 0, 0);
     return true;

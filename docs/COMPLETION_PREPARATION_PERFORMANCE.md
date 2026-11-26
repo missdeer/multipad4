@@ -170,3 +170,20 @@ benchmark and production implementation were unchanged, so their measurements
 were not repeated for this unrelated integration. The external reviewer channel
 was unavailable; this round used the user-authorized non-author agent static
 cross-check, with no must-fix, should-fix or nit findings.
+
+The subsequent GitHub review found that Escape could leave a deferred request
+alive. Escape now cancels through the real accelerator/CMD_ESCAPE route as well
+as the editor's direct key/cancel messages, clears the request and advances its
+epoch. Regression checks pass a key MSG through PreTranslateMessage, drain the
+already queued continuation and timer, verify no popup revives or window-close
+action is posted, and verify later WM_CHAR input can create a fresh request.
+The existing calltip/fullscreen/Escape-setting priorities remain intact.
+
+That fix also integrated master 64801ed (#37 identities and #45 frame caches).
+The sole OnChanged conflict retains both the lightweight caption/menu path and
+completion timer admission. Non-author focused review first caught the
+accelerator bypass in an incomplete direct-key fix; the final command-route
+fix and regression were then reviewed clean. Final wrapper reconfigure/build
+and indent_read (0.47 s), frame_refresh (0.23 s), ordinary_search_storage
+(17.27 s) and editor_integration (35.31 s) all passed. Existing performance
+measurements were retained because the measured preparation work did not change.
