@@ -55,7 +55,7 @@ const ConfigurationXmlNode& ConfigurationXmlNode::Child(const wchar_t* key) cons
     for(const auto& child:children)if(child.name==key){if(result)throw std::runtime_error("Duplicate element");result=&child;}
     if(!result)throw std::runtime_error("Missing element: "+ConfigurationUtf8(key));return *result;
 }
-ConfigurationXmlNode ParseConfigurationXml(const std::string& bytes,const std::filesystem::path& source) {
+static ConfigurationXmlNode ParseConfigurationXmlImpl(const std::string& bytes,const std::filesystem::path& source, bool rootOnly) {
     if(bytes.empty()||bytes.size()>8*1024*1024)throw std::runtime_error("XML size must be 1..8 MiB");
     std::unique_ptr<IStream,Release<IStream>> stream(SHCreateMemStream(reinterpret_cast<const BYTE*>(bytes.data()),static_cast<UINT>(bytes.size())));
     IXmlReader* raw=nullptr;
@@ -75,7 +75,9 @@ ConfigurationXmlNode ParseConfigurationXml(const std::string& bytes,const std::f
                     reader->GetLocalName(&value,&length);std::wstring key(value,length);reader->GetValue(&value,&length);
                     if(node.attributes.size()>=64||!node.attributes.emplace(key,std::wstring(value,length)).second)throw std::runtime_error("Duplicate or excessive XML attributes");
                 }while(reader->MoveToNextAttribute()==S_OK);
-                reader->MoveToElement();stack.back()->children.push_back(std::move(node));
+                reader->MoveToElement();
+                if (rootOnly) return node;
+                stack.back()->children.push_back(std::move(node));
                 if(!reader->IsEmptyElement())stack.push_back(&stack.back()->children.back());
             } else if(type==XmlNodeType_EndElement) {
                 if(stack.size()<2)throw std::runtime_error("Invalid XML nesting");stack.pop_back();
@@ -87,11 +89,16 @@ ConfigurationXmlNode ParseConfigurationXml(const std::string& bytes,const std::f
     }catch(const std::exception& error){UINT line=0,column=0;reader->GetLineNumber(&line);reader->GetLinePosition(&column);throw std::runtime_error(ConfigurationUtf8(source.wstring())+":"+std::to_string(line)+":"+std::to_string(column)+": "+error.what());}
     return std::move(document.children.front());
 }
-ConfigurationXmlNode ReadConfigurationXml(const std::filesystem::path& source) {
+ConfigurationXmlNode ParseConfigurationXml(const std::string& bytes, const std::filesystem::path& source) {
+    return ParseConfigurationXmlImpl(bytes, source, false);
+}
+static ConfigurationXmlNode ReadConfigurationXmlImpl(const std::filesystem::path& source, bool rootOnly) {
     std::ifstream input(source,std::ios::binary|std::ios::ate);if(!input)throw std::runtime_error("Cannot read "+ConfigurationUtf8(source.wstring()));
     auto length=input.tellg();if(length<=0||length>8*1024*1024)throw std::runtime_error("Invalid XML file size");
-    std::string data(static_cast<size_t>(length),'\0');input.seekg(0);if(!input.read(data.data(),length))throw std::runtime_error("Cannot read XML file");return ParseConfigurationXml(data,source);
+    std::string data(static_cast<size_t>(length),'\0');input.seekg(0);if(!input.read(data.data(),length))throw std::runtime_error("Cannot read XML file");return ParseConfigurationXmlImpl(data,source,rootOnly);
 }
+ConfigurationXmlNode ReadConfigurationXml(const std::filesystem::path& source) { return ReadConfigurationXmlImpl(source, false); }
+ConfigurationXmlNode ReadConfigurationXmlRoot(const std::filesystem::path& source) { return ReadConfigurationXmlImpl(source, true); }
 std::string EmbeddedConfiguration(unsigned id) {
     auto module=GetModuleHandleW(nullptr);auto resource=FindResourceW(module,MAKEINTRESOURCEW(id),RT_RCDATA);
     if(!resource)throw std::runtime_error("Missing embedded XML resource");
