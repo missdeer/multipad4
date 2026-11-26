@@ -5,6 +5,7 @@
 #include "../tests/TabStripTests.h"
 #include "../tests/FrameRefreshTests.h"
 #include "../tests/EditTransformTests.h"
+#include "../tests/CommentTests.h"
 #include "../tests/ModelinePreferenceTests.h"
 #include "../tests/PrivateClipboard.h"
 #include "../tests/RichTextTests.h"
@@ -146,6 +147,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool searchRetirementTest = count == 2 && wcscmp(args[1], L"--search-retirement-test") == 0;
     bool statusTest = count == 2 && wcscmp(args[1], L"--status-statistics-test") == 0;
     bool statusBenchmark = count == 3 && wcscmp(args[1], L"--status-statistics-benchmark") == 0;
+    bool commentTest = count == 2 && wcscmp(args[1], L"--comment-test") == 0;
+    bool commentBenchmark = count == 2 && wcscmp(args[1], L"--comment-benchmark") == 0;
     bool statusPresentation = count == 2 && wcscmp(args[1], L"--status-presentation-test") == 0;
     bool statusPresentationBenchmark = count == 2 && wcscmp(args[1], L"--status-presentation-benchmark") == 0;
     bool indentTest = false, indentBenchmark = false;
@@ -173,6 +176,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     if (statusPresentation || statusPresentationBenchmark) smoke = true;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
+    if (commentTest || commentBenchmark) smoke = true;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
     constexpr bool richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
@@ -193,6 +197,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
             frame.plugins.bundledModules = bundledTestModules;
         }
+        if (commentTest || commentBenchmark) frame.plugins.enabled = false;
 #endif
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
@@ -251,6 +256,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (refreshBenchmark) { RunFrameRefreshBenchmark(frame, wcscmp(args[2], L"baseline") == 0); }
                 else if (statusPresentation || statusPresentationBenchmark) { RunStatusPresentationTests(frame, statusPresentationBenchmark); }
                 else if (statusTest || statusBenchmark) { RunStatusStatisticsTests(frame, statusBenchmark ? args[2] : nullptr); }
+                else if (commentTest || commentBenchmark) { RunCommentTests(frame, commentBenchmark); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}

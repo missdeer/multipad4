@@ -7,6 +7,9 @@
 #include "resource.h"
 #include <climits>
 #include <cstring>
+#ifdef MULTIPAD4_TESTING
+#include "../tests/CommentMetrics.h"
+#endif
 namespace {
 bool MarkerAt(const std::string &text, size_t position, const std::string &marker) {
     return position <= text.size() && marker.size() <= text.size() - position &&
@@ -30,9 +33,67 @@ size_t FindMarker(const std::string &text, const std::string &marker, size_t fro
                 return position;
     return std::string::npos;
 }
+bool MarkerAt(EditorDocument &d, LRESULT position, const std::string &marker) {
+    const auto length = d.Send(SCI_GETLENGTH);
+    return position >= 0 && position <= length && marker.size() <= static_cast<size_t>(length - position) &&
+           MarkerAt(d.Range(static_cast<size_t>(position), marker.size()), 0, marker);
+}
+LRESULT FindMarker(EditorDocument &d, const std::string &marker, LRESULT from, bool backwards = false) {
+    const auto length = d.Send(SCI_GETLENGTH), markerLength = static_cast<LRESULT>(marker.size());
+    if (from < 0 || markerLength > length) return -1;
+    LRESULT size = 1024;
+    if (backwards) {
+        auto position = (std::min)(from, length - markerLength);
+        for (;;) {
+            const auto first = (std::max)(LRESULT(0), position - size + 1);
+            const auto text = d.Range(static_cast<size_t>(first), static_cast<size_t>(position - first + markerLength));
+            const auto found = FindMarker(text, marker, static_cast<size_t>(position - first), true);
+            if (found != std::string::npos) return first + static_cast<LRESULT>(found);
+            if (!first) return -1;
+            position = first - 1; size = (std::min)(size * 2, LRESULT(65536));
+        }
+    }
+    for (auto position = from; position <= length - markerLength;) {
+        const auto last = position + (std::min)(size - 1, length - markerLength - position);
+        const auto text = d.Range(static_cast<size_t>(position), static_cast<size_t>(last - position + markerLength));
+        const auto found = FindMarker(text, marker, 0);
+        if (found != std::string::npos) return position + static_cast<LRESULT>(found);
+        position = last + 1; size = (std::min)(size * 2, LRESULT(65536));
+    }
+    return -1;
+}
+void StyleThrough(EditorDocument &d, LRESULT position) {
+    const auto styled = d.Send(SCI_GETENDSTYLED);
+    const auto length = d.Send(SCI_GETLENGTH);
+    position = (std::min)(position, length);
+    if (!position) return;
+    const auto nextLine = d.Send(SCI_LINEFROMPOSITION, position - 1) + 1;
+    const auto required = nextLine < d.Send(SCI_GETLINECOUNT) ? d.Send(SCI_POSITIONFROMLINE, nextLine) : length;
+    if (styled < required) d.Send(SCI_COLOURISE, styled, position);
+}
+bool CommentSelection(EditorDocument &d, LRESULT first, LRESULT last, const CompletionCache &cache) {
+    if (first == last) return cache.Test(cache.CommentStyleMask, static_cast<unsigned>(d.Send(SCI_GETSTYLEINDEXAT, first)));
+    while (first < last) {
+        const auto limit = first + (std::min)(last - first, LRESULT(65536)), count = limit - first;
+        std::string packed(static_cast<size_t>(count) * 2 + 2, '\0');
+        Sci_TextRangeFull range{{first, limit}, packed.data()};
+        d.Send(SCI_GETSTYLEDTEXTFULL, 0, reinterpret_cast<LPARAM>(&range));
+        // This fork packs N styles + NUL before N text bytes + NUL.
+        const auto text = packed.data() + count + 1;
+        auto position = first;
+        while (position < limit) {
+            const auto offset = static_cast<size_t>(position - first);
+            if (!cache.Test(cache.CommentStyleMask, static_cast<unsigned char>(packed[offset]))) return false;
+            position = static_cast<unsigned char>(text[offset]) < 128 && text[offset] != '\r' ? position + 1 : d.Send(SCI_POSITIONAFTER, position);
+        }
+        first = position;
+    }
+    return true;
+}
 int EmbeddedBlock(EditorDocument &d) {
-    d.Send(SCI_COLOURISE, 0, -1);
-    const auto style = d.Send(SCI_GETSTYLEINDEXAT, d.Send(SCI_GETCURRENTPOS));
+    const auto position = d.Send(SCI_GETCURRENTPOS);
+    StyleThrough(d, position + (position < d.Send(SCI_GETLENGTH)));
+    const auto style = d.Send(SCI_GETSTYLEINDEXAT, position);
     if (style >= SCE_PHP_DEFAULT)
         return 5;
     if (style >= css_style(SCE_CSS_DEFAULT))
@@ -383,6 +444,9 @@ Block BlockMarker(EditorDocument &d) {
 }
 } // namespace
 void ToggleDocumentComment(EditorDocument &d, bool block) {
+#ifdef MULTIPAD4_TESTING
+    if (commenttest::baseline) { commenttest::baseline(d, block); return; }
+#endif
     if (RejectRectangularEdit(d.hwnd))
         return;
     if (d.Send(SCI_GETREADONLY))
@@ -397,31 +461,26 @@ void ToggleDocumentComment(EditorDocument &d, bool block) {
         return;
     if (block) {
         auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
-        auto text = d.Text();
         // Unwrap an exact selected block, or the innermost surrounding block.
-        auto open = FindMarker(text, pair.start, static_cast<size_t>(start), true);
-        auto close = FindMarker(text, pair.end, static_cast<size_t>(end));
-        if (MarkerAt(text, static_cast<size_t>(start), pair.start) &&
-            end >= start + static_cast<LRESULT>(pair.start.size() + pair.end.size()) &&
-            MarkerAt(text, static_cast<size_t>(end) - pair.end.size(), pair.end)) {
-            open = start;
-            close = end - pair.end.size();
+        const bool exact = end - start >= static_cast<LRESULT>(pair.start.size() + pair.end.size()) &&
+                           MarkerAt(d, start, pair.start) && MarkerAt(d, end - static_cast<LRESULT>(pair.end.size()), pair.end);
+        bool knownNonComment = false;
+        if (d.Send(SCI_GETENDSTYLED) >= d.Send(SCI_GETLENGTH)) {
+            const auto &cache = GetCompletionCache(*GetDocumentLexer(d));
+            knownNonComment = !cache.Test(cache.CommentStyleMask, static_cast<unsigned>(d.Send(SCI_GETSTYLEINDEXAT, start)));
         }
-        d.Send(SCI_BEGINUNDOACTION);
-        const bool surrounding = open != std::string::npos && close != std::string::npos &&
-                                 open <= static_cast<size_t>(start) && close >= static_cast<size_t>(end) &&
-                                 FindMarker(text, pair.end, open + pair.start.size()) == close;
-        const bool exact = MarkerAt(text, static_cast<size_t>(start), pair.start) &&
-                           end - start >= static_cast<LRESULT>(pair.start.size() + pair.end.size()) &&
-                           MarkerAt(text, static_cast<size_t>(end) - pair.end.size(), pair.end);
-        d.Send(SCI_COLOURISE, 0, -1);
-        const auto &cache = GetCompletionCache(*GetDocumentLexer(d));
-        bool commentSelection =
-            cache.Test(cache.CommentStyleMask, static_cast<int>(d.Send(SCI_GETSTYLEINDEXAT, start)));
-        for (auto position = start; commentSelection && position < end; position = d.Send(SCI_POSITIONAFTER, position))
-            commentSelection =
-                cache.Test(cache.CommentStyleMask, static_cast<int>(d.Send(SCI_GETSTYLEINDEXAT, position)));
-        bool canUnwrap = (surrounding || exact) && commentSelection;
+        LRESULT open = start, close = end - static_cast<LRESULT>(pair.end.size());
+        bool surrounding = false;
+        if (!exact && !knownNonComment) {
+            open = FindMarker(d, pair.start, start, true);
+            close = open < 0 ? -1 : FindMarker(d, pair.end, end);
+            surrounding = open >= 0 && close >= end && FindMarker(d, pair.end, open + static_cast<LRESULT>(pair.start.size())) == close;
+        }
+        bool canUnwrap = false;
+        if ((surrounding || exact) && !knownNonComment) {
+            StyleThrough(d, (std::max)(end, start + (start < d.Send(SCI_GETLENGTH))));
+            canUnwrap = CommentSelection(d, start, end, GetCompletionCache(*GetDocumentLexer(d)));
+        }
         LRESULT openStart = 0, openEnd = 0, closeStart = 0, closeEnd = 0;
         if (canUnwrap) {
             openStart = static_cast<LRESULT>(open);
@@ -444,6 +503,7 @@ void ToggleDocumentComment(EditorDocument &d, bool block) {
             }
         }
         if (canUnwrap) {
+            d.Send(SCI_BEGINUNDOACTION);
             d.Send(SCI_DELETERANGE, closeStart, closeEnd - closeStart);
             d.Send(SCI_DELETERANGE, openStart, openEnd - openStart);
         } else {
@@ -460,7 +520,8 @@ void ToggleDocumentComment(EditorDocument &d, bool block) {
                     (end != d.Send(SCI_POSITIONFROMLINE, d.Send(SCI_LINEFROMPOSITION, end)) ? eol : std::string{}) +
                     pair.end + eol;
             }
-            const auto result = prefix + text.substr(start, end - start) + suffix;
+            const auto result = prefix + d.Range(static_cast<size_t>(start), static_cast<size_t>(end - start)) + suffix;
+            d.Send(SCI_BEGINUNDOACTION);
             d.Send(SCI_SETTARGETRANGE, start, end);
             d.Send(SCI_REPLACETARGET, result.size(), reinterpret_cast<LPARAM>(result.data()));
             const auto innerStart = start + prefix.size(), innerEnd = end + prefix.size();
