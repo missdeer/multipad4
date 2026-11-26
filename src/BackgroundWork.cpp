@@ -178,7 +178,7 @@ LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
             if (d.style.occurrencePending || d.style.completionPending) ProcessStyleBackground(d, 1);
         }
         if (activeDocument && (before != activeDocument->style.occurrences || wasPending != activeDocument->style.occurrencePending)) UpdateStatus();
-        if (!runtime.autoSaveTask && !std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending || d->style.completionPending; })) {
+        if (!runtime.autoSaveTask && runtime.autoSaveWrites.empty() && !std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending || d->style.completionPending; })) {
             KillTimer(3); runtime.workTimerArmed = false;
         }
         return 0;
