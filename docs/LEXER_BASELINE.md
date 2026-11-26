@@ -20,6 +20,8 @@
 - `docs/lexer-baseline-inventory.json`：完整源文件和 SHA-256、目录迁移关系、
   应用消费者及行号、应用侧检测/别名/变体/会话/补全绑定的位置，
   以及默认和 11 个本地化资源文件的语言显示项。
+  SHA-256 仅将原始字节中的 CRLF 规范为 LF，避免 Git 检出换行转换造成假漂移；
+  BOM、独立 CR、其他字节以及是否有末尾换行均保留，内容变化仍须重新审查。
 - `tests/baselines/lexer-behavior.txt`：13 组真实 Scintilla 文档的逐字节样式、
   每行完整折叠值、检测资源 ID、引擎 ID、方言命令和八组补全缓存位图。
   覆盖 C++、Python、JavaScript、TSX、HTML 嵌入语言、SCSS、JSON、XML、

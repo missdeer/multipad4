@@ -20,7 +20,8 @@ def read(path):
 
 
 def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Normalize checkout CRLF only; retain BOMs, lone CR and all other bytes.
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def declared_fields(struct):
