@@ -38,3 +38,10 @@ and final restoration. The joint wrapper build completed actual links with no
 compiler/FAILED/ninja-stop errors. Basic component and automatic inventory
 checks passed: comment_commands 3.57 s, coverage 0.17 s, hash tests 0.09 s
 (3/3 in 3.84 s). No large benchmark or additional peer gate was added.
+
+After #52 merged, the actual CMake/main conflict was normally integrated through
+075eab2 while preserving modeline/comments modes, test definitions and clipboard
+setup/restoration. An external search_work_tests.exe post-link lock was rejected
+as a failed build; normal incremental retry completed actual links. Basic checks
+then passed 4/4 in 5.63 s: modeline_preferences 2.18 s, comment_commands 3.16 s,
+inventory coverage/hash 0.19/0.09 s. The comment producer is unchanged.
