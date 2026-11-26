@@ -8,6 +8,9 @@
 #include <memory>
 #include <stdexcept>
 namespace files {
+#ifdef MULTIPAD4_SEARCH_TEST_HOOKS
+namespace testing { inline std::atomic<bool> bufferedSessions{false}, fallbackEntered{false}; inline std::atomic<void*> nextFallbackGate{nullptr}; }
+#endif
 enum class Encoding : unsigned { Utf8, Utf8Bom, Utf16LE, Utf16BE, Utf16LEPlain, Utf16BEPlain, Ansi, Oem, CodePageBase = 0x10000 };
 inline constexpr auto Latin1 = static_cast<Encoding>(static_cast<unsigned>(Encoding::CodePageBase) + 28591);
 struct InvalidByteSequence : std::runtime_error { using std::runtime_error::runtime_error; };

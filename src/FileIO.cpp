@@ -324,21 +324,27 @@ class MappedInput {
     std::string readBuffer;
     DWORD granularity = 65536;
     std::shared_ptr<std::mutex> fallbackMutex = std::make_shared<std::mutex>();
+    DWORD sharing = FILE_SHARE_READ;
+    bool privateFallback = true;
 public:
     unsigned long long size = 0;
     explicit MappedInput(const std::filesystem::path& path, ReadStats* trace = nullptr, ReadBackend backend = ReadBackend::Mapped, bool shareDelete = false, bool deleteOnClose = false) : stats(trace) {
         ReadTimer timer(stats ? &stats->mappingMs : nullptr);
-        file = CreateFileW(path.c_str(), GENERIC_READ | (deleteOnClose ? DELETE : 0), FILE_SHARE_READ | (shareDelete ? FILE_SHARE_DELETE : 0), nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | (deleteOnClose ? FILE_FLAG_DELETE_ON_CLOSE : 0), nullptr);
+        sharing |= shareDelete ? FILE_SHARE_DELETE : 0;
+        file = CreateFileW(path.c_str(), GENERIC_READ | (deleteOnClose ? DELETE : 0), sharing, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | (deleteOnClose ? FILE_FLAG_DELETE_ON_CLOSE : 0), nullptr);
         if (file == INVALID_HANDLE_VALUE) Fail("Cannot open file.");
         LARGE_INTEGER length{};
         if (!GetFileSizeEx(file, &length) || length.QuadPart < 0) { CloseHandle(file); Fail("Cannot read file size."); }
         size = static_cast<unsigned long long>(length.QuadPart);
-        if (size && backend == ReadBackend::Mapped) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
+        if (size && backend == ReadBackend::Mapped
+#ifdef MULTIPAD4_SEARCH_TEST_HOOKS
+            && !testing::bufferedSessions.load()
+#endif
+        ) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
         SYSTEM_INFO info{}; GetSystemInfo(&info); granularity = info.dwAllocationGranularity;
     }
-    // Duplicate existing handles, never reopen the path: saved/replaced paths
-    // must not redirect a snapshot to a different file. Mapping state is private.
-    MappedInput(const MappedInput& source, int) : stats(nullptr), granularity(source.granularity), fallbackMutex(source.fallbackMutex), size(source.size) {
+    // Duplicate existing objects; only buffered fallback needs a private file position.
+    MappedInput(const MappedInput& source, int) : stats(nullptr), granularity(source.granularity), fallbackMutex(source.fallbackMutex), sharing(source.sharing), privateFallback(false), size(source.size) {
         const auto process = GetCurrentProcess();
         if (!DuplicateHandle(process, source.file, process, &file, 0, FALSE, DUPLICATE_SAME_ACCESS)) Fail("Cannot duplicate source file handle.");
         if (source.mapping && !DuplicateHandle(process, source.mapping, process, &mapping, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
@@ -372,7 +378,17 @@ public:
         }
         // Mapping failure degrades to bounded ordinary I/O.
         ReadTimer timer(stats ? &stats->copyOrReadMs : nullptr);
+        if (!privateFallback) {
+            privateFallback = true;
+            const auto reader = ReOpenFile(file, GENERIC_READ, sharing, FILE_FLAG_SEQUENTIAL_SCAN);
+            if (reader != INVALID_HANDLE_VALUE) {
+                CloseHandle(file); file = reader; fallbackMutex = std::make_shared<std::mutex>(); privateFallback = true;
+            }
+        }
         std::lock_guard guard(*fallbackMutex);
+#ifdef MULTIPAD4_SEARCH_TEST_HOOKS
+        if (const auto gate = testing::nextFallbackGate.exchange(nullptr)) { testing::fallbackEntered = true; WaitForSingleObject(gate, INFINITE); }
+#endif
         LARGE_INTEGER position{}; position.QuadPart = offset;
         if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) Fail("Cannot seek file.");
         readBuffer.resize(count); DWORD read = 0;

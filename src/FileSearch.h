@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <map>
 #include "ThreadPool.h"
+#include "SearchWork.h"
 
 namespace files {
 struct FileIdentity {
@@ -84,19 +85,9 @@ struct FileSearchResult {
 FileSearchResult SearchSnapshot(large::Document::Snapshot snapshot, large::SearchOptions pattern, const std::atomic<bool>& cancel);
 // Each worker callback owns its matcher. Workers never access editor windows or documents.
 class FileSearch {
-    SearchWalker walker;
-    large::SearchOptions pattern;
-    std::vector<std::filesystem::path> openPaths;
-    std::unique_ptr<OpenFileIndex> openFiles;
-    std::once_flag openIndexOnce;
-    std::atomic<bool> cancel{false};
-    std::atomic<size_t> errors{0}, running{0};
-    std::mutex walkMutex, resultMutex;
-    std::condition_variable space;
-    std::deque<FileSearchResult> results;
-    std::vector<work::Task<void>> tasks;
-    void Run();
-    void Publish(FileSearchResult result);
+    struct State;
+    std::shared_ptr<State> state;
+    void Start();
 public:
     FileSearch(DirectorySearchOptions options, large::SearchOptions search,
         std::vector<std::filesystem::path> openDocuments = {});
@@ -104,6 +95,8 @@ public:
     void Stop();
     bool Poll(FileSearchResult& result);
     bool Done();
-    size_t Errors() const { return errors.load(); }
+    size_t Errors() const;
+    std::shared_ptr<work::SearchPermit> WorkerPermit() const;
 };
+
 }

@@ -9,6 +9,7 @@
 #include <array>
 #include <map>
 #include "ThreadPool.h"
+#include "SearchWork.h"
 #include <exception>
 #include <iterator>
 #include <stdexcept>
@@ -38,6 +39,7 @@ struct Reader {
     Document::Snapshot snapshot;
     files::Encoding encoding;
     const std::atomic<bool>* cancel;
+    std::unique_ptr<work::ReadCancellation> readCancellation;
     mutable std::unique_ptr<Document::ReadSession> session;
     std::string Read(Position offset, size_t count) const { return session ? session->Read(offset, count) : Document::Read(snapshot, offset, count); }
     struct Cache { Position begin = 0; std::string bytes; unsigned long long stamp = 0; };
@@ -49,7 +51,7 @@ struct Reader {
     unsigned width = 1, codePage = CP_UTF8;
     bool utf8 = true, little = true, dbcs = false;
     struct Character { wchar_t value[2]{}; unsigned units = 1, bytes = 1; };
-    Reader(Document::Snapshot value, files::Encoding codec, const std::atomic<bool>* stop, bool independent = false) : snapshot(std::move(value)), encoding(Plain(codec)), cancel(stop) {
+    Reader(Document::Snapshot value, files::Encoding codec, const std::atomic<bool>* stop, bool independent = false) : snapshot(std::move(value)), encoding(Plain(codec)), cancel(stop), readCancellation(std::make_unique<work::ReadCancellation>(stop)) {
         if (independent) session = std::make_unique<Document::ReadSession>(snapshot);
         width = encoding == files::Encoding::Utf16LEPlain || encoding == files::Encoding::Utf16BEPlain ? 2 : 1;
         little = encoding != files::Encoding::Utf16BEPlain; codePage = files::CodePage(encoding); utf8 = width == 1 && codePage == CP_UTF8;
@@ -583,6 +585,7 @@ struct Search::Impl {
 };
 Search::Search(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions options, const std::atomic<bool>* cancel, bool independentReads) : impl(std::make_unique<Impl>(std::move(snapshot), encoding, std::move(options), cancel, independentReads)) {}
 Search::~Search() = default;
+void Search::SetCancellation(const std::atomic<bool>* cancel) { impl->reader.readCancellation.reset(); impl->reader.cancel = cancel; if (cancel) impl->reader.readCancellation = std::make_unique<work::ReadCancellation>(cancel); }
 void Search::Rebase(Document::Snapshot snapshot) { impl->reader.snapshot = std::move(snapshot); if (impl->reader.session) impl->reader.session = std::make_unique<Document::ReadSession>(impl->reader.snapshot); impl->reader.cache = {}; impl->reader.checkpoints = {{0, 0}}; impl->reader.boundaries.clear(); impl->literalBytes.clear(); impl->literalWide.clear(); impl->wideOffsets.clear(); impl->reverseRegex.reset(); }
 Position Search::Advance(Position position, bool backwards) const { return impl->reader.Advance(position, backwards); }
 Position Search::Size() const { return impl->reader.Size(); }
@@ -600,7 +603,7 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
             first = probeEnd;
         } else {
             auto serial = impl->options; serial.workers = 1;
-            Search nearby(impl->reader.snapshot, impl->reader.encoding, serial, impl->reader.cancel);
+            Search nearby(impl->reader.snapshot, impl->reader.encoding, serial, impl->reader.cancel, true);
             const auto probeBegin = impl->reader.Align(upper - lower > 256 * 1024 ? upper - 256 * 1024 : lower);
             if (auto hit = nearby.Next(upper, probeBegin, true)) return hit;
             last = probeBegin;
