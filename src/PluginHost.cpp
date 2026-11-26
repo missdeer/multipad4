@@ -306,9 +306,7 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
     case NPPM_GETNBOPENFILES: return l == 2 ? 0 : frame->tabs.GetPageCount();
     case NPPM_GETCURRENTDOCINDEX: return l == 1 ? -1 : frame->tabs.GetActivePage();
     case NPPM_GETBUFFERIDFROMPOS: return l == 0 && w < static_cast<WPARAM>(frame->tabs.GetPageCount()) ? Buffer(static_cast<EditorDocument*>(frame->tabs.GetPageData(static_cast<int>(w)))) : 0;
-    case NPPM_GETPOSFROMBUFFERID:
-        for (int i = 0; i < frame->tabs.GetPageCount(); ++i) if (Buffer(static_cast<EditorDocument*>(frame->tabs.GetPageData(i))) == w) return i;
-        return -1;
+    case NPPM_GETPOSFROMBUFFERID: return frame->tabs.Position(Document(w));
     case MPM_GETBUFFERFILEPATH:
     case NPPM_GETFULLPATHFROMBUFFERID: {
         auto* doc = Document(w); if (!doc) return -1;
