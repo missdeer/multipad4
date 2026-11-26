@@ -211,7 +211,10 @@ void SearchDialog::SetPage(int value) {
 }
 void SearchDialog::Execute(int command) {
     if (ordinaryTask) { Status(L"A search is running. Close to cancel."); return; }
-    if (fileRunning) { Status(L"A file search is running. Close to cancel."); return; }
+    if (fileRunning) {
+        if (command == IDC_SEARCH_FILES || command == IDC_SEARCH_REPLACE_FILES) FinishFiles(true);
+        else { Status(L"A file search is running. Close to cancel."); return; }
+    }
     // Resolve synchronously too: WM_MDIACTIVATE notifications are posted and
     // may still be queued when a button or accelerator invokes this command.
     SyncDocument();
@@ -289,16 +292,16 @@ void SearchDialog::ContinueSearch() {
     SearchStep();
     if (ordinaryTask && !ordinaryTask->mapped) PostMessageW(hwnd, ContinueOrdinarySearch, ordinaryTask->token, 0);
 }
-void SearchDialog::FinishSearch(bool interrupted) {
+void SearchDialog::FinishSearch(bool interrupted, bool publish) {
     if (!ordinaryTask) return;
     auto task = std::move(ordinaryTask); KillTimer(hwnd, 3);
     if (task->mapped) {
         auto found = owner->tabs.documentsById.find(task->identity);
         if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
     }
-    if ((task->command == IDC_FINDALL || task->command == IDC_SEARCH_ALL_OPEN) && task->generation == owner->searchResults.generation)
+    if (publish && (task->command == IDC_FINDALL || task->command == IDC_SEARCH_ALL_OPEN) && task->generation == owner->searchResults.generation)
         owner->searchResults.Finish(task->count, task->files);
-    Status((interrupted ? L"Interrupted. " : L"Completed. ") + std::to_wstring(task->count) + L" matches in " + std::to_wstring(task->files) + L" documents.");
+    if (publish) Status((interrupted ? L"Interrupted. " : L"Completed. ") + std::to_wstring(task->count) + L" matches in " + std::to_wstring(task->files) + L" documents.");
 }
 void SearchDialog::SearchStep() {
     if (!ordinaryTask) return;
@@ -411,20 +414,20 @@ void SearchDialog::StartFiles(bool replace) {
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"停止 / 关闭" : L"Stop / Close"); SetTimer(hwnd, 1, 10, nullptr);
     Status(L"Searching files...");
 }
-void SearchDialog::FinishFiles(bool cancelled) {
+void SearchDialog::FinishFiles(bool cancelled, bool publish) {
     KillTimer(hwnd, 1); fileRunning = false;
     if (openSearch) {
-        openSearch->cancel.store(true);
         if (openSearch->mapped) {
             auto found = owner->tabs.documentsById.find(openSearch->identity);
             if (found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
         }
-        if (openSearch->search.Valid()) openSearch->search.Wait();
+        openSearch->search.Reset();
         openSearch.reset();
     }
     if (fileTask) { fileTask->Stop(); fileErrors += fileTask->Errors(); fileTask.reset(); }
     if (replaceWork) replaceWork->cancel.store(true);
     replaceWalker.reset();
+    if (!publish) return;
     if ((!replaceFiles || !replaceWork) && owner->searchResults.generation == fileGeneration) owner->searchResults.Finish(fileHits, foundFiles);
     Status((cancelled ? L"Stopped. " : L"Completed. ") + std::to_wstring(fileHits) + L" matches; " + std::to_wstring(fileErrors) + L" files/folders skipped due to errors.");
     SetDlgItemTextW(hwnd, IDCANCEL, Chinese() ? L"关闭" : L"Close"); owner->Refresh();
@@ -437,13 +440,13 @@ void SearchDialog::FileStep() {
         auto task = openSearch;
         auto found = owner->tabs.documentsById.find(task->identity);
         if (found == owner->tabs.documentsById.end() || found->second->style.revision != task->revision) {
-            task->cancel.store(true);
             if (task->mapped && found != owner->tabs.documentsById.end() && found->second->FastView()) found->second->fastView->StopWork();
-            if (task->search.Valid()) task->search.Wait();
+            task->search.Reset();
             openSearch.reset(); ++fileErrors; return;
         }
         auto& target = *found->second;
         if (task->mapped) {
+            if (target.FastView() && target.fastView->WorkVersion() != task->viewVersion) { ++fileErrors; openSearch.reset(); return; }
             if (!target.FastView() || !target.fastView->Busy()) { ++fileErrors; openSearch.reset(); }
             return;
         }
@@ -453,9 +456,11 @@ void SearchDialog::FileStep() {
                 task->offset += bytes.size(); task->text->append(bytes);
                 return;
             }
+            auto permit = fileTask->WorkerPermit(); if (!permit) return;
+            if (!permit->HasCapacity()) return;
             auto snapshot = large::Document::FromUtf8(task->text)->Capture();
             UseSearch state(target, fileSearch); auto options = target.MappedSearchOptions();
-            task->search = work::Submit([ptr = task.get(), snapshot, options] { return files::SearchSnapshot(snapshot, options, ptr->cancel); });
+            task->search = work::SearchTask<files::FileSearchResult>(std::move(permit), [snapshot, options](const auto& stop) { return files::SearchSnapshot(snapshot, options, stop); });
             return;
         }
         if (!task->search.Ready()) return;
@@ -491,7 +496,8 @@ void SearchDialog::FileStep() {
                             owner->searchResults.AddMapped(*found->second, snapshot, hits); fileHits += hits->Count(); ++foundFiles;
                         }
                         openSearch.reset();
-                    }, true, true);
+                    }, true, true, fileTask->WorkerPermit());
+                openSearch->viewVersion = open->fastView->WorkVersion();
             } else {
                 openSearch = std::make_shared<OpenSearch>();
                 openSearch->identity = open->searchIdentity; openSearch->revision = open->style.revision;
@@ -727,7 +733,11 @@ INT_PTR CALLBACK SearchDialog::Procedure(HWND window, UINT message, WPARAM w, LP
         }
         if (!dialog) return FALSE;
         if (message == WM_CLOSE || (message == WM_COMMAND && LOWORD(w) == IDCANCEL)) { dialog->Close(); return TRUE; }
-        if (message == WM_NCDESTROY) { if (dialog->ordinaryTask) dialog->FinishSearch(true); dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE; }
+        if (message == WM_NCDESTROY) {
+            if (dialog->ordinaryTask) dialog->FinishSearch(true, false);
+            if (dialog->fileRunning) dialog->FinishFiles(true, false);
+            dialog->hwnd = nullptr; dialog->document = nullptr; return FALSE;
+        }
         if (message == ContinueOrdinarySearch) {
             if (dialog->ordinaryTask && dialog->ordinaryTask->token == w) {
                 // Posted work must let queued input and paint run before continuing.

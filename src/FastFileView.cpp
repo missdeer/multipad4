@@ -332,32 +332,39 @@ void FastFileView::Redo() {
     if (auto selection = model->Redo()) { Seek((std::min)(selection->caret, selection->anchor)); RestoreSelection(*selection); }
 }
 void FastFileView::CancelTask() {
-    cancel.store(true, std::memory_order_relaxed);
-    worker.Reset();
-    { std::lock_guard guard(resultMutex); result = {}; }
+    ++workVersion;
+    pendingAction.reset(); worker.Reset();
+    if (window) KillTimer(window, 41);
     resultStatus = "Search cancelled.";
     if (label && IsWindow(label)) SetWindowTextW(label, readOnly ? L"Large file · Read only" : L"Large file · Editable on demand");
 }
-void FastFileView::Launch(const std::function<std::optional<large::Document::Match>(const large::Document::Snapshot&, const std::atomic<bool>&)>& action) {
-    if (!model) return; CancelTask(); cancel.store(false, std::memory_order_relaxed);
-    { std::lock_guard guard(resultMutex); result = {}; }
-    auto snapshot = model->Capture();
+void FastFileView::Launch(Action action, std::shared_ptr<work::SearchPermit> permit) {
+    if (!model || work::SearchClosing()) return;
+    CancelTask(); pendingAction.emplace(Request{model->Capture(), std::move(action), std::move(permit)});
     if (label) SetWindowTextW(label, L"Working… Press Esc to cancel");
-    worker = work::Submit([this, snapshot, action] {
-        TaskResult completed; completed.snapshot = snapshot;
-        try { completed.match = action(snapshot, cancel); } catch (const std::exception& error) { completed.error = error.what(); }
-        completed.completed = true;
-        if (!cancel.load(std::memory_order_relaxed)) {
-            { std::lock_guard guard(resultMutex); completed.apply = std::move(result.apply); result = std::move(completed); }
-            PostMessageW(window, WM_APP + 1, 0, 0);
-        }
+    SetTimer(window, 41, 10, nullptr); StartPending();
+}
+void FastFileView::StartPending() {
+    if (!pendingAction || worker.Valid()) return;
+    if (work::SearchClosing() || pendingAction->snapshot.root != model->Capture().root) { CancelTask(); return; }
+    auto permit = pendingAction->permit ? pendingAction->permit : work::TrySearchPermit(); if (!permit) return;
+    if (!permit->HasCapacity()) return;
+    auto request = *pendingAction;
+    worker = work::SearchTask<TaskResult>(std::move(permit), [request = std::move(request)](const auto& stop) {
+        TaskResult completed; completed.snapshot = request.snapshot;
+        try { completed = request.action(request.snapshot, stop); completed.snapshot = request.snapshot; }
+        catch (const std::exception& error) { completed.error = error.what(); }
+        catch (...) { completed.error = "Search failed."; }
+        return completed;
     });
+    if (worker.Valid()) pendingAction.reset();
 }
 void FastFileView::CompleteTask() {
     if (!model) return;
-    TaskResult completed;
-    { std::lock_guard guard(resultMutex); if (!result.completed) return; completed = std::move(result); result = {}; }
-    worker.Reset();
+    if (work::SearchClosing()) { CancelTask(); return; }
+    StartPending(); if (!worker.Ready()) return;
+    auto completed = worker.Get();
+    KillTimer(window, 41);
     if (completed.snapshot.root != model->Capture().root) return;
     if (!completed.error.empty()) { resultStatus = completed.error; SetWindowTextW(label, files::FromUtf8(completed.error).c_str()); return; }
     if (completed.apply) { completed.apply(); return; }
@@ -366,10 +373,11 @@ void FastFileView::CompleteTask() {
     SetWindowTextW(label, readOnly ? L"Large file · Read only" : L"Large file · Editable on demand");
 }
 void FastFileView::StartGoToLine(large::Position line) {
-    Launch([line](const auto& snapshot, const auto& stop) -> std::optional<large::Document::Match> { return large::Document::Match{large::Document::PositionFromLine(snapshot, line, &stop), 0}; });
+    Launch([line](const auto& snapshot, const auto& stop) -> TaskResult { TaskResult result; result.match = large::Document::Match{large::Document::PositionFromLine(snapshot, line, &stop), 0}; return result; });
 }
 void FastFileView::StartExternalMatch(large::Document::Snapshot utf8, large::Position line, large::Position lineStart, large::Position start, large::Position end) {
-    Launch([this, utf8, line, lineStart, start, end](const auto& snapshot, const auto& stop) -> std::optional<large::Document::Match> {
+    const auto codec = encoding == files::Encoding::Utf8Bom ? files::Encoding::Utf8 : encoding == files::Encoding::Utf16LE ? files::Encoding::Utf16LEPlain : encoding == files::Encoding::Utf16BE ? files::Encoding::Utf16BEPlain : encoding;
+    Launch([codec, utf8, line, lineStart, start, end](const auto& snapshot, const auto& stop) -> TaskResult {
         auto encodedSize = [&](large::Position first, large::Position last) {
             large::Position length = 0;
             while (first < last) {
@@ -377,12 +385,12 @@ void FastFileView::StartExternalMatch(large::Document::Snapshot utf8, large::Pos
                 auto bytes = large::Document::Read(utf8, first, static_cast<size_t>((std::min)(last - first, large::Position(64 * 1024 + 4))));
                 size_t count = bytes.size();
                 if (first + count < last) { count -= 4; while (count && (static_cast<unsigned char>(bytes[count]) & 0xC0) == 0x80) --count; bytes.resize(count); }
-                length += Encode(bytes).size(); first += count;
+                length += files::Encode({bytes, codec}).size(); first += count;
             }
             return length;
         };
         auto native = large::Document::PositionFromLine(snapshot, line, &stop) + encodedSize(lineStart, start);
-        return large::Document::Match{native, static_cast<size_t>(encodedSize(start, end))};
+        TaskResult result; result.match = large::Document::Match{native, static_cast<size_t>(encodedSize(start, end))}; return result;
     });
 }
 namespace {
@@ -397,7 +405,7 @@ struct ReplacementResult {
 ReplacementResult ReplaceSnapshot(std::shared_ptr<large::Document> branch, const large::Document::Snapshot& snapshot,
     files::Encoding encoding, const large::SearchOptions& options, std::string_view replacement, bool captures,
     large::Position start, large::Position limit, large::Selection selection, const std::atomic<bool>* cancel) {
-    large::Search search(snapshot, encoding, options, cancel);
+    large::Search search(snapshot, encoding, options, cancel, true);
     branch->Begin(selection); size_t count = 0;
     try {
         auto position = start;
@@ -458,21 +466,22 @@ void FastFileView::StartSearch(large::SearchOptions options, bool backwards, boo
     auto start = backwards ? (std::min)(selection.anchor, selection.caret) : (std::max)(selection.anchor, selection.caret);
     const bool skipZero = repeatZero && lastHit && lastHit->start == lastHit->end && lastHit->start == start && matchSnapshot.root == snapshot.root && SameSearch(lastOptions, options);
     auto hit = std::make_shared<std::optional<large::SearchHit>>();
-    Launch([this, options, lower, upper, start, backwards, wrap, skipZero, hit](const auto& source, const auto& stop) mutable -> std::optional<large::Document::Match> {
-        // Launch drains the previous worker; the view owns the stable cancellation flag.
-        if (!navigationSearch || navigationSnapshot.root != source.root || !SameSearch(navigationOptions, options)) {
-            navigationSearch = std::make_unique<large::Search>(source, encoding, options, &stop);
-            navigationSnapshot = source; navigationOptions = options;
-        }
-        auto& search = *navigationSearch;
+    auto retained = navigationSnapshot.root == snapshot.root && SameSearch(navigationOptions, options) ? std::move(navigationSearch) : nullptr;
+    const auto codec = encoding;
+    Launch([this, codec, retained = std::move(retained), options, lower, upper, start, backwards, wrap, skipZero, hit](const auto& source, const auto& stop) mutable -> TaskResult {
+        auto matcher = retained ? std::move(retained) : std::make_shared<large::Search>(source, codec, options, nullptr, true);
+        matcher->SetCancellation(&stop);
+        struct ClearCancellation { large::Search& search; ~ClearCancellation() { search.SetCancellation(nullptr); } } clear{*matcher};
+        auto& search = *matcher;
         const auto original = start;
         bool exhausted = false;
         if (skipZero) { if (start == (backwards ? lower : upper)) exhausted = true; else start = search.Advance(start, backwards); }
         if (!exhausted) *hit = search.Next(start, backwards ? lower : upper, backwards);
         if (!*hit && wrap && (backwards ? original < upper : original > lower)) *hit = search.Next(backwards ? upper : lower, original, backwards);
+        TaskResult result;
         {
-            std::lock_guard guard(resultMutex);
-            result.apply = [this, source, options, hit, skipZero] {
+            result.apply = [this, source, options, hit, skipZero, matcher] {
+                navigationSearch = matcher; navigationSnapshot = source; navigationOptions = options;
                 lastOptions = options; matchSnapshot = source;
                 if (*hit || !skipZero) lastHit = *hit;
                 if (*hit) {
@@ -483,7 +492,7 @@ void FastFileView::StartSearch(large::SearchOptions options, bool backwards, boo
                 SetWindowTextW(label, files::FromUtf8(resultStatus).c_str());
             };
         }
-        return {};
+        return result;
     });
 }
 bool FastFileView::ReplaceMatch(const large::SearchOptions& options, std::string_view replacement, bool captures) {
@@ -526,10 +535,11 @@ void FastFileView::StartReplaceEvery(large::SearchOptions options, std::string r
     if (options.pattern.empty()) return;
     auto selection = Selection(); auto branch = model->Branch(model->Capture());
     auto first = selectionOnly ? (std::min)(selection.anchor, selection.caret) : 0, limit = selectionOnly ? (std::max)(selection.anchor, selection.caret) : Size();
-    Launch([this, options, replacement, captures, first, limit, selection, branch](const auto& snapshot, const auto& stop) -> std::optional<large::Document::Match> {
-        auto changed = ReplaceSnapshot(branch, snapshot, encoding, options, replacement, captures, first, limit, selection, &stop);
-        { std::lock_guard guard(resultMutex); result.apply = [this, snapshot, changed, selection] { ApplyReplacement(snapshot, changed.branch, selection, changed.after, changed.count); }; }
-        return {};
+    const auto codec = encoding;
+    Launch([this, codec, options, replacement, captures, first, limit, selection, branch](const auto& snapshot, const auto& stop) -> TaskResult {
+        auto changed = ReplaceSnapshot(branch, snapshot, codec, options, replacement, captures, first, limit, selection, &stop);
+        TaskResult result; { result.apply = [this, snapshot, changed, selection] { ApplyReplacement(snapshot, changed.branch, selection, changed.after, changed.count); }; }
+        return result;
     });
 }
 std::shared_ptr<large::HitArchive> FastFileView::ArchiveMatches(const large::SearchOptions& options, bool selectionOnly) {
@@ -552,22 +562,23 @@ std::vector<large::SearchHit> FastFileView::Matches(const large::SearchOptions& 
     return matches;
 }
 void FastFileView::StartEnumerate(large::SearchOptions options, bool selectionOnly,
-    const std::function<void(const large::Document::Snapshot&, const std::shared_ptr<large::HitArchive>&)>& completed, bool retainOffsets, bool indexLines) {
+    const std::function<void(const large::Document::Snapshot&, const std::shared_ptr<large::HitArchive>&)>& completed, bool retainOffsets, bool indexLines, std::shared_ptr<work::SearchPermit> permit) {
     auto selection = Selection(); auto first = selectionOnly ? (std::min)(selection.anchor, selection.caret) : 0;
     auto limit = selectionOnly ? (std::max)(selection.anchor, selection.caret) : Size();
     auto hits = std::make_shared<large::HitArchive>(retainOffsets);
-    Launch([this, options, first, limit, completed, hits, indexLines](const auto& snapshot, const auto& stop) mutable -> std::optional<large::Document::Match> {
-        large::Search search(snapshot, encoding, options, &stop);
+    const auto codec = encoding;
+    Launch([this, codec, options, first, limit, completed, hits, indexLines](const auto& snapshot, const auto& stop) mutable -> TaskResult {
+        large::Search search(snapshot, codec, options, &stop, true);
         search.Enumerate(first, limit, *hits);
         // Result rows require exact line numbers; build their shared index on
         // this cancellable worker, never as a multi-gigabyte UI callback.
         if (indexLines && hits->Count()) large::Document::LineCount(snapshot, &stop);
-        { std::lock_guard guard(resultMutex); result.apply = [this, snapshot, completed, hits] {
+        TaskResult result; { result.apply = [this, snapshot, completed, hits] {
             document.search.matches = hits->Count(); resultStatus = std::to_string(hits->Count()) + " matches.";
-            completed(snapshot, hits); SetWindowTextW(label, files::FromUtf8(resultStatus).c_str());
+            SetWindowTextW(label, files::FromUtf8(resultStatus).c_str()); completed(snapshot, hits);
         }; }
-        return {};
-    });
+        return result;
+    }, std::move(permit));
 }
 void FastFileView::SetMarks(large::Document::Snapshot snapshot, std::vector<large::SearchHit> matches, bool bookmarks) {
     auto archive = std::make_shared<large::HitArchive>(); for (const auto& hit : matches) archive->Append(hit);
@@ -613,7 +624,7 @@ LRESULT CALLBACK FastFileView::WindowProc(HWND window, UINT message, WPARAM w, L
     if (message == WM_NCCREATE) { self = static_cast<FastFileView*>(reinterpret_cast<CREATESTRUCTW*>(l)->lpCreateParams); SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self)); }
     if (!self) return DefWindowProcW(window, message, w, l);
     try {
-        if (message == WM_APP + 1) { self->CompleteTask(); return 0; }
+        if (message == WM_TIMER && w == 41) { self->CompleteTask(); return 0; }
         if (message == WM_SIZE) { self->Layout(); return 0; }
         if (message == WM_SETFOCUS) { SetFocus(self->document.hwnd); return 0; }
         if (message == WM_NOTIFY) {

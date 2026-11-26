@@ -134,43 +134,68 @@ std::optional<std::filesystem::path> SearchWalker::Next(const std::atomic<bool>&
     }
     return {};
 }
-FileSearch::FileSearch(DirectorySearchOptions options, large::SearchOptions search,
-    std::vector<std::filesystem::path> openDocuments)
-    : walker(options), pattern(std::move(search)), openPaths(std::move(openDocuments)) {
-    // Validate once on the caller before submitting work. No nested file parallelism.
-    pattern.workers = 1;
-    large::Search validate({}, Encoding::Utf8, pattern);
-    const unsigned count = (std::min)(8u, options.workers ? options.workers : work::Concurrency());
+struct FileSearch::State {
+    std::shared_ptr<work::SearchPermit> permit;
+    SearchWalker walker;
+    large::SearchOptions pattern;
+    std::vector<std::filesystem::path> openPaths;
+    std::atomic<bool> cancel{false};
+    std::atomic<size_t> errors{0};
+    std::mutex walkMutex, resultMutex;
+    std::condition_variable space;
+    std::deque<FileSearchResult> results;
+    std::vector<work::SearchTask<void>> tasks;
+    unsigned workers;
+    bool started = false;
+    State(DirectorySearchOptions options, large::SearchOptions search, std::vector<std::filesystem::path> openDocuments) :
+        walker(options), pattern(std::move(search)), openPaths(std::move(openDocuments)), workers((std::min)(8u, options.workers ? options.workers : work::Concurrency())) {
+        pattern.workers = 1; large::Search validate({}, Encoding::Utf8, pattern);
+    }
+    void Run();
+    void Publish(FileSearchResult result);
+    void Cancel() {
+        { std::lock_guard guard(resultMutex); cancel.store(true); }
+        space.notify_all();
+    }
+};
+FileSearch::FileSearch(DirectorySearchOptions options, large::SearchOptions search, std::vector<std::filesystem::path> openDocuments) :
+    state(std::make_shared<State>(std::move(options), std::move(search), std::move(openDocuments))) { Start(); }
+void FileSearch::Start() {
+    if (state->started || state->cancel.load()) return;
+    state->permit = work::TrySearchPermit(); if (!state->permit) return;
+    state->started = true;
     try {
-        tasks.reserve(count);
-        for (unsigned i = 0; i < count; ++i) {
-            ++running;
-            try { tasks.push_back(work::Submit([this] { Run(); })); }
-            catch (...) { --running; throw; }
+        state->tasks.reserve(state->workers);
+        for (unsigned i = 0; i < state->workers; ++i) {
+            state->tasks.emplace_back(state->permit, [state = state](const auto&) { state->Run(); }, [state = state] { state->Cancel(); });
+            if (!state->tasks.back().Valid()) { state->Cancel(); break; }
         }
     } catch (...) { Stop(); throw; }
 }
-FileSearch::~FileSearch() { Stop(); }
+FileSearch::~FileSearch() { Stop(); if (state->started) work::RetireOwner(std::move(state)); }
 void FileSearch::Stop() {
-    cancel.store(true); space.notify_all();
-    for (auto& task : tasks) task.Reset();
+    state->Cancel();
+    for (auto& task : state->tasks) task.Reset();
+    state->tasks.clear();
 }
-void FileSearch::Publish(FileSearchResult result) {
+size_t FileSearch::Errors() const { return state->errors.load(); }
+std::shared_ptr<work::SearchPermit> FileSearch::WorkerPermit() const { return state->permit; }
+void FileSearch::State::Publish(FileSearchResult result) {
     std::unique_lock lock(resultMutex);
     space.wait(lock, [&] { return cancel.load() || results.size() < 8; });
     if (!cancel.load()) results.push_back(std::move(result));
 }
 bool FileSearch::Poll(FileSearchResult& result) {
-    std::lock_guard lock(resultMutex);
-    if (results.empty()) return false;
-    result = std::move(results.front()); results.pop_front(); space.notify_one(); return true;
+    Start(); std::lock_guard lock(state->resultMutex);
+    if (state->results.empty()) return false;
+    result = std::move(state->results.front()); state->results.pop_front(); state->space.notify_one(); return true;
 }
 bool FileSearch::Done() {
-    std::lock_guard lock(resultMutex);
-    return running.load() == 0 && results.empty();
+    Start(); std::lock_guard lock(state->resultMutex);
+    const bool done = state->results.empty() && (state->cancel.load() || (state->started && std::all_of(state->tasks.begin(), state->tasks.end(), [](const auto& task) { return task.Ready(); })));
+    return done;
 }
-void FileSearch::Run() {
-    struct Complete { std::atomic<size_t>& running; ~Complete() { --running; } } complete{running};
+void FileSearch::State::Run() {
     try {
         large::Search matcher({}, Encoding::Utf8, pattern, &cancel);
         while (!cancel.load()) {

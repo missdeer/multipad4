@@ -607,6 +607,7 @@ LRESULT MainFrame::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
     DestroyWindow(); return 0;
 }
 LRESULT MainFrame::OnDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
+    work::StopSearchAdmission();
     for (auto& document : documents) document->runtime.directoryWatch.reset();
     pluginAdmin.Close();
     plugins.Shutdown();

@@ -35,6 +35,7 @@ class Search {
 public:
     Search(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions options, const std::atomic<bool>* cancel = nullptr, bool independentReads = false);
     ~Search();
+    void SetCancellation(const std::atomic<bool>* cancel);
     void Rebase(Document::Snapshot snapshot);
     std::optional<SearchHit> Next(Position start, Position limit, bool backwards = false);
     void Enumerate(Position first, Position limit, HitArchive& hits);

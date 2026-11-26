@@ -34,6 +34,7 @@ public:
     void ServiceReplacement();
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
 private:
+    friend void RunSearchRetirementTests(MainFrame& frame);
     struct SearchTask {
         uintptr_t token = 0;
         int command;
@@ -50,7 +51,7 @@ private:
     void ContinueSearch();
     void StartSearch(int command, bool selection);
     void SearchStep();
-    void FinishSearch(bool interrupted);
+    void FinishSearch(bool interrupted, bool publish = true);
     unsigned long long pendingIdentity = 0;
     void WatchMappedTask();
     bool fileRunning = false, replaceFiles = false;
@@ -85,16 +86,16 @@ private:
     unsigned long long fileGeneration = 0;
     struct OpenSearch {
         unsigned long long identity = 0, revision = 0;
+        unsigned long long viewVersion = 0;
         std::filesystem::path path;
         std::shared_ptr<std::string> text = std::make_shared<std::string>();
         size_t offset = 0, length = 0;
-        std::atomic<bool> cancel{false};
-        work::Task<files::FileSearchResult> search;
+        work::SearchTask<files::FileSearchResult> search;
         bool mapped = false;
     };
     std::shared_ptr<OpenSearch> openSearch;
     void ReplaceFileStep();
     void StartFiles(bool replace);
     void FileStep();
-    void FinishFiles(bool cancelled);
+    void FinishFiles(bool cancelled, bool publish = true);
 };

@@ -81,46 +81,63 @@ public:
 #endif
         size += bytes.size(); return begin;
     }
-    void ReadInto(Position offset, size_t length, char* output) {
-        std::lock_guard guard(mutex);
+    HANDLE ReadHandle() {
+        const auto reader = ReOpenFile(file, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0);
+        if (reader == INVALID_HANDLE_VALUE) throw std::runtime_error("Cannot reopen edit journal."); return reader;
+    }
+    void ReadInto(Position offset, size_t length, char* output, HANDLE reader = INVALID_HANDLE_VALUE) {
+        std::unique_lock guard(mutex);
         if (offset > size || length > size - offset) throw std::runtime_error("Invalid journal range.");
         const auto diskLength = offset < persisted ? static_cast<size_t>((std::min)(Position(length), persisted - offset)) : 0;
+        if (length > diskLength) memcpy(output + diskLength, pending.data() + static_cast<size_t>(offset + diskLength - persisted), length - diskLength);
+        if (reader != INVALID_HANDLE_VALUE) guard.unlock(); else reader = file;
         if (diskLength) {
             LARGE_INTEGER position{}; position.QuadPart = offset;
-            if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
+            if (!SetFilePointerEx(reader, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
         }
         for (size_t done = 0; done < diskLength;) {
+            CheckCancel();
             DWORD got = 0, count = static_cast<DWORD>((std::min)(diskLength - done, size_t(16 * 1024 * 1024)));
-            if (!ReadFile(file, output + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
+            if (!ReadFile(reader, output + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
         }
-        if (length > diskLength) memcpy(output + diskLength, pending.data() + static_cast<size_t>(offset + diskLength - persisted), length - diskLength);
     }
-    std::string Read(Position offset, size_t length) {
-        std::string bytes(length, '\0'); ReadInto(offset, length, bytes.data()); return bytes;
+    std::string Read(Position offset, size_t length, HANDLE reader = INVALID_HANDLE_VALUE) {
+        std::string bytes(length, '\0'); ReadInto(offset, length, bytes.data(), reader); return bytes;
     }
 };
 struct Counters { std::atomic<Position> read{0}, added{0}, blocks{0}, nodes{0}; };
 class Source;
-using ReadSessions = std::map<const Source*, std::unique_ptr<files::MappedFile>>;
+struct JournalSession {
+    HANDLE file = INVALID_HANDLE_VALUE;
+    ~JournalSession() { if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
+};
+struct ReadSessions {
+    std::map<const Source*, std::unique_ptr<files::MappedFile>> mapped;
+    std::map<const Journal*, JournalSession> journals;
+};
 class Source {
     struct Block { std::vector<uint32_t> ends; Summary summary; };
-    struct Index { std::optional<Summary> summary; std::unique_ptr<Index> left, right; std::unique_ptr<Block> block; };
+    struct Index { std::mutex mutex; std::optional<Summary> summary; std::unique_ptr<Index> left, right; std::unique_ptr<Block> block; };
     std::shared_ptr<files::MappedFile> file;
     std::shared_ptr<Journal> journal;
     std::shared_ptr<const std::string> memory;
     Position journalBegin = 0;
     std::shared_ptr<Counters> counters;
-    std::mutex readMutex, indexMutex;
+    std::mutex readMutex;
     Index index;
     Position blockCount;
     unsigned width;
     bool little;
-    unsigned Character(Position offset) {
-        auto bytes = Read(offset, width); return Unit(bytes, 0, width, little);
+    unsigned Character(Position offset, ReadSessions& sessions) {
+        auto bytes = Read(offset, width, &sessions); return Unit(bytes, 0, width, little);
     }
-    Block Build(Position number) {
+    Block Build(Position number, ReadSessions& sessions) {
         CheckCancel(); auto begin = number * IndexBlockBytes;
-        auto bytes = Read(begin, static_cast<size_t>((std::min)(Position(IndexBlockBytes), size - begin)));
+#ifdef MULTIPAD4_SEARCH_TEST_HOOKS
+        if (const auto gate = testing::nextIndexGate.exchange(nullptr)) { testing::indexEntered = true; WaitForSingleObject(gate, INFINITE); }
+#endif
+        const auto count = static_cast<size_t>((std::min)(Position(IndexBlockBytes), size - begin));
+        auto bytes = Read(begin, count, &sessions);
         Block block; block.summary.bytes = bytes.size();
         if (!bytes.empty()) { block.summary.first = Unit(bytes, 0, width, little); block.summary.last = Unit(bytes, bytes.size() - width, width, little); }
         auto addBreak = [&](size_t offset) {
@@ -149,37 +166,45 @@ class Source {
         }
         block.summary.breaks = block.ends.size(); ++counters->blocks; return block;
     }
-    Summary Query(Index& tree, Position first, Position last, Position begin, Position end) {
+    Summary Query(Index& tree, Position first, Position last, Position begin, Position end, ReadSessions& sessions) {
         CheckCancel(); const auto regionBegin = first * IndexBlockBytes, regionEnd = (std::min)(size, last * IndexBlockBytes);
         if (end <= regionBegin || begin >= regionEnd) return {};
         const bool full = begin <= regionBegin && end >= regionEnd;
-        if (full && tree.summary) return *tree.summary;
+        { std::lock_guard guard(tree.mutex); if (full && tree.summary) return *tree.summary; }
         if (last - first == 1) {
-            if (!tree.block) tree.block = std::make_unique<Block>(Build(first));
-            tree.summary = tree.block->summary;
-            if (full) return *tree.summary;
+            const Block* block;
+            { std::lock_guard guard(tree.mutex); block = tree.block.get(); }
+            if (!block) {
+                auto built = std::make_unique<Block>(Build(first, sessions));
+                std::lock_guard guard(tree.mutex);
+                if (!tree.block) { tree.block = std::move(built); tree.summary = tree.block->summary; }
+                block = tree.block.get();
+            }
+            if (full) return block->summary;
             auto left = (std::max)(begin, regionBegin), right = (std::min)(end, regionEnd);
             auto lo = static_cast<uint32_t>(left - regionBegin), hi = static_cast<uint32_t>(right - regionBegin);
-            const auto& ends = tree.block->ends;
-            Summary result{right - left, static_cast<Position>(std::upper_bound(ends.begin(), ends.end(), hi) - std::upper_bound(ends.begin(), ends.end(), lo)), Character(left), Character(right - width)};
-            if (right < regionEnd && result.last == '\r' && Character(right) == '\n') ++result.breaks;
+            const auto& ends = block->ends;
+            Summary result{right - left, static_cast<Position>(std::upper_bound(ends.begin(), ends.end(), hi) - std::upper_bound(ends.begin(), ends.end(), lo)), Character(left, sessions), Character(right - width, sessions)};
+            if (right < regionEnd && result.last == '\r' && Character(right, sessions) == '\n') ++result.breaks;
             return result;
         }
         const auto middle = first + (last - first) / 2;
-        if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>();
-        auto result = Join(Query(*tree.left, first, middle, begin, end), Query(*tree.right, middle, last, begin, end));
-        if (full) tree.summary = result;
+        { std::lock_guard guard(tree.mutex);
+            if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>();
+        }
+        auto result = Join(Query(*tree.left, first, middle, begin, end, sessions), Query(*tree.right, middle, last, begin, end, sessions));
+        if (full) { std::lock_guard guard(tree.mutex); tree.summary = result; }
         return result;
     }
-    std::optional<Position> Select(Index& tree, Position first, Position last, Position begin, Position end, Position line, Summary& prefix) {
+    std::optional<Position> Select(Index& tree, Position first, Position last, Position begin, Position end, Position line, Summary& prefix, ReadSessions& sessions) {
         CheckCancel();
         const auto regionBegin = first * IndexBlockBytes, regionEnd = (std::min)(size, last * IndexBlockBytes);
         if (end <= regionBegin || begin >= regionEnd) return {};
         const bool full = begin <= regionBegin && end >= regionEnd;
-        if (full && tree.summary && Join(prefix, *tree.summary).breaks < line) { prefix = Join(prefix, *tree.summary); return {}; }
+        { std::lock_guard guard(tree.mutex); if (full && tree.summary && Join(prefix, *tree.summary).breaks < line) { prefix = Join(prefix, *tree.summary); return {}; } }
         if (last - first == 1) {
             const auto left = (std::max)(begin, regionBegin), right = (std::min)(end, regionEnd);
-            const auto summary = Query(tree, first, last, left, right);
+            const auto summary = Query(tree, first, last, left, right, sessions);
             const auto combined = Join(prefix, summary);
             if (combined.breaks < line) { prefix = combined; return {}; }
             const auto& ends = tree.block->ends;
@@ -192,12 +217,16 @@ class Source {
             return regionBegin + candidate[static_cast<size_t>(ordinal - 1)];
         }
         const auto middle = first + (last - first) / 2;
-        if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>();
-        auto result = Select(*tree.left, first, middle, begin, end, line, prefix);
-        if (!result) result = Select(*tree.right, middle, last, begin, end, line, prefix);
-        if (full && tree.left->summary && tree.right->summary) tree.summary = Join(*tree.left->summary, *tree.right->summary);
+        { std::lock_guard guard(tree.mutex); if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>(); }
+        auto result = Select(*tree.left, first, middle, begin, end, line, prefix, sessions);
+        if (!result) result = Select(*tree.right, middle, last, begin, end, line, prefix, sessions);
+        if (full) {
+            std::scoped_lock guard(tree.mutex, tree.left->mutex, tree.right->mutex);
+            if (tree.left->summary && tree.right->summary) tree.summary = Join(*tree.left->summary, *tree.right->summary);
+        }
         return result;
     }
+
 public:
     unsigned Width() const { return width; }
     bool Little() const { return little; }
@@ -224,7 +253,11 @@ public:
         ++backingReads; copiedBytes += count;
 #endif
         // Coalesced journal runs may extend past this Source into the same backing journal.
-        if (journal) { journal->ReadInto(journalBegin + offset, count, output); return; }
+        if (journal) {
+            HANDLE reader = INVALID_HANDLE_VALUE;
+            if (sessions) { auto& session = sessions->journals[journal.get()]; if (session.file == INVALID_HANDLE_VALUE) session.file = journal->ReadHandle(); reader = session.file; }
+            journal->ReadInto(journalBegin + offset, count, output, reader); return;
+        }
         if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
         if (memory) { memcpy(output, memory->data() + static_cast<size_t>(offset), count); return; }
         auto fill = [&](files::MappedFile& mapped) {
@@ -238,7 +271,7 @@ public:
             }
         };
         if (sessions) {
-            auto& session = (*sessions)[this]; if (!session) session = file->NewReadSession();
+            auto& session = sessions->mapped[this]; if (!session) session = file->NewReadSession();
             fill(*session);
         } else {
             std::lock_guard guard(readMutex); fill(*file);
@@ -250,10 +283,14 @@ public:
         if (memory) return memory->substr(static_cast<size_t>(offset), count);
         if (file) {
             if (sessions) {
-                auto& session = (*sessions)[this]; if (!session) session = file->NewReadSession();
+                auto& session = sessions->mapped[this]; if (!session) session = file->NewReadSession();
                 auto bytes = session->Read(offset, count); counters->read += bytes.size(); return bytes;
             }
             std::lock_guard guard(readMutex); auto bytes = file->Read(offset, count); counters->read += bytes.size(); return bytes;
+        }
+        if (sessions) {
+            auto& reader = sessions->journals[journal.get()].file; if (reader == INVALID_HANDLE_VALUE) reader = journal->ReadHandle();
+            return journal->Read(journalBegin + offset, count, reader);
         }
         return journal->Read(journalBegin + offset, count);
     }
@@ -266,13 +303,14 @@ public:
             offset += count; length -= count;
         }
     }
-    Summary Describe(Position offset, Position length) {
+    Summary Describe(Position offset, Position length, ReadSessions* shared = nullptr) {
         if (!length) return {};
-        std::lock_guard guard(indexMutex); return Query(index, 0, blockCount, offset, offset + length);
+        if (shared) return Query(index, 0, blockCount, offset, offset + length, *shared);
+        ReadSessions sessions; return Query(index, 0, blockCount, offset, offset + length, sessions);
     }
-    std::optional<Position> Select(Position offset, Position length, Position line, Summary& prefix) {
+    std::optional<Position> Select(Position offset, Position length, Position line, Summary& prefix, ReadSessions& sessions) {
         if (!length) return {};
-        std::lock_guard guard(indexMutex); return Select(index, 0, blockCount, offset, offset + length, line, prefix);
+        return Select(index, 0, blockCount, offset, offset + length, line, prefix, sessions);
     }
 };
 struct Piece { std::shared_ptr<Source> source; Position offset = 0, length = 0; };
@@ -385,34 +423,35 @@ struct Document::Impl {
         if (!node) return;
         Stream(node->left, consume); node->piece.source->Stream(node->piece.offset, node->piece.length, consume); Stream(node->right, consume);
     }
-    static Summary Describe(const Root& node) {
+    static Summary Describe(const Root& node, ReadSessions* sessions = nullptr) {
         if (!node) return {};
-        CheckCancel(); std::lock_guard guard(node->mutex);
-        if (!node->summary) node->summary = Join(Join(Describe(node->left), node->piece.source->Describe(node->piece.offset, node->piece.length)), Describe(node->right));
-        return *node->summary;
+        CheckCancel();
+        { std::lock_guard guard(node->mutex); if (node->summary) return *node->summary; }
+        const auto summary = Join(Join(Describe(node->left, sessions), node->piece.source->Describe(node->piece.offset, node->piece.length, sessions)), Describe(node->right, sessions));
+        std::lock_guard guard(node->mutex); if (!node->summary) node->summary = summary; return *node->summary;
     }
-    static Summary Prefix(const Root& node, Position length) {
+    static Summary Prefix(const Root& node, Position length, ReadSessions& sessions) {
         if (!node || !length) return {};
-        if (length >= node->bytes) return Describe(node);
+        if (length >= node->bytes) return Describe(node, &sessions);
         auto left = Length(node->left);
-        if (length <= left) return Prefix(node->left, length);
-        auto result = Describe(node->left); auto count = (std::min)(length - left, node->piece.length);
-        result = Join(result, node->piece.source->Describe(node->piece.offset, count));
-        if (length > left + count) result = Join(result, Prefix(node->right, length - left - count));
+        if (length <= left) return Prefix(node->left, length, sessions);
+        auto result = Describe(node->left, &sessions); auto count = (std::min)(length - left, node->piece.length);
+        result = Join(result, node->piece.source->Describe(node->piece.offset, count, &sessions));
+        if (length > left + count) result = Join(result, Prefix(node->right, length - left - count, sessions));
         return result;
     }
-    static std::optional<Position> SelectLine(const Root& node, Position base, Position line, Summary& prefix) {
+    static std::optional<Position> SelectLine(const Root& node, Position base, Position line, Summary& prefix, ReadSessions& sessions) {
         if (!node) return {};
         CheckCancel();
         {
             std::lock_guard guard(node->mutex);
             if (node->summary && Join(prefix, *node->summary).breaks < line) { prefix = Join(prefix, *node->summary); return {}; }
         }
-        if (auto found = SelectLine(node->left, base, line, prefix)) return found;
+        if (auto found = SelectLine(node->left, base, line, prefix, sessions)) return found;
         const auto pieceBase = base + Length(node->left);
-        if (auto found = node->piece.source->Select(node->piece.offset, node->piece.length, line, prefix)) return pieceBase + *found - node->piece.offset;
-        auto found = SelectLine(node->right, pieceBase + node->piece.length, line, prefix);
-        if (!found) Describe(node); // All source blocks in this subtree are now cached.
+        if (auto found = node->piece.source->Select(node->piece.offset, node->piece.length, line, prefix, sessions)) return pieceBase + *found - node->piece.offset;
+        auto found = SelectLine(node->right, pieceBase + node->piece.length, line, prefix, sessions);
+        if (!found) Describe(node, &sessions); // All source blocks in this subtree are now cached.
         return found;
     }
 };
@@ -540,40 +579,40 @@ void Document::Save(const std::filesystem::path& path, bool copy) {
     if (!copy) MarkSaved();
 }
 Document::Metrics Document::Statistics() const { return {impl->counters->read.load(), impl->counters->added.load(), impl->counters->blocks.load(), impl->counters->nodes.load()}; }
-Position Document::LineCount(const Snapshot& snapshot, const std::atomic<bool>* cancel) { CancelScope scope(cancel); return Impl::Describe(snapshot.root).breaks + 1; }
+Position Document::LineCount(const Snapshot& snapshot, const std::atomic<bool>* cancel) { CancelScope scope(cancel); ReadSessions sessions; return Impl::Describe(snapshot.root, &sessions).breaks + 1; }
 Position Document::PositionFromLine(const Snapshot& snapshot, Position line, const std::atomic<bool>* cancel) {
-    CancelScope scope(cancel); if (!line) return 0;
+    CancelScope scope(cancel); if (!line) return 0; ReadSessions sessions;
 #ifdef MULTIPAD4_LINE_BENCHMARK
     extern bool lineLookupBaseline;
     if (lineLookupBaseline) {
         const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
-        while (high < size && Impl::Prefix(snapshot.root, high).breaks < line) { low = high; high = (std::min)(size, high * 2); }
-        if (Impl::Prefix(snapshot.root, high).breaks < line) return size;
+        while (high < size && Impl::Prefix(snapshot.root, high, sessions).breaks < line) { low = high; high = (std::min)(size, high * 2); }
+        if (Impl::Prefix(snapshot.root, high, sessions).breaks < line) return size;
         const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
         const bool little = !snapshot.root || snapshot.root->piece.source->Little();
         low /= width; high /= width;
-        while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width).breaks >= line) high = middle; else low = middle + 1; }
+        while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width, sessions).breaks >= line) high = middle; else low = middle + 1; }
         low *= width;
-        if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
+        if (low && low < size) { std::string pair; Impl::Append(snapshot.root, low - width, 2 * width, pair, &sessions); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
         return low;
     }
 #endif
     const auto size = Size(snapshot); Summary prefix;
-    const auto found = Impl::SelectLine(snapshot.root, 0, line, prefix);
+    const auto found = Impl::SelectLine(snapshot.root, 0, line, prefix, sessions);
     if (!found) return size;
     auto low = *found;
     const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
     const bool little = !snapshot.root || snapshot.root->piece.source->Little();
-    if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
+    if (low && low < size) { std::string pair; Impl::Append(snapshot.root, low - width, 2 * width, pair, &sessions); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
     return low;
 }
 Position Document::LineFromPosition(const Snapshot& snapshot, Position position, const std::atomic<bool>* cancel) {
-    CancelScope scope(cancel); position = (std::min)(position, Size(snapshot));
+    CancelScope scope(cancel); ReadSessions sessions; position = (std::min)(position, Size(snapshot));
     const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
     const bool little = !snapshot.root || snapshot.root->piece.source->Little();
-    position -= position % width; auto count = Impl::Prefix(snapshot.root, position).breaks;
+    position -= position % width; auto count = Impl::Prefix(snapshot.root, position, sessions).breaks;
     if (position && position < Size(snapshot)) {
-        auto pair = Read(snapshot, position - width, 2 * width);
+        std::string pair; Impl::Append(snapshot.root, position - width, 2 * width, pair, &sessions);
         if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') --count;
     }
     return count;

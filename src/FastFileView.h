@@ -6,6 +6,7 @@
 #include <atomic>
 #include <mutex>
 #include "ThreadPool.h"
+#include "SearchWork.h"
 struct EditorDocument;
 // The Scintilla window is a bounded rendering/editing viewport. Source text,
 // global positions, undo and the lazy line index belong to the piece tree.
@@ -29,17 +30,18 @@ class FastFileView {
     std::optional<large::Selection> extendedSelection;
     bool loading = false, readOnly = false;
     unsigned editDepth = 0;
-    work::Task<void> worker;
-    std::atomic<bool> cancel{false};
-    struct TaskResult { large::Document::Snapshot snapshot; std::optional<large::Document::Match> match; std::string error; bool completed = false; std::function<void()> apply; };
-    std::mutex resultMutex;
-    TaskResult result;
+    struct TaskResult { large::Document::Snapshot snapshot; std::optional<large::Document::Match> match; std::string error; std::function<void()> apply; };
+    work::SearchTask<TaskResult> worker;
+    using Action = std::function<TaskResult(const large::Document::Snapshot&, const std::atomic<bool>&)>;
+    struct Request { large::Document::Snapshot snapshot; Action action; std::shared_ptr<work::SearchPermit> permit; };
+    std::optional<Request> pendingAction;
+    unsigned long long workVersion = 0;
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK EditorProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
     void Layout();
     void UpdateBar();
     void CancelTask();
-    std::unique_ptr<large::Search> navigationSearch;
+    std::shared_ptr<large::Search> navigationSearch;
     large::Document::Snapshot navigationSnapshot;
     large::SearchOptions navigationOptions;
     large::Document::Snapshot matchSnapshot;
@@ -54,7 +56,8 @@ class FastFileView {
     void PaintMarks();
     void ApplyReplacement(const large::Document::Snapshot& expected, const std::shared_ptr<large::Document>& branch,
         large::Selection before, large::Selection after, size_t count);
-    void Launch(const std::function<std::optional<large::Document::Match>(const large::Document::Snapshot&, const std::atomic<bool>&)>& action);
+    void Launch(Action action, std::shared_ptr<work::SearchPermit> permit = {});
+    void StartPending();
     void CompleteTask();
     std::string Encode(std::string_view utf8) const;
     std::string Decode(std::string_view raw) const;
@@ -86,7 +89,7 @@ public:
     std::shared_ptr<large::HitArchive> ArchiveMatches(const large::SearchOptions& options, bool selectionOnly);
     std::vector<large::SearchHit> Matches(const large::SearchOptions& options, bool selectionOnly);
     void StartEnumerate(large::SearchOptions options, bool selectionOnly,
-        const std::function<void(const large::Document::Snapshot&, const std::shared_ptr<large::HitArchive>&)>& completed, bool retainOffsets = true, bool indexLines = false);
+        const std::function<void(const large::Document::Snapshot&, const std::shared_ptr<large::HitArchive>&)>& completed, bool retainOffsets = true, bool indexLines = false, std::shared_ptr<work::SearchPermit> permit = {});
     void SetMarks(large::Document::Snapshot snapshot, std::vector<large::SearchHit> matches, bool bookmarks);
     void SetMarks(large::Document::Snapshot snapshot, std::shared_ptr<large::HitArchive> matches, bool bookmarks, bool purge = true);
     large::Selection GlobalSelection() const { return Selection(); }
@@ -102,7 +105,8 @@ public:
     bool CanRedo() const { return model && model->CanRedo(); }
     bool ReadOnly() const { return readOnly; }
     bool Loading() const { return loading; }
-    bool Busy() const { return worker.Valid(); }
+    bool Busy() const { return worker.Valid() || pendingAction.has_value(); }
+    unsigned long long WorkVersion() const { return workVersion; }
     HWND Window() const { return window; }
     large::Position Size() const { return model ? model->Size() : 0; }
     large::Position Begin() const { return begin; }

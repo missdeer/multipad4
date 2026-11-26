@@ -1,6 +1,7 @@
 #include "MainFrame.h"
 #ifdef MULTIPAD4_TESTING
 #include "SmokeTest.h"
+#include "../tests/SearchRetirementTests.h"
 #include "../tests/StatusStatisticsTests.h"
 #ifdef MULTIPAD4_INDENT_TEST
 #include "../tests/IndentReadTests.h"
@@ -127,6 +128,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool ordinaryTest = count == 2 && wcscmp(args[1], L"--ordinary-search-test") == 0;
     bool ordinaryBenchmark = count == 3 && wcscmp(args[1], L"--ordinary-search-benchmark") == 0;
+    bool searchRetirementTest = count == 2 && wcscmp(args[1], L"--search-retirement-test") == 0;
     bool statusTest = count == 2 && wcscmp(args[1], L"--status-statistics-test") == 0;
     bool statusBenchmark = count == 3 && wcscmp(args[1], L"--status-statistics-benchmark") == 0;
     bool indentTest = false, indentBenchmark = false;
@@ -142,12 +144,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool benchmark=count==3&&wcscmp(args[1],L"--configuration-benchmark")==0;
     bool configurationMode=configurationTest||themeReport||benchmark;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool smoke = searchRetirementTest || indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool searchRetirementTest=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -158,7 +160,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(searchRetirementTest || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
         if (smoke || render) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
@@ -213,7 +215,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 if (indentTest || indentBenchmark) { RunIndentReadTests(frame, indentBenchmark); }
                 else
 #endif
-                if (statusTest || statusBenchmark) { RunStatusStatisticsTests(frame, statusBenchmark ? args[2] : nullptr); }
+                if (searchRetirementTest) { RunSearchRetirementTests(frame); }
+                else if (statusTest || statusBenchmark) { RunStatusStatisticsTests(frame, statusBenchmark ? args[2] : nullptr); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
@@ -244,7 +247,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if ((smoke || render) && (OpenDocumentsTestWindow() || GetModuleHandleW(L"OpenDocuments.dll"))) {
                 fprintf(stderr, "OpenDocuments plugin did not unload cleanly\n"); result = 4;
             }
-            frame.DestroyWindow();
+            if (frame.IsWindow()) frame.DestroyWindow();
         }
 #endif
         else {
