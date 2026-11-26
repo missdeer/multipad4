@@ -3850,847 +3850,854 @@
       "path": "src/EditComments.cpp",
       "references": [
         {
-          "line": 53,
-          "symbols": [
-            "GetDocumentLexer"
-          ]
-        },
-        {
-          "line": 55,
-          "symbols": [
-            "NP2LEX_ASM"
-          ]
-        },
-        {
-          "line": 65,
-          "symbols": [
-            "NP2LEX_BASH"
-          ]
-        },
-        {
-          "line": 68,
-          "symbols": [
-            "NP2LEX_CSS"
-          ]
-        },
-        {
-          "line": 72,
-          "symbols": [
-            "NP2LEX_HTML"
-          ]
-        },
-        {
-          "line": 73,
-          "symbols": [
-            "NP2LEX_PHP"
-          ]
-        },
-        {
-          "line": 74,
-          "symbols": [
-            "NP2LEX_XML"
-          ]
-        },
-        {
-          "line": 82,
-          "symbols": [
-            "NP2LEX_INNOSETUP"
-          ]
-        },
-        {
-          "line": 87,
-          "symbols": [
-            "NP2LEX_VIM"
-          ]
-        },
-        {
-          "line": 92,
-          "symbols": [
-            "NP2LEX_MATLAB"
-          ]
-        },
-        {
-          "line": 96,
-          "symbols": [
-            "NP2LEX_ABAQUS"
-          ]
-        },
-        {
-          "line": 100,
-          "symbols": [
-            "NP2LEX_ACTIONSCRIPT"
-          ]
-        },
-        {
-          "line": 101,
-          "symbols": [
-            "NP2LEX_ASYMPTOTE"
-          ]
-        },
-        {
-          "line": 102,
-          "symbols": [
-            "NP2LEX_BLOCKDIAG"
-          ]
-        },
-        {
-          "line": 103,
-          "symbols": [
-            "NP2LEX_CANGJIE"
-          ]
-        },
-        {
-          "line": 104,
-          "symbols": [
-            "NP2LEX_CIL"
-          ]
-        },
-        {
-          "line": 105,
-          "symbols": [
-            "NP2LEX_CPP"
-          ]
-        },
-        {
-          "line": 106,
-          "symbols": [
-            "NP2LEX_CSHARP"
-          ]
-        },
-        {
-          "line": 107,
-          "symbols": [
-            "NP2LEX_DART"
-          ]
-        },
-        {
-          "line": 108,
-          "symbols": [
-            "NP2LEX_DLANG"
-          ]
-        },
-        {
-          "line": 109,
-          "symbols": [
-            "NP2LEX_FSHARP"
-          ]
-        },
-        {
-          "line": 110,
-          "symbols": [
-            "NP2LEX_GO"
-          ]
-        },
-        {
-          "line": 111,
-          "symbols": [
-            "NP2LEX_GRADLE"
-          ]
-        },
-        {
-          "line": 112,
-          "symbols": [
-            "NP2LEX_GRAPHVIZ"
-          ]
-        },
-        {
-          "line": 113,
-          "symbols": [
-            "NP2LEX_GROOVY"
-          ]
-        },
-        {
           "line": 114,
           "symbols": [
-            "NP2LEX_HAXE"
-          ]
-        },
-        {
-          "line": 115,
-          "symbols": [
-            "NP2LEX_JAVA"
+            "GetDocumentLexer"
           ]
         },
         {
           "line": 116,
           "symbols": [
-            "NP2LEX_JAVASCRIPT"
-          ]
-        },
-        {
-          "line": 117,
-          "symbols": [
-            "NP2LEX_JSON"
-          ]
-        },
-        {
-          "line": 118,
-          "symbols": [
-            "NP2LEX_KOTLIN"
-          ]
-        },
-        {
-          "line": 119,
-          "symbols": [
-            "NP2LEX_PASCAL"
-          ]
-        },
-        {
-          "line": 120,
-          "symbols": [
-            "NP2LEX_POWERBUILDER"
-          ]
-        },
-        {
-          "line": 121,
-          "symbols": [
-            "NP2LEX_RESOURCESCRIPT"
-          ]
-        },
-        {
-          "line": 122,
-          "symbols": [
-            "NP2LEX_RUST"
-          ]
-        },
-        {
-          "line": 123,
-          "symbols": [
-            "NP2LEX_SCALA"
-          ]
-        },
-        {
-          "line": 124,
-          "symbols": [
-            "NP2LEX_SWIFT"
-          ]
-        },
-        {
-          "line": 125,
-          "symbols": [
-            "NP2LEX_TYPESCRIPT"
+            "NP2LEX_ASM"
           ]
         },
         {
           "line": 126,
           "symbols": [
-            "NP2LEX_TYPST"
-          ]
-        },
-        {
-          "line": 127,
-          "symbols": [
-            "NP2LEX_VERILOG"
-          ]
-        },
-        {
-          "line": 128,
-          "symbols": [
-            "NP2LEX_WINHEX"
+            "NP2LEX_BASH"
           ]
         },
         {
           "line": 129,
           "symbols": [
-            "NP2LEX_ZIG"
+            "NP2LEX_CSS"
           ]
         },
         {
           "line": 133,
           "symbols": [
-            "NP2LEX_APDL"
+            "NP2LEX_HTML"
           ]
         },
         {
           "line": 134,
           "symbols": [
-            "NP2LEX_FORTRAN"
-          ]
-        },
-        {
-          "line": 138,
-          "symbols": [
-            "NP2LEX_AUTOHOTKEY"
-          ]
-        },
-        {
-          "line": 139,
-          "symbols": [
-            "NP2LEX_AUTOIT3"
-          ]
-        },
-        {
-          "line": 140,
-          "symbols": [
-            "NP2LEX_INI"
-          ]
-        },
-        {
-          "line": 141,
-          "symbols": [
-            "NP2LEX_LISP"
-          ]
-        },
-        {
-          "line": 142,
-          "symbols": [
-            "NP2LEX_LLVM"
-          ]
-        },
-        {
-          "line": 143,
-          "symbols": [
-            "NP2LEX_REBOL"
-          ]
-        },
-        {
-          "line": 147,
-          "symbols": [
-            "NP2LEX_AVISYNTH"
-          ]
-        },
-        {
-          "line": 148,
-          "symbols": [
-            "NP2LEX_AWK"
-          ]
-        },
-        {
-          "line": 149,
-          "symbols": [
-            "NP2LEX_CMAKE"
-          ]
-        },
-        {
-          "line": 150,
-          "symbols": [
-            "NP2LEX_COFFEESCRIPT"
-          ]
-        },
-        {
-          "line": 151,
-          "symbols": [
-            "NP2LEX_CONFIG"
-          ]
-        },
-        {
-          "line": 152,
-          "symbols": [
-            "NP2LEX_ELIXIR"
-          ]
-        },
-        {
-          "line": 153,
-          "symbols": [
-            "NP2LEX_GN"
-          ]
-        },
-        {
-          "line": 154,
-          "symbols": [
-            "NP2LEX_JAMFILE"
-          ]
-        },
-        {
-          "line": 155,
-          "symbols": [
-            "NP2LEX_JULIA"
-          ]
-        },
-        {
-          "line": 156,
-          "symbols": [
-            "NP2LEX_MAKEFILE"
-          ]
-        },
-        {
-          "line": 157,
-          "symbols": [
-            "NP2LEX_NIM"
-          ]
-        },
-        {
-          "line": 158,
-          "symbols": [
-            "NP2LEX_NSIS"
-          ]
-        },
-        {
-          "line": 159,
-          "symbols": [
-            "NP2LEX_PERL"
-          ]
-        },
-        {
-          "line": 160,
-          "symbols": [
-            "NP2LEX_POWERSHELL"
-          ]
-        },
-        {
-          "line": 161,
-          "symbols": [
-            "NP2LEX_PYTHON"
-          ]
-        },
-        {
-          "line": 162,
-          "symbols": [
-            "NP2LEX_RLANG"
-          ]
-        },
-        {
-          "line": 163,
-          "symbols": [
-            "NP2LEX_RUBY"
-          ]
-        },
-        {
-          "line": 164,
-          "symbols": [
-            "NP2LEX_SMALI"
-          ]
-        },
-        {
-          "line": 165,
-          "symbols": [
-            "NP2LEX_TCL"
-          ]
-        },
-        {
-          "line": 166,
-          "symbols": [
-            "NP2LEX_TOML"
-          ]
-        },
-        {
-          "line": 167,
-          "symbols": [
-            "NP2LEX_YAML"
-          ]
-        },
-        {
-          "line": 171,
-          "symbols": [
-            "NP2LEX_BATCH"
-          ]
-        },
-        {
-          "line": 175,
-          "symbols": [
-            "NP2LEX_ERLANG"
-          ]
-        },
-        {
-          "line": 176,
-          "symbols": [
-            "NP2LEX_LATEX"
-          ]
-        },
-        {
-          "line": 180,
-          "symbols": [
-            "NP2LEX_HASKELL"
-          ]
-        },
-        {
-          "line": 181,
-          "symbols": [
-            "NP2LEX_LUA"
-          ]
-        },
-        {
-          "line": 182,
-          "symbols": [
-            "NP2LEX_VHDL"
-          ]
-        },
-        {
-          "line": 186,
-          "symbols": [
-            "NP2LEX_SQL"
-          ]
-        },
-        {
-          "line": 190,
-          "symbols": [
-            "NP2LEX_TEXINFO"
-          ]
-        },
-        {
-          "line": 194,
-          "symbols": [
-            "NP2LEX_VBSCRIPT"
-          ]
-        },
-        {
-          "line": 195,
-          "symbols": [
-            "NP2LEX_VISUALBASIC"
-          ]
-        },
-        {
-          "line": 199,
-          "symbols": [
-            "NP2LEX_WASM"
-          ]
-        },
-        {
-          "line": 212,
-          "symbols": [
-            "GetDocumentLexer"
-          ]
-        },
-        {
-          "line": 214,
-          "symbols": [
-            "NP2LEX_BLOCKDIAG"
-          ]
-        },
-        {
-          "line": 215,
-          "symbols": [
-            "NP2LEX_GRAPHVIZ"
-          ]
-        },
-        {
-          "line": 221,
-          "symbols": [
-            "NP2LEX_INNOSETUP"
-          ]
-        },
-        {
-          "line": 232,
-          "symbols": [
-            "NP2LEX_HTML"
-          ]
-        },
-        {
-          "line": 233,
-          "symbols": [
             "NP2LEX_PHP"
           ]
         },
         {
-          "line": 234,
+          "line": 135,
           "symbols": [
             "NP2LEX_XML"
           ]
         },
         {
-          "line": 247,
+          "line": 143,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 148,
+          "symbols": [
+            "NP2LEX_VIM"
+          ]
+        },
+        {
+          "line": 153,
           "symbols": [
             "NP2LEX_MATLAB"
           ]
         },
         {
-          "line": 258,
+          "line": 157,
+          "symbols": [
+            "NP2LEX_ABAQUS"
+          ]
+        },
+        {
+          "line": 161,
           "symbols": [
             "NP2LEX_ACTIONSCRIPT"
           ]
         },
         {
-          "line": 259,
-          "symbols": [
-            "NP2LEX_ASM"
-          ]
-        },
-        {
-          "line": 260,
+          "line": 162,
           "symbols": [
             "NP2LEX_ASYMPTOTE"
           ]
         },
         {
-          "line": 261,
+          "line": 163,
           "symbols": [
-            "NP2LEX_AUTOHOTKEY"
+            "NP2LEX_BLOCKDIAG"
           ]
         },
         {
-          "line": 262,
-          "symbols": [
-            "NP2LEX_AVISYNTH"
-          ]
-        },
-        {
-          "line": 263,
+          "line": 164,
           "symbols": [
             "NP2LEX_CANGJIE"
           ]
         },
         {
-          "line": 264,
+          "line": 165,
           "symbols": [
             "NP2LEX_CIL"
           ]
         },
         {
-          "line": 265,
+          "line": 166,
           "symbols": [
             "NP2LEX_CPP"
           ]
         },
         {
-          "line": 266,
+          "line": 167,
           "symbols": [
             "NP2LEX_CSHARP"
           ]
         },
         {
-          "line": 267,
-          "symbols": [
-            "NP2LEX_CSS"
-          ]
-        },
-        {
-          "line": 268,
+          "line": 168,
           "symbols": [
             "NP2LEX_DART"
           ]
         },
         {
-          "line": 269,
+          "line": 169,
           "symbols": [
             "NP2LEX_DLANG"
           ]
         },
         {
-          "line": 270,
-          "symbols": [
-            "NP2LEX_GO"
-          ]
-        },
-        {
-          "line": 271,
-          "symbols": [
-            "NP2LEX_GRADLE"
-          ]
-        },
-        {
-          "line": 272,
-          "symbols": [
-            "NP2LEX_GROOVY"
-          ]
-        },
-        {
-          "line": 273,
-          "symbols": [
-            "NP2LEX_HAXE"
-          ]
-        },
-        {
-          "line": 274,
-          "symbols": [
-            "NP2LEX_JAVA"
-          ]
-        },
-        {
-          "line": 275,
-          "symbols": [
-            "NP2LEX_JAVASCRIPT"
-          ]
-        },
-        {
-          "line": 276,
-          "symbols": [
-            "NP2LEX_JSON"
-          ]
-        },
-        {
-          "line": 277,
-          "symbols": [
-            "NP2LEX_KOTLIN"
-          ]
-        },
-        {
-          "line": 278,
-          "symbols": [
-            "NP2LEX_NSIS"
-          ]
-        },
-        {
-          "line": 279,
-          "symbols": [
-            "NP2LEX_POWERBUILDER"
-          ]
-        },
-        {
-          "line": 280,
-          "symbols": [
-            "NP2LEX_RESOURCESCRIPT"
-          ]
-        },
-        {
-          "line": 281,
-          "symbols": [
-            "NP2LEX_RUST"
-          ]
-        },
-        {
-          "line": 282,
-          "symbols": [
-            "NP2LEX_SAS"
-          ]
-        },
-        {
-          "line": 283,
-          "symbols": [
-            "NP2LEX_SCALA"
-          ]
-        },
-        {
-          "line": 284,
-          "symbols": [
-            "NP2LEX_SQL"
-          ]
-        },
-        {
-          "line": 285,
-          "symbols": [
-            "NP2LEX_SWIFT"
-          ]
-        },
-        {
-          "line": 286,
-          "symbols": [
-            "NP2LEX_TYPESCRIPT"
-          ]
-        },
-        {
-          "line": 287,
-          "symbols": [
-            "NP2LEX_TYPST"
-          ]
-        },
-        {
-          "line": 288,
-          "symbols": [
-            "NP2LEX_VERILOG"
-          ]
-        },
-        {
-          "line": 289,
-          "symbols": [
-            "NP2LEX_VHDL"
-          ]
-        },
-        {
-          "line": 294,
-          "symbols": [
-            "NP2LEX_AUTOIT3"
-          ]
-        },
-        {
-          "line": 300,
-          "symbols": [
-            "NP2LEX_CMAKE"
-          ]
-        },
-        {
-          "line": 305,
-          "symbols": [
-            "NP2LEX_COFFEESCRIPT"
-          ]
-        },
-        {
-          "line": 310,
+          "line": 170,
           "symbols": [
             "NP2LEX_FSHARP"
           ]
         },
         {
-          "line": 311,
+          "line": 171,
           "symbols": [
-            "NP2LEX_MATHEMATICA"
+            "NP2LEX_GO"
           ]
         },
         {
-          "line": 312,
+          "line": 172,
           "symbols": [
-            "NP2LEX_OCAML"
+            "NP2LEX_GRADLE"
           ]
         },
         {
-          "line": 317,
+          "line": 173,
           "symbols": [
-            "NP2LEX_HASKELL"
+            "NP2LEX_GRAPHVIZ"
           ]
         },
         {
-          "line": 322,
+          "line": 174,
           "symbols": [
-            "NP2LEX_JAMFILE"
+            "NP2LEX_GROOVY"
           ]
         },
         {
-          "line": 323,
+          "line": 175,
           "symbols": [
-            "NP2LEX_LISP"
+            "NP2LEX_HAXE"
           ]
         },
         {
-          "line": 328,
+          "line": 176,
           "symbols": [
-            "NP2LEX_JULIA"
+            "NP2LEX_JAVA"
           ]
         },
         {
-          "line": 333,
+          "line": 177,
           "symbols": [
-            "NP2LEX_LATEX"
+            "NP2LEX_JAVASCRIPT"
           ]
         },
         {
-          "line": 339,
+          "line": 178,
           "symbols": [
-            "NP2LEX_LUA"
+            "NP2LEX_JSON"
           ]
         },
         {
-          "line": 344,
+          "line": 179,
           "symbols": [
-            "NP2LEX_MARKDOWN"
+            "NP2LEX_KOTLIN"
           ]
         },
         {
-          "line": 349,
-          "symbols": [
-            "NP2LEX_NIM"
-          ]
-        },
-        {
-          "line": 354,
+          "line": 180,
           "symbols": [
             "NP2LEX_PASCAL"
           ]
         },
         {
-          "line": 359,
+          "line": 181,
           "symbols": [
-            "NP2LEX_POWERSHELL"
+            "NP2LEX_POWERBUILDER"
           ]
         },
         {
-          "line": 364,
+          "line": 182,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 183,
+          "symbols": [
+            "NP2LEX_RUST"
+          ]
+        },
+        {
+          "line": 184,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 185,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 186,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 187,
+          "symbols": [
+            "NP2LEX_TYPST"
+          ]
+        },
+        {
+          "line": 188,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 189,
+          "symbols": [
+            "NP2LEX_WINHEX"
+          ]
+        },
+        {
+          "line": 190,
+          "symbols": [
+            "NP2LEX_ZIG"
+          ]
+        },
+        {
+          "line": 194,
+          "symbols": [
+            "NP2LEX_APDL"
+          ]
+        },
+        {
+          "line": 195,
+          "symbols": [
+            "NP2LEX_FORTRAN"
+          ]
+        },
+        {
+          "line": 199,
+          "symbols": [
+            "NP2LEX_AUTOHOTKEY"
+          ]
+        },
+        {
+          "line": 200,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 201,
+          "symbols": [
+            "NP2LEX_INI"
+          ]
+        },
+        {
+          "line": 202,
+          "symbols": [
+            "NP2LEX_LISP"
+          ]
+        },
+        {
+          "line": 203,
+          "symbols": [
+            "NP2LEX_LLVM"
+          ]
+        },
+        {
+          "line": 204,
           "symbols": [
             "NP2LEX_REBOL"
           ]
         },
         {
-          "line": 370,
+          "line": 208,
+          "symbols": [
+            "NP2LEX_AVISYNTH"
+          ]
+        },
+        {
+          "line": 209,
+          "symbols": [
+            "NP2LEX_AWK"
+          ]
+        },
+        {
+          "line": 210,
+          "symbols": [
+            "NP2LEX_CMAKE"
+          ]
+        },
+        {
+          "line": 211,
+          "symbols": [
+            "NP2LEX_COFFEESCRIPT"
+          ]
+        },
+        {
+          "line": 212,
+          "symbols": [
+            "NP2LEX_CONFIG"
+          ]
+        },
+        {
+          "line": 213,
+          "symbols": [
+            "NP2LEX_ELIXIR"
+          ]
+        },
+        {
+          "line": 214,
+          "symbols": [
+            "NP2LEX_GN"
+          ]
+        },
+        {
+          "line": 215,
+          "symbols": [
+            "NP2LEX_JAMFILE"
+          ]
+        },
+        {
+          "line": 216,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 217,
+          "symbols": [
+            "NP2LEX_MAKEFILE"
+          ]
+        },
+        {
+          "line": 218,
+          "symbols": [
+            "NP2LEX_NIM"
+          ]
+        },
+        {
+          "line": 219,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 220,
+          "symbols": [
+            "NP2LEX_PERL"
+          ]
+        },
+        {
+          "line": 221,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 222,
+          "symbols": [
+            "NP2LEX_PYTHON"
+          ]
+        },
+        {
+          "line": 223,
+          "symbols": [
+            "NP2LEX_RLANG"
+          ]
+        },
+        {
+          "line": 224,
+          "symbols": [
+            "NP2LEX_RUBY"
+          ]
+        },
+        {
+          "line": 225,
+          "symbols": [
+            "NP2LEX_SMALI"
+          ]
+        },
+        {
+          "line": 226,
+          "symbols": [
+            "NP2LEX_TCL"
+          ]
+        },
+        {
+          "line": 227,
+          "symbols": [
+            "NP2LEX_TOML"
+          ]
+        },
+        {
+          "line": 228,
+          "symbols": [
+            "NP2LEX_YAML"
+          ]
+        },
+        {
+          "line": 232,
+          "symbols": [
+            "NP2LEX_BATCH"
+          ]
+        },
+        {
+          "line": 236,
+          "symbols": [
+            "NP2LEX_ERLANG"
+          ]
+        },
+        {
+          "line": 237,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 241,
+          "symbols": [
+            "NP2LEX_HASKELL"
+          ]
+        },
+        {
+          "line": 242,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 243,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 247,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 251,
           "symbols": [
             "NP2LEX_TEXINFO"
           ]
         },
         {
-          "line": 376,
+          "line": 255,
+          "symbols": [
+            "NP2LEX_VBSCRIPT"
+          ]
+        },
+        {
+          "line": 256,
+          "symbols": [
+            "NP2LEX_VISUALBASIC"
+          ]
+        },
+        {
+          "line": 260,
           "symbols": [
             "NP2LEX_WASM"
           ]
         },
         {
-          "line": 418,
+          "line": 273,
+          "symbols": [
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 275,
+          "symbols": [
+            "NP2LEX_BLOCKDIAG"
+          ]
+        },
+        {
+          "line": 276,
+          "symbols": [
+            "NP2LEX_GRAPHVIZ"
+          ]
+        },
+        {
+          "line": 282,
+          "symbols": [
+            "NP2LEX_INNOSETUP"
+          ]
+        },
+        {
+          "line": 293,
+          "symbols": [
+            "NP2LEX_HTML"
+          ]
+        },
+        {
+          "line": 294,
+          "symbols": [
+            "NP2LEX_PHP"
+          ]
+        },
+        {
+          "line": 295,
+          "symbols": [
+            "NP2LEX_XML"
+          ]
+        },
+        {
+          "line": 308,
+          "symbols": [
+            "NP2LEX_MATLAB"
+          ]
+        },
+        {
+          "line": 319,
+          "symbols": [
+            "NP2LEX_ACTIONSCRIPT"
+          ]
+        },
+        {
+          "line": 320,
+          "symbols": [
+            "NP2LEX_ASM"
+          ]
+        },
+        {
+          "line": 321,
+          "symbols": [
+            "NP2LEX_ASYMPTOTE"
+          ]
+        },
+        {
+          "line": 322,
+          "symbols": [
+            "NP2LEX_AUTOHOTKEY"
+          ]
+        },
+        {
+          "line": 323,
+          "symbols": [
+            "NP2LEX_AVISYNTH"
+          ]
+        },
+        {
+          "line": 324,
+          "symbols": [
+            "NP2LEX_CANGJIE"
+          ]
+        },
+        {
+          "line": 325,
+          "symbols": [
+            "NP2LEX_CIL"
+          ]
+        },
+        {
+          "line": 326,
+          "symbols": [
+            "NP2LEX_CPP"
+          ]
+        },
+        {
+          "line": 327,
+          "symbols": [
+            "NP2LEX_CSHARP"
+          ]
+        },
+        {
+          "line": 328,
+          "symbols": [
+            "NP2LEX_CSS"
+          ]
+        },
+        {
+          "line": 329,
+          "symbols": [
+            "NP2LEX_DART"
+          ]
+        },
+        {
+          "line": 330,
+          "symbols": [
+            "NP2LEX_DLANG"
+          ]
+        },
+        {
+          "line": 331,
+          "symbols": [
+            "NP2LEX_GO"
+          ]
+        },
+        {
+          "line": 332,
+          "symbols": [
+            "NP2LEX_GRADLE"
+          ]
+        },
+        {
+          "line": 333,
+          "symbols": [
+            "NP2LEX_GROOVY"
+          ]
+        },
+        {
+          "line": 334,
+          "symbols": [
+            "NP2LEX_HAXE"
+          ]
+        },
+        {
+          "line": 335,
+          "symbols": [
+            "NP2LEX_JAVA"
+          ]
+        },
+        {
+          "line": 336,
+          "symbols": [
+            "NP2LEX_JAVASCRIPT"
+          ]
+        },
+        {
+          "line": 337,
+          "symbols": [
+            "NP2LEX_JSON"
+          ]
+        },
+        {
+          "line": 338,
+          "symbols": [
+            "NP2LEX_KOTLIN"
+          ]
+        },
+        {
+          "line": 339,
+          "symbols": [
+            "NP2LEX_NSIS"
+          ]
+        },
+        {
+          "line": 340,
+          "symbols": [
+            "NP2LEX_POWERBUILDER"
+          ]
+        },
+        {
+          "line": 341,
+          "symbols": [
+            "NP2LEX_RESOURCESCRIPT"
+          ]
+        },
+        {
+          "line": 342,
+          "symbols": [
+            "NP2LEX_RUST"
+          ]
+        },
+        {
+          "line": 343,
+          "symbols": [
+            "NP2LEX_SAS"
+          ]
+        },
+        {
+          "line": 344,
+          "symbols": [
+            "NP2LEX_SCALA"
+          ]
+        },
+        {
+          "line": 345,
+          "symbols": [
+            "NP2LEX_SQL"
+          ]
+        },
+        {
+          "line": 346,
+          "symbols": [
+            "NP2LEX_SWIFT"
+          ]
+        },
+        {
+          "line": 347,
+          "symbols": [
+            "NP2LEX_TYPESCRIPT"
+          ]
+        },
+        {
+          "line": 348,
+          "symbols": [
+            "NP2LEX_TYPST"
+          ]
+        },
+        {
+          "line": 349,
+          "symbols": [
+            "NP2LEX_VERILOG"
+          ]
+        },
+        {
+          "line": 350,
+          "symbols": [
+            "NP2LEX_VHDL"
+          ]
+        },
+        {
+          "line": 355,
+          "symbols": [
+            "NP2LEX_AUTOIT3"
+          ]
+        },
+        {
+          "line": 361,
+          "symbols": [
+            "NP2LEX_CMAKE"
+          ]
+        },
+        {
+          "line": 366,
+          "symbols": [
+            "NP2LEX_COFFEESCRIPT"
+          ]
+        },
+        {
+          "line": 371,
+          "symbols": [
+            "NP2LEX_FSHARP"
+          ]
+        },
+        {
+          "line": 372,
+          "symbols": [
+            "NP2LEX_MATHEMATICA"
+          ]
+        },
+        {
+          "line": 373,
+          "symbols": [
+            "NP2LEX_OCAML"
+          ]
+        },
+        {
+          "line": 378,
+          "symbols": [
+            "NP2LEX_HASKELL"
+          ]
+        },
+        {
+          "line": 383,
+          "symbols": [
+            "NP2LEX_JAMFILE"
+          ]
+        },
+        {
+          "line": 384,
+          "symbols": [
+            "NP2LEX_LISP"
+          ]
+        },
+        {
+          "line": 389,
+          "symbols": [
+            "NP2LEX_JULIA"
+          ]
+        },
+        {
+          "line": 394,
+          "symbols": [
+            "NP2LEX_LATEX"
+          ]
+        },
+        {
+          "line": 400,
+          "symbols": [
+            "NP2LEX_LUA"
+          ]
+        },
+        {
+          "line": 405,
+          "symbols": [
+            "NP2LEX_MARKDOWN"
+          ]
+        },
+        {
+          "line": 410,
+          "symbols": [
+            "NP2LEX_NIM"
+          ]
+        },
+        {
+          "line": 415,
+          "symbols": [
+            "NP2LEX_PASCAL"
+          ]
+        },
+        {
+          "line": 420,
+          "symbols": [
+            "NP2LEX_POWERSHELL"
+          ]
+        },
+        {
+          "line": 425,
+          "symbols": [
+            "NP2LEX_REBOL"
+          ]
+        },
+        {
+          "line": 431,
+          "symbols": [
+            "NP2LEX_TEXINFO"
+          ]
+        },
+        {
+          "line": 437,
+          "symbols": [
+            "NP2LEX_WASM"
+          ]
+        },
+        {
+          "line": 469,
+          "symbols": [
+            "GetCompletionCache",
+            "GetDocumentLexer"
+          ]
+        },
+        {
+          "line": 482,
           "symbols": [
             "GetCompletionCache",
             "GetDocumentLexer"
