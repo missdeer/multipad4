@@ -9,6 +9,7 @@
 #include "../tests/ModelinePreferenceTests.h"
 #include "../tests/PrivateClipboard.h"
 #include "../tests/RichTextTests.h"
+#include "../tests/AutoSaveCaptureTests.h"
 #include "../tests/StatusStatisticsTests.h"
 #include "../tests/StatusPresentationTests.h"
 #ifdef MULTIPAD4_INDENT_TEST
@@ -169,17 +170,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool modelineBenchmark = count == 2 && wcscmp(args[1], L"--modeline-preference-benchmark") == 0;
     bool transformTest = count == 2 && wcscmp(args[1], L"--edit-transform-test") == 0;
     bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
+    bool autosaveCaptureTest = count == 2 && (wcscmp(args[1], L"--autosave-capture-test") == 0 || wcscmp(args[1], L"--autosave-capture-benchmark") == 0);
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool smoke = autosaveCaptureTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     if (statusPresentation || statusPresentationBenchmark) smoke = true;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (commentTest || commentBenchmark) smoke = true;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool autosaveCaptureTest=false, richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -190,7 +192,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(autosaveCaptureTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
         if (statusPresentation || statusPresentationBenchmark) frame.plugins.enabled = false;
         if (smoke || render) {
@@ -251,6 +253,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (searchRetirementTest) { RunSearchRetirementTests(frame); }
                 else if (modelineTest || modelineBenchmark) { RunModelinePreferenceTests(frame, modelineBenchmark); }
                 else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
+                else if (autosaveCaptureTest) { RunAutoSaveCaptureTests(frame, wcscmp(args[1], L"--autosave-capture-benchmark") == 0); }
                 else if (richTextTest || richTextBenchmark) { RunRichTextTests(frame, richTextBenchmark); }
                 else if (refreshTest) { RunFrameRefreshTests(frame); }
                 else if (refreshBenchmark) { RunFrameRefreshBenchmark(frame, wcscmp(args[2], L"baseline") == 0); }

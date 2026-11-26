@@ -624,17 +624,26 @@ void EncodeChunks(const Text& text, const ChunkConsumer& consume) {
         consume(bytes);
     }
 }
-void WriteNew(const std::filesystem::path& path,const Text& text) {
-    const auto bytes=Encode(text);
+namespace {
+void WriteNewSpans(const std::filesystem::path& path, std::string_view first, std::string_view second) {
     HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL|FILE_FLAG_WRITE_THROUGH,nullptr);
     if(file==INVALID_HANDLE_VALUE)Fail("Cannot create a new backup file without overwriting existing data.");
-    bool ok=true;for(size_t offset=0;offset<bytes.size();) {
+    bool ok=true;
+    for (auto bytes : {first, second}) for(size_t offset=0;ok && offset<bytes.size();) {
         DWORD written=0,count=static_cast<DWORD>((std::min)(ConversionChunk,bytes.size()-offset));
         if(!WriteFile(file,bytes.data()+offset,count,&written,nullptr)||written!=count){ok=false;break;}offset+=written;
     }
     if(ok)ok=FlushFileBuffers(file)!=FALSE;CloseHandle(file);
     if(!ok){DeleteFileW(path.c_str());Fail("Cannot write complete backup file.");}
 }
+}
+void WriteNew(const std::filesystem::path& path,const Text& text) {
+    const auto bytes=Encode(text); WriteNewSpans(path, {}, bytes);
+}
+void WriteNewUtf8(const std::filesystem::path& path, std::string_view text, std::string_view prefix) {
+    Validate(prefix); Validate(text); WriteNewSpans(path, prefix, text);
+}
+
 namespace {
 bool WriteLinkedFile(const std::filesystem::path& path,const std::function<void(const ChunkConsumer&)>& produce, const std::function<void()>& validate, const std::function<void()>& committed) {
     const auto stream=path.native().find(L':',path.root_path().native().size());
