@@ -1,6 +1,7 @@
 #include "AppSettings.h"
 #include <shlobj.h>
 #include <cwctype>
+#include <algorithm>
 namespace {
 constexpr wchar_t EncodedPrefix[] = L"@MultiPad4:utf16:";
 std::wstring ProfileValue(const std::wstring& value) {
@@ -64,26 +65,41 @@ int AppSettings::Get(UINT command, int fallback) const {
     auto text = ReadString(L"Options", key.c_str(), std::to_wstring(fallback).c_str());
     wchar_t* end = nullptr; auto value = wcstol(text.c_str(), &end, 10);
     int result = end != text.c_str() && !*end ? static_cast<int>(value) : fallback;
-    values.emplace(command, result); return result;
+    values.emplace(command, result);
+    if(missingStrings.contains({L"Options",key}) || end==text.c_str() || *end)dirtyOptions.insert(command);
+    return result;
 }
-void AppSettings::Set(UINT command, int value) { values[command] = value; }
+void AppSettings::Set(UINT command, int value) {
+    auto found=values.find(command);if(found==values.end() || found->second!=value)dirtyOptions.insert(command);
+    values[command]=value;
+}
 std::wstring AppSettings::ReadString(const wchar_t* section, const wchar_t* key, const wchar_t* fallback) const {
     auto name = std::make_pair(std::wstring(section), std::wstring(key));
     if (auto found = strings.find(name); found != strings.end()) return found->second;
-    std::wstring text(32768, L'\0');
-    if (persistent) {
-        for (;;) {
-            auto length = GetPrivateProfileStringW(section, key, fallback, text.data(), static_cast<DWORD>(text.size()), path.c_str());
-            if (length < text.size() - 1 || text.size() >= 1024 * 1024) { text.resize(length); break; }
-            text.resize(text.size() * 2);
+    std::wstring text;
+    if(persistent){
+        if(readBuffer.empty())readBuffer.resize(256);
+        auto read=[&](const wchar_t* defaultValue){
+            for(;;){
+                auto length=GetPrivateProfileStringW(section,key,defaultValue,readBuffer.data(),static_cast<DWORD>(readBuffer.size()),path.c_str());
+                if(length<readBuffer.size()-1 || readBuffer.size()>=1024*1024)return std::wstring(readBuffer.data(),length);
+                readBuffer.resize(readBuffer.size()*2);
+            }
+        };
+        text=read(L"\x1");
+        if(text==L"\x1" && read(L"\x2")==L"\x2"){
+            missingStrings.insert(name);text=read(fallback);
         }
-        text = DecodeProfileValue(text);
-    }
-    else text = fallback;
+        text=DecodeProfileValue(text);
+    }else {text=fallback;missingStrings.insert(name);}
     strings.emplace(std::move(name), text); return text;
 }
 void AppSettings::WriteString(const wchar_t* section, const wchar_t* key, const std::wstring& value) {
-    strings[std::make_pair(std::wstring(section), std::wstring(key))] = value;
+    auto name=std::make_pair(std::wstring(section),std::wstring(key));
+    auto old=ReadString(section,key);
+    if(old!=value || missingStrings.contains(name))dirtyStrings.insert(name);
+    strings[name]=value;missingStrings.erase(name);
+    if(name.first==L"Recent Files")recentValid=false;
 }
 bool AppSettings::EnsureProfile() const {
     if (!persistent) return true;
@@ -98,19 +114,38 @@ bool AppSettings::SaveOption(UINT command) const {
     if (!persistent) return true;
     if (!EnsureProfile()) return false;
     auto key = L"Command" + std::to_wstring(command), value = std::to_wstring(Get(command));
-    return WritePrivateProfileStringW(L"Options", key.c_str(), value.c_str(), path.c_str()) != FALSE;
+    bool ok=WritePrivateProfileStringW(L"Options", key.c_str(), value.c_str(), path.c_str()) != FALSE;
+    if(ok)dirtyOptions.erase(command);
+    return ok;
 }
 bool AppSettings::Save() const {
     if (!persistent) return true;
     if (!EnsureProfile()) return false;
     bool ok = true;
-    for (const auto& [command, value] : values) {
-        auto key = L"Command" + std::to_wstring(command), text = std::to_wstring(value);
-        ok &= WritePrivateProfileStringW(L"Options", key.c_str(), text.c_str(), path.c_str()) != FALSE;
+    for(auto it=dirtyOptions.begin();it!=dirtyOptions.end();){
+        auto key=L"Command"+std::to_wstring(*it),text=std::to_wstring(values.at(*it));
+        if(WritePrivateProfileStringW(L"Options",key.c_str(),text.c_str(),path.c_str()))it=dirtyOptions.erase(it);
+        else {ok=false;++it;}
     }
-    for (const auto& [name, value] : strings) if (name.first != L"Options") {
-        auto encoded = ProfileValue(value);
-        ok &= WritePrivateProfileStringW(name.first.c_str(), name.second.c_str(), encoded.c_str(), path.c_str()) != FALSE;
+    for(auto it=dirtyStrings.begin();it!=dirtyStrings.end();){
+        const auto& name=*it;
+        if(name.first==L"Options"){it=dirtyStrings.erase(it);continue;}
+        auto encoded=ProfileValue(strings.at(name));
+        if(WritePrivateProfileStringW(name.first.c_str(),name.second.c_str(),encoded.c_str(),path.c_str()))it=dirtyStrings.erase(it);
+        else {ok=false;++it;}
     }
     WritePrivateProfileStringW(nullptr, nullptr, nullptr, path.c_str()); return ok;
+}
+
+void AppSettings::RecordRecentFile(const std::filesystem::path& file,int count) {
+    count=std::clamp(count,32,4096);
+    if(!recentValid || recentSlots.size()!=static_cast<size_t>(count)){
+        recentSlots.clear();recentSlots.reserve(count);
+        for(int i=0;i<count;++i)recentSlots.push_back(ReadString(L"Recent Files",std::to_wstring(i).c_str()));
+    }
+    std::vector<std::wstring> next;next.reserve(count);next.push_back(file.wstring());
+    for(const auto& old:recentSlots)if(!old.empty() && CompareStringOrdinal(old.c_str(),-1,file.c_str(),-1,TRUE)!=CSTR_EQUAL && next.size()<static_cast<size_t>(count))next.push_back(old);
+    next.resize(count);
+    for(int i=0;i<count;++i)if(next[i]!=recentSlots[i])WriteString(L"Recent Files",std::to_wstring(i).c_str(),next[i]);
+    recentSlots=std::move(next);recentValid=true;
 }
