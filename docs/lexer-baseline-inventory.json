@@ -4981,7 +4981,7 @@
       "path": "src/PluginHost.cpp",
       "references": [
         {
-          "line": 264,
+          "line": 278,
           "symbols": [
             "GetDocumentLexer"
           ]
