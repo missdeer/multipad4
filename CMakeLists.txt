@@ -192,6 +192,8 @@ if(BUILD_TESTING)
   target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_AUTOSAVE_TEST_HOOKS)
   add_test(NAME autosave_capture COMMAND multipad4-tests --autosave-capture-test)
   set_tests_properties(autosave_capture PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
+  add_test(NAME save_whitespace COMMAND multipad4-tests --save-whitespace-test)
+  set_tests_properties(save_whitespace PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   add_test(NAME rich_text COMMAND multipad4-tests --rich-text-test)
   set_tests_properties(rich_text PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   # Development baseline only. The product must never generate its defaults
