@@ -170,7 +170,7 @@
       "value": 40025,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:34"
+        "tests/FileCommandSmokeTest.h:34"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -200,7 +200,7 @@
       "value": 40559,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:108"
+        "tests/FileCommandSmokeTest.h:108"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -272,7 +272,7 @@
       "value": 40560,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:106"
+        "tests/FileCommandSmokeTest.h:106"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -386,11 +386,11 @@
       "value": 40107,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:70",
-        "src/FileCommandSmokeTest.h:71",
-        "src/FileCommandSmokeTest.h:74",
-        "src/FileCommandSmokeTest.h:76",
-        "src/FileCommandSmokeTest.h:82"
+        "tests/FileCommandSmokeTest.h:70",
+        "tests/FileCommandSmokeTest.h:71",
+        "tests/FileCommandSmokeTest.h:74",
+        "tests/FileCommandSmokeTest.h:76",
+        "tests/FileCommandSmokeTest.h:82"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5325,7 +5325,7 @@
       "runtime_supported": true,
       "test_references": [
         "tests/FileDialogTests.h:146",
-        "src/FileCommandSmokeTest.h:49"
+        "tests/FileCommandSmokeTest.h:49"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5639,10 +5639,10 @@
       "value": 40044,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:57",
-        "src/FileCommandSmokeTest.h:59",
-        "src/FileCommandSmokeTest.h:65",
-        "src/FileCommandSmokeTest.h:69"
+        "tests/FileCommandSmokeTest.h:57",
+        "tests/FileCommandSmokeTest.h:59",
+        "tests/FileCommandSmokeTest.h:65",
+        "tests/FileCommandSmokeTest.h:69"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -5746,7 +5746,7 @@
       "value": 40586,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:96"
+        "tests/FileCommandSmokeTest.h:96"
       ],
       "behavioral_acceptance": "pending",
       "upstream_menu_entries": [
@@ -8580,7 +8580,7 @@
       "value": 40560,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:106"
+        "tests/FileCommandSmokeTest.h:106"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",
@@ -8592,7 +8592,7 @@
       "value": 40559,
       "runtime_supported": true,
       "test_references": [
-        "src/FileCommandSmokeTest.h:108"
+        "tests/FileCommandSmokeTest.h:108"
       ],
       "behavioral_acceptance": "pending",
       "table": "IDR_MAINWND",

@@ -38,7 +38,7 @@ public static class InstanceWindows {
     }
 }
 '@
-if ([InstanceWindows]::FindWindow('MultiPad4.MainFrame', $null) -ne [IntPtr]::Zero) {
+if ([InstanceWindows]::FindWindow('MultiPad4.MainFrame', [System.Management.Automation.Language.NullString]::Value) -ne [IntPtr]::Zero) {
     Write-Output 'SKIP: Close existing MultiPad4 windows to run the process integration test.'
     exit 77
 }
