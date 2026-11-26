@@ -150,9 +150,12 @@ target_link_libraries(multipad_app PUBLIC multipad_files multipad_plugin_mainten
 target_link_libraries(multipad4 PRIVATE multipad_app)
 set_target_properties(multipad4 PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 if(BUILD_TESTING)
+  target_compile_definitions(multipad_app PRIVATE MULTIPAD4_TRANSFORM_TEST)
   add_executable(multipad4-tests WIN32 src/main.cpp src/AppUpdate.cpp ${MULTIPAD4_RESOURCES})
   # Override the static-library object only in the test executable to count actual status measurements.
   target_sources(multipad4-tests PRIVATE src/UpstreamUI.cpp)
+  target_sources(multipad4-tests PRIVATE tests/EditAdvancedBaseline.cpp)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TRANSFORM_TEST)
   target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TESTING)
   target_link_libraries(multipad4-tests PRIVATE multipad_app)
   add_dependencies(multipad4-tests multipad4)
@@ -174,6 +177,8 @@ if(BUILD_TESTING)
   set_tests_properties(frame_refresh PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   add_test(NAME status_presentation COMMAND multipad4-tests --status-presentation-test)
   set_tests_properties(status_presentation PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+  add_test(NAME edit_transforms COMMAND multipad4-tests --edit-transform-test)
+  set_tests_properties(edit_transforms PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE)
   # Development baseline only. The product must never generate its defaults
   # from this target during an ordinary build or overwrite reviewed XML.
   add_executable(lexer_baseline_export tools/ExportLexerBaseline.cpp src/CompletionEngine.cpp ${LEXER_CONFIGS})

@@ -25,6 +25,12 @@
 #include <stdexcept>
 #include <string_view>
 #include <unordered_map>
+#ifdef MULTIPAD4_TRANSFORM_TEST
+#include "../tests/EditTransformMetrics.h"
+#define TRANSFORM_WIDE(value) transformtest::Decode(value)
+#else
+#define TRANSFORM_WIDE(value) files::FromUtf8(value)
+#endif
 namespace {
 struct Range {
     LRESULT start, end;
@@ -43,6 +49,9 @@ Range Selection(EditorDocument &d, bool lines = false) {
     return r;
 }
 std::string Text(EditorDocument &d, Range r) {
+#ifdef MULTIPAD4_TRANSFORM_TEST
+    ++transformtest::metrics.rangeCalls; transformtest::metrics.rangeBytes += static_cast<size_t>(r.end - r.start);
+#endif
     return d.Range(r.start, r.end - r.start);
 }
 void Replace(EditorDocument &d, Range r, const std::string &text) {
@@ -122,6 +131,9 @@ struct Line {
     std::string text, eol;
 };
 std::vector<Line> Lines(const std::string &text) {
+#ifdef MULTIPAD4_TRANSFORM_TEST
+    transformtest::metrics.splitBytes += text.size();
+#endif
     std::vector<Line> lines;
     size_t pos = 0;
     while (pos < text.size()) {
@@ -263,8 +275,8 @@ INT_PTR CALLBACK OptionsProc(HWND window, UINT message, WPARAM w, LPARAM l) {
         } else if (o->resource == IDD_COLUMNWRAP) {
             SetDlgItemInt(window, IDC_COLUMNWRAP, o->column, FALSE);
         } else {
-            SetDlgItemTextW(window, IDC_MODIFY_LINE_PREFIX, files::FromUtf8(o->prefix).c_str());
-            SetDlgItemTextW(window, IDC_MODIFY_LINE_APPEND, files::FromUtf8(o->suffix).c_str());
+            SetDlgItemTextW(window, IDC_MODIFY_LINE_PREFIX, TRANSFORM_WIDE(o->prefix).c_str());
+            SetDlgItemTextW(window, IDC_MODIFY_LINE_APPEND, TRANSFORM_WIDE(o->suffix).c_str());
             CheckDlgButton(window, IDC_MODIFY_LINE_SKIP_EMPTY, o->skip ? BST_CHECKED : BST_UNCHECKED);
         }
         CenterWindow(window, GetParent(window));
@@ -412,7 +424,7 @@ INT_PTR CALLBACK OptionsProc(HWND window, UINT message, WPARAM w, LPARAM l) {
         }
         EndDialog(window, IDOK);
     } catch (const std::exception &error) {
-        auto text = files::FromUtf8(error.what());
+        auto text = TRANSFORM_WIDE(error.what());
         MessageBoxW(window, text.c_str(), L"Invalid dialog input", MB_OK | MB_ICONERROR);
     }
     return TRUE;
@@ -504,7 +516,7 @@ std::string Justify(std::string text, size_t width) {
         return text;
     size_t letters = 0;
     for (const auto &word : words)
-        letters += files::FromUtf8(word).size();
+        letters += TRANSFORM_WIDE(word).size();
     size_t spaces = width > letters ? width - letters : words.size() - 1;
     std::string out;
     for (size_t i = 0; i < words.size(); ++i) {
@@ -587,7 +599,7 @@ void SaveEditPreferences(const std::filesystem::path &path) {
     auto encode = [](const std::string &input) {
         std::wstring out;
         wchar_t hex[5];
-        for (wchar_t c : files::FromUtf8(input)) {
+        for (wchar_t c : TRANSFORM_WIDE(input)) {
             swprintf_s(hex, L"%04X", static_cast<unsigned>(c));
             out += hex;
         }
@@ -643,6 +655,9 @@ CommandState AdvancedEditState(const EditorDocument *d, UINT id) {
     return {true, d && (!modifies || !d->Send(SCI_GETREADONLY)), false};
 }
 bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
+#ifdef MULTIPAD4_TRANSFORM_TEST
+    if (transformtest::baseline) return transformtest::baseline(d, id);
+#endif
     auto state = AdvancedEditState(&d, id);
     if (!state.supported)
         return false;
@@ -726,7 +741,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         return true;
     }
     Range r = Selection(d);
-    std::string text = Text(d, r), out = text;
+    std::string out;
     bool lineCommand = false;
     for (auto item : insertions)
         if (item == id) {
@@ -742,7 +757,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
                               static_cast<unsigned>(guid.Data1), guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1],
                               guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
                     out = value;
-                }
+                } else out = Text(d, r);
                 break;
             }
             case IDM_EDIT_INSERT_ENCODING:
@@ -827,7 +842,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             d.Send(SCI_COPY);
             return true;
         }
-        auto added = r.start == r.end ? d.Text() : text;
+        auto added = r.start == r.end ? d.Text() : Text(d, r);
         if (!added.empty())
             Copy(d, Clipboard(d.hwnd) + "\r\n\r\n" + added);
         return true;
@@ -844,7 +859,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
                 CloseClipboard();
             }
         } else {
-            Copy(d, text);
+            Copy(d, Text(d, r));
             Replace(d, r, out);
             d.Send(SCI_SETSEL, backwards ? r.start + out.size() : r.start, backwards ? r.start : r.start + out.size());
         }
@@ -873,6 +888,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         ShowCharacterInfo(d);
         return true;
     case IDM_EDIT_SHOW_HEX: {
+        const auto text = Text(d, r);
         if (!text.empty()) {
             auto hex = "[" + Hex(SelectionBytes(d, text)) + "]";
             Replace(d, {r.end, r.end}, hex);
@@ -883,7 +899,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         if (r.start == r.end)
             return true;
         r.start = d.Send(SCI_POSITIONFROMLINE, d.Send(SCI_LINEFROMPOSITION, r.start));
-        text = Text(d, r);
+        const auto text = Text(d, r);
         out.clear();
         const auto eol = Eol(d);
         for (size_t i = 0; i < text.size(); ++i) {
@@ -934,6 +950,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         return true;
     }
     case IDM_EDIT_STREAMCOMMENT: {
+        const auto text = Text(d, r);
         std::string start = "/*", end = "*/";
         if (d.language == L"Python") {
             start = end = "\"\"\"";
@@ -948,14 +965,14 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     case IDM_EDIT_NUM2OCT:
     case IDM_EDIT_NUM2DEC:
     case IDM_EDIT_NUM2HEX:
-        out = ConvertNumbers(text, id == IDM_EDIT_NUM2BIN   ? 2
+        out = ConvertNumbers(Text(d, r), id == IDM_EDIT_NUM2BIN   ? 2
                                    : id == IDM_EDIT_NUM2OCT ? 8
                                    : id == IDM_EDIT_NUM2DEC ? 10
                                                             : 16);
         break;
     case CMD_INCREASENUM:
     case CMD_DECREASENUM:
-        out = ModifyNumber(text, id == CMD_INCREASENUM);
+        out = ModifyNumber(Text(d, r), id == CMD_INCREASENUM);
         break;
     default:
         lineCommand = true;
@@ -1086,7 +1103,10 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             minIndent = 0;
     }
     auto displayWidth = [&](const std::string &text) {
-        auto wide = files::FromUtf8(text);
+#ifdef MULTIPAD4_TRANSFORM_TEST
+        ++transformtest::metrics.widthCalls;
+#endif
+        auto wide = TRANSFORM_WIDE(text);
         size_t column = 0;
         for (size_t i = 0; i < wide.size(); ++i) {
             if (wide[i] == L'\t')
@@ -1100,15 +1120,16 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         return column;
     };
     size_t width = 0;
-    for (auto &line : lines)
-        width = max(width, displayWidth(line.text));
-    std::vector<Line> result;
+    if (id == IDM_EDIT_ALIGN)
+        for (const auto& line : lines) width = max(width, displayWidth(line.text));
+    const auto finalEol = lines.empty() ? std::string{} : lines.back().eol;
+    std::vector<Line> result; result.reserve(lines.size());
     std::set<std::string> seen;
     bool wasBlank = false;
     auto eol = Eol(d);
     size_t lineIndex = 0, modifiedIndex = 0;
     const auto firstDocumentLine = d.Send(SCI_LINEFROMPOSITION, r.start);
-    for (auto line : lines) {
+    for (auto& line : lines) {
         const size_t currentLine = firstDocumentLine + lineIndex++ + 1;
         switch (id) {
         case IDM_EDIT_TRIMLINES:
@@ -1118,7 +1139,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             TrimLeft(line.text);
             break;
         case IDM_EDIT_STRIP1STCHAR: {
-            auto wide = files::FromUtf8(line.text);
+            auto wide = TRANSFORM_WIDE(line.text);
             if (!wide.empty()) {
                 size_t count = wide.size() > 1 && wide[0] >= 0xD800 && wide[0] <= 0xDBFF ? 2 : 1;
                 wide.erase(0, count);
@@ -1127,7 +1148,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             break;
         }
         case IDM_EDIT_STRIPLASTCHAR: {
-            auto wide = files::FromUtf8(line.text);
+            auto wide = TRANSFORM_WIDE(line.text);
             if (!wide.empty()) {
                 wchar_t last = wide.back();
                 wide.pop_back();
@@ -1262,7 +1283,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             if (line.text.empty())
                 break;
             // Upstream normalizes word separators before measuring alignment.
-            line.text = Justify(line.text, files::FromUtf8(line.text).size());
+            line.text = Justify(line.text, TRANSFORM_WIDE(line.text).size());
             auto normalized = line.text;
             std::string compact;
             bool whitespace = false;
@@ -1278,7 +1299,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
             }
             line.text = compact;
             size_t contentWidth = width > minIndent ? width - minIndent : width;
-            size_t length = files::FromUtf8(line.text).size();
+            size_t length = TRANSFORM_WIDE(line.text).size();
             if (options.align == IDC_ALIGN_RIGHT)
                 line.text.insert(0, contentWidth > length ? contentWidth - length : 0, ' ');
             else if (options.align == IDC_ALIGN_CENTER)
@@ -1301,7 +1322,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     }
     if (id == IDM_EDIT_SORTLINES) {
         auto fullKey = [&](const Line &line) {
-            auto wide = files::FromUtf8(line.text);
+            auto wide = TRANSFORM_WIDE(line.text);
             if (options.ignoreCase && !wide.empty()) {
                 int size = LCMapStringEx(LOCALE_NAME_USER_DEFAULT, LCMAP_UPPERCASE, wide.data(),
                                          static_cast<int>(wide.size()), nullptr, 0, nullptr, nullptr, 0);
@@ -1375,13 +1396,12 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         }
         result = std::move(sorted);
         // EOL belongs to positions, not sorted payloads; preserve the original final-line state.
-        auto original = Lines(Text(d, r));
         for (size_t i = 0; i < result.size(); ++i)
-            result[i].eol = i + 1 < result.size() ? eol : (!original.empty() ? original.back().eol : std::string{});
+            result[i].eol = i + 1 < result.size() ? eol : finalEol;
     }
     if (id == IDM_EDIT_MERGEDUPLICATELINE || id == IDM_EDIT_REMOVEDUPLICATELINE) {
         for (size_t i = 0; i < result.size(); ++i)
-            result[i].eol = i + 1 < result.size() ? eol : (!lines.empty() ? lines.back().eol : std::string{});
+            result[i].eol = i + 1 < result.size() ? eol : finalEol;
     }
     if (id == IDM_EDIT_JOINLINESEX) {
         out.clear();
@@ -1397,7 +1417,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     } else if (id == IDM_EDIT_COLUMNWRAP) {
         out.clear();
         for (auto &line : result) {
-            auto wide = files::FromUtf8(line.text);
+            auto wide = TRANSFORM_WIDE(line.text);
             size_t offset = 0;
             while (wide.size() - offset > static_cast<size_t>(options.column)) {
                 size_t split = wide.rfind(L' ', offset + options.column);
@@ -1414,7 +1434,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
         }
     } else {
         if (!result.empty() && !lines.empty())
-            result.back().eol = lines.back().eol;
+            result.back().eol = finalEol;
         out = Join(result);
     }
     Replace(d, r, out);

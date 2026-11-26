@@ -64,6 +64,10 @@ inline void RunStatusPresentationTests(MainFrame& frame, bool benchmark = false)
     SendMessageW(d->hwnd, WM_KEYDOWN, VK_RIGHT, 1); frame.UpdateStatus();
     require(statusMeasurementCounters.extents == 2 && statusMeasurementCounters.margins == 0 && messages.texts == 2);
     compareBaseline();
+    const auto tabWidth = d->Send(SCI_GETTABWIDTH);
+    d->Load({"one\t中😀three\nsecond line\n"}); d->Send(SCI_SETTABWIDTH, 8); d->Send(SCI_SETSEL, 4, 11); compareBaseline();
+    require(d->statusStatistics.SelectedCharacters() == 2 && d->statusStatistics.selectedBytes == 7);
+    d->Send(SCI_SETSEL, 11, 11); compareBaseline(); d->Send(SCI_SETTABWIDTH, tabWidth); compareBaseline();
     for (UINT part = 0; part < 6; ++part) {
         require(frame.plugins.Message(NPPM_SETSTATUSBAR, part, reinterpret_cast<LPARAM>(L"plugin text")) != FALSE);
         require(ReadStatusPresentation(frame).text[part] == L"plugin text");

@@ -3,6 +3,7 @@
 #include "SmokeTest.h"
 #include "../tests/SearchRetirementTests.h"
 #include "../tests/FrameRefreshTests.h"
+#include "../tests/EditTransformTests.h"
 #include "../tests/StatusStatisticsTests.h"
 #include "../tests/StatusPresentationTests.h"
 #ifdef MULTIPAD4_INDENT_TEST
@@ -149,13 +150,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool configurationMode=configurationTest||themeReport||benchmark;
     bool refreshTest = count == 2 && wcscmp(args[1], L"--frame-refresh-test") == 0;
     bool refreshBenchmark = count == 3 && wcscmp(args[1], L"--frame-refresh-benchmark") == 0;
+    bool transformTest = count == 2 && wcscmp(args[1], L"--edit-transform-test") == 0;
+    bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = statusPresentation || statusPresentationBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool smoke = transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
+    if (statusPresentation || statusPresentationBenchmark) smoke = true;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool statusPresentation=false, statusPresentationBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -166,8 +170,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(statusPresentation || statusPresentationBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
+        if (statusPresentation || statusPresentationBenchmark) frame.plugins.enabled = false;
         if (smoke || render) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
             frame.plugins.bundledModules = bundledTestModules;
@@ -222,6 +227,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else
 #endif
                 if (searchRetirementTest) { RunSearchRetirementTests(frame); }
+                else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
                 else if (refreshTest) { RunFrameRefreshTests(frame); }
                 else if (refreshBenchmark) { RunFrameRefreshBenchmark(frame, wcscmp(args[2], L"baseline") == 0); }
                 else if (statusPresentation || statusPresentationBenchmark) { RunStatusPresentationTests(frame, statusPresentationBenchmark); }

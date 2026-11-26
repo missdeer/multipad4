@@ -3814,20 +3814,20 @@
       "path": "src/EditAdvanced.cpp",
       "references": [
         {
-          "line": 427,
+          "line": 439,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_XML"
           ]
         },
         {
-          "line": 637,
+          "line": 649,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 750,
+          "line": 765,
           "symbols": [
             "GetDocumentLexer"
           ]

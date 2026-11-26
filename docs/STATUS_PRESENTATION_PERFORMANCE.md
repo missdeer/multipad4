@@ -49,6 +49,8 @@ The baseline also queries the separator and reloads the format once per operatio
 in this corpus, versus zero timed queries/loads after the changed path warms.
 UI CPU uses coarse GetThreadTimes deltas around input through redraw, excluding
 snapshot comparisons and output. All cases report zero process read/write bytes.
+Counters cover UpdateStatus's explicit GDI/Scintilla width calls and observed
+status messages, rather than internal measurements performed by native controls.
 Sampled private bytes span 11,399,168 to 11,476,992; whole-process peak commit is
 24,371,200 bytes and includes fixtures/both variants. These are not isolated
 cache allocations or a before/after memory-saving claim.
@@ -91,3 +93,12 @@ for #48; that assertion was not changed. Physical mixed-DPI migration, IME and
 compositor output were not tested. This change intends identical rendering, not
 a new layout. The source received a clean non-author static review; final
 integration validation is recorded by the delivery workflow.
+
+After normal integration of master e22d140 (#48 and the canonical hash helper),
+wrapper reconfigure/build passed. Targeted checks all passed in 5.91 seconds:
+frame_refresh (0.67 s), status_presentation (0.68 s, including UTF-8/tab selection
+byte/character distinction), edit_transforms (4.05 s), inventory coverage (0.18 s),
+inventory hash regressions (0.09 s) and status_statistics (0.22 s). A focused
+non-author review confirmed both features' test translation units, compile
+definitions and CLI routes remain intact. The measured producer/benchmark did
+not change, so the valid paired measurements were not repeated.
