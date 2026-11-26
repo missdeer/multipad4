@@ -123,9 +123,9 @@ inline void RunCompletionBudgetTests(MainFrame& frame) {
         longRequest();SendMessageW(d->hwnd,WM_IME_STARTCOMPOSITION,0,0);ProcessStyleBackground(*d,1);require(!d->style.completionPending);SendMessageW(d->hwnd,WM_IME_ENDCOMPOSITION,0,0);
         double longestPosted=0;
         auto drainCompletion=[&]{
-            MSG message{};unsigned count=0;
+            MSG message{};unsigned count=0;const auto deadline=GetTickCount64()+10000;
             while(PeekMessageW(&message,frame,WM_COMPLETION_CONTINUE,WM_COMPLETION_CONTINUE,PM_REMOVE)){
-                require(++count<1000);const auto start=std::chrono::steady_clock::now();DispatchMessageW(&message);
+                require(++count<1000 && GetTickCount64()<deadline);const auto start=std::chrono::steady_clock::now();DispatchMessageW(&message);
                 longestPosted=(std::max)(longestPosted,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
             }
         };
@@ -158,12 +158,24 @@ inline void RunCompletionBudgetTests(MainFrame& frame) {
             return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
         };
         const auto passiveTimer=longRequest();const auto passivePaint=finishPaint();
+        const auto longLineCandidates=trace.candidates;
         // A bounded short-line slice must not cross into a following long line.
         d->Load({"x\n"+longCompletionLine+"\nin"});d->Send(SCI_GOTOPOS,d->Send(SCI_GETLENGTH));SetFocus(d->hwnd);d->Send(SCI_CLEARDOCUMENTSTYLE);d->Send(SCI_STARTSTYLING,0);trace.styles=0;
         HandleStyleNotification(*d,typed);require(d->style.completionPending);ProcessStyleBackground(*d,1);
         require(d->style.completionPending && trace.styles<=1 && d->Send(SCI_GETENDSTYLED)<d->style.completionPosition);
         const auto beforeLong=trace.styles;ProcessStyleBackground(*d,1);require(d->style.completionPending && trace.styles==beforeLong);
         d->style.completionPending=false;
+        for(const std::string prefix:{"\n","\n\n","\r\n"}){
+            d->Send(SCI_AUTOCCANCEL);d->Load({prefix+longCompletionLine});d->Send(SCI_GOTOPOS,d->Send(SCI_GETLENGTH));SetFocus(d->hwnd);
+            d->Send(SCI_CLEARDOCUMENTSTYLE);d->Send(SCI_STARTSTYLING,0);trace.styles=0;HandleStyleNotification(*d,typed);
+            require(d->style.completionPending);ProcessStyleBackground(*d,1);
+            require(d->Send(SCI_GETENDSTYLED)>0 && d->Send(SCI_GETENDSTYLED)<=static_cast<LRESULT>(prefix.size()) && trace.styles==1);
+            require(PostMessageW(frame,WM_TIMER,3,0)!=FALSE);drainCompletion();MSG timer{};
+            require(PeekMessageW(&timer,frame,WM_TIMER,WM_TIMER,PM_REMOVE)!=FALSE);DispatchMessageW(&timer);
+            trace.paints=0;InvalidateRect(d->hwnd,nullptr,TRUE);UpdateWindow(d->hwnd);
+            require(!d->style.completionPending && d->Send(SCI_AUTOCACTIVE) && trace.paints>0 && trace.candidates==longLineCandidates);
+        }
+        d->Send(SCI_AUTOCCANCEL);
         // First-seen casing survives cached parsing and a new immutable owner.
         d->Send(SCI_AUTOCCANCEL);d->Load({"fo"});
         const auto originalConfiguration=d->style.configuration;

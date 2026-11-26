@@ -187,3 +187,14 @@ fix and regression were then reviewed clean. Final wrapper reconfigure/build
 and indent_read (0.47 s), frame_refresh (0.23 s), ordinary_search_storage
 (17.27 s) and editor_integration (35.31 s) all passed. Existing performance
 measurements were retained because the measured preparation work did not change.
+
+A second GitHub P2 identified an empty-LF boundary that could repeatedly queue
+a continuation without advancing styling. The boundary now includes that empty
+preceding line's newline. The pinned SCI_COLOURISE implementation rounds its end
+using lParam-1, so ending at the long line's start still styles only the prior
+line. LF, consecutive LF and CRLF regressions assert actual endStyled progress
+without crossing that boundary, then complete through a bounded posted-message
+pump, dispatch a queued timer, paint and compare the complete candidate string.
+Final wrapper build and ordinary_search_storage passed (20.67 s). Non-author
+focused static review of the exact source/test tree was clean. This small
+boundary fix did not rerun the unchanged performance benchmark.

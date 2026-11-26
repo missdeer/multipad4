@@ -1134,7 +1134,8 @@ void ProcessStyleBackground(EditorDocument& d, unsigned budgetMilliseconds, bool
                 else if(LongCompletionLine(d,end)){
                     const auto line=d.Send(SCI_LINEFROMPOSITION,end);
                     end=d.Send(SCI_POSITIONFROMLINE,line)-1;
-                    if(end<=styled){QueueCompletion(d);return;}
+                    // Include an empty preceding line's LF so the next slice can reach the long line.
+                    end=(std::max)(end,styled+1);
                 }
                 d.Send(SCI_COLOURISE,styled,end);
             }
