@@ -9,6 +9,14 @@
 #include "EditCommandRequirements.h"
 #include "EditLexer.h"
 #include <array>
+#include <algorithm>
+#include <cwchar>
+#include <string_view>
+#ifdef MULTIPAD4_TESTING
+#include "../tests/StatusPresentationBaseline.h"
+StatusMeasurementCounters statusMeasurementCounters;
+bool statusPresentationBaseline = false;
+#endif
 namespace {
 // Order and bitmap indices from Notepad4.cpp::tbbMainWnd.
 constexpr UINT toolbarCommands[] = {
@@ -20,14 +28,30 @@ constexpr UINT toolbarCommands[] = {
     IDM_VIEW_FOLD_ALL, IDM_FILE_LAUNCH, IDM_VIEW_ALWAYSONTOP, IDM_FILE_NEWWINDOW
 };
 constexpr int defaultToolbar[] = {22, 3, 0, 1, 27, 2, 0, 4, 18, 19, 0, 5, 6, 0, 7, 8, 9, 20, 0, 10, 11, 0, 12, 0, 24, 0, 13, 14, 0, 15, 16, 0, 17};
-std::wstring StatusNumber(LRESULT value) {
+std::wstring StatusNumber(LRESULT value, wchar_t separator) {
     auto text = std::to_wstring(value);
     if (value < 1000) return text;
-    wchar_t separator[4]{};
-    GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_STHOUSAND, separator, _countof(separator));
     for (size_t position = text.size(); position > 3; position -= 3)
-        text.insert(position - 3, 1, separator[0] ? separator[0] : L',');
+        text.insert(position - 3, 1, separator);
     return text;
+}
+LRESULT CALLBACK StatusWindowProcedure(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data) {
+    auto& frame = *reinterpret_cast<MainFrame*>(data);
+    if (message == SB_SETTEXTW || message == SB_SETTEXTA) {
+        const auto part = static_cast<unsigned>(w & 255);
+        if (part < frame.statusText.size() && (message == SB_SETTEXTA || (w & ~WPARAM(255)) ||
+            std::wstring_view(l ? reinterpret_cast<const wchar_t*>(l) : L"") != frame.statusText[part]))
+            frame.statusInvalid |= 1u << part;
+    }
+    if (message == SB_SETPARTS && (w != frame.statusEdges.size() || !l ||
+        !std::equal(frame.statusEdges.begin(), frame.statusEdges.end(), reinterpret_cast<const int*>(l))))
+        frame.statusPartsInvalid = true;
+    if (message == WM_SETFONT || message == WM_THEMECHANGED) {
+        frame.statusMeasureInvalid = true;
+        PostMessageW(frame.m_hWnd, WM_DOCUMENT_CHANGED, 1, 0);
+    }
+    if (message == WM_NCDESTROY) RemoveWindowSubclass(window, StatusWindowProcedure, id);
+    return DefSubclassProc(window, message, w, l);
 }
 }
 TBBUTTON UpstreamToolbarButton(int index) {
@@ -85,6 +109,7 @@ void MainFrame::CreateUpstreamUI() {
     const auto instance = GetModuleHandleW(nullptr);
     m_hWndStatusBar = CreateWindowExW(0, STATUSCLASSNAMEW, nullptr, WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
         0, 0, 0, 0, m_hWnd, nullptr, instance, nullptr);
+    statusObserved = m_hWndStatusBar && SetWindowSubclass(m_hWndStatusBar, StatusWindowProcedure, 0x46, reinterpret_cast<DWORD_PTR>(this));
     const HWND toolbar = m_hWndToolBar = CreateWindowExW(0, TOOLBARCLASSNAMEW, nullptr,
         WS_CHILD | WS_VISIBLE | CCS_TOP | CCS_NODIVIDER | TBSTYLE_FLAT | TBSTYLE_TOOLTIPS | CCS_ADJUSTABLE,
         0, 0, 0, 0, m_hWnd, nullptr, instance, nullptr);
@@ -194,90 +219,185 @@ void MainFrame::UpdateCommandUI() {
     }
 }
 void MainFrame::UpdateStatus() {
+#ifdef MULTIPAD4_TESTING
+    if (statusPresentationBaseline) { BaselineStatusPresentation(*this); return; }
+#endif
     if (!m_hWndStatusBar || !statusVisible) { KillTimer(2); return; }
-    // Stable upstream StatusItem order, including the flexible empty part.
-    std::array<std::wstring, 13> text{};
-    auto* d = Active();
-    if (!d) KillTimer(2);
-    if (d) {
-        if (d->Send(SCI_GETMARGINWIDTHN, 0)) {
-            const auto number = "__" + std::to_string(d->Send(SCI_GETLINECOUNT));
-            d->Send(SCI_SETMARGINWIDTHN, 0, d->Send(SCI_TEXTWIDTH, STYLE_LINENUMBER, reinterpret_cast<LPARAM>(number.c_str())));
+    constexpr unsigned allParts = (1u << 13) - 1;
+    if (!statusObserved) { statusInvalid = allParts; statusPartsInvalid = true; }
+    unsigned textChanged = 0;
+    auto setText = [&](size_t part, std::wstring_view value) {
+        if (statusText[part] != value) { statusText[part].assign(value); textChanged |= 1u << part; }
+    };
+    auto changed = [&](size_t part, std::array<LRESULT, 6> value) {
+        const auto bit = 1u << part;
+        if (!(statusValuesValid & bit) || statusValues[part] != value) {
+            statusValues[part] = value; statusValuesValid |= bit; return true;
         }
-        if (!d->FastView()) {
+        return false;
+    };
+    if (!statusLocaleValid) {
+        wchar_t separator[4]{};
+#ifdef MULTIPAD4_TESTING
+        ++statusMeasurementCounters.localeQueries;
+#endif
+        GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_STHOUSAND, separator, _countof(separator));
+        statusSeparator = separator[0] ? separator[0] : L','; statusLocaleValid = true; statusValuesValid = 0;
+    }
+    const auto language = GetThreadUILanguage();
+    if (!statusFormatValid || statusLanguage != language) {
+        wchar_t format[512]{};
+#ifdef MULTIPAD4_TESTING
+        ++statusMeasurementCounters.formatLoads;
+#endif
+        LoadStringW(GetModuleHandleW(nullptr), IDS_STATUSITEM_FORMAT, format, _countof(format));
+        statusFormat = format; statusLanguage = language; statusFormatValid = true; statusValuesValid = 0;
+    }
+    auto number = [&](LRESULT value) { return StatusNumber(value, statusSeparator); };
+    auto* d = Active();
+    const auto identity = d ? d->searchIdentity : 0;
+    const bool mapped = d && d->FastView();
+    if (statusIdentity != identity || statusMapped != mapped) {
+        statusIdentity = identity; statusMapped = mapped; statusValuesValid = 0;
+    }
+    if (!d) {
+        KillTimer(2); statusValuesValid = 0;
+        for (size_t i = 0; i < statusText.size(); ++i) setText(i, L"");
+    }
+    if (d) {
+        const auto margin = d->Send(SCI_GETMARGINWIDTHN, 0);
+        const auto lineCount = !mapped || margin ? d->Send(SCI_GETLINECOUNT) : 0;
+        const auto zoom = d->Send(SCI_GETZOOM);
+        if (margin) {
+            auto fontString = [&](UINT message, WPARAM parameter) {
+                const auto length = (std::max)(LRESULT(0), d->Send(message, parameter));
+                std::string value(static_cast<size_t>(length) + 1, '\0');
+                d->Send(message, parameter, reinterpret_cast<LPARAM>(value.data())); value.resize(static_cast<size_t>(length)); return value;
+            };
+            auto font = fontString(SCI_STYLEGETFONT, STYLE_LINENUMBER), locale = fontString(SCI_GETFONTLOCALE, 0);
+            const std::array<LRESULT, 9> metrics{d->Send(SCI_STYLEGETSIZEFRACTIONAL, STYLE_LINENUMBER),
+                d->Send(SCI_STYLEGETWEIGHT, STYLE_LINENUMBER), d->Send(SCI_STYLEGETITALIC, STYLE_LINENUMBER),
+                d->Send(SCI_STYLEGETSTRETCH, STYLE_LINENUMBER), d->Send(SCI_STYLEGETCHARACTERSET, STYLE_LINENUMBER),
+                d->Send(SCI_GETFONTQUALITY), d->Send(SCI_GETTECHNOLOGY), zoom, GetDpiForWindow(d->hwnd)};
+            if (!lineNumberValid || lineNumberIdentity != identity || lineNumberCount != lineCount ||
+                lineNumberMetrics != metrics || lineNumberFont != font || lineNumberLocale != locale) {
+                const auto text = "__" + std::to_string(lineCount);
+#ifdef MULTIPAD4_TESTING
+                ++statusMeasurementCounters.margins;
+#endif
+                lineNumberWidth = d->Send(SCI_TEXTWIDTH, STYLE_LINENUMBER, reinterpret_cast<LPARAM>(text.c_str()));
+                lineNumberIdentity = identity; lineNumberCount = lineCount; lineNumberMetrics = metrics;
+                lineNumberFont = std::move(font); lineNumberLocale = std::move(locale); lineNumberValid = true;
+            }
+            if (margin != lineNumberWidth) d->Send(SCI_SETMARGINWIDTHN, 0, lineNumberWidth);
+        }
+        if (!mapped) {
             auto pos = d->Send(SCI_GETCURRENTPOS), line = d->Send(SCI_LINEFROMPOSITION, pos);
             auto& stats = d->statusStatistics;
             bool pending = stats.Update(*d);
             if (pending) SetTimer(2, 30); else KillTimer(2);
-            auto column = stats.Ready(0) ? StatusNumber(stats.Column(0) + 1) : L"...";
-            auto columns = stats.Ready(1) ? StatusNumber(stats.Column(1)) : L"...";
-            auto character = stats.Ready(0) ? StatusNumber(stats.Characters(0) + 1) : L"...";
-            auto characters = stats.Ready(1) ? StatusNumber(stats.Characters(1)) : L"...";
-            text[0] = L"Ln " + std::to_wstring(line + 1) + L" / " + std::to_wstring(d->Send(SCI_GETLINECOUNT));
-            text[1] = L"Col " + column + L" / " + columns;
-            text[2] = L"Ch " + character + L" / " + characters;
+            const bool prefixReady = stats.Ready(0), lineReady = stats.Ready(1), selectionReady = stats.SelectionReady();
             const bool rectangular = d->Send(SCI_SELECTIONISRECTANGLE) != 0;
-            const std::wstring selectionCharacters = rectangular ? L"--" : !stats.SelectionReady() ? L"..." : StatusNumber(stats.SelectedCharacters());
-            const std::wstring selectionBytes = rectangular ? L"--" : !stats.SelectionReady() ? L"..." : StatusNumber(stats.selectedBytes);
-            text[3] = L"Sel " + selectionCharacters + L" / " + selectionBytes;
-            text[4] = L"SelLn " + (stats.SelectionReady() ? std::to_wstring(stats.selectedLines) : L"...");
-            text[5] = L"Fnd " + std::to_wstring(d->style.markOccurrences ? d->style.occurrences : d->search.matches)
-                + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"");
-            // Reuse the upstream localized six-field format instead of hard-coding
-            // English prefixes when the rest of the interface uses another locale.
-            wchar_t format[512]{}, formatted[1024]{};
-            std::array<std::wstring, 10> values{
-                StatusNumber(line + 1), StatusNumber(d->Send(SCI_GETLINECOUNT)),
-                column, columns, character, characters,
-                selectionCharacters, selectionBytes, stats.SelectionReady() ? StatusNumber(stats.selectedLines) : L"...",
-                StatusNumber(d->style.markOccurrences ? d->style.occurrences : d->search.matches) + (d->style.markOccurrences && d->style.occurrencePending ? L" ..." : L"")};
-            if (LoadStringW(GetModuleHandleW(nullptr), IDS_STATUSITEM_FORMAT, format, _countof(format)) &&
-                _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, format, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),
+            const auto selectedLines = selectionReady ? stats.selectedLines : 0;
+            const auto matches = static_cast<LRESULT>(d->style.markOccurrences ? d->style.occurrences : d->search.matches);
+            const bool occurrencePending = d->style.markOccurrences && d->style.occurrencePending;
+            unsigned fields = 0; auto& values = statusArguments;
+            if (changed(0, {line, lineCount})) { fields |= 1; values[0] = number(line + 1); values[1] = number(lineCount); }
+            if (changed(1, {prefixReady ? stats.Column(0) : 0, lineReady ? stats.Column(1) : 0, prefixReady, lineReady})) {
+                fields |= 2; values[2] = prefixReady ? number(stats.Column(0) + 1) : L"..."; values[3] = lineReady ? number(stats.Column(1)) : L"...";
+            }
+            if (changed(2, {prefixReady ? stats.Characters(0) : 0, lineReady ? stats.Characters(1) : 0, prefixReady, lineReady})) {
+                fields |= 4; values[4] = prefixReady ? number(stats.Characters(0) + 1) : L"..."; values[5] = lineReady ? number(stats.Characters(1)) : L"...";
+            }
+            if (changed(3, {selectionReady && !rectangular ? stats.SelectedCharacters() : 0, selectionReady && !rectangular ? stats.selectedBytes : 0, rectangular, selectionReady})) {
+                fields |= 8; values[6] = rectangular ? L"--" : selectionReady ? number(stats.SelectedCharacters()) : L"...";
+                values[7] = rectangular ? L"--" : selectionReady ? number(stats.selectedBytes) : L"...";
+            }
+            if (changed(4, {selectedLines, selectionReady})) { fields |= 16; values[8] = selectionReady ? number(selectedLines) : L"..."; }
+            if (changed(5, {matches, occurrencePending})) { fields |= 32; values[9] = number(matches) + (occurrencePending ? L" ..." : L""); }
+            if (fields) {
+                wchar_t formatted[1024]{}; size_t rendered = 0;
+                if (!statusFormat.empty() && _snwprintf_s(formatted, _countof(formatted), _TRUNCATE, statusFormat.c_str(), values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(),
                     values[4].c_str(), values[5].c_str(), values[6].c_str(), values[7].c_str(), values[8].c_str(), values[9].c_str()) >= 0) {
-                const wchar_t* start = formatted;
-                for (size_t field = 0; field < 6; ++field) {
-                    auto end = wcschr(start, L'\n');
-                    text[field] = end ? std::wstring(start, end) : std::wstring(start);
-                    if (!end) break; start = end + 1;
+                    const wchar_t* start = formatted;
+                    for (; rendered < 6;) {
+                        const auto end = wcschr(start, L'\n');
+                        setText(rendered++, std::wstring_view(start, end ? static_cast<size_t>(end - start) : wcslen(start)));
+                        if (!end) break; start = end + 1;
+                    }
+                }
+                for (size_t field = rendered; field < 6; ++field) if (fields & (1u << field)) {
+                    switch (field) {
+                    case 0: setText(0, L"Ln " + std::to_wstring(line + 1) + L" / " + std::to_wstring(lineCount)); break;
+                    case 1: setText(1, L"Col " + values[2] + L" / " + values[3]); break;
+                    case 2: setText(2, L"Ch " + values[4] + L" / " + values[5]); break;
+                    case 3: setText(3, L"Sel " + values[6] + L" / " + values[7]); break;
+                    case 4: setText(4, L"SelLn " + (selectionReady ? std::to_wstring(selectedLines) : L"...")); break;
+                    case 5: setText(5, L"Fnd " + std::to_wstring(matches) + (occurrencePending ? L" ..." : L"")); break;
+                    }
                 }
             }
         } else KillTimer(2);
-        text[7] = d->LargeFile() ? L"Large file (AutoSave off)" : d->language; text[8] = files::EncodingName(d->encoding);
-        auto eol = d->Send(SCI_GETEOLMODE); text[9] = eol == SC_EOL_CRLF ? L"CR+LF" : eol == SC_EOL_LF ? L"LF" : L"CR";
-        text[10] = d->Send(SCI_GETOVERTYPE) ? L"OVR" : L"INS";
-        text[11] = std::to_wstring(d->Send(SCI_GETZOOM)) + L"%";
-        wchar_t size[64]{};
-        StrFormatByteSizeW(d->Send(SCI_GETLENGTH), size, _countof(size));
-        text[12] = size;
-        if (d->FastView()) {
+        if (mapped) setText(7, L"Mapped document");
+        else if (d->LargeFile()) setText(7, L"Large file (AutoSave off)");
+        else setText(7, d->language);
+        if (changed(8, {static_cast<LRESULT>(d->encoding)})) setText(8, files::EncodingName(d->encoding));
+        const auto eol = d->Send(SCI_GETEOLMODE);
+        if (changed(9, {eol})) setText(9, eol == SC_EOL_CRLF ? L"CR+LF" : eol == SC_EOL_LF ? L"LF" : L"CR");
+        if (changed(11, {zoom})) setText(11, std::to_wstring(zoom) + L"%");
+        if (mapped) {
             auto& view = *d->fastView;
-            for (size_t i = 0; i < 6; ++i) text[i].clear();
-            text[0] = L"Bytes " + std::to_wstring(view.Begin()) + L"–" + std::to_wstring(view.End());
-            text[7] = L"Mapped document"; text[10] = d->fastView->ReadOnly() ? L"Read only" : L"Editable";
-            text[12] = std::to_wstring(view.Size() / (1024 * 1024)) + L" MiB";
+            for (size_t i = 1; i < 6; ++i) setText(i, L"");
+            if (changed(0, {static_cast<LRESULT>(view.Begin()), static_cast<LRESULT>(view.End())})) setText(0, L"Bytes " + std::to_wstring(view.Begin()) + L"–" + std::to_wstring(view.End()));
+            if (changed(10, {view.ReadOnly()})) setText(10, view.ReadOnly() ? L"Read only" : L"Editable");
+            const auto size = view.Size() / (1024 * 1024);
+            if (changed(12, {static_cast<LRESULT>(size)})) setText(12, std::to_wstring(size) + L" MiB");
+        } else {
+            const auto overtype = d->Send(SCI_GETOVERTYPE), length = d->Send(SCI_GETLENGTH);
+            if (changed(10, {overtype})) setText(10, overtype ? L"OVR" : L"INS");
+            if (changed(12, {length})) { wchar_t size[64]{}; StrFormatByteSizeW(length, size, _countof(size)); setText(12, size); }
         }
     }
     RECT client{}; GetClientRect(&client);
-    auto currentDpi = GetDpiForWindow(m_hWnd);
-    auto currentFont = reinterpret_cast<HFONT>(::SendMessageW(m_hWndStatusBar, WM_GETFONT, 0, 0));
-    if (text == statusText && client.right == statusWidth && currentDpi == statusDpi && currentFont == statusFont) return;
-    statusText = text; statusWidth = client.right; statusDpi = currentDpi; statusFont = currentFont;
-    std::array<int, 13> widths{}, edges{};
-    HDC dc = ::GetDC(m_hWndStatusBar);
-    HFONT font = reinterpret_cast<HFONT>(::SendMessageW(m_hWndStatusBar, WM_GETFONT, 0, 0));
-    auto oldFont = font ? SelectObject(dc, font) : nullptr;
-    int total = 0, padding = MulDiv(16, GetDpiForWindow(m_hWnd), 96);
-    for (size_t i = 0; i < text.size(); ++i) {
-        SIZE size{}; GetTextExtentPoint32W(dc, text[i].c_str(), static_cast<int>(text[i].size()), &size);
-        widths[i] = size.cx + padding; if (i != 6) total += widths[i];
+    const auto dpi = GetDpiForWindow(m_hWnd);
+    const auto font = reinterpret_cast<HFONT>(::SendMessageW(m_hWndStatusBar, WM_GETFONT, 0, 0));
+    const bool measureAll = statusMeasureInvalid || dpi != statusDpi || font != statusFont;
+    if (measureAll || textChanged) {
+        HDC dc = ::GetDC(m_hWndStatusBar);
+        if (dc) {
+            const auto oldFont = font ? SelectObject(dc, font) : nullptr; bool measured = true;
+            for (size_t i = 0; i < statusText.size(); ++i) if (measureAll || (textChanged & (1u << i))) {
+                SIZE size{};
+                if (!statusText[i].empty()) {
+#ifdef MULTIPAD4_TESTING
+                    ++statusMeasurementCounters.extents;
+#endif
+                    if (!GetTextExtentPoint32W(dc, statusText[i].c_str(), static_cast<int>(statusText[i].size()), &size)) measured = false;
+                }
+                statusExtents[i] = size.cx;
+            }
+            if (oldFont) SelectObject(dc, oldFont); ::ReleaseDC(m_hWndStatusBar, dc);
+            statusMeasureInvalid = !measured;
+        } else statusMeasureInvalid = true;
     }
-    if (oldFont) SelectObject(dc, oldFont); ::ReleaseDC(m_hWndStatusBar, dc);
-    widths[6] = max(0L, client.right - total - padding);
-    for (size_t i = 0; i < edges.size(); ++i) edges[i] = widths[i] + (i ? edges[i - 1] : 0);
-    edges.back() = -1;
-    ::SendMessageW(m_hWndStatusBar, SB_SETPARTS, edges.size(), reinterpret_cast<LPARAM>(edges.data()));
-    for (size_t i = 0; i < text.size(); ++i)
-        ::SendMessageW(m_hWndStatusBar, SB_SETTEXTW, i, reinterpret_cast<LPARAM>(text[i].c_str()));
+    if (measureAll || textChanged || client.right != statusWidth || statusPartsInvalid) {
+        std::array<int, 13> widths{}, edges{}; int total = 0;
+        const auto padding = MulDiv(16, dpi, 96);
+        for (size_t i = 0; i < widths.size(); ++i) { widths[i] = statusExtents[i] + padding; if (i != 6) total += widths[i]; }
+        widths[6] = (std::max)(0L, client.right - total - padding);
+        for (size_t i = 0; i < edges.size(); ++i) edges[i] = widths[i] + (i ? edges[i - 1] : 0);
+        edges.back() = -1;
+        if (statusPartsInvalid || edges != statusEdges) {
+            statusEdges = edges; statusPartsInvalid = false;
+            if (!::SendMessageW(m_hWndStatusBar, SB_SETPARTS, edges.size(), reinterpret_cast<LPARAM>(edges.data()))) statusPartsInvalid = true;
+        }
+    }
+    statusWidth = client.right; statusDpi = dpi; statusFont = font;
+    const auto publish = statusInvalid | textChanged;
+    for (size_t i = 0; i < statusText.size(); ++i) if (publish & (1u << i)) {
+        statusInvalid &= ~(1u << i);
+        if (!::SendMessageW(m_hWndStatusBar, SB_SETTEXTW, i, reinterpret_cast<LPARAM>(statusText[i].c_str()))) statusInvalid |= 1u << i;
+    }
 }
 LRESULT MainFrame::OnSize(UINT, WPARAM, LPARAM, BOOL& handled) {
     if (IsIconic() && settings.Get(IDM_VIEW_MINTOTRAY)) { SetTrayVisible(*this, true); ShowWindow(SW_HIDE); }

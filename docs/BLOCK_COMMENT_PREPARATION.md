@@ -31,3 +31,10 @@ wrapper retry completed the real links, followed by comment_commands passing in
 large paired benchmark are not delivery gates and the latter was not run. The
 optional harness remains available; no speedup or strict time-budget claim is
 made. A logical lexer line can still be indivisible.
+
+Normal integration through master 57a2133 preserves comment, status and rich-text
+test sources/definitions/CLI routes, including pre-COM private clipboard setup
+and final restoration. The joint wrapper build completed actual links with no
+compiler/FAILED/ninja-stop errors. Basic component and automatic inventory
+checks passed: comment_commands 3.57 s, coverage 0.17 s, hash tests 0.09 s
+(3/3 in 3.84 s). No large benchmark or additional peer gate was added.
