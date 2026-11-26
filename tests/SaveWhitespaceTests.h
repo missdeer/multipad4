@@ -75,7 +75,8 @@ inline void RunSaveWhitespaceTests(MainFrame& frame, bool benchmark) {
     std::vector<std::pair<std::string, std::string>> cases{
         {"empty", ""}, {"mixed", " a \t\r\nb\t\rc  \n中文 \t\nlast\t "}, {"clean", "a\r\nb\nc\rd"},
         {"blank", " \t \t"}, {"nul", std::string("a\0 \t\r\nb", 8)},
-        {"split-crlf", std::string(65532, 'x') + "  \r\nlast \t"},
+        {"split-crlf", std::string(128, '\n') + std::string(65405, 'x') + "  \r\nlast \t"},
+        {"bulk-split-tail", std::string(128, '\n') + "x" + std::string(131080, ' ') + "\r\nlast\t"},
         {"split-tail", "x" + std::string(131080, ' ') + "\r\nlast\t"},
         {"no-final-eol", std::string(65536, 'x') + " \t"}
     };
@@ -83,6 +84,8 @@ inline void RunSaveWhitespaceTests(MainFrame& frame, bool benchmark) {
         std::string clean, tails;
         for (int i = 0; i < 32768; ++i) { clean += std::string(254, 'x') + "\r\n"; tails += "x" + std::string(253, ' ') + "\r\n"; }
         cases.emplace_back("8MiB-clean", std::move(clean)); cases.emplace_back("8MiB-tails", std::move(tails));
+        cases.emplace_back("8MiB-one-line-clean", std::string(8 * 1024 * 1024, 'x'));
+        cases.emplace_back("8MiB-one-line-short-tail", std::string(8 * 1024 * 1024 - 2, 'x') + " \t");
     }
     std::ofstream csv;
     if (benchmark) { csv.open("save-whitespace-results.csv"); csv << "case,mode,iteration,path,bytes,callback_ms,paint_ms,cpu_ms,private_before,peak_private,editor_calls,char_queries,range_calls,borrowed_bytes\n"; }
@@ -95,7 +98,7 @@ inline void RunSaveWhitespaceTests(MainFrame& frame, bool benchmark) {
             if (benchmark) for (const auto& pair : {std::pair{"before", &before}, std::pair{"after", &after}}) {
                 const auto& r = *pair.second;
                 csv << name << ',' << mode << ',' << iteration << ',' << pair.first << ',' << input.size() << ',' << r.elapsed << ',' << r.paint << ',' << r.cpu << ','
-                    << r.privateBefore << ',' << r.peakPrivate << ',' << r.calls << ',' << r.byteQueries << ',' << r.ranges << ',' << r.borrowed << '\n';
+                    << r.privateBefore << ',' << r.peakPrivate << ',' << r.calls << ',' << r.byteQueries << ',' << r.ranges << ',' << r.borrowed << '\n'; csv.flush();
             }
         }
     }

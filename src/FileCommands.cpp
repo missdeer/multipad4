@@ -218,24 +218,25 @@ void PrepareFileSave(MainFrame& frame,EditorDocument& document){
         std::vector<std::pair<LRESULT, LRESULT>> runs;
         const auto length = document.Send(SCI_GETLENGTH);
         LRESULT trailing = -1;
-        // Unicode line ends depend on lexer support; keep Scintilla's boundaries there.
-        if (document.Send(SCI_GETLINEENDTYPESACTIVE)) {
+        constexpr LRESULT chunkSize = 64 * 1024;
+        const auto lineCount = document.Send(SCI_GETLINECOUNT);
+        // Indexed tails skip long nonblank prefixes and preserve Unicode boundaries.
+        if (document.Send(SCI_GETLINEENDTYPESACTIVE) || length / lineCount > 4096) {
             for (auto line = document.Send(SCI_GETLINECOUNT); line-- > 0;) {
                 const auto end = document.Send(SCI_GETLINEENDPOSITION, line);
                 const auto start = document.Send(SCI_POSITIONFROMLINE, line);
-                const auto* bytes = end > start ? reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, start, end - start)) : nullptr;
-                if (end > start && !bytes) throw std::runtime_error("Cannot read document for trailing blank removal.");
                 auto position = end;
                 while (position > start) {
-                    const auto c = bytes[position - start - 1];
-                    if (c != ' ' && c != '\t') break;
-                    --position;
+                    const auto base = (std::max)(start, position - chunkSize);
+                    const auto* bytes = reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, base, position - base));
+                    if (!bytes) throw std::runtime_error("Cannot read document for trailing blank removal.");
+                    while (position > base && (bytes[position - base - 1] == ' ' || bytes[position - base - 1] == '\t')) --position;
+                    if (position != base) break;
                 }
                 if (position != end) runs.emplace_back(position, end);
             }
             std::reverse(runs.begin(), runs.end());
         } else {
-            constexpr LRESULT chunkSize = 64 * 1024;
             for (LRESULT offset = 0; offset < length;) {
                 const auto count = (std::min)(chunkSize, length - offset);
                 const auto* bytes = reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, offset, count));
