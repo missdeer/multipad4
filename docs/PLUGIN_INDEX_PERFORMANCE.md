@@ -45,3 +45,7 @@ disabled commands, late shortcuts, missing IDs, case-insensitive module messages
 pretranslator order, and independent enabled/disabled catalog rows. The fixture
 reads the real bundled Base64 DLL without loading either fixture copy. No visual
 layout was changed; physical IME and mixed-DPI interactions were not exercised.
+
+The native DLL fixture is conditional on MULTIPAD4_TEST_BASE64, matching the
+optional bundled plugin. Builds without Base64 retain all synthetic host/index
+checks and omit only that filesystem fixture.

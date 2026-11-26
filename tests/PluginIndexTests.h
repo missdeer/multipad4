@@ -62,6 +62,7 @@ inline void RunPluginIndexTests(MainFrame& frame,const std::filesystem::path& di
         }
         report<<"admin-catalog-join,"<<(before?"linear":"indexed")<<','<<sample<<','<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()<<','<<checksum<<'\n';
     }
+#ifdef MULTIPAD4_TEST_BASE64
     // One folder in both trees must retain two independent rows.
     const auto fixture=directory/(L"admin-"+std::to_wstring(GetCurrentProcessId()));
     auto savedHome=frame.plugins.home,savedConfig=frame.plugins.config;
@@ -78,6 +79,8 @@ inline void RunPluginIndexTests(MainFrame& frame,const std::filesystem::path& di
     report<<"admin-load,indexed,0,"<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()<<",2\n";
     require(admin.entries.size()==2);
     bool enabled=false,disabled=false;for(const auto& entry:admin.entries){require(entry.present);if(entry.disabled){disabled=true;require(!entry.loaded);}else enabled=true;}
-    require(enabled&&disabled);report.close();require(bool(report));
+    require(enabled&&disabled);
+#endif
+    report.close();require(bool(report));
 }
 
