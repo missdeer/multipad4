@@ -22,7 +22,7 @@ completed document results remain available and the status reports interruption.
 bash -lc "cmake-reconfigure cmake-msvc-build"
 bash -lc "cmake-build cmake-msvc-build"
 ctest --test-dir cmake-msvc-build -R ordinary_search_storage --output-on-failure
-cmake-msvc-build/multipad4.exe --ordinary-search-benchmark ordinary-search-benchmark.csv
+cmake-msvc-build/multipad4-tests.exe --ordinary-search-benchmark ordinary-search-benchmark.csv
 ```
 
 The benchmark compares the unchanged `CollectMatches` plus eager `Add` path

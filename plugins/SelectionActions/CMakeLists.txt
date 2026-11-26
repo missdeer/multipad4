@@ -10,7 +10,7 @@ set_target_properties(SelectionActions PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIREC
 configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/License.txt" Notepad4.License.txt COPYONLY)
 add_dependencies(multipad4 SelectionActions)
 if(BUILD_TESTING)
-  target_compile_definitions(multipad4 PRIVATE MULTIPAD4_TEST_SELECTION_ACTIONS)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_SELECTION_ACTIONS)
 endif()
 install(TARGETS SelectionActions RUNTIME DESTINATION plugins/SelectionActions)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/Notepad4.License.txt" DESTINATION plugins/SelectionActions)

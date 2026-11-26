@@ -22,7 +22,7 @@ rectangle setters that bypass that path. Pinned upstream files remain unchanged.
 bash -lc "cmake-reconfigure cmake-msvc-build"
 bash -lc "cmake-build cmake-msvc-build"
 ctest --test-dir cmake-msvc-build -R status_statistics --output-on-failure
-cmake-msvc-build/multipad4.exe --status-statistics-benchmark status-statistics.csv
+cmake-msvc-build/multipad4-tests.exe --status-statistics-benchmark status-statistics.csv
 ```
 
 `tests/StatusStatisticsBaseline.h` preserves the original implementation from

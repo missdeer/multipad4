@@ -89,7 +89,7 @@ bash -lc "cmake-build cmake-msvc-build"
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_E2E = '1'
 $env:MULTIPAD4_LARGE_TEST_INSERT = '1'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_E2E
 Remove-Item Env:MULTIPAD4_LARGE_TEST_INSERT
@@ -104,7 +104,7 @@ bash -lc "cmake-build cmake-msvc-build"
 Remove-Item Env:MULTIPAD4_PROFILE_SCINTILLA
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_PROFILE = '1'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_PROFILE
 ```

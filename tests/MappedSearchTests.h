@@ -28,6 +28,27 @@ inline void RunMappedSearchTests(MainFrame& frame, const std::filesystem::path& 
         require(!document->fastView->Busy());
     };
     auto content = [&] { large::Search reader(document->fastView->Model().Capture(), document->encoding, {L""}); return reader.Utf8(0, document->fastView->Size()); };
+    // Consecutive Previous jobs retain only a matcher for the same immutable root/query.
+    std::string repeated; for (int i = 0; i < 140; ++i) repeated += "aaa Alpha 12\r\n";
+    for (bool regex : {false, true}) {
+        load(repeated); document->search.findText = regex ? L"Alpha" : L"aa"; document->search.regex = regex;
+        document->search.flags = regex ? SCFIND_MATCHCASE : 0; document->search.wrap = false;
+        document->fastView->ShowSelection(document->fastView->Size(), 0);
+        auto position = document->fastView->Size();
+        for (int i = 0; i < 100; ++i) {
+            large::Search fresh(document->fastView->Model().Capture(), document->encoding, document->MappedSearchOptions());
+            auto expected = fresh.Next(position, 0, true); require(expected.has_value());
+            require(document->FindNext(true)); wait();
+            auto selected = document->fastView->GlobalSelection();
+            require((std::min)(selected.anchor, selected.caret) == expected->start && (std::max)(selected.anchor, selected.caret) == expected->end);
+            position = expected->start;
+        }
+        document->fastView->StartFind(L"missing", true, false, false, false); document->fastView->StopWork();
+        document->fastView->ShowSelection(document->fastView->Size(), 0); require(document->FindNext(true)); wait();
+        document->Send(SCI_INSERTTEXT, 0, reinterpret_cast<LPARAM>("edit"));
+        document->fastView->ShowSelection(document->fastView->Size(), 0); require(document->FindNext(true)); wait();
+        document->Send(SCI_UNDO);
+    }
     {
         std::ofstream metrics("mapped-preview-benchmark.csv"); metrics << "encoding,variant,run,elapsed_ms,source_bytes_read\n";
         for (auto encoding : {files::Encoding::Utf8, files::Encoding::Utf16LE, files::Encoding::Utf16BE, files::FromCodePage(936), files::FromCodePage(54936)}) {

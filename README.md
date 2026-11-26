@@ -127,6 +127,8 @@ Application-side SIMD is used for UTF-8/UTF-16/ASCII detection, line-ending stat
 
 ## Validation
 
+Integration tests and QA/benchmark commands run in `multipad4-tests.exe` (built with `BUILD_TESTING=ON`). The shipped editor excludes these test entry points.
+
 With `BUILD_TESTING=ON`, CMake registers 14 tests and up to four more when Python, the bundled plugins, or the five third-party plugin DLLs are available. CI verifies build artifacts and runtime configuration. Run CTest locally for the application and plugin checks.
 
 | CTest name | Main coverage |
@@ -152,9 +154,9 @@ Generate the resource inventory, command-routing report, and rendered windows wi
 
 ```powershell
 python tools/inventory_notepad4.py
-.\cmake-msvc-build\multipad4.exe --migration-report tmp/migration-status-check.json
+.\cmake-msvc-build\multipad4-tests.exe --migration-report tmp/migration-status-check.json
 python tools/check_migration.py tmp/migration-status-check.json
-.\cmake-msvc-build\multipad4.exe --qa-render tmp/qa-render
+.\cmake-msvc-build\multipad4-tests.exe --qa-render tmp/qa-render
 ```
 
 Resource counts and command routing establish entry-point coverage only. Window rendering and automated regression checks do not replace interactive acceptance testing. Behavioral parity across all languages, dialogs, and dynamic menus, mouse dragging, IME input, multi-monitor DPI, actual printing, and real system integration still require individual verification.

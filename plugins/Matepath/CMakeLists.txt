@@ -27,5 +27,5 @@ configure_file("${PROJECT_SOURCE_DIR}/3rdparty/matepath/doc/License.txt"
 add_dependencies(multipad4 Matepath)
 
 if(BUILD_TESTING)
-  target_compile_definitions(multipad4 PRIVATE MULTIPAD4_TEST_MATEPATH)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_MATEPATH)
 endif()

@@ -1,4 +1,5 @@
 #include "MainFrame.h"
+#ifdef MULTIPAD4_TESTING
 #include "SmokeTest.h"
 #include "../tests/StatusStatisticsTests.h"
 #include "../tests/OrdinarySearchTests.h"
@@ -6,6 +7,7 @@
 #include "../tests/PluginFeatureTests.h"
 #include "../tests/LexerBaselineTests.h"
 #include "../tests/ConfigurationBenchmark.h"
+#endif
 #include <shellapi.h>
 #include <cstdio>
 #include <fstream>
@@ -15,7 +17,9 @@
 #include "Session.h"
 #include "FrameCommands.h"
 #include "EditAdvanced.h"
+#ifdef MULTIPAD4_TESTING
 #include "../tests/QAArtifacts.h"
+#endif
 namespace {
 // Serialize discovery through initial command processing so simultaneous launches
 // cannot both decide that no main window exists yet.
@@ -102,11 +106,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         return lock.Acquire() ? RunAppUpdateWorker(args[2], args[3]) : 1;
     }
     const auto updateRestart = TakeAppUpdateRestart();
+#ifdef MULTIPAD4_TESTING
     if (count == 3 && wcscmp(args[1], L"--app-update-test") == 0) {
         try { TestAppUpdate(args[2]); }
         catch (const std::exception& error) { fprintf(stderr, "%s\n", error.what()); return 1; }
         return 0;
     }
+#endif
     HRESULT hr = OleInitialize(nullptr);
     if (FAILED(hr)) return 1;
     INITCOMMONCONTROLSEX controls{sizeof(controls), ICC_WIN95_CLASSES | ICC_BAR_CLASSES};
@@ -114,6 +120,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     SetCurrentProcessExplicitAppUserModelID(L"MultiPad4.Editor");
     extern UINT g_uSystemDPI; g_uSystemDPI = GetDpiForSystem();
     if (!Scintilla_RegisterClasses(instance)) { OleUninitialize(); return 2; }
+#ifdef MULTIPAD4_TESTING
     bool pluginTest = count == 2 && wcscmp(args[1], L"--plugin-test") == 0;
     bool ordinaryTest = count == 2 && wcscmp(args[1], L"--ordinary-search-test") == 0;
     bool ordinaryBenchmark = count == 3 && wcscmp(args[1], L"--ordinary-search-benchmark") == 0;
@@ -131,6 +138,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
+#else
+    constexpr bool pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
+#endif
     int result = 0;
     std::optional<PluginMaintenance> pendingPluginMaintenance;
     std::unique_ptr<StagedAppUpdate> pendingUpdate;
@@ -140,10 +151,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
         frame.plugins.enabled = !(statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+#ifdef MULTIPAD4_TESTING
         if (smoke || render) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
             frame.plugins.bundledModules = bundledTestModules;
         }
+#endif
         frame.settings.Initialize(largeTest || smoke || report || render || pluginTest);
         SetThreadUILanguage(largeTest || smoke || report || render || pluginTest ? MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US) : LanguageForCommand(frame.settings.Get(IDM_LANG_USER_DEFAULT, IDM_LANG_USER_DEFAULT)));
         SetConfigurationUserDirectory(frame.settings.path.parent_path());
@@ -183,6 +196,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         RECT rect{80, 60, 1280, 860};
         if (reused) {}
         else if (!frame.Create(rect, instance)) result = 3;
+#ifdef MULTIPAD4_TESTING
         else if (largeTest || smoke || report || render || pluginTest) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
@@ -219,7 +233,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 fprintf(stderr, "OpenDocuments plugin did not unload cleanly\n"); result = 4;
             }
             frame.DestroyWindow();
-        } else {
+        }
+#endif
+        else {
             frame.ShowWindow(frame.runtime.restoredShowCmd == SW_SHOWMAXIMIZED ? SW_SHOWMAXIMIZED : show); frame.UpdateWindow();
             frame.exitSessionEligible = !options.print && !options.help && options.sessionFile.empty() && options.reuseWindow != 0;
             bool restoredUpdate = false;
