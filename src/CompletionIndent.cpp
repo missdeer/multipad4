@@ -8,11 +8,47 @@
 #include <cctype>
 #include <cstring>
 #include <shlwapi.h>
+#include <bit>
+#include <emmintrin.h>
 namespace {
 bool Same(const char* a,const char* b){return strcmp(a,b)==0;}
 bool IsASpaceOrTab(char ch){return ch==' '||ch=='\t';}
 bool IsAlpha(char ch){return (ch>='A'&&ch<='Z')||(ch>='a'&&ch<='z');}
 void* Allocate(size_t size){return calloc(1,size);}
+LRESULT IndentationBytes(EditorDocument& document, LRESULT start, LRESULT length) {
+    LRESULT indentation = 0;
+    while (indentation < length) {
+        const auto count = (std::min)(length - indentation, LRESULT(65536));
+        const auto* bytes = reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, start + indentation, count));
+        if (!bytes) throw std::runtime_error("Cannot read indentation.");
+        LRESULT spaces = 0;
+        const auto space = _mm_set1_epi8(' '), tab = _mm_set1_epi8('\t');
+        while (spaces + 16 <= count) {
+            const auto value = _mm_loadu_si128(reinterpret_cast<const __m128i*>(bytes + spaces));
+            const auto other = static_cast<unsigned>(~_mm_movemask_epi8(_mm_or_si128(_mm_cmpeq_epi8(value, space), _mm_cmpeq_epi8(value, tab)))) & 0xffff;
+            if (other) { spaces += std::countr_zero(other); break; }
+            spaces += 16;
+        }
+        while (spaces < count && IsASpaceOrTab(bytes[spaces])) ++spaces;
+        indentation += spaces;
+        if (spaces != count) break;
+    }
+    return indentation;
+}
+bool ContainsTransaction(EditorDocument& document, LRESULT first, LRESULT last) {
+    std::string overlap;
+    while (first < last) {
+        auto chunk = document.Range(first, static_cast<size_t>((std::min)(last - first, LRESULT(16384))));
+        first += chunk.size();
+        const auto nul = chunk.find('\0');
+        if (nul != std::string::npos) chunk.resize(nul);
+        overlap += chunk;
+        if (StrStrIA(overlap.c_str(), "transaction")) return true;
+        if (nul != std::string::npos) return false;
+        if (overlap.size() > 10) overlap.erase(0, overlap.size() - 10);
+    }
+    return false;
+}
 }
 enum AutoIndentType {
 	AutoIndentType_None,
@@ -20,7 +56,7 @@ enum AutoIndentType {
 	AutoIndentType_IndentAndClose,
 };
 
-static const char* EditKeywordIndent(const LanguageDefinition* pLex,int dialect,const char* head,AutoIndentType* indent) {
+static const char* EditKeywordIndent(const LanguageDefinition* pLex,int dialect,const char* head,AutoIndentType* indent,EditorDocument& document,LRESULT headPosition,LRESULT lineEnd) {
 	char word[16] = "";
 	char word_low[16] = "";
 	int length = 0;
@@ -169,13 +205,13 @@ static const char* EditKeywordIndent(const LanguageDefinition* pLex,int dialect,
 			endPart = "END CASE;";
 		} else if (Same(word_low, "begin")) {
 			*indent = AutoIndentType_IndentAndClose;
-			if (StrStrIA(head, "transaction") != nullptr) {
+            if (ContainsTransaction(document, headPosition + length, lineEnd)) {
 				endPart = "COMMIT;";
 			} else {
 				endPart = "END";
 			}
 		} else if (Same(word_low, "start")) {
-			if (StrStrIA(head, "transaction") != nullptr) {
+            if (ContainsTransaction(document, headPosition + length, lineEnd)) {
 				*indent = AutoIndentType_IndentAndClose;
 				endPart = "COMMIT;";
 			}
@@ -215,7 +251,14 @@ void ApplyDocumentAutoIndent(EditorDocument& d) {
 		if (iPrevLineLength < 2) {
 			return;
 		}
-		char *pLineBuf = static_cast<char *>(Allocate(2 * iPrevLineLength + 1 + static_cast<int>(d.Send(SCI_GETINDENT)) * 2 + 2 + 64));
+        const auto previousStart = d.Send(SCI_POSITIONFROMLINE, iCurLine - 1);
+        const auto indentation = IndentationBytes(d, previousStart, iPrevLineLength);
+        const auto prefixLength = (std::min)(iPrevLineLength, indentation + 16);
+        const auto tailStart = (std::max)(LRESULT(0), iPrevLineLength - 5);
+        const auto tail = d.Range(previousStart + tailStart, static_cast<size_t>(iPrevLineLength - tailStart));
+        auto tailAt = [&](LRESULT offset) { return static_cast<uint8_t>(tail[static_cast<size_t>(offset - tailStart)]); };
+        const auto padding = (std::max)(d.Send(SCI_GETINDENT), d.Send(SCI_GETTABWIDTH));
+        char *pLineBuf = static_cast<char *>(Allocate(static_cast<size_t>(2 * prefixLength + padding * 2 + 67)));
 		if (pLineBuf == nullptr) {
 			return;
 		}
@@ -224,12 +267,15 @@ void ApplyDocumentAutoIndent(EditorDocument& d) {
 		AutoIndentType indent = AutoIndentType_None;
 		LRESULT iIndentLen = 0;
 		int commentStyle = 0;
-		d.Send(SCI_GETLINE,iCurLine-1,reinterpret_cast<LPARAM>(pLineBuf));
-		pLineBuf[iPrevLineLength] = '\0';
+        {
+            const auto* prefix = reinterpret_cast<const char*>(d.Send(SCI_GETRANGEPOINTER, previousStart, prefixLength));
+            if (!prefix) { free(pLineBuf); throw std::runtime_error("Cannot read indentation prefix."); }
+            memcpy(pLineBuf, prefix, static_cast<size_t>(prefixLength));
+        }
 
-		int ch = static_cast<uint8_t>(pLineBuf[iPrevLineLength - 2]);
+        int ch = tailAt(iPrevLineLength - 2);
 		if (ch == '\r') {
-			ch = iPrevLineLength>=3 ? static_cast<uint8_t>(pLineBuf[iPrevLineLength - 3]) : 0;
+            ch = iPrevLineLength>=3 ? tailAt(iPrevLineLength - 3) : 0;
 			iIndentLen = 1;
 		}
 		if (ch == '{' || ch == '[' || ch == '(') {
@@ -238,7 +284,7 @@ void ApplyDocumentAutoIndent(EditorDocument& d) {
 			indent = AutoIndentType_IndentOnly;
 		} else if (ch == '*' || ch == '!') { // indent block comment
 			iIndentLen = iPrevLineLength - (2 + iIndentLen);
-			if (iIndentLen >= 2 && pLineBuf[iIndentLen - 2] == '/' && pLineBuf[iIndentLen - 1] == '*') {
+            if (iIndentLen >= 2 && tailAt(iIndentLen - 2) == '/' && tailAt(iIndentLen - 1) == '*') {
 				indent = AutoIndentType_IndentOnly;
 				commentStyle = 1;
 			}
@@ -253,21 +299,19 @@ void ApplyDocumentAutoIndent(EditorDocument& d) {
 
 		char *pPos;
 		const char *endPart = nullptr;
-		for (pPos = pLineBuf; *pPos; pPos++) {
-			if (!IsASpaceOrTab(*pPos)) {
+        iIndentLen = indentation;
+        pPos = pLineBuf + iIndentLen;
+        if (*pPos) {
 				if (indent == AutoIndentType_None && IsAlpha(*pPos)) { // indent on keywords
 					const int style = static_cast<int>(d.Send(SCI_GETSTYLEINDEXAT,d.Send(SCI_POSITIONFROMLINE,iCurLine-1)+iIndentLen));
 					if (style != 0 && style == pLexCurrent->autoIdentWordStyle) {
-						endPart = EditKeywordIndent(pLexCurrent,d.style.dialect,pPos,&indent);
+                        endPart = EditKeywordIndent(pLexCurrent,d.style.dialect,pPos,&indent,d,previousStart+iIndentLen,previousStart+iPrevLineLength);
 					}
 				}
 				if (indent != AutoIndentType_None) {
-					memset(pPos, 0, iPrevLineLength - iIndentLen);
+                    *pPos = '\0';
 				}
 				*pPos = '\0';
-				break;
-			}
-			iIndentLen += 1;
 		}
 
 		if (indent == AutoIndentType_IndentAndClose && endPart) {
