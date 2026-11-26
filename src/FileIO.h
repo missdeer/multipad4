@@ -79,6 +79,8 @@ void SetTimes(const std::filesystem::path& path, const FileTimes& times);
 void Touch(const std::filesystem::path& path);
 void WriteAtomic(const std::filesystem::path& path, const Text& text);
 void WriteNew(const std::filesystem::path& path, const Text& text);
+// Validate both borrowed UTF-8 spans before creating a new file; never overwrite.
+void WriteNewUtf8(const std::filesystem::path& path, std::string_view text, std::string_view prefix = {});
 std::string ToUtf8(const std::wstring& text);
 std::wstring FromUtf8(const std::string& text);
 const wchar_t* EncodingName(Encoding encoding);
