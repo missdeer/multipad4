@@ -45,6 +45,9 @@ public:
     bool toolbarVisible = true, statusVisible = true;
     std::vector<std::pair<UINT_PTR, std::wstring>> publishedDocuments;
     UINT_PTR publishedActive = 0;
+    unsigned long long publishedStructure = ~0ULL, captionExcerptRevision = ~0ULL, captionIdentity = 0;
+    std::wstring publishedCaption, captionExcerpt;
+    void UpdateCaption();
     std::map<UINT, std::pair<bool, bool>> toolbarState;
     std::array<std::wstring, 13> statusText;
     int statusWidth = -1;

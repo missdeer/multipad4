@@ -34,6 +34,9 @@ void EditorChild::Notify(const NMHDR& notification) {
         const auto& sci = reinterpret_cast<const SCNotification&>(notification);
         SendMessageW(owner, WM_APP + 0x120, 0, reinterpret_cast<LPARAM>(&sci));
         HandleStyleNotification(*document, sci);
+        if (sci.nmhdr.code == SCN_SAVEPOINTLEFT || sci.nmhdr.code == SCN_SAVEPOINTREACHED) document->titleDirty = true;
+        if (sci.nmhdr.code == SCN_MODIFIED && (sci.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT)) &&
+            sci.position <= document->Send(SCI_GETLINEENDPOSITION, 0)) ++document->excerptRevision;
     }
     if (notification.code == SCN_SAVEPOINTLEFT || notification.code == SCN_SAVEPOINTREACHED || notification.code == SCN_ZOOM)
         PostMessageW(owner, WM_DOCUMENT_CHANGED, 0, 0);
@@ -211,6 +214,7 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     style.autoClosers.clear();
     style.colorStart = style.colorEnd = -1; style.calltipHex.clear(); style.calltipColor = 0;
     encodingDirty = false;
+    ++excerptRevision; titleDirty = true;
     encoding = loadedEncoding;
     Send(SCI_SETEOLMODE, endings.iEOLMode);
     Send(SCI_EMPTYUNDOBUFFER); Send(SCI_SETSAVEPOINT); Send(SCI_GOTOPOS, 0);

@@ -10,6 +10,7 @@ public:
     bool Create(HWND frame, HWND mdi);
     HWND LayoutWindow() const { return layoutWindow; }
     operator HWND() const { return control; }
+    unsigned long long structureRevision = 0;
     int GetItemCount() const;
     int GetCurSel() const;
     HWND ChildAt(int index) const;
