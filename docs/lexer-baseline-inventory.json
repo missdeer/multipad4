@@ -71,7 +71,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlAsm.cpp",
-      "sha256": "d9a2848c05902b3fce7842a8e94a868f5aa9364909ecbd6fa036cfcedea40297",
+      "sha256": "5adf955e32d33d514587dff506aa048c5785fa14dd6ef04cb5ef1095908a7c0b",
       "objects": [
         "lexASM"
       ]
@@ -113,7 +113,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlBash.cpp",
-      "sha256": "c99f04f30bc4c626f4de0aead0d0c730f1b84992671bc8d7920bbf27f62a3e25",
+      "sha256": "3d37d421d4f0801b6157dd9b6e4831ade67e26d2dedcb61d45eded6e41393a19",
       "objects": [
         "lexBash"
       ]
@@ -141,14 +141,14 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlCIL.cpp",
-      "sha256": "53618aa335f4089d118f621df64fa2f0a850f7c626b0953a323be14dc647e100",
+      "sha256": "355a1d743f0e42e5d0cc757930f7b8dd75689423b03384a965892682d9b4e5a7",
       "objects": [
         "lexCIL"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlCMake.cpp",
-      "sha256": "8e1ecb42ac79e814e1cb8c92923db2e7a22c5541d766225a7776690d9230d3dd",
+      "sha256": "db5f39bcaab08e745b3fdd3d27433c94242e8fddf8f7bbb03c321d66e7eee8ad",
       "objects": [
         "lexCMake"
       ]
@@ -197,7 +197,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlDefault.cpp",
-      "sha256": "92bd7a03c7538474ffaf9ef5a5b02d0bd89b2775a68dd52a0e8262deb5acb1c1",
+      "sha256": "73f20e0b9cd920f0dd6a0d545f7a74960ec3db43edf85cac1368c72fdf1da4d4",
       "objects": [
         "lexGlobal",
         "lexTextFile",
@@ -232,7 +232,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlFSharp.cpp",
-      "sha256": "4ac073daa04f906d4d62c602b89b4c7f1f6e46d6e0f202641a4f806e376e2d61",
+      "sha256": "ec2d07043b0ea9b24804eb5ec6e3a794d9a7f0c2c43c63f4f577278c0ce967bd",
       "objects": [
         "lexFSharp"
       ]
@@ -288,7 +288,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlHTML.cpp",
-      "sha256": "b7763f18862bb258643a37efda9965346dd23f6077a92491a6c598fc483d2880",
+      "sha256": "1dc7c995f692ca0e348f58170cbef76634d2f25d32351e21a3fc19e1f2e5c1f8",
       "objects": [
         "lexHTML"
       ]
@@ -323,14 +323,14 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlJSON.cpp",
-      "sha256": "47ec5ae34bd85dc5425629ded8a78dd884a94b005f065a864deb0e21f0c6ed2f",
+      "sha256": "7fc6fe64eda49d6f1903c9dc1cc0de04b0b68f163ac32339b012aa8ffc2db7df",
       "objects": [
         "lexJSON"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlJulia.cpp",
-      "sha256": "5e3e4ec0ca300f69174ca3fa74e11933778a59e285bc8fb8f5456a2fccd5888b",
+      "sha256": "f03487b0a29dc718c283edc8018bc75e8ec2f19894d1506b3b0635fc1a396b0f",
       "objects": [
         "lexJulia"
       ]
@@ -351,7 +351,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlLisp.cpp",
-      "sha256": "a5d272e5186fa361a4b5ea333c57ae02a65ea0c2a4cebb335a283d4178a304e4",
+      "sha256": "8a3d80bc555ea0c2ce99ed01c6313c3d996a8b400212f74c3dd5460c0fe5fb2b",
       "objects": [
         "lexLisp"
       ]
@@ -365,7 +365,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlLua.cpp",
-      "sha256": "6084193be6dd8482b6e71854865149e1a3d70022fe4db035fa169b2eda522e22",
+      "sha256": "af5c85f21075f7bae444a79b78a1b74365c0c79e8665eb2719e3caaa22dd3abd",
       "objects": [
         "lexLua"
       ]
@@ -393,7 +393,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlMatlab.cpp",
-      "sha256": "2bfa2b0e13b7a15dd4b320d00c38e32b82746acab8de2d256d7150f2bd2fc45e",
+      "sha256": "1c7882dd8b3477f7fbe3bed619c7df52449934b708645773d4e59f782de51a0b",
       "objects": [
         "lexMatlab"
       ]
@@ -421,14 +421,14 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlPascal.cpp",
-      "sha256": "5f6b7a5401d8eb62817417d5f1e520ba46a5ecec561ad73db3aa86475e075c3e",
+      "sha256": "6ecf317667728fc010a8f1937d3ed87248ae8c902f467bb2d5cca59c323e11a4",
       "objects": [
         "lexPascal"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlPerl.cpp",
-      "sha256": "192c64c224d38b8c4f7c9b0e3d4827bc7c44e33d444f06709cef9735314267e8",
+      "sha256": "5197f6c839fd5b0c3cff84c281820ca6c80a3dc0d8950b8311bd9d9e76423ce8",
       "objects": [
         "lexPerl"
       ]
@@ -477,21 +477,21 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlResource.cpp",
-      "sha256": "7032a5297d3be28945c6ce8ef380dde241958507153958d0201dbec88219a636",
+      "sha256": "4247e76e894ee9dbc7e5f67c14c26475614dcf821aaa647f274e17a073a5163f",
       "objects": [
         "lexResourceScript"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlRuby.cpp",
-      "sha256": "d4cbff0cfb3e468b4d4f9004d5ad7ea21985ba433180fc2bc56c50f57e0b393e",
+      "sha256": "a553b3097e25d26296f6b6e24a4129cbcf1729e3d9531ef18e85cce2536313a0",
       "objects": [
         "lexRuby"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlRust.cpp",
-      "sha256": "d8266188cb9a793abe9a002655127492e244cccfe0c287683fc681a6c9e3187a",
+      "sha256": "81d67036ea0d619ed1dfb16a3e825fd106bb0c6bb7a09357406f94cd457dad37",
       "objects": [
         "lexRust"
       ]
@@ -533,7 +533,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlTcl.cpp",
-      "sha256": "34dc531d2d9a1bd9f5ae46235738b46fe63e3bd4e408cf0243704a90f7c50a05",
+      "sha256": "0baaff9313226b951a95cf4a2779ec244d3d9aa33859ae60e83a8595ddfbe23a",
       "objects": [
         "lexTcl"
       ]
@@ -568,14 +568,14 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlVB.cpp",
-      "sha256": "a6ea0e5bdb0b50c5a12fb3cbe7b433351b3bc0c32ac3f06afffadf88504495a3",
+      "sha256": "16da862c08576fd31d8937417dde3a4ef213f82c8ebc1a6af101da42d45ddc92",
       "objects": [
         "lexVisualBasic"
       ]
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlVBS.cpp",
-      "sha256": "c243501a50019ae357c0b53d505d6dd732f7c8194d8be10f04b2d9984f8e161a",
+      "sha256": "f5f9179311f17a664badce2dbe400d9840a9ed84ef6a579b536da54c9364e835",
       "objects": [
         "lexVBScript"
       ]
@@ -596,7 +596,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlVim.cpp",
-      "sha256": "0663f425aed02f7c20651d94fc196f234c715c6ff713c733e1bdf62caf0b536d",
+      "sha256": "4cf2e431e459da3fd96aac39b30517e99ef41d3def71363f49fcafd0c55e0f77",
       "objects": [
         "lexVim"
       ]
@@ -617,7 +617,7 @@
     },
     {
       "path": "3rdparty/notepad4/src/EditLexers/stlXML.cpp",
-      "sha256": "3dde819bda3e0f9d3658bb4e63a2406585e32310e94e6ba3f6939ef92ec3bd67",
+      "sha256": "a479dded3ef6c1f08613c8e99a7d1fc57c85ca5d340ab527171bdb2c739ce872",
       "objects": [
         "lexXML"
       ]
@@ -3814,20 +3814,20 @@
       "path": "src/EditAdvanced.cpp",
       "references": [
         {
-          "line": 427,
+          "line": 439,
           "symbols": [
             "GetDocumentLexer",
             "NP2LEX_XML"
           ]
         },
         {
-          "line": 637,
+          "line": 649,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 750,
+          "line": 765,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -5744,7 +5744,7 @@
     },
     {
       "path": "src/LexerDetection.cpp",
-      "sha256": "66044a32a8db514acebcbdfd1e6706c30925ad09d054fd1878b9040b295c2679",
+      "sha256": "1364673d15184a75e69e7e16509753f3a5bd090487f46ff05fe8ad090d35b03d",
       "rules": [
         {
           "line": 4,
@@ -5788,7 +5788,7 @@
   "localization": [
     {
       "path": "3rdparty/notepad4/src/Notepad4.rc",
-      "sha256": "1bb760bc81b688a77ddd58b9068c0cc690e690e88091f4ab1b8b96c5b9f3d5c7",
+      "sha256": "cb45ad3343cc5c2765074cd7b31fcc29e1d9f5ee3a4db0087ec7402c48f617a8",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Text File\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2nd Text File\"",
@@ -5797,7 +5797,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/de/Notepad4.rc",
-      "sha256": "d45a7e897784b10e954644606eea79ca31f97577b6ae7d96a7315aa255eb28da",
+      "sha256": "aeeb6b7d3fc1484f911eeca5237f5f37520ff618bb41b19b7d6065217391f9c6",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Text Datei\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2. Text Datei\"",
@@ -5806,7 +5806,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/fr/Notepad4.rc",
-      "sha256": "48b476a6d02530ce38e57c4b64333aa93b765f5220cf122a7ef24de956e82b78",
+      "sha256": "93a9010ed960f0dcd8e1a0d8a90cebcfc17480870c61d48696ae8278fc1419d0",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Fichier texte\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2eme Fichier texte\"",
@@ -5815,7 +5815,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/it/Notepad4.rc",
-      "sha256": "0ab925eec27146835c4cdb976b778e6757ee094211ca08fbeac291a1fd843bd4",
+      "sha256": "6893175f097e32e1ab680eae31506bc23b4be1fa6c50b7ea56d91dc3450f97fa",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"File di Testo\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2° File di testo\"",
@@ -5824,7 +5824,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/ja/Notepad4.rc",
-      "sha256": "16ecf14e99b4e96e8c9804cec8363375213a16d87c4c101dc58836fd9f9b3281",
+      "sha256": "c3509f003db689ae031262a5c3c77f5a8d0b3f1559af73d7784ba94f06b79eec",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"テキストファイル\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"テキストファイル2\"",
@@ -5833,7 +5833,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/ko/Notepad4.rc",
-      "sha256": "212919156ab7e3b82a858292ea0531aef1370994f7806047f9a81b4059ab9b05",
+      "sha256": "52c9b20a161cda9c8e3266bf22414e63e2a3f12f8e2f8a8b928099d5a76c74a1",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"텍스트 파일\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"두 번째 텍스트 파일\"",
@@ -5842,7 +5842,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/pl/Notepad4.rc",
-      "sha256": "c76170daf5f7dcec1b8dc12c143cba81b06ccf7df45728773e26fea7b1926fcf",
+      "sha256": "0c7b13bb4065079bfcc1cab244403dd2a95fb2d46a5c461e28d1c626e246e999",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Plik tekstowy\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"Drugi plik tekstowy\"",
@@ -5851,7 +5851,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/pt-BR/Notepad4.rc",
-      "sha256": "6eb3502d3edfa16f551d7b78fa1de8252f3e9817594ae4d33792025ae275a6a2",
+      "sha256": "e867df9b27e6c9eebaa4bb6ab5827f060976699def5982e0c4cf326725f12d2a",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Arquivo de Texto\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2º Arquivo de Texto\"",
@@ -5860,7 +5860,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/ru/Notepad4.rc",
-      "sha256": "48b6d941ba9215b7c5c6e2b93fca9bc35170f9c65e7f0732d8dc8aad07ae1603",
+      "sha256": "1e6c42a0ed37ac2f11fba5129f7895bc5c9ac8d9b4c60b802b61193153940e51",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\"Текстовый файл\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\"Второй текстовый файл\"",
@@ -5869,7 +5869,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/sl/Notepad4.rc",
-      "sha256": "f4b81e469d18c6b06a9db1b28a8f6cdb653bb84b3acbab0dbc1bdde81bb7c14e",
+      "sha256": "1cd839d2708104b7526288aab6c9261083a0b97aeb93885c87e3c6b959e5444e",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"Text File\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"2nd Text File\"",
@@ -5878,7 +5878,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/zh-Hans/Notepad4.rc",
-      "sha256": "41171c475553463e69c61601dc403356d3040f88dbc00480970b9c6bf1bc438f",
+      "sha256": "113b3f5a7f5aef04da8830f7998df9c48e233b6159078d662dc53ae4d9232d3e",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"文本文件\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"第二文本文件\"",
@@ -5887,7 +5887,7 @@
     },
     {
       "path": "3rdparty/notepad4/locale/zh-Hant/Notepad4.rc",
-      "sha256": "6cf17fe5dc58b0171f724b62fa9f1166b31a34320a1561ef3a3eea58b42279df",
+      "sha256": "87e615c3d0d70cd6c4bc0246e8e04d3009a2e38b4ebeb1bd86d8e4f35a7ba44e",
       "languageStrings": [
         "NP2LEX_TEXTFILE\t\t\t\t\t\"文字檔案\"",
         "NP2LEX_2NDTEXTFILE\t\t\t\t\"第二文字檔案\"",
