@@ -1,6 +1,7 @@
 #include "MainFrame.h"
 #ifdef MULTIPAD4_TESTING
 #include "SmokeTest.h"
+#include "../tests/DeferredQueueTests.h"
 #include "../tests/PluginIndexTests.h"
 #include "../tests/SearchRetirementTests.h"
 #include "../tests/TabStripTests.h"
@@ -11,6 +12,7 @@
 #include "../tests/PrivateClipboard.h"
 #include "../tests/RichTextTests.h"
 #include "../tests/ThemeEnumerationTests.h"
+#include "../tests/SessionCaptureTests.h"
 #include "../tests/AutoSaveCaptureTests.h"
 #include "../tests/SaveWhitespaceTests.h"
 #include "../tests/StatusStatisticsTests.h"
@@ -163,6 +165,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
     bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
+    bool deferredQueueTest=count==3&&wcscmp(args[1],L"--deferred-queue-test")==0;
     bool pluginIndexTest=count==3&&wcscmp(args[1],L"--plugin-index-test")==0;
     bool settingsProfileTest=count==3&&wcscmp(args[1],L"--settings-profile-test")==0;
     bool configurationTest=count==4&&wcscmp(args[1],L"--configuration-test")==0;
@@ -177,13 +180,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
     bool saveWhitespaceTest = count == 2 && (wcscmp(args[1], L"--save-whitespace-test") == 0 || wcscmp(args[1], L"--save-whitespace-benchmark") == 0);
     bool themeEnumerationTest = count == 2 && (wcscmp(args[1], L"--theme-enumeration-test") == 0 || wcscmp(args[1], L"--theme-enumeration-benchmark") == 0);
+    bool sessionCaptureTest = count == 2 && (wcscmp(args[1], L"--session-capture-test") == 0 || wcscmp(args[1], L"--session-capture-benchmark") == 0);
     bool autosaveCaptureTest = count == 2 && (wcscmp(args[1], L"--autosave-capture-test") == 0 || wcscmp(args[1], L"--autosave-capture-benchmark") == 0);
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = pluginIndexTest ||
+    bool smoke =
+        pluginIndexTest ||
         settingsProfileTest ||
         themeEnumerationTest ||
+        sessionCaptureTest ||
         saveWhitespaceTest ||
         autosaveCaptureTest ||
         richTextTest ||
@@ -206,14 +212,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         configurationMode ||
         lexerBaseline ||
         noPluginsTest ||
-        (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+        (count == 2 && wcscmp(args[1], L"--smoke-test") == 0) ||
+        deferredQueueTest;
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     if (statusPresentation || statusPresentationBenchmark) smoke = true;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (commentTest || commentBenchmark) smoke = true;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool autosaveCaptureTest=false, themeEnumerationTest=false, saveWhitespaceTest=false, richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool sessionCaptureTest=false, autosaveCaptureTest=false, themeEnumerationTest=false, saveWhitespaceTest=false, richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -224,7 +231,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(autosaveCaptureTest || themeEnumerationTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(sessionCaptureTest || autosaveCaptureTest || themeEnumerationTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
         if (statusPresentation || statusPresentationBenchmark) frame.plugins.enabled = false;
         if (smoke || render) {
@@ -287,6 +294,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
                 else if (saveWhitespaceTest) { RunSaveWhitespaceTests(frame, wcscmp(args[1], L"--save-whitespace-benchmark") == 0); }
                 else if (themeEnumerationTest) { RunThemeEnumerationTests(frame, wcscmp(args[1], L"--theme-enumeration-benchmark") == 0); }
+                else if (sessionCaptureTest) { RunSessionCaptureTests(frame, wcscmp(args[1], L"--session-capture-benchmark") == 0); }
                 else if (autosaveCaptureTest) { RunAutoSaveCaptureTests(frame, wcscmp(args[1], L"--autosave-capture-benchmark") == 0); }
                 else if (richTextTest || richTextBenchmark) { RunRichTextTests(frame, richTextBenchmark); }
                 else if (refreshTest) { RunFrameRefreshTests(frame); }
@@ -296,6 +304,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (commentTest || commentBenchmark) { RunCommentTests(frame, commentBenchmark); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
+                else if(deferredQueueTest){RunDeferredQueueTests(frame,args[2]);}
                 else if(pluginIndexTest){RunPluginIndexTests(frame,args[2]);}
                 else if(settingsProfileTest){RunSettingsProfileTests(args[2]);}
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
