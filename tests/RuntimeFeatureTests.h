@@ -3,6 +3,70 @@
 #include "../src/FrameCommands.h"
 #include <source_location>
 #include <stdexcept>
+#include <fstream>
+#include <chrono>
+#include "SettingsPerformanceBaseline.h"
+inline void RunSettingsProfileTests(const std::filesystem::path& root) {
+    auto require=[](bool ok,std::source_location where=std::source_location::current()){if(!ok)throw std::runtime_error("Settings assertion at line "+std::to_string(where.line()));};
+    std::filesystem::create_directories(root);
+    const auto directory=root/(L"profile-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64()));
+    require(std::filesystem::create_directory(directory));
+    struct Cleanup {std::filesystem::path path;~Cleanup(){std::error_code error;std::filesystem::remove_all(path,error);}} cleanup{directory};
+        // INI keeps Unicode, booleans and independent caller sections across instances.
+        AppSettings settings; settings.Initialize(true); settings.path = directory / L"Unicode.ini"; settings.persistent = true;
+        settings.Set(IDM_VIEW_SHOWEOLS, 1); settings.WriteString(L"Font", L"Name", L"中文字体 😀");
+        const std::wstring quotedCommand = L"\"C:\\中文路径\\program.exe\" \"quoted argument\"";
+        const std::wstring multiline = L"  中文😀\r\nsecond line  ";
+        settings.WriteString(L"Fixture", L"Command", quotedCommand); settings.WriteString(L"Fixture", L"Multiline", multiline);
+        require(settings.Save());
+        AppSettings restored; restored.Initialize(true); restored.path = settings.path; restored.persistent = true;
+        require(restored.Get(IDM_VIEW_SHOWEOLS) == 1 && restored.ReadString(L"Font", L"Name") == L"中文字体 😀");
+        require(restored.ReadString(L"Fixture", L"Command") == quotedCommand && restored.ReadString(L"Fixture", L"Multiline") == multiline);
+        AppSettings disabled; disabled.Initialize(true); disabled.path = directory / L"Disabled.ini"; disabled.persistent = true;
+        disabled.Set(IDM_VIEW_SHOWEOLS, 1); disabled.Set(IDM_VIEW_SAVESETTINGS, 0);
+        require(disabled.SaveOption(IDM_VIEW_SAVESETTINGS));
+        AppSettings disabledReload; disabledReload.Initialize(true); disabledReload.path = disabled.path; disabledReload.persistent = true;
+        require(disabledReload.Get(IDM_VIEW_SAVESETTINGS, 1) == 0 && disabledReload.Get(IDM_VIEW_SHOWEOLS, 0) == 0);
+        // Read caches must not overwrite keys updated by the independent style writer.
+        require(restored.ReadString(L"Fixture",L"ReadOnly",L"default")==L"default");
+        require(WritePrivateProfileStringW(L"Fixture",L"ReadOnly",L"external",restored.path.c_str())!=FALSE);
+        const auto optionKey=L"Command"+std::to_wstring(IDM_VIEW_SHOWEOLS);
+        require(WritePrivateProfileStringW(L"Options",optionKey.c_str(),L"0",restored.path.c_str())!=FALSE);
+        require(restored.Save());
+        AppSettings observed;observed.Initialize(true);observed.path=restored.path;observed.persistent=true;
+        require(observed.ReadString(L"Fixture",L"ReadOnly")==L"external");require(observed.Get(IDM_VIEW_SHOWEOLS)==0);
+        AppSettings retry;retry.Initialize(true);retry.persistent=true;
+        {std::ofstream blocker(directory/L"blocker");blocker<<"x";}
+        retry.path=directory/L"blocker"/L"settings.ini";retry.Set(998877,42);require(!retry.Save());
+        retry.path=directory/L"retry.ini";require(retry.Save());
+        AppSettings retryRead;retryRead.path=retry.path;require(retryRead.Get(998877)==42);
+        require(observed.ReadString(L"Fixture",L"Missing",L"fallback")==L"fallback");
+        observed.WriteString(L"Fixture",L"Empty",L"");
+        observed.WriteString(L"Fixture",L"Long",std::wstring(20000,L'x'));
+        require(observed.Get(999999,37)==37);require(observed.Save());
+        AppSettings checked;checked.Initialize(true);checked.path=observed.path;checked.persistent=true;
+        require(checked.ReadString(L"Fixture",L"Empty",L"nonempty").empty());
+        require(checked.ReadString(L"Fixture",L"Long")==std::wstring(20000,L'x'));
+        require(checked.Get(999999,0)==37);
+        checked.RecordRecentFile(L"C:/one.txt",4096);checked.RecordRecentFile(L"C:/two.txt",4096);checked.RecordRecentFile(L"c:/ONE.txt",4096);
+        require(checked.ReadString(L"Recent Files",L"0")==L"c:/ONE.txt" && checked.ReadString(L"Recent Files",L"1")==L"C:/two.txt");
+        checked.WriteString(L"Recent Files",L"0",L"");checked.RecordRecentFile(L"C:/three.txt",32);
+        require(checked.ReadString(L"Recent Files",L"1")==L"C:/two.txt");require(checked.Save());
+        if(GetEnvironmentVariableW(L"MULTIPAD4_SETTINGS_BENCHMARK",nullptr,0)){
+        std::ofstream perf(directory/L"settings-pairs.csv");perf<<"case,mode,sample,milliseconds\n";
+        for(int sample=0;sample<5;++sample){
+            auto measure=[&](const char* name,const char* mode,auto action){auto begin=std::chrono::steady_clock::now();action();perf<<name<<','<<mode<<','<<sample<<','<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()<<'\n';};
+            measure("nonpersistent-misses","before",[&]{settingsBaseline::AppSettings p;p.persistent=false;for(int i=0;i<512;++i)require(p.ReadString(L"x",std::to_wstring(i).c_str())==L"");});
+            measure("nonpersistent-misses","after",[&]{AppSettings p;p.persistent=false;for(int i=0;i<512;++i)require(p.ReadString(L"x",std::to_wstring(i).c_str())==L"");});
+            for(bool before:{true,false})measure("bulk-open-exit-4096",before?"before":"after",[&]{
+                auto path=directory/(std::wstring(before?L"before":L"after")+std::to_wstring(sample)+L".ini");std::filesystem::remove(path);
+                if(before){settingsBaseline::AppSettings p;p.path=path;for(int opened=0;opened<16;++opened){std::wstring name=L"C:/"+std::to_wstring(opened)+L".txt";std::vector<std::wstring> paths{name};for(int i=0;i<4096;++i){auto old=p.ReadString(L"Recent Files",std::to_wstring(i).c_str());if(!old.empty()&&old!=name)paths.push_back(old);}for(int i=0;i<4096;++i)p.WriteString(L"Recent Files",std::to_wstring(i).c_str(),i<static_cast<int>(paths.size())?paths[i]:L"");}require(p.Save());}
+                else {AppSettings p;p.path=path;for(int opened=0;opened<16;++opened)p.RecordRecentFile(L"C:/"+std::to_wstring(opened)+L".txt",4096);require(p.Save());}
+            });
+        }
+        perf.close();require(bool(perf));std::filesystem::copy_file(directory/L"settings-pairs.csv",std::filesystem::current_path()/L"settings-pairs.csv",std::filesystem::copy_options::overwrite_existing);
+        }
+}
 inline void RunRuntimeFeatureTests(MainFrame& frame) {
     auto require = [](bool ok, std::source_location where = std::source_location::current()) {
         if (!ok) throw std::runtime_error("Runtime feature assertion at line " + std::to_string(where.line()));
@@ -27,21 +91,7 @@ inline void RunRuntimeFeatureTests(MainFrame& frame) {
         }
     };
     try {
-        // INI keeps Unicode, booleans and independent caller sections across instances.
-        AppSettings settings; settings.Initialize(true); settings.path = directory / L"Unicode.ini"; settings.persistent = true;
-        settings.Set(IDM_VIEW_SHOWEOLS, 1); settings.WriteString(L"Font", L"Name", L"中文字体 😀");
-        const std::wstring quotedCommand = L"\"C:\\中文路径\\program.exe\" \"quoted argument\"";
-        const std::wstring multiline = L"  中文😀\r\nsecond line  ";
-        settings.WriteString(L"Fixture", L"Command", quotedCommand); settings.WriteString(L"Fixture", L"Multiline", multiline);
-        require(settings.Save());
-        AppSettings restored; restored.Initialize(true); restored.path = settings.path; restored.persistent = true;
-        require(restored.Get(IDM_VIEW_SHOWEOLS) == 1 && restored.ReadString(L"Font", L"Name") == L"中文字体 😀");
-        require(restored.ReadString(L"Fixture", L"Command") == quotedCommand && restored.ReadString(L"Fixture", L"Multiline") == multiline);
-        AppSettings disabled; disabled.Initialize(true); disabled.path = directory / L"Disabled.ini"; disabled.persistent = true;
-        disabled.Set(IDM_VIEW_SHOWEOLS, 1); disabled.Set(IDM_VIEW_SAVESETTINGS, 0);
-        require(disabled.SaveOption(IDM_VIEW_SAVESETTINGS));
-        AppSettings disabledReload; disabledReload.Initialize(true); disabledReload.path = disabled.path; disabledReload.persistent = true;
-        require(disabledReload.Get(IDM_VIEW_SAVESETTINGS, 1) == 0 && disabledReload.Get(IDM_VIEW_SHOWEOLS, 0) == 0);
+        RunSettingsProfileTests(directory);
         frame.NewDocument(); auto* first = frame.Active();
         first->Load({"first"}); require(frame.SaveTo(*first, directory / L"first.txt"));
         frame.NewDocument(); auto* second = frame.Active();
