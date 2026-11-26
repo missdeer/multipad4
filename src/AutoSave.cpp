@@ -154,7 +154,7 @@ void CancelDocumentBackup(MainFrame& frame, const EditorDocument& document, bool
             it = frame.runtime.autoSaveWrites.erase(it);
         } else {
             // Worker captures only immutable data; keep ownership until cleanup is ready.
-            task.retired = true; task.keepBackup = keepBackup; ++it;
+            task.retired = true; task.keepBackup = task.keepBackup && keepBackup; ++it;
         }
     }
 }

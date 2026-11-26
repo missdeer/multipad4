@@ -87,6 +87,21 @@ inline void RunAutoSaveCaptureTests(MainFrame& frame, bool benchmark) {
         SetEvent(release); autosavetest::beforeWrite = nullptr; Drain(frame); close(d);
         for (const auto& file : std::filesystem::directory_iterator(folder)) Require(!file.path().filename().wstring().starts_with(L"retired-delete.txt "));
 
+        // A save/reload's obsolete-backup deletion cannot be reversed by close.
+        for (bool reload : {false, true}) {
+            const auto path = folder / (reload ? L"reloaded-then-closed.txt" : L"saved-then-closed.txt");
+            d = frame.NewDocument(); d->path = path; d->Load({"captured before save"});
+            files::WriteNew(path, {"original"}); d->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("x"));
+            ResetEvent(entered); ResetEvent(release); autosavetest::beforeWrite = Gate;
+            StartWrite(frame, *d); Require(WaitForSingleObject(entered, 5000) == WAIT_OBJECT_0);
+            if (reload) { d->Send(SCI_SETSAVEPOINT); Require(frame.Reload(*d)); }
+            else Require(frame.SaveTo(*d, path));
+            close(d); SetEvent(release); autosavetest::beforeWrite = nullptr; Drain(frame);
+            Require(files::Read(path).utf8 == (reload ? "original" : "captured before savex"));
+            const auto prefix = path.filename().wstring() + L" ";
+            for (const auto& file : std::filesystem::directory_iterator(folder)) Require(!file.path().filename().wstring().starts_with(prefix));
+        }
+
         // A foreground save of the same path waits for an overwrite, then wins.
         d = frame.NewDocument(); d->path = folder / L"overwrite.txt"; d->Load({"captured"});
         files::WriteNew(d->path, {"original"}); d->Send(SCI_APPENDTEXT, 1, reinterpret_cast<LPARAM>("x"));
