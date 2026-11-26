@@ -414,22 +414,43 @@ void MainFrame::Refresh() {
     auto* active = Active();
     plugins.Activated();
     searchDialog.SyncDocument();
-    std::vector<std::pair<UINT_PTR, std::wstring>> currentDocuments;
-    for (int i = 0; i < tabs.GetPageCount(); ++i) {
-        auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
-        auto title = d->Title();
-        currentDocuments.emplace_back(d->searchIdentity, title);
-        if (title != tabs.GetPageTitle(i)) tabs.SetPageTitle(i, title.c_str());
+    const bool structural = publishedStructure != tabStrip.structureRevision;
+    bool titlesChanged = structural;
+    if (structural) {
+        publishedDocuments.clear(); publishedDocuments.reserve(tabs.GetPageCount());
+        for (int i = 0; i < tabs.GetPageCount(); ++i) {
+            auto* d = static_cast<EditorDocument*>(tabs.GetPageData(i));
+            d->publishedTabIndex = static_cast<size_t>(i);
+            publishedDocuments.emplace_back(d->searchIdentity, d->publishedTitle);
+        }
+        publishedStructure = tabStrip.structureRevision;
+    }
+    for (const auto& document : documents) {
+        auto& d = *document;
+        if (d.publishedTabIndex >= publishedDocuments.size() || publishedDocuments[d.publishedTabIndex].first != d.searchIdentity) continue;
+        if (!d.titleDirty && &d != active && d.encodingDirty == d.publishedEncodingDirty &&
+            (!d.FastView() || d.Modified() == d.publishedModified) && d.path == d.publishedPath && d.untitled == d.publishedUntitled) continue;
+        const auto title = d.Title();
+        if (title != d.publishedTitle) {
+            d.publishedTitle = title;
+            publishedDocuments[d.publishedTabIndex].second = title;
+            tabs.SetPageTitle(static_cast<int>(d.publishedTabIndex), title.c_str());
+            titlesChanged = true;
+        }
+        d.publishedPath = d.path; d.publishedUntitled = d.untitled;
+        d.publishedModified = d.Modified(); d.publishedEncodingDirty = d.encodingDirty; d.titleDirty = false;
     }
     const auto currentActive = active ? active->searchIdentity : 0;
     const bool activeChanged = currentActive != publishedActive;
     publishedActive = currentActive;
-    if (currentDocuments != publishedDocuments) {
-        publishedDocuments = std::move(currentDocuments);
+    if (titlesChanged) {
         if (plugins.ready) plugins.Notify(MPN_DOCUMENTSCHANGED);
-    } else if (activeChanged && plugins.ready) {
-        plugins.Notify(MPN_DOCUMENTSCHANGED, currentActive);
-    }
+    } else if (activeChanged && plugins.ready) plugins.Notify(MPN_DOCUMENTSCHANGED, currentActive);
+    UpdateCaption();
+    UpdateStatus(); UpdateMenuCommands(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu()); UpdateCommandUI();
+}
+void MainFrame::UpdateCaption() {
+    auto* active = Active();
     std::wstring title = L"MultiPad4";
     if (!runtime.titleOverride.empty()) title = runtime.titleOverride + L" — MultiPad4";
     else if (active) {
@@ -438,17 +459,21 @@ void MainFrame::Refresh() {
         if (!active->path.empty() && format == 1) name += L" (" + active->path.parent_path().wstring() + L")";
         else if (!active->path.empty() && format == 2) name = (active->Modified() ? L"* " : L"") + active->path.wstring();
         if (settings.Get(IDM_VIEW_SHOWEXCERPT)) {
-            auto length = min<LRESULT>(124, active->Send(SCI_GETLINEENDPOSITION, 0));
-            std::string text(static_cast<size_t>(length) + 1, '\0');
-            active->Send(SCI_GETTEXT, length, reinterpret_cast<LPARAM>(text.data())); text.resize(length);
-            auto boundary = min<size_t>(120, text.size());
-            while (boundary && boundary < text.size() && (static_cast<unsigned char>(text[boundary]) & 0xC0) == 0x80) --boundary;
-            try { name += L" — " + files::FromUtf8(text.substr(0, boundary)); } catch (...) {}
+            if (captionIdentity != active->searchIdentity || captionExcerptRevision != active->excerptRevision) {
+                auto length = min<LRESULT>(124, active->Send(SCI_GETLINEENDPOSITION, 0));
+                std::string text(static_cast<size_t>(length) + 1, '\0');
+                active->Send(SCI_GETTEXT, length, reinterpret_cast<LPARAM>(text.data())); text.resize(length);
+                auto boundary = min<size_t>(120, text.size());
+                while (boundary && boundary < text.size() && (static_cast<unsigned char>(text[boundary]) & 0xC0) == 0x80) --boundary;
+                captionExcerpt.clear();
+                try { captionExcerpt = L" — " + files::FromUtf8(text.substr(0, boundary)); } catch (...) {}
+                captionIdentity = active->searchIdentity; captionExcerptRevision = active->excerptRevision;
+            }
+            name += captionExcerpt;
         }
         title = name + L" — MultiPad4";
     }
-    SetWindowTextW(m_hWnd, title.c_str());
-    UpdateStatus(); UpdateMenuCommands(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu()); UpdateCommandUI();
+    if (title != publishedCaption) { publishedCaption = title; SetWindowTextW(m_hWnd, title.c_str()); }
 }
 void MainFrame::ShowSearch(bool replace) {
     if (searchDialog.hwnd) searchDialog.ReadFields();
@@ -631,8 +656,13 @@ LRESULT MainFrame::OnChanged(UINT, WPARAM lightweight, LPARAM, BOOL&) {
     // One queued update represents all notifications already waiting for this frame.
     while (::PeekMessageW(&message, m_hWnd, WM_DOCUMENT_CHANGED, WM_DOCUMENT_CHANGED, PM_REMOVE))
         lightweight = lightweight && message.wParam;
-    if (!lightweight || settings.Get(IDM_VIEW_SHOWEXCERPT)) Refresh();
-    else { UpdateStatus(); UpdateCommandUI(); }
+    if (!lightweight) Refresh();
+    else {
+        if (settings.Get(IDM_VIEW_SHOWEXCERPT)) {
+            UpdateCaption(); UpdateMenuCommands(*this, runtime.mainMenu ? runtime.mainMenu : GetMenu());
+        }
+        UpdateStatus(); UpdateCommandUI();
+    }
     if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
         SetTimer(3, 30); runtime.workTimerArmed = true;
     }
