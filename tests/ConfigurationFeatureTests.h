@@ -7,9 +7,142 @@
 #include "StyleDialogTests.h"
 #include <source_location>
 #include <fstream>
+#include <chrono>
+#include "../src/LexerDetection.h"
+inline int ReferenceCSVDelimiter(const EditorDocument& d){
+    auto endPos=d.Send(SCI_GETLINECOUNT)>2?d.Send(SCI_POSITIONFROMLINE,2):d.Send(SCI_GETLENGTH);
+    if(endPos<=0)return 0;
+    std::string text(static_cast<size_t>(endPos)+1,'\0');Sci_TextRangeFull range{{0,endPos},text.data()};d.Send(SCI_GETTEXTRANGEFULL,0,reinterpret_cast<LPARAM>(&range));
+    const char* ptr=text.data();
+	int table[32*2]{};
+	int offset = 0;
+	const char * const end = ptr + endPos;
+#if defined(_WIN64)
+	uint64_t maskSet = 0;
+	while (ptr < end) {
+		const uint8_t ch = *ptr++;
+		constexpr uint64_t mask = (1 << '\r') | (1 << '\n') | (1 << '\t') | (UINT64_C(1) << ',') | (UINT64_C(1) << ';');
+		if (ch == '|' || (ch <= ';' && (mask & (UINT64_C(1) << ch)) != 0)) {
+			if (ch == '\r' || ch == '\n') {
+				offset = 32;
+				if (ch == '\r' && *ptr == '\n') {
+					++ptr;
+				}
+			} else {
+				const unsigned index = offset + (ch & 31);
+				maskSet |= UINT64_C(1) << index;
+				table[index] += 1;
+			}
+		}
+	}
+	const uint32_t mask = static_cast<uint32_t>((maskSet & UINT32_MAX) & (maskSet >> 32));
+#else
+	while (ptr < end) {
+		const uint8_t ch = *ptr++;
+		if (ch == ',' || ch == '\t' || ch == ';' || ch == '|') {
+			const unsigned index = offset + (ch & 31);
+			table[index] += 1;
+		} else if (ch == '\r' || ch == '\n') {
+			offset = 32;
+			if (ch == '\r' && *ptr == '\n') {
+				++ptr;
+			}
+		}
+	}
+	uint32_t mask = 0;
+	{
+		uint32_t value = ('\t') | ((',' & 31) << 8) | (('|' & 31) << 16) | ((';' & 31) << 24);
+		while (value) {
+			const int index = value & 0xff;
+			if (table[index] && table[32 + index]) {
+				mask |= 1U << index;
+			}
+			value >>= 8;
+		}
+	}
+#endif // _WIN64
+
+	constexpr uint32_t preferred = ';' | ('|' << 8) | ('\t' << 16) | (',' << 24);
+	uint8_t delimiter = '\0';
+	if (mask != 0) { // delimiter occurs in both row
+		uint32_t value = preferred;
+		int maxColumn = 0;
+		while (value != 0) {
+			const int index = value & 31;
+			if (mask & (1U << index)) {
+				const int first = table[index];
+				const int second = table[32 + index];
+				const int column = std::min(first, second);
+				if (column > maxColumn && column >= 4*abs(first - second)) { // 75%
+					maxColumn = column;
+					delimiter = static_cast<uint8_t>(value & 0xff);
+				}
+			}
+			value >>= 8;
+		}
+	}
+	if (delimiter == 0) {
+		uint32_t value = preferred;
+		int maxColumn = 0;
+		while (value != 0) {
+			const int index = value & 31;
+			const int column = table[index] + table[32 + index];
+			if (column > maxColumn) {
+				maxColumn = column;
+				delimiter = static_cast<uint8_t>(value & 0xff);
+			}
+			value >>= 8;
+		}
+	}
+#if 0
+	watch.Stop();
+	watch.ShowLog(__func__);
+#endif
+	if (delimiter != 0) {
+		return delimiter;
+	}
+
+    return 0;
+}
 inline void RunConfigurationFeatureTests(MainFrame& frame,const std::filesystem::path& directory,const std::filesystem::path& fixture) {
     auto require=[](bool ok,std::source_location location=std::source_location::current()){if(!ok)throw std::runtime_error("Configuration assertion at "+std::to_string(location.line()));};
     std::filesystem::create_directories(directory);
+    {
+        auto probe=frame.NewDocument();require(probe!=nullptr);
+        probe->path=directory/L"cached.cpp";probe->Load({"int value=42;\n"});ConfigureDocumentStyle(*probe);
+        auto owner=probe->style.configuration;auto baseline=LexerDocumentBaseline(*probe);
+        ConfigureDocumentStyle(*probe);require(owner==probe->style.configuration && baseline==LexerDocumentBaseline(*probe));
+        probe->style.fontSize+=1;ConfigureDocumentStyle(*probe);require(owner!=probe->style.configuration);
+        probe->style={};probe->path=L"script.unknown";probe->Load({"#!/usr/bin/python\nprint(42)\n"});ConfigureDocumentStyle(*probe);require(probe->style.languageId=="python");
+        probe->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("#!/bin/bash\necho 42\n"));ConfigureDocumentStyle(*probe);require(probe->style.languageId=="bash");
+        for(const auto& text:std::vector<std::string>{"", "a,b\nc,d", std::string(65535,'a')+"\r\nb;c;d\r\n",std::string(200000,'a')+";b;c\r\n"+std::string(200000,'a')+";b;c"}){
+            probe->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(text.c_str()));
+            const auto expected=ReferenceCSVDelimiter(*probe);
+            require(DetectDocumentCSVDelimiter(*probe)==expected);
+        }
+        // Both modes use the real save path; reset only the cache to measure the old repeated preparation.
+        std::ofstream report(directory/L"save-style-pairs.csv");report<<"case,mode,sample,milliseconds,snapshot_reused\n";
+        for(const auto& name:{L"cached.cpp",L"cached.py",L"cached.html"}){
+            probe->style={};probe->path=directory/name;probe->Load({"value = 42;\n"});ConfigureDocumentStyle(*probe);
+            for(int sample=0;sample<15;++sample)for(bool force:{true,false}){
+                if(force)probe->style.effectiveStyleInputs.reset();
+                auto previous=probe->style.configuration;auto begin=std::chrono::steady_clock::now();
+                require(frame.SaveTo(*probe,probe->path));
+                auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();
+                report<<ConfigurationUtf8(name)<<','<<(force?"rebuild":"cached")<<','<<sample<<','<<ms<<','<<(previous==probe->style.configuration)<<'\n';
+                if(!force)require(previous==probe->style.configuration);
+            }
+            require(frame.SaveTo(*probe,directory/(std::wstring(name)+L".txt")));
+        }
+        probe->style={};probe->path=L"large.csv";
+        probe->Load({std::string(2*1024*1024,'a')+";b;c\r\n"+std::string(2*1024*1024,'a')+";b;c\r\n"});
+        for(int sample=0;sample<15;++sample)for(bool force:{true,false}){
+            auto begin=std::chrono::steady_clock::now();auto delimiter=force?ReferenceCSVDelimiter(*probe):DetectDocumentCSVDelimiter(*probe);
+            auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();require(delimiter==';');
+            report<<"large.csv,"<<(force?"whole-lines":"chunked")<<','<<sample<<','<<ms<<",0\n";
+        }
+        report.close();require(bool(report));probe->Send(SCI_SETSAVEPOINT);
+    }
     auto write=[&](const wchar_t* name,const std::string& data){auto path=directory/name;std::ofstream out(path,std::ios::binary);out<<data;out.close();require(bool(out));return path;};
     auto rejects=[&](const std::string& data){auto path=write(L"invalid.xml",data);try{LoadTheme(path);return false;}catch(const std::exception&){return true;}};
     require(rejects("<!DOCTYPE theme SYSTEM 'file:///nonexistent'><theme version='1'/>"));

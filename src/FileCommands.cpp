@@ -213,12 +213,54 @@ void PrepareFileSave(MainFrame& frame,EditorDocument& document){
     const bool strip=frame.settings.ReadString(L"File Settings",L"StripTrailingBlanks",L"0")==L"1";
     if(!normalize && !strip)return;
     document.Send(SCI_BEGINUNDOACTION);
-    if(strip){auto lines=document.Send(SCI_GETLINECOUNT);for(auto line=lines;line-->0;){auto end=document.Send(SCI_GETLINEENDPOSITION,line),start=document.Send(SCI_POSITIONFROMLINE,line);auto position=end;
-        while(position>start){auto c=document.Send(SCI_GETCHARAT,position-1);if(c!=' '&&c!='\t')break;--position;}
-        if(position!=end){document.Send(SCI_SETTARGETRANGE,position,end);document.Send(SCI_REPLACETARGET,0,reinterpret_cast<LPARAM>(""));}
-    }}
+    struct EndUndo { EditorDocument& document; ~EndUndo() { document.Send(SCI_ENDUNDOACTION); } } endUndo{document};
+    if (strip) {
+        std::vector<std::pair<LRESULT, LRESULT>> runs;
+        const auto length = document.Send(SCI_GETLENGTH);
+        LRESULT trailing = -1;
+        constexpr LRESULT chunkSize = 64 * 1024;
+        const auto lineCount = document.Send(SCI_GETLINECOUNT);
+        // Indexed tails skip long nonblank prefixes and preserve Unicode boundaries.
+        if (document.Send(SCI_GETLINEENDTYPESACTIVE) || length / lineCount > 4096) {
+            for (auto line = document.Send(SCI_GETLINECOUNT); line-- > 0;) {
+                const auto end = document.Send(SCI_GETLINEENDPOSITION, line);
+                const auto start = document.Send(SCI_POSITIONFROMLINE, line);
+                auto position = end;
+                while (position > start) {
+                    const auto base = (std::max)(start, position - chunkSize);
+                    const auto* bytes = reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, base, position - base));
+                    if (!bytes) throw std::runtime_error("Cannot read document for trailing blank removal.");
+                    while (position > base && (bytes[position - base - 1] == ' ' || bytes[position - base - 1] == '\t')) --position;
+                    if (position != base) break;
+                }
+                if (position != end) runs.emplace_back(position, end);
+            }
+            std::reverse(runs.begin(), runs.end());
+        } else {
+            for (LRESULT offset = 0; offset < length;) {
+                const auto count = (std::min)(chunkSize, length - offset);
+                const auto* bytes = reinterpret_cast<const char*>(document.Send(SCI_GETRANGEPOINTER, offset, count));
+                if (!bytes) throw std::runtime_error("Cannot read document for trailing blank removal.");
+                for (LRESULT i = 0; i < count; ++i) {
+                    const auto c = bytes[i];
+                    if (c == ' ' || c == '\t') {
+                        if (trailing < 0) trailing = offset + i;
+                    } else {
+                        if ((c == '\r' || c == '\n') && trailing >= 0) runs.emplace_back(trailing, offset + i);
+                        trailing = -1;
+                    }
+                }
+                offset += count;
+            }
+            if (trailing >= 0) runs.emplace_back(trailing, length);
+        }
+        // All borrowed spans have expired before edits can move the gap.
+        for (auto run = runs.rbegin(); run != runs.rend(); ++run) {
+            document.Send(SCI_SETTARGETRANGE, run->first, run->second);
+            document.Send(SCI_REPLACETARGET, 0, reinterpret_cast<LPARAM>(""));
+        }
+    }
     if(normalize)document.Send(SCI_CONVERTEOLS,document.Send(SCI_GETEOLMODE));
-    document.Send(SCI_ENDUNDOACTION);
 }
 namespace {
 struct EolWarning { EditorDocument& document; size_t crlf=0,cr=0,lf=0; bool always=true; };
