@@ -264,7 +264,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (commentTest || commentBenchmark) { RunCommentTests(frame, commentBenchmark); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
-                else if(printingSeparatorTest){RunPrintingSeparatorTests(args[2]);}
+                else if(printingSeparatorTest){RunPrintingSeparatorTests(frame,args[2]);}
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}
                 else if(themeReport){RunThemeValidationReport(frame,args[2],args[3]);}
                 else if (replacementTest) { RunSearchDialogFeatureTests(frame); }

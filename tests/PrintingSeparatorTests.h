@@ -2,7 +2,7 @@
 #include "../src/Printing.h"
 #include <chrono>
 #include <fstream>
-inline void RunPrintingSeparatorTests(const std::filesystem::path& directory) {
+inline void RunPrintingSeparatorTests(MainFrame& frame,const std::filesystem::path& directory) {
     auto require=[](bool ok){if(!ok)throw std::runtime_error("Printing separator assertion");};
     auto before=[](HDC dc,int left,int right,int y){auto pen=CreatePen(PS_SOLID,1,RGB(0,0,0));auto old=SelectObject(dc,pen);MoveToEx(dc,left,y,nullptr);LineTo(dc,right,y);SelectObject(dc,old);DeleteObject(pen);};
     HDC dc=CreateCompatibleDC(nullptr);require(dc!=nullptr);
@@ -28,4 +28,19 @@ inline void RunPrintingSeparatorTests(const std::filesystem::path& directory) {
     }
     require(GetGuiResources(GetCurrentProcess(),GR_GDIOBJECTS)==objects);
     report.close();require(bool(report));SelectObject(dc,oldPen);DeleteObject(red);SelectObject(dc,oldBitmap);DeleteObject(bitmap);DeleteDC(dc);
+    if(GetEnvironmentVariableW(L"MULTIPAD4_PRINT_DRIVER_TEST",nullptr,0)){
+        auto document=frame.NewDocument();require(document!=nullptr);document->path=L"print-job.txt";
+        std::string text;for(int line=0;line<2000;++line)text+="Line "+std::to_string(line)+" printing body verification\r\n";document->Load({text});
+        AppSettings settings;settings.Initialize(true);settings.WriteString(L"Print",L"Header",L"2");settings.WriteString(L"Print",L"Footer",L"0");
+        std::ofstream jobs(directory/L"print-driver-pairs.csv");jobs<<"mode,range,sample,milliseconds,pages,pens\n";
+        for(int sample=0;sample<3;++sample)for(bool baseline:{true,false})for(bool subset:{false,true}){
+            PrintJobTest job;job.baseline=baseline;job.from=subset?2:1;job.to=subset?3:0xffff;
+            job.output=std::filesystem::absolute(directory/(std::wstring(baseline?L"before":L"after")+(subset?L"-range-":L"-all-")+std::to_wstring(sample)+L".pdf"));
+            std::filesystem::remove(job.output);auto begin=std::chrono::steady_clock::now();require(PrintDocumentForTest(frame,*document,&settings,job));
+            jobs<<(baseline?"before":"after")<<','<<(subset?"2-3":"all")<<','<<sample<<','<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count()<<','<<job.pages<<','<<job.pens<<'\n';
+            require(job.pages==(subset?2:job.pages)&&job.pages>0&&job.pens==(baseline?job.pages*2:0));require(std::filesystem::file_size(job.output)>0);
+        }
+        jobs.close();require(bool(jobs));document->Send(SCI_SETSAVEPOINT);
+    }
+
 }
