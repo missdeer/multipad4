@@ -2,6 +2,14 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
+#include <vector>
+#include <unordered_map>
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+namespace tabTesting {
+inline bool baseline = false, measure = false, failUpdateRegion = false;
+inline size_t rectangles = 0, draws = 0;
+}
+#endif
 
 class DocumentTabStrip {
 public:
@@ -14,6 +22,7 @@ public:
     int GetItemCount() const;
     int GetCurSel() const;
     HWND ChildAt(int index) const;
+    int IndexOf(HWND child) const;
     bool Insert(HWND child, const wchar_t* title);
     void Remove(int index);
     void SetTitle(int index, const wchar_t* title);
@@ -43,6 +52,8 @@ private:
     std::wstring NativeTitle(std::wstring title) const;
     RECT TabViewport() const;
     RECT TabCloseRect(int index, const RECT& viewport) const;
+    RECT TabCloseRect(const RECT& tab, const RECT& viewport) const;
+    void InvalidateCloses(HWND oldChild, HWND newChild = nullptr) const;
     HWND TabCloseAt(POINT point) const;
     void PaintTabCloses(HDC dc) const;
     int HitTest(POINT point) const;
@@ -52,6 +63,8 @@ private:
     std::wstring tooltip;
     int titlePoints = 0, fixedTabWidth = 0, dragIndex = -1;
     POINT dragOrigin{};
+    std::vector<HWND> order;
+    std::unordered_map<HWND, int> positions;
     HWND pressedClose = nullptr, hotClose = nullptr;
     bool dragging = false;
 };

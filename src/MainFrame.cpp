@@ -88,6 +88,13 @@ LRESULT MainFrame::Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
     case WM_DOCK_LAYOUT: return OnDockLayout(message, w, l, handled);
     case WM_INITMENUPOPUP: return OnMenu(message, w, l, handled);
     case WM_DPICHANGED: return OnDpi(message, w, l, handled);
+    case WM_SETTINGCHANGE:
+        statusLocaleValid = false; statusFormatValid = false; statusValuesValid = 0;
+        [[fallthrough]];
+    case WM_FONTCHANGE:
+    case WM_THEMECHANGED:
+        lineNumberValid = false; statusMeasureInvalid = true;
+        PostMessage(WM_DOCUMENT_CHANGED, 1); handled = FALSE; return 0;
     case WM_SIZE: return OnSize(message, w, l, handled);
     case WM_NOTIFY: return OnNotify(message, w, l, handled);
     case WM_TIMER: return OnTimer(message, w, l, handled);
@@ -720,5 +727,7 @@ LRESULT MainFrame::OnDpi(UINT, WPARAM, LPARAM l, BOOL&) {
     for (auto& child : tabs.children) child->UpdateFileIcon();
     tabStrip.UpdateImages();
     UpdateToolbarImages(*this);
+    // Child controls apply their DPI after the parent notification returns.
+    lineNumberValid = false; statusMeasureInvalid = true; PostMessage(WM_DOCUMENT_CHANGED, 1);
     return 0;
 }
