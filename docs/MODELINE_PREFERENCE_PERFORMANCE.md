@@ -88,3 +88,8 @@ All 42 variant rows passed exact state comparisons; the process exited zero in
 Test hooks/oracles and CLI entries are excluded with BUILD_TESTING=OFF. Physical
 keyboard/IME and mixed-monitor DPI behavior were not manually exercised; this
 change has no intended visual layout effect.
+
+After normally integrating master 57a2133, the wrapper build and modeline,
+private-clipboard rich-text and both inventory component checks passed 4/4
+in 30.33 s. Both test modes and the pre-COM/HWND clipboard isolation guard
+are preserved; the unchanged 42-row preference measurements were not repeated.
