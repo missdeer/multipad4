@@ -5,7 +5,19 @@
 #include <cwctype>
 #include <stdexcept>
 #include <chrono>
+#include <imm.h>
 namespace {
+LRESULT CALLBACK CompletionWindowProc(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data) {
+    auto& document=*reinterpret_cast<EditorDocument*>(data);
+    if(message==WM_KILLFOCUS || message==WM_IME_STARTCOMPOSITION || message==SCI_CANCEL ||
+        (message==WM_KEYDOWN && w==VK_ESCAPE)){document.style.completionPending=false;++document.completionEpoch;}
+    if(message==WM_IME_STARTCOMPOSITION)document.completionComposing=true;
+    if(message==WM_IME_CHAR || (message==WM_IME_COMPOSITION && (l&GCS_RESULTSTR)))document.completionComposing=false;
+    if(message==WM_IME_COMPOSITION && (l&GCS_COMPSTR))document.completionComposing=true;
+    if(message==WM_IME_ENDCOMPOSITION)document.completionComposing=false;
+    if(message==WM_NCDESTROY)RemoveWindowSubclass(window,CompletionWindowProc,id);
+    return DefSubclassProc(window,message,w,l);
+}
 using LoadClock = std::chrono::steady_clock;
 double LoadElapsed(LoadClock::time_point start) { return std::chrono::duration<double, std::milli>(LoadClock::now() - start).count(); }
 }
@@ -102,6 +114,7 @@ bool EditorDocument::Create(HWND parent) {
     hwnd = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         0, 0, 0, 0, parent, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!hwnd) return false;
+    if(!SetWindowSubclass(hwnd,CompletionWindowProc,1,reinterpret_cast<DWORD_PTR>(this))){DestroyWindow(hwnd);hwnd=nullptr;return false;}
     directFunction = reinterpret_cast<SciFnDirect>(::SendMessageW(hwnd, SCI_GETDIRECTFUNCTION, 0, 0));
     directPointer = ::SendMessageW(hwnd, SCI_GETDIRECTPOINTER, 0, 0);
     editorThread = GetCurrentThreadId();

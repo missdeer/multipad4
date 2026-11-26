@@ -3,8 +3,16 @@
 #include <map>
 #include <cstdint>
 #include <memory>
+#include <vector>
 struct ConfigurationSnapshot;
 struct ThemeDefinition;
+struct LanguageDefinition;
+struct CompletionKeywordCache {
+    std::weak_ptr<const ConfigurationSnapshot> configuration;
+    const LanguageDefinition* lexer = nullptr;
+    int dialect = 0;
+    std::map<std::string, std::vector<std::string>, std::less<>> words;
+};
 struct DocumentStyleState {
     std::shared_ptr<const ConfigurationSnapshot> configuration;
     std::shared_ptr<const ThemeDefinition> theme;
@@ -52,5 +60,14 @@ struct DocumentStyleState {
     size_t occurrences = 0;
     int occurrenceFlags = 0;
     bool occurrencePending = false;
+    bool completionPending = false;
+    uint64_t completionEpoch = 0;
+    intptr_t completionStart = 0, completionPosition = 0;
+    uint64_t completionRevision = 0;
+    std::weak_ptr<const ConfigurationSnapshot> completionConfiguration;
+    const LanguageDefinition* completionLexer = nullptr;
+    int completionDialect = 0;
+    std::weak_ptr<const ThemeDefinition> completionTheme;
+    std::shared_ptr<CompletionKeywordCache> completionKeywords;
     std::map<unsigned, std::wstring> overrides;
 };

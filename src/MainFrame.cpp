@@ -78,6 +78,10 @@ LRESULT MainFrame::Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
     case WM_DESTROY: return OnDestroy(message, w, l, handled);
     case WM_DROPFILES: return OnDrop(message, w, l, handled);
     case WM_DOCUMENT_CHANGED: return OnChanged(message, w, l, handled);
+    case WM_COMPLETION_CONTINUE:
+        if (IsWindowEnabled() && !runtime.operationDepth && !runtime.inBackgroundWork && !CompletionInputPending())
+            if (auto* d = Active(); d && d->style.completionPending) ProcessStyleBackground(*d, 1, true);
+        return 0;
     case WM_CLOSE_TAB: return OnCloseTab(message, w, l, handled);
     case WM_TAB_CONTEXT: return OnTabContextMenu(message, w, l, handled);
     case WM_TAB_ACTIVATED: return OnTabActivated(message, w, l, handled);
@@ -663,7 +667,7 @@ LRESULT MainFrame::OnChanged(UINT, WPARAM lightweight, LPARAM, BOOL&) {
         }
         UpdateStatus(); UpdateCommandUI();
     }
-    if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
+    if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending || d->style.completionPending; })) {
         SetTimer(3, 30); runtime.workTimerArmed = true;
     }
     return 0;

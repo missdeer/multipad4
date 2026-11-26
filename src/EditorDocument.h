@@ -66,6 +66,8 @@ struct EditorDocument {
     std::wstring language = L"Text";
     SearchState search;
     DocumentStyleState style;
+    uint64_t completionEpoch = 0;
+    bool completionComposing = false;
     DocumentRuntime runtime;
     StatusStatistics statusStatistics;
     FileVariableState fileVariables;

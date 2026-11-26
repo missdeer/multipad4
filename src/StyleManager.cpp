@@ -433,8 +433,19 @@ void ToggleFoldLevels(EditorDocument& d,int wanted,bool defaults){
     }
     d.Send(SCI_SCROLLCARET);
 }
+bool LongCompletionLine(EditorDocument& d,LRESULT position) {
+    return d.Send(SCI_LINELENGTH,d.Send(SCI_LINEFROMPOSITION,position))>64*1024;
+}
+void QueueCompletion(EditorDocument& d) {
+    if(CompletionInputPending())return;
+    const auto owner=GetAncestor(d.hwnd,GA_ROOT);MSG queued{};
+    if(!PeekMessageW(&queued,owner,WM_COMPLETION_CONTINUE,WM_COMPLETION_CONTINUE,PM_NOREMOVE))
+        PostMessageW(owner,WM_COMPLETION_CONTINUE,0,0);
+}
 void Complete(EditorDocument& d,bool autoInsert=false) {
     if (d.Send(SCI_GETREADONLY) || d.Send(SCI_AUTOCACTIVE)) return;
+    const auto requestRevision=d.style.revision,requestEpoch=d.completionEpoch;
+    const auto requestConfiguration=d.style.configuration;const auto requestTheme=d.style.theme;const auto requestDialect=d.style.resolvedDialect;
     auto position=d.Send(SCI_GETCURRENTPOS), start=position;
     auto& lexer=*GetDocumentLexer(d);const auto& cache=GetCompletionCache(lexer);
     const auto lineStart=d.Send(SCI_POSITIONFROMLINE,d.Send(SCI_LINEFROMPOSITION,position));
@@ -445,15 +456,25 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
         else {auto end=d.Send(SCI_WORDENDPOSITION,before,TRUE);if(end==start)break;}
     }while(start>lineStart);
     int minimum=CompletionOption(d,IDC_AUTOC_MIN_WORD_LENGTH,1);
-    if(position-start<minimum) return;
+    if(position-start<minimum || (!autoInsert && position-start>124)) { d.style.completionPending=false; return; }
     if(CompletionOption(d,IDC_AUTOC_ENGLISH_IME_ONLY,0)){
         auto context=ImmGetContext(d.hwnd);DWORD conversion=0,sentence=0;
         bool native=context && ImmGetOpenStatus(context) && ImmGetConversionStatus(context,&conversion,&sentence) && (conversion&IME_CMODE_NATIVE);
         if(context)ImmReleaseContext(d.hwnd,context);if(native)return;
     }
     auto prefix=Range(d,start,position);
-    if (!autoInsert && prefix.size() > 124) return;
-    auto styled=d.Send(SCI_GETENDSTYLED);if(styled<position)d.Send(SCI_COLOURISE,styled,position);
+    auto styled=d.Send(SCI_GETENDSTYLED);
+    const bool continuePending=d.style.completionPending && d.style.completionStart==start;
+    if (!autoInsert && styled<position && (continuePending || position-styled>64*1024 || LongCompletionLine(d,styled) || LongCompletionLine(d,position))) {
+        auto& state=d.style;
+        if (GetFocus()!=d.hwnd || d.completionComposing) { state.completionPending=false; return; }
+        state.completionPending=true; state.completionStart=start; state.completionPosition=position;
+        state.completionRevision=state.revision; state.completionConfiguration=state.configuration; state.completionLexer=&lexer;
+        state.completionDialect=state.resolvedDialect; state.completionTheme=state.theme; state.completionEpoch=d.completionEpoch;
+        PostMessageW(GetAncestor(d.hwnd,GA_ROOT),WM_DOCUMENT_CHANGED,1,0);QueueCompletion(d);return;
+    }
+    d.style.completionPending=false;
+    if(styled<position)d.Send(SCI_COLOURISE,styled,position);
     const bool rootNumber=!prefix.empty() && isdigit(static_cast<unsigned char>(prefix[0]));
     const bool ignoreLexer=CompletionOption(d,IDC_AUTOC_ONLY_DOCUMENT_WORDS,0)!=0 || rootNumber;
     const bool ignoreCase=ignoreLexer || d.style.completionIgnoreCase;
@@ -463,18 +484,31 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
     if(category==2 && !CompletionOption(d,IDC_AUTO_COMPLETE_INSIDE_STRING))return;
     if((lexer.iLexer==SCLEX_NULL || category==3) && !CompletionOption(d,IDC_AUTO_COMPLETE_INSIDE_PLAINTEXT))return;
     if(rootNumber){int minimumNumber=CompletionOption(d,IDC_AUTOC_MIN_NUMBER_LENGTH,3);if(minimumNumber<=0)return;if(prefix.size()>1 && prefix[0]=='0' && (tolower(static_cast<unsigned char>(prefix[1]))=='x' || tolower(static_cast<unsigned char>(prefix[1]))=='b' || tolower(static_cast<unsigned char>(prefix[1]))=='o'))minimumNumber+=2;if(prefix.size()<static_cast<size_t>(minimumNumber))return;}
-    auto accept=[&](std::string word) {
+    auto accept=[&](const std::string& word) {
         if(word.size()<prefix.size()) return;
         bool matches=true;
         for(size_t i=0;i<prefix.size();++i) if(ignoreCase ? tolower(static_cast<unsigned char>(prefix[i]))!=tolower(static_cast<unsigned char>(word[i])) : prefix[i]!=word[i]) {matches=false;break;}
         if(matches && word.find_first_of("\r\n\t")==std::string::npos){
             if(ignoreCase){auto folded=word;for(auto& ch:folded)if(static_cast<unsigned char>(ch)<128)ch=static_cast<char>(tolower(static_cast<unsigned char>(ch)));if(!foldedWords.insert(std::move(folded)).second)return;}
-            words.insert(std::move(word));
+            words.insert(word);
         }
     };
+    auto& state=d.style;
+    const auto keywordOwner=state.configuration?state.configuration:CurrentConfiguration();
+    if(!state.completionKeywords || state.completionKeywords->configuration.lock()!=keywordOwner || state.completionKeywords->lexer!=&lexer || state.completionKeywords->dialect!=state.resolvedDialect){
+        state.completionKeywords=std::make_shared<CompletionKeywordCache>(); state.completionKeywords->configuration=keywordOwner;
+        state.completionKeywords->lexer=&lexer; state.completionKeywords->dialect=state.resolvedDialect;
+    }
+    auto& parsedKeywords=state.completionKeywords->words;
     auto addKeywordList=[&](const char* list){
-        if(!list)return;std::istringstream stream(list);std::string word;
-        while(stream>>word){for(auto& ch:word)if(ch=='^')ch=' ';auto open=word.find('(');if(open!=std::string::npos){word.resize(open+1);word+=')';}accept(word);}
+        if(!list)return;
+        auto found=parsedKeywords.find(std::string_view(list));
+        if(found==parsedKeywords.end()){
+            std::istringstream stream(list);std::string word;std::vector<std::string> parsed;
+            while(stream>>word){for(auto& ch:word)if(ch=='^')ch=' ';auto open=word.find('(');if(open!=std::string::npos){word.resize(open+1);word+=')';}parsed.push_back(word);}
+            found=parsedKeywords.emplace(std::string(list),std::move(parsed)).first;
+        }
+        for(const auto& word:found->second)accept(word);
     };
     auto addLexer=[&](const LanguageDefinition& source){for(unsigned i=0;i<min<unsigned>(source.keywordCount,16);++i)if(!((source.keywordAttr>>(i*4))&KeywordAttr_NoAutoComp))addKeywordList(source.pszKeyWords[i]);};
     int contextResult=0;char documentPrefix=0;
@@ -522,6 +556,8 @@ void Complete(EditorDocument& d,bool autoInsert=false) {
         }
     }
     std::string list; for(const auto& word:words) {if(!list.empty())list+='\n';list+=word;}
+    if(!autoInsert && (d.style.revision!=requestRevision || d.completionEpoch!=requestEpoch || d.Send(SCI_GETCURRENTPOS)!=position || GetFocus()!=d.hwnd || d.completionComposing ||
+        d.style.configuration!=requestConfiguration || d.style.theme!=requestTheme || d.style.resolvedDialect!=requestDialect || d.Send(SCI_GETSELECTIONS)!=1))return;
     if(!list.empty() && !(words.size()==1 && words.begin()->size()==prefix.size())) {d.Send(SCI_AUTOCSETSEPARATOR,'\n');d.Send(SCI_AUTOCSETIGNORECASE,ignoreCase);d.Send(SCI_AUTOCSETORDER,SC_ORDER_PERFORMSORT);d.Send(SCI_AUTOCSETCHOOSESINGLE,autoInsert);d.Send(SCI_AUTOCSHOW,prefix.size(),reinterpret_cast<LPARAM>(list.c_str()));}
 }
 }
@@ -572,6 +608,7 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     for(const auto& [id,value]:snapshot->semanticStyles){hash(ConfigurationWide(id));hash(value);}
     hash(d.style.font+d.style.codeFont+d.style.textFont+std::to_wstring(d.style.fontSize)+std::to_wstring(d.style.codeFontSize)+std::to_wstring(d.style.textFontSize)+std::to_wstring(d.style.fontKind));
     // All validation and merging precedes publication and editor mutations.
+    d.style.completionPending=false;d.style.completionKeywords.reset();
     d.style.configuration=std::move(snapshot);d.style.resolvedScheme=selected;
     for(unsigned element:{SC_ELEMENT_SELECTION_TEXT,SC_ELEMENT_SELECTION_ADDITIONAL_TEXT,SC_ELEMENT_CARET_ADDITIONAL,SC_ELEMENT_WHITE_SPACE_BACK})d.Send(SCI_RESETELEMENTCOLOUR,element);
     auto& lexer=*d.style.configuration->catalog[selected];
@@ -918,6 +955,7 @@ bool ExecuteStyleCommand(HWND owner,EditorDocument& d,UINT id) {
 }
 void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
     try {
+    if(n.nmhdr.code==SCN_FOCUSOUT){d.style.completionPending=false;++d.completionEpoch;return;}
     if(n.nmhdr.code==SCN_ZOOM){HighlightCurrentLine(d);return;}
     if(n.nmhdr.code==SCN_MODIFIED && (n.modificationType&(SC_MOD_INSERTTEXT|SC_MOD_DELETETEXT))){
         ++d.style.revision;
@@ -997,6 +1035,7 @@ void HandleStyleNotification(EditorDocument& d,const SCNotification& n) {
         static thread_local bool updating=false;if(updating)return;updating=true;
         struct Reset {bool& value;~Reset(){value=false;}}reset{updating};
         auto pos=d.Send(SCI_GETCURRENTPOS);
+        if(d.style.completionPending && (pos!=d.style.completionPosition || GetFocus()!=d.hwnd))d.style.completionPending=false;
         if(d.style.matchBraces){auto brace=pos,match=d.Send(SCI_BRACEMATCH,brace,0);if(match<0&&pos){brace=pos-1;match=d.Send(SCI_BRACEMATCH,brace,0);}d.Send(SCI_BRACEHIGHLIGHT,static_cast<WPARAM>(match<0?-1:brace),match);}
         if(d.style.highlightBlock){
             d.Send(SCI_SETINDICATORCURRENT,11);d.Send(SCI_INDICATORCLEARRANGE,0,d.Send(SCI_GETLENGTH));d.Send(SCI_INDICSETSTYLE,11,INDIC_STRAIGHTBOX);d.Send(SCI_INDICSETFORE,11,RGB(80,120,200));d.Send(SCI_INDICSETALPHA,11,12);
@@ -1072,10 +1111,47 @@ void DetectDocumentIndentation(EditorDocument& d){
     }
 }
 
-void ProcessStyleBackground(EditorDocument& d, unsigned budgetMilliseconds){
-    if (d.LargeFile()) return;
-    static thread_local bool processing=false;if(processing || !d.style.occurrencePending)return;processing=true;struct ResetProcessing{bool& value;~ResetProcessing(){value=false;}}resetProcessing{processing};
-    if(d.style.revision!=d.style.occurrenceRevision){d.style.occurrencePending=false;return;}
+bool CompletionInputPending(){
+    MSG input{};
+    return (GetQueueStatus(QS_INPUT)&0xffff0000) || PeekMessageW(&input,nullptr,WM_KEYFIRST,WM_KEYLAST,PM_NOREMOVE);
+}
+void ProcessStyleBackground(EditorDocument& d, unsigned budgetMilliseconds, bool allowLongLine){
+    if (d.LargeFile() || !budgetMilliseconds) return;
+    static thread_local bool processing=false;if(processing || (!d.style.occurrencePending && !d.style.completionPending))return;processing=true;struct ResetProcessing{bool& value;~ResetProcessing(){value=false;}}resetProcessing{processing};
+    auto validCompletion=[&]{return d.style.completionPending && d.style.completion && !d.completionComposing && !d.Send(SCI_GETREADONLY) && d.Send(SCI_GETSELECTIONS)==1 && GetFocus()==d.hwnd &&
+        d.completionEpoch==d.style.completionEpoch && d.style.revision==d.style.completionRevision && !d.style.completionConfiguration.owner_before(d.style.configuration) && !d.style.configuration.owner_before(d.style.completionConfiguration) && GetDocumentLexer(d)==d.style.completionLexer && d.style.resolvedDialect==d.style.completionDialect && !d.style.completionTheme.owner_before(d.style.theme) && !d.style.theme.owner_before(d.style.completionTheme) &&
+        d.Send(SCI_GETCURRENTPOS)==d.style.completionPosition && d.Send(SCI_WORDSTARTPOSITION,d.style.completionPosition,TRUE)>=d.style.completionStart;};
+    if(d.style.completionPending){
+        if(!validCompletion())d.style.completionPending=false;
+        else{
+            const auto position=d.style.completionPosition,styled=d.Send(SCI_GETENDSTYLED);
+            const auto slice=static_cast<LRESULT>((std::min)(budgetMilliseconds,16u))*4096;
+            if(styled<position){
+                // shortcut: long-line lexing is indivisible; use an interruptible lexer for a hard callback deadline.
+                if(LongCompletionLine(d,styled) && !allowLongLine){QueueCompletion(d);return;}
+                auto end=(std::min)(position,styled+slice);
+                if(LongCompletionLine(d,styled))end=d.Send(SCI_GETLINEENDPOSITION,d.Send(SCI_LINEFROMPOSITION,styled));
+                else if(LongCompletionLine(d,end)){
+                    const auto line=d.Send(SCI_LINEFROMPOSITION,end);
+                    end=d.Send(SCI_POSITIONFROMLINE,line)-1;
+                    // Include an empty preceding line's LF so the next slice can reach the long line.
+                    end=(std::max)(end,styled+1);
+                }
+                d.Send(SCI_COLOURISE,styled,end);
+            }
+            if(validCompletion() && d.Send(SCI_GETENDSTYLED)>=position){
+                d.style.completionPending=false;
+                try{Complete(d);}catch(const std::exception& error){
+                    d.Send(SCI_AUTOCCANCEL);d.Send(SCI_CALLTIPCANCEL);
+                    OutputDebugStringA("MultiPad4 completion failed: ");OutputDebugStringA(error.what());OutputDebugStringA("\n");MessageBeep(MB_ICONERROR);
+                }
+            }
+            if(d.style.completionPending)QueueCompletion(d);
+            return;
+        }
+    }
+    if(d.style.revision!=d.style.occurrenceRevision)d.style.occurrencePending=false;
+    if(!d.style.occurrencePending)return;
     const auto originalIndicator=d.Send(SCI_GETINDICATORCURRENT),originalStart=d.Send(SCI_GETTARGETSTART),originalEnd=d.Send(SCI_GETTARGETEND),originalFlags=d.Send(SCI_GETSEARCHFLAGS);
     struct Restore{EditorDocument& d;LRESULT indicator,start,end,flags;~Restore(){d.Send(SCI_SETINDICATORCURRENT,indicator);d.Send(SCI_SETTARGETRANGE,start,end);d.Send(SCI_SETSEARCHFLAGS,flags);}}restore{d,originalIndicator,originalStart,originalEnd,originalFlags};
     auto& state=d.style;const auto length=d.Send(SCI_GETLENGTH);const auto tick=std::chrono::steady_clock::now();

@@ -673,7 +673,7 @@ const CompletionCache& GetCompletionCache(const LanguageDefinition& lexer){
     struct Entry { uint64_t version=0; CompletionCache cache; };
     static std::map<std::string,Entry> caches;
     auto& entry=caches[lexer.id];
-    if(entry.version!=lexer.rulesVersion){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}
+    if(entry.version!=lexer.rulesVersion || entry.cache.owner.get()!=&lexer){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}
     return entry.cache;
 #endif
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "MainFrame.h"
 #include "../tests/ResultPageTests.h"
+#include "../tests/CompletionBudgetTests.h"
 #include "FileAssociations.h"
 #include <stdexcept>
 #include <source_location>
@@ -109,6 +110,7 @@ inline void RunSmokeTest(MainFrame& frame) {
         RunEditorFeatureTests(*featureDocument);
         RunEditDialogTests(*featureDocument);
         RunStyleFeatureTests(*featureDocument);
+        RunCompletionBudgetTests(frame);
         RunStyleDialogTests(frame, *featureDocument);
         require(frame.Close(frame.tabs.GetActivePage()));
         RunFileCommandSmokeTest(frame);

@@ -425,7 +425,9 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
     }
     case CMD_OPENINIFILE: SaveFramePreferences(frame); frame.settings.Save(); frame.Open(frame.settings.path); break;
     case CMD_ESCAPE:
-        if (auto* d = frame.Active(); d && d->Send(SCI_AUTOCACTIVE)) d->Send(SCI_AUTOCCANCEL);
+        if (auto* d = frame.Active(); d && (d->style.completionPending || d->Send(SCI_AUTOCACTIVE))) {
+            d->style.completionPending=false;++d->completionEpoch;d->Send(SCI_AUTOCCANCEL);
+        }
         else if (d && d->Send(SCI_CALLTIPACTIVE)) d->Send(SCI_CALLTIPCANCEL);
         else if (frame.runtime.fullScreen) ToggleFullscreen(frame);
         else if (frame.settings.Get(IDM_VIEW_NOESCFUNC) == 1) frame.ShowWindow(SW_MINIMIZE);

@@ -172,13 +172,13 @@ LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
         PumpDocumentBackup(*this);
         auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(4);
         // The first slice favors the active buffer; the rest rotates fairly.
-        if (auto* d = Active(); d && d->style.occurrencePending) ProcessStyleBackground(*d, 1);
+        if (auto* d = Active(); d && (d->style.occurrencePending || d->style.completionPending)) ProcessStyleBackground(*d, 1);
         for (size_t visited = 0; visited < documents.size() && std::chrono::steady_clock::now() < deadline; ++visited) {
             auto& d = *documents[runtime.styleCursor++ % documents.size()];
-            if (d.style.occurrencePending) ProcessStyleBackground(d, 1);
+            if (d.style.occurrencePending || d.style.completionPending) ProcessStyleBackground(d, 1);
         }
         if (activeDocument && (before != activeDocument->style.occurrences || wasPending != activeDocument->style.occurrencePending)) UpdateStatus();
-        if (!runtime.autoSaveTask && !std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
+        if (!runtime.autoSaveTask && !std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending || d->style.completionPending; })) {
             KillTimer(3); runtime.workTimerArmed = false;
         }
         return 0;
@@ -193,6 +193,7 @@ LRESULT MainFrame::OnTimer(UINT, WPARAM id, LPARAM, BOOL& handled) {
     return 0;
 }
 LRESULT MainFrame::OnActivateApp(UINT, WPARAM active, LPARAM, BOOL& handled) {
+    if(!active)for(auto& document:documents){document->style.completionPending=false;++document->completionEpoch;}
     SetFrameTransparency(*this, active != 0); if (active) { TickBackgroundWork(*this); CheckExternalChanges(*this); }
     handled = FALSE; return 0;
 }
