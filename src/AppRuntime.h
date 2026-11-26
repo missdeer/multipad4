@@ -43,6 +43,8 @@ struct FrameRuntime {
     int restoredShowCmd = SW_SHOWNORMAL;
     size_t styleCursor = 0;
     std::shared_ptr<AutoSaveTask> autoSaveTask;
+    std::vector<std::shared_ptr<AutoSaveTask>> autoSaveWrites;
+    size_t autoSaveCursor = 0;
     bool workTimerArmed = false;
 };
 struct FrameOperation {
