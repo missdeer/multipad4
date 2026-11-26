@@ -3633,121 +3633,121 @@
       "path": "src/CompletionIndent.cpp",
       "references": [
         {
-          "line": 23,
+          "line": 59,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 42,
+          "line": 78,
           "symbols": [
             "NP2LEX_AUTOIT3"
           ]
         },
         {
-          "line": 43,
+          "line": 79,
           "symbols": [
             "NP2LEX_BASH"
           ]
         },
         {
-          "line": 69,
+          "line": 105,
           "symbols": [
             "NP2LEX_CMAKE"
           ]
         },
         {
-          "line": 87,
+          "line": 123,
           "symbols": [
             "NP2LEX_CPP"
           ]
         },
         {
-          "line": 88,
+          "line": 124,
           "symbols": [
             "NP2LEX_RESOURCESCRIPT"
           ]
         },
         {
-          "line": 90,
+          "line": 126,
           "symbols": [
             "NP2LEX_INNOSETUP"
           ]
         },
         {
-          "line": 92,
+          "line": 128,
           "symbols": [
             "NP2LEX_JULIA"
           ]
         },
         {
-          "line": 101,
+          "line": 137,
           "symbols": [
             "NP2LEX_LUA"
           ]
         },
         {
-          "line": 108,
+          "line": 144,
           "symbols": [
             "NP2LEX_MAKEFILE"
           ]
         },
         {
-          "line": 120,
+          "line": 156,
           "symbols": [
             "NP2LEX_MATLAB"
           ]
         },
         {
-          "line": 145,
+          "line": 181,
           "symbols": [
             "NP2LEX_NSIS"
           ]
         },
         {
-          "line": 146,
+          "line": 182,
           "symbols": [
             "NP2LEX_PASCAL"
           ]
         },
         {
-          "line": 147,
+          "line": 183,
           "symbols": [
             "NP2LEX_RUBY"
           ]
         },
         {
-          "line": 154,
+          "line": 190,
           "symbols": [
             "NP2LEX_SQL"
           ]
         },
         {
-          "line": 185,
+          "line": 221,
           "symbols": [
             "NP2LEX_VISUALBASIC"
           ]
         },
         {
-          "line": 186,
+          "line": 222,
           "symbols": [
             "NP2LEX_VBSCRIPT"
           ]
         },
         {
-          "line": 187,
+          "line": 223,
           "symbols": [
             "NP2LEX_VERILOG"
           ]
         },
         {
-          "line": 188,
+          "line": 224,
           "symbols": [
             "NP2LEX_VHDL"
           ]
         },
         {
-          "line": 194,
+          "line": 230,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -5161,26 +5161,26 @@
           ]
         },
         {
-          "line": 439,
+          "line": 450,
           "symbols": [
             "GetCompletionCache",
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 479,
+          "line": 513,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 503,
+          "line": 537,
           "symbols": [
             "NP2LEX_TYPESCRIPT"
           ]
         },
         {
-          "line": 529,
+          "line": 565,
           "symbols": [
             "GetDocumentLexer",
             "LanguageDefinition",
@@ -5188,20 +5188,20 @@
           ]
         },
         {
-          "line": 530,
+          "line": 566,
           "symbols": [
             "LanguageCatalog",
             "LanguageDefinition"
           ]
         },
         {
-          "line": 538,
+          "line": 574,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 563,
+          "line": 599,
           "symbols": [
             "NP2LEX_HTML",
             "NP2LEX_MARKDOWN",
@@ -5210,37 +5210,37 @@
           ]
         },
         {
-          "line": 581,
+          "line": 618,
           "symbols": [
             "NP2LEX_CPP"
           ]
         },
         {
-          "line": 582,
+          "line": 619,
           "symbols": [
             "NP2LEX_PYTHON"
           ]
         },
         {
-          "line": 583,
+          "line": 620,
           "symbols": [
             "NP2LEX_JSON"
           ]
         },
         {
-          "line": 584,
+          "line": 621,
           "symbols": [
             "NP2LEX_TEXTFILE"
           ]
         },
         {
-          "line": 590,
+          "line": 627,
           "symbols": [
             "NP2LEX_CSV"
           ]
         },
         {
-          "line": 594,
+          "line": 631,
           "symbols": [
             "NP2LEX_CSV",
             "NP2LEX_HTML",
@@ -5248,31 +5248,31 @@
           ]
         },
         {
-          "line": 618,
+          "line": 655,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 628,
+          "line": 665,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 635,
+          "line": 672,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 636,
+          "line": 673,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 644,
+          "line": 681,
           "symbols": [
             "NP2LEX_HTML",
             "NP2LEX_MARKDOWN",
@@ -5281,26 +5281,26 @@
           ]
         },
         {
-          "line": 645,
+          "line": 682,
           "symbols": [
             "NP2LEX_MARKDOWN"
           ]
         },
         {
-          "line": 646,
+          "line": 683,
           "symbols": [
             "NP2LEX_MARKDOWN",
             "NP2LEX_PHP"
           ]
         },
         {
-          "line": 648,
+          "line": 685,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 662,
+          "line": 699,
           "symbols": [
             "NP2LEX_HTML",
             "NP2LEX_PHP",
@@ -5308,57 +5308,63 @@
           ]
         },
         {
-          "line": 664,
+          "line": 701,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 761,
+          "line": 798,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 822,
+          "line": 859,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 826,
+          "line": 863,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 837,
+          "line": 874,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 983,
+          "line": 1021,
           "symbols": [
             "GetDocumentLexer"
           ]
         },
         {
-          "line": 991,
+          "line": 1029,
           "symbols": [
             "GetCompletionCache"
           ]
         },
         {
-          "line": 1055,
+          "line": 1094,
           "symbols": [
             "lexerCatalog"
           ]
         },
         {
-          "line": 1056,
+          "line": 1095,
           "symbols": [
             "lexerCatalog"
+          ]
+        },
+        {
+          "line": 1122,
+          "symbols": [
+            "GetDocumentLexer"
           ]
         }
       ]
@@ -5375,6 +5381,29 @@
         },
         {
           "line": 6,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/StyleState.h",
+      "references": [
+        {
+          "line": 9,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 12,
+          "symbols": [
+            "LanguageDefinition"
+          ]
+        },
+        {
+          "line": 68,
           "symbols": [
             "LanguageDefinition"
           ]
@@ -5438,7 +5467,7 @@
       "path": "src/UpstreamUI.cpp",
       "references": [
         {
-          "line": 344,
+          "line": 347,
           "symbols": [
             "GetDocumentLexer"
           ]
@@ -5449,7 +5478,7 @@
   "applicationBindings": [
     {
       "path": "src/StyleManager.cpp",
-      "sha256": "e8f012b59f455a68c01794dd6099ff879ac9522498e559fea5df4d1a04e1b6e2",
+      "sha256": "c9e59ee5f59ce0301c2b2d32e3c419c11f304153de52095b212a62351ecbc2f3",
       "rules": [
         {
           "line": 159,
@@ -5492,52 +5521,76 @@
           "text": "    return lexer.defaultDialect;"
         },
         {
-          "line": 531,
+          "line": 448,
+          "text": "    const auto requestConfiguration=d.style.configuration;const auto requestTheme=d.style.theme;const auto requestDialect=d.style.resolvedDialect;"
+        },
+        {
+          "line": 473,
+          "text": "        state.completionDialect=state.resolvedDialect; state.completionTheme=state.theme; state.completionEpoch=d.completionEpoch;"
+        },
+        {
+          "line": 498,
+          "text": "    if(!state.completionKeywords || state.completionKeywords->configuration.lock()!=keywordOwner || state.completionKeywords->lexer!=&lexer || state.completionKeywords->dialect!=state.resolvedDialect){"
+        },
+        {
+          "line": 500,
+          "text": "        state.completionKeywords->lexer=&lexer; state.completionKeywords->dialect=state.resolvedDialect;"
+        },
+        {
+          "line": 560,
+          "text": "        d.style.configuration!=requestConfiguration || d.style.theme!=requestTheme || d.style.resolvedDialect!=requestDialect || d.Send(SCI_GETSELECTIONS)!=1))return;"
+        },
+        {
+          "line": 567,
           "text": "const char* const* DocumentCompletionExtraKeywords(const EditorDocument& document){auto snapshot=document.style.configuration?document.style.configuration:CurrentConfiguration();auto found=snapshot->dialectPointers.find(document.style.resolvedDialect);return found==snapshot->dialectPointers.end()?nullptr:found->second.data();}"
         },
         {
-          "line": 536,
+          "line": 572,
           "text": "bool SelectDocumentScheme(EditorDocument& document,const std::wstring& name) {"
         },
         {
-          "line": 557,
+          "line": 593,
           "text": "    const auto selected=d.LargeFile()?1:ResolveScheme(d);"
         },
         {
-          "line": 589,
+          "line": 626,
           "text": "    const auto previousDialect=d.style.resolvedDialect;"
         },
         {
-          "line": 590,
+          "line": 627,
           "text": "    if(lexer.rid==NP2LEX_CSV && !d.style.csvConfigured){auto ext=SchemeFilename(d).extension().wstring();int delimiter=_wcsicmp(ext.c_str(),L\".tsv\")==0?'\\t':DetectDocumentCSVDelimiter(d);d.style.csvOptions=(static_cast<int>('\"')<<8)|(delimiter?delimiter:',');}"
         },
         {
-          "line": 591,
+          "line": 628,
           "text": "    int effective=0;unsigned dialect=static_cast<unsigned>(Dialect(d,lexer,&effective));d.style.resolvedDialect=effective;"
         },
         {
-          "line": 596,
+          "line": 633,
           "text": "    bool rulesChanged=d.style.appliedRules!=lexer.rulesVersion||d.style.appliedLexer!=lexer.iLexer||previousDialect!=effective||d.Send(SCI_GETLEXER)!=(d.LargeFile()?SCLEX_NULL:lexer.iLexer);"
         },
         {
-          "line": 825,
+          "line": 862,
           "text": "    int scheme=SchemeForCommand(id);"
         },
         {
-          "line": 826,
+          "line": 863,
           "text": "    if(scheme){UINT selected=d?static_cast<UINT>(d->style.dialect?d->style.dialect:d->style.resolvedDialect):0;if(d && !selected)selected=DefaultSchemeCommand(*GetDocumentLexer(*d));return {true,d!=nullptr,d && ActualScheme(*d)==scheme && selected==id};}"
         },
         {
-          "line": 857,
+          "line": 894,
           "text": "    if(int scheme=SchemeForCommand(id)){"
         },
         {
-          "line": 1024,
+          "line": 1063,
           "text": "void LoadStylePreferences(const std::filesystem::path& path){"
         },
         {
-          "line": 1049,
+          "line": 1088,
           "text": "void SaveStylePreferences(const std::filesystem::path& path){"
+        },
+        {
+          "line": 1122,
+          "text": "        d.completionEpoch==d.style.completionEpoch && d.style.revision==d.style.completionRevision && !d.style.completionConfiguration.owner_before(d.style.configuration) && !d.style.configuration.owner_before(d.style.completionConfiguration) && GetDocumentLexer(d)==d.style.completionLexer && d.style.resolvedDialect==d.style.completionDialect && !d.style.completionTheme.owner_before(d.style.theme) && !d.style.theme.owner_before(d.style.completionTheme) &&"
         }
       ]
     },
@@ -5645,7 +5698,7 @@
     },
     {
       "path": "src/CompletionEngine.cpp",
-      "sha256": "35ede43371cfbfdde3de8f156b3fa88addb8c871b42807faef160087be34bfbf",
+      "sha256": "ae3c7606a197372a309dc731ff8b4251c9c9e570b8660070e2cebdb6dac0a064",
       "rules": [
         {
           "line": 14,
@@ -5681,7 +5734,7 @@
         },
         {
           "line": 676,
-          "text": "    if(entry.version!=lexer.rulesVersion){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}"
+          "text": "    if(entry.version!=lexer.rulesVersion || entry.cache.owner.get()!=&lexer){entry.cache={};entry.cache.Initialize(&lexer);entry.cache.owner=lexer.shared_from_this();entry.cache.extraKeywords=lexer.completionExtras.data();entry.version=lexer.rulesVersion;}"
         },
         {
           "line": 683,
