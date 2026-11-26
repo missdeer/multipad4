@@ -7,6 +7,9 @@
 #include <iomanip>
 #include <stdexcept>
 #include <algorithm>
+#ifdef MULTIPAD4_THEME_ENUM_TEST
+#include "../tests/ThemeEnumerationHooks.h"
+#endif
 namespace {
 uint32_t Color(const std::wstring& value) {
     if(value.size()!=6)throw std::runtime_error("Color must contain six RGB hex digits");
@@ -118,7 +121,18 @@ std::shared_ptr<const ConfigurationSnapshot> ConfigurationWithTheme(std::shared_
     auto result=std::make_shared<ConfigurationSnapshot>(*base);result->themeVersion=theme.version;
     for(auto& [command,words]:result->dialectWords){auto& pointers=result->dialectPointers[command];for(size_t i=0;i<4;++i)pointers[i]=words[i]?words[i]->c_str():nullptr;}
     for(size_t i=0;i<90;++i){auto original=base->languages[i];std::shared_ptr<LanguageDefinition> changed;
-        for(const auto& [key,words]:theme.keywords)if(key.first==original->id){if(!changed)changed=std::make_shared<LanguageDefinition>(*original);auto slot=key.second;auto body=words.substr(words.find(':')+1);if(words.starts_with("replace:"))changed->keywords[slot]=body;else changed->keywords[slot]=changed->keywords[slot].value_or("")+" "+body;
+        auto first = theme.keywords.lower_bound({original->id, 0});
+#ifdef MULTIPAD4_THEME_ENUM_TEST
+        if (themeenumerationtest::baseline) first = theme.keywords.begin();
+#endif
+        for(auto it=first;it!=theme.keywords.end();++it){
+#ifdef MULTIPAD4_THEME_ENUM_TEST
+            ++themeenumerationtest::keywordVisits;
+            if (!themeenumerationtest::baseline && it->first.first != original->id) break;
+#else
+            if (it->first.first != original->id) break;
+#endif
+            const auto& [key,words] = *it; if(key.first!=original->id) continue;if(!changed)changed=std::make_shared<LanguageDefinition>(*original);auto slot=key.second;auto body=words.substr(words.find(':')+1);if(words.starts_with("replace:"))changed->keywords[slot]=body;else changed->keywords[slot]=changed->keywords[slot].value_or("")+" "+body;
             // Modified keyword order must never retain the upstream PreSorted flag.
             changed->keywordAttr&=~(uint64_t(KeywordAttr_PreSorted)<<(4*slot));for(unsigned char ch:std::to_string(slot)+":"+std::to_string(words.size())+":"+words){changed->rulesVersion^=ch;changed->rulesVersion*=1099511628211ULL;}}
         if(changed){changed->Seal();result->languages[i]=changed;result->catalog[i]=changed.get();result->rulesVersion^=changed->rulesVersion;}

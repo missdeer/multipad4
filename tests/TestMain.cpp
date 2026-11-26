@@ -1,6 +1,7 @@
 #include "../src/Application.h"
 #include "../src/MainFrame.h"
 #include "SmokeTest.h"
+#include "ThemeEnumerationTests.h"
 #include "PrintingSeparatorTests.h"
 #include "DeferredQueueTests.h"
 #include "PluginIndexTests.h"
@@ -78,6 +79,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
     bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
     bool saveWhitespaceTest = count == 2 && (wcscmp(args[1], L"--save-whitespace-test") == 0 || wcscmp(args[1], L"--save-whitespace-benchmark") == 0);
     bool sessionCaptureTest = count == 2 && (wcscmp(args[1], L"--session-capture-test") == 0 || wcscmp(args[1], L"--session-capture-benchmark") == 0);
+    bool themeEnumerationTest=count==2&&(wcscmp(args[1],L"--theme-enumeration-test")==0||wcscmp(args[1],L"--theme-enumeration-benchmark")==0);
     bool autosaveCaptureTest = count == 2 && (wcscmp(args[1], L"--autosave-capture-test") == 0 || wcscmp(args[1], L"--autosave-capture-benchmark") == 0);
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
@@ -87,6 +89,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
         settingsProfileTest ||
         sessionCaptureTest ||
         saveWhitespaceTest ||
+        themeEnumerationTest ||
         autosaveCaptureTest ||
         richTextTest ||
         richTextBenchmark ||
@@ -118,7 +121,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
     ApplicationStartup startup;
     startup.isolated=largeTest || smoke || report || render || pluginTest;
-    startup.pluginsEnabled = !(autosaveCaptureTest || sessionCaptureTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+    startup.pluginsEnabled = !(themeEnumerationTest || autosaveCaptureTest || sessionCaptureTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
     if (statusPresentation || statusPresentationBenchmark) startup.pluginsEnabled = false;
     if (smoke || render) {
         startup.onlyPlugin = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
@@ -141,6 +144,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
             else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
             else if (saveWhitespaceTest) { RunSaveWhitespaceTests(frame, wcscmp(args[1], L"--save-whitespace-benchmark") == 0); }
             else if (sessionCaptureTest) { RunSessionCaptureTests(frame, wcscmp(args[1], L"--session-capture-benchmark") == 0); }
+            else if(themeEnumerationTest){RunThemeEnumerationTests(frame,wcscmp(args[1],L"--theme-enumeration-benchmark")==0);}
             else if (autosaveCaptureTest) { RunAutoSaveCaptureTests(frame, wcscmp(args[1], L"--autosave-capture-benchmark") == 0); }
             else if (richTextTest || richTextBenchmark) { RunRichTextTests(frame, richTextBenchmark); }
             else if (refreshTest) { RunFrameRefreshTests(frame); }
