@@ -161,6 +161,37 @@ std::filesystem::path SchemeFilename(const EditorDocument& d){
     while(_wcsicmp(name.extension().c_str(),L".in")==0)name=name.stem();
     return name;
 }
+struct AssociationIndex {
+    std::shared_ptr<const ConfigurationSnapshot> base;
+    std::shared_ptr<const ThemeDefinition> theme;
+    std::map<std::wstring,int> schemes;
+    std::map<std::pair<std::string,std::wstring>,int> dialects;
+};
+const AssociationIndex& Associations(const EditorDocument& d) {
+    // Only the UI thread resolves document schemes; retain one configuration/theme pair.
+    static AssociationIndex cache;
+    auto base=CurrentConfiguration();
+    if(cache.base==base && cache.theme==d.style.theme)return cache;
+    AssociationIndex next;next.base=base;next.theme=d.style.theme;
+    for(size_t i=1;i<Count;++i){
+        const auto& lexer=*lexerCatalog[i];
+        if(lexer.pszDefExt){
+            std::wstring associations=lexer.pszDefExt;
+            if(next.theme){auto extra=next.theme->extensions.find(lexer.id);if(extra!=next.theme->extensions.end())associations+=L";"+extra->second;}
+            std::wistringstream fields(associations);std::wstring entry;
+            while(std::getline(fields,entry,L';')){
+                entry.erase(0,entry.find_first_not_of(L" \t"));auto end=entry.find_last_not_of(L" \t");if(end!=std::wstring::npos)entry.resize(end+1);
+                for(auto& ch:entry)ch=static_cast<wchar_t>(towlower(ch));
+                if(!entry.empty())next.schemes.try_emplace(entry,static_cast<int>(i));
+            }
+        }
+        for(const auto& variant:lexer.variants){
+            std::wistringstream fields(variant.extensions);std::wstring entry;
+            while(std::getline(fields,entry,L';'))next.dialects.try_emplace(std::pair{lexer.id,entry},variant.command);
+        }
+    }
+    cache=std::move(next);return cache;
+}
 int ResolveScheme(const EditorDocument& d) {
     if (d.style.scheme > 0 && d.style.scheme < static_cast<int>(Count)) return d.style.scheme;
     if (!autoSelectScheme) return defaultScheme;
@@ -181,18 +212,8 @@ int ResolveScheme(const EditorDocument& d) {
     int matched=0;
     if(extension==L"r" && d.hwnd){char prefix[10]{};d.Send(SCI_GETTEXT,sizeof(prefix)-1,reinterpret_cast<LPARAM>(prefix));if(_strnicmp(prefix,"rebol",5)==0 && (prefix[5]==' ' || prefix[5]=='\t' || prefix[5]=='['))for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->rid==NP2LEX_REBOL)return static_cast<int>(i);}
     if(name.starts_with(L"my") && (extension==L"ini" || extension==L"cnf"))for(size_t i=1;i<Count;++i)if(lexerCatalog[i]->rid==NP2LEX_CONFIG){matched=static_cast<int>(i);break;}
-    for (size_t i = 1; i < Count; ++i) {
-        if(matched)break;
-        if (!lexerCatalog[i]->pszDefExt) continue;
-        std::wstring associations=lexerCatalog[i]->pszDefExt;
-        if(d.style.theme){auto extra=d.style.theme->extensions.find(lexerCatalog[i]->id);if(extra!=d.style.theme->extensions.end())associations+=L";"+extra->second;}
-        std::wistringstream fields(associations); std::wstring entry;
-        while (std::getline(fields, entry, L';')) {
-            entry.erase(0, entry.find_first_not_of(L" \t"));
-            auto end = entry.find_last_not_of(L" \t"); if (end != std::wstring::npos) entry.resize(end+1);
-            lower(entry); if (!extension.empty() && entry == extension){matched=static_cast<int>(i);break;}
-        }
-        if(matched)break;
+    if(!matched && !extension.empty()){
+        const auto& index=Associations(d).schemes;auto found=index.find(extension);if(found!=index.end())matched=found->second;
     }
     if(matched && lexerCatalog[matched]->iLexer!=SCLEX_CONFIG)return matched;
     if(d.hwnd){
@@ -287,7 +308,7 @@ int Dialect(const EditorDocument& d, const LanguageDefinition& lexer,int* comman
     int id=d.style.dialect;
     if(!id){
         auto filename=SchemeFilename(d);auto extension=filename.extension().wstring();for(auto& ch:extension)ch=static_cast<wchar_t>(towlower(ch));
-        for(const auto& variant:lexer.variants){std::wistringstream extensions(variant.extensions);std::wstring candidate;while(std::getline(extensions,candidate,L';'))if(extension==candidate){id=variant.command;break;}if(id)break;}
+        const auto& index=Associations(d).dialects;auto found=index.find({lexer.id,extension});if(found!=index.end())id=found->second;
         auto name=filename.wstring();for(auto& ch:name)ch=static_cast<wchar_t>(towlower(ch));
         if(lexer.rid==NP2LEX_MATLAB && extension==L".m"){int sniffedDialect=0;DetectObjCAndMatlab(d,sniffedDialect);if(sniffedDialect)id=sniffedDialect;}
         if(lexer.rid==NP2LEX_CONFIG && (name.starts_with(L"httpd") || extension==L".htaccess"))id=IDM_LEXER_APACHE;
@@ -586,11 +607,18 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     d.style.fontKind=std::clamp(d.style.fontKind,-1,1);
     d.style.paletteDark=d.style.dark;
     if(d.style.theme){auto root=d.style.theme->styles.find("editor.default");if(root!=d.style.theme->styles.end()&&root->second.background){auto color=*root->second.background;d.style.paletteDark=(((color>>16)&255)*299+((color>>8)&255)*587+(color&255)*114)<128000;}}
-    auto candidate=d.style.theme?ConfigurationWithTheme(CurrentConfiguration(),*d.style.theme):CurrentConfiguration();
+    const auto base=CurrentConfiguration();
     d.style.lineHighlight=std::clamp(d.style.lineHighlight,0,2);d.style.wrapMode=std::clamp(d.style.wrapMode,1,4);d.style.wrapIndent=std::clamp(d.style.wrapIndent,0,7);int symbols=std::clamp(d.style.wrapSymbols,0,32);d.style.wrapSymbols=std::clamp(symbols%10,0,2)+10*std::clamp(symbols/10,0,3);
     d.style.fontSize=std::clamp(d.style.fontSize,2,512);d.style.codeFontSize=std::clamp(d.style.codeFontSize,2,512);d.style.textFontSize=std::clamp(d.style.textFontSize,2,512);
     bool initializeAppearance=d.style.appliedTabScheme<0;
     const auto selected=d.LargeFile()?1:ResolveScheme(d);
+    // Compare actual inputs, including overrides, rather than relying on a hash or revision hint.
+    const auto fonts=std::tuple{d.style.font,d.style.codeFont,d.style.textFont,d.style.fontSize,d.style.codeFontSize,d.style.textFontSize,d.style.fontKind};
+    auto cached=d.style.effectiveStyleInputs;
+    bool reuse=cached && d.style.configuration && cached->base==base && cached->theme==d.style.theme && cached->scheme==selected && cached->paletteDark==d.style.paletteDark && cached->fonts==fonts && cached->overrides==d.style.overrides && cached->semanticOverrides==d.style.semanticOverrides;
+    std::shared_ptr<const ConfigurationSnapshot> effectiveSnapshot=d.style.configuration;
+    if(!reuse){
+    auto candidate=d.style.theme?ConfigurationWithTheme(base,*d.style.theme):base;
     auto snapshot=std::make_shared<ConfigurationSnapshot>(*candidate);
     for(auto& [command,words]:snapshot->dialectWords){auto& pointers=snapshot->dialectPointers[command];for(size_t index=0;index<4;++index)pointers[index]=words[index]?words[index]->c_str():nullptr;}
     snapshot->version=NextConfigurationVersion();snapshot->theme=d.style.theme;snapshot->semanticStyles=d.style.semanticOverrides;
@@ -607,9 +635,12 @@ void ConfigureDocumentStyle(EditorDocument& d) {
     for(const auto& [key,value]:snapshot->styleValues){hash(ConfigurationWide(key.first)+std::to_wstring(key.second));hash(value);}
     for(const auto& [id,value]:snapshot->semanticStyles){hash(ConfigurationWide(id));hash(value);}
     hash(d.style.font+d.style.codeFont+d.style.textFont+std::to_wstring(d.style.fontSize)+std::to_wstring(d.style.codeFontSize)+std::to_wstring(d.style.textFontSize)+std::to_wstring(d.style.fontKind));
+    effectiveSnapshot=std::move(snapshot);
+    }
     // All validation and merging precedes publication and editor mutations.
     d.style.completionPending=false;d.style.completionKeywords.reset();
-    d.style.configuration=std::move(snapshot);d.style.resolvedScheme=selected;
+    d.style.configuration=std::move(effectiveSnapshot);d.style.resolvedScheme=selected;
+    if(!reuse)d.style.effectiveStyleInputs=std::make_shared<EffectiveStyleInputs>(EffectiveStyleInputs{base,d.style.theme,selected,d.style.paletteDark,fonts,d.style.overrides,d.style.semanticOverrides});
     for(unsigned element:{SC_ELEMENT_SELECTION_TEXT,SC_ELEMENT_SELECTION_ADDITIONAL_TEXT,SC_ELEMENT_CARET_ADDITIONAL,SC_ELEMENT_WHITE_SPACE_BACK})d.Send(SCI_RESETELEMENTCOLOUR,element);
     auto& lexer=*d.style.configuration->catalog[selected];
     d.style.languageId=lexer.id;
