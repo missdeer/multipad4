@@ -155,6 +155,14 @@ public:
         return found == childrenByWindow.end() ? nullptr : found->second;
     }
     void* GetPageData(int i) const { auto* child = Child(i); return child ? child->document : nullptr; }
+    int Position(const EditorDocument* document) const {
+        if (!control || !document) return -1;
+        for (HWND window = document->ViewWindow(); window && window != m_hWnd; window = ::GetParent(window)) {
+            const auto child = childrenByWindow.find(window);
+            if (child != childrenByWindow.end() && child->second->document == document) return control->IndexOf(window);
+        }
+        return -1;
+    }
     int GetActivePage() const { return control ? control->GetCurSel() : -1; }
     void SetActivePage(int i) {
         if (control) control->Activate(i);
