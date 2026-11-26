@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <tuple>
 struct ConfigurationSnapshot;
 struct ThemeDefinition;
 struct LanguageDefinition;
@@ -13,7 +14,18 @@ struct CompletionKeywordCache {
     int dialect = 0;
     std::map<std::string, std::vector<std::string>, std::less<>> words;
 };
+struct EffectiveStyleInputs {
+    std::shared_ptr<const ConfigurationSnapshot> base;
+    std::shared_ptr<const ThemeDefinition> theme;
+    int scheme = 0;
+    bool paletteDark = false;
+    std::tuple<std::wstring,std::wstring,std::wstring,int,int,int,int> fonts;
+    std::map<unsigned,std::wstring> overrides;
+    std::map<std::string,std::wstring> semanticOverrides;
+    bool operator==(const EffectiveStyleInputs&) const = default;
+};
 struct DocumentStyleState {
+    std::shared_ptr<const EffectiveStyleInputs> effectiveStyleInputs;
     std::shared_ptr<const ConfigurationSnapshot> configuration;
     std::shared_ptr<const ThemeDefinition> theme;
     std::wstring themePath;

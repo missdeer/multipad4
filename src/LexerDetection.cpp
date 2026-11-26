@@ -309,55 +309,25 @@ int DetectDocumentMarkupDialect(const EditorDocument& d) {
 int DetectDocumentCSVDelimiter(const EditorDocument& d){
     auto endPos=d.Send(SCI_GETLINECOUNT)>2?d.Send(SCI_POSITIONFROMLINE,2):d.Send(SCI_GETLENGTH);
     if(endPos<=0)return 0;
-    std::string text(static_cast<size_t>(endPos)+1,'\0');Sci_TextRangeFull range{{0,endPos},text.data()};d.Send(SCI_GETTEXTRANGEFULL,0,reinterpret_cast<LPARAM>(&range));
-    const char* ptr=text.data();
-	int table[32*2]{};
-	int offset = 0;
-	const char * const end = ptr + endPos;
-#if defined(_WIN64)
-	uint64_t maskSet = 0;
-	while (ptr < end) {
-		const uint8_t ch = *ptr++;
-		constexpr uint64_t mask = (1 << '\r') | (1 << '\n') | (1 << '\t') | (UINT64_C(1) << ',') | (UINT64_C(1) << ';');
-		if (ch == '|' || (ch <= ';' && (mask & (UINT64_C(1) << ch)) != 0)) {
-			if (ch == '\r' || ch == '\n') {
-				offset = 32;
-				if (ch == '\r' && *ptr == '\n') {
-					++ptr;
-				}
-			} else {
-				const unsigned index = offset + (ch & 31);
-				maskSet |= UINT64_C(1) << index;
-				table[index] += 1;
-			}
-		}
-	}
-	const uint32_t mask = static_cast<uint32_t>((maskSet & UINT32_MAX) & (maskSet >> 32));
-#else
-	while (ptr < end) {
-		const uint8_t ch = *ptr++;
-		if (ch == ',' || ch == '\t' || ch == ';' || ch == '|') {
-			const unsigned index = offset + (ch & 31);
-			table[index] += 1;
-		} else if (ch == '\r' || ch == '\n') {
-			offset = 32;
-			if (ch == '\r' && *ptr == '\n') {
-				++ptr;
-			}
-		}
-	}
-	uint32_t mask = 0;
-	{
-		uint32_t value = ('\t') | ((',' & 31) << 8) | (('|' & 31) << 16) | ((';' & 31) << 24);
-		while (value) {
-			const int index = value & 0xff;
-			if (table[index] && table[32 + index]) {
-				mask |= 1U << index;
-			}
-			value >>= 8;
-		}
-	}
-#endif // _WIN64
+    int table[64]{};
+    int offset=0;
+    for(LRESULT start=0;start<endPos;){
+        const auto end=(std::min)(endPos,start+64*1024);
+        const auto* ptr=reinterpret_cast<const char*>(d.Send(SCI_GETRANGEPOINTER,start,end-start));
+        const char* limit=ptr+(end-start);
+        while(ptr<limit){
+            const auto ch=static_cast<uint8_t>(*ptr++);
+            constexpr uint64_t interesting=(UINT64_C(1)<<'\r')|(UINT64_C(1)<<'\n')|(UINT64_C(1)<<'\t')|(UINT64_C(1)<<',')|(UINT64_C(1)<<';');
+            if(ch=='|' || (ch<=';' && (interesting&(UINT64_C(1)<<ch)))){
+                // Both halves of CRLF select row two, including a split at the chunk boundary.
+                if(ch=='\r'||ch=='\n')offset=32;
+                else ++table[offset+(ch&31)];
+            }
+        }
+        start=end;
+    }
+    uint32_t mask=0;
+    for(unsigned ch:{'\t',',','|',';'})if(table[ch&31] && table[32+(ch&31)])mask|=1u<<(ch&31);
 
 	constexpr uint32_t preferred = ';' | ('|' << 8) | ('\t' << 16) | (',' << 24);
 	uint8_t delimiter = '\0';
