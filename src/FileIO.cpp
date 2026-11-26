@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <regex>
 #include <cctype>
+#include <unordered_map>
 #include <climits>
 #include <exception>
 #include "FileVariables.h"
@@ -120,6 +121,9 @@ Encoding FromCodePage(unsigned page) {
     return static_cast<Encoding>(static_cast<unsigned>(Encoding::CodePageBase) + page);
 }
 bool ParseEncodingName(const std::wstring& value, Encoding& encoding) {
+#ifdef MULTIPAD4_SEARCH_TEST_HOOKS
+    if(testing::encodingAliasParser)return testing::encodingAliasParser(value,encoding);
+#endif
     auto normalize=[](const std::string& text){std::string result;for(unsigned char c:text)if(isalnum(c))result+=static_cast<char>(tolower(c));return result;};
     auto name=normalize(ToUtf8(value));
     if(name=="utf16"||name=="utf16le"||name=="unicode"||name=="ucs2"){encoding=Encoding::Utf16LEPlain;return true;}
@@ -129,10 +133,19 @@ bool ParseEncodingName(const std::wstring& value, Encoding& encoding) {
     static const Alias aliases[]={
 #include "FileEncodingAliases.inc"
     };
-    for(const auto& entry:aliases){std::string names=entry.names;size_t start=0;while(start<names.size()){
-        auto end=names.find(',',start);auto item=names.substr(start,end==std::string::npos?end:end-start);
-        if(!item.empty() && normalize(item)==name){encoding=entry.value;return true;}if(end==std::string::npos)break;start=end+1;
-    }}
+    static const auto index=[&]{
+        std::unordered_map<std::string,Encoding> result;
+        for(const auto& entry:aliases){
+            std::string_view names=entry.names;
+            while(!names.empty()){
+                const auto end=names.find(',');const auto item=names.substr(0,end);
+                if(!item.empty())result.try_emplace(normalize(std::string(item)),entry.value);
+                if(end==std::string_view::npos)break;names.remove_prefix(end+1);
+            }
+        }
+        return result;
+    }();
+    if(auto found=index.find(name);found!=index.end()){encoding=found->second;return true;}
     if(name.starts_with("cp"))name.erase(0,2);else if(name.starts_with("windows"))name.erase(0,7);
     if(!name.empty() && std::all_of(name.begin(),name.end(),[](unsigned char c){return isdigit(c)!=0;})){
         unsigned long page=strtoul(name.c_str(),nullptr,10);if(page<=65535 && IsValidCodePage(page)){encoding=FromCodePage(page);return true;}
