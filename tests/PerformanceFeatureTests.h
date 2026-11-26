@@ -69,7 +69,7 @@ inline void RunPerformanceFeatureTests(MainFrame& frame) {
         QueueDocumentBackups(frame); require(frame.runtime.autoSaveTask != nullptr);
         auto revision = d->style.revision;
         auto deadline = Clock::now() + std::chrono::seconds(10);
-        while (frame.runtime.autoSaveTask) {
+        while (frame.runtime.autoSaveTask || !frame.runtime.autoSaveWrites.empty()) {
             PumpDocumentBackup(frame); require(Clock::now() < deadline); std::this_thread::yield();
         }
         require(d->runtime.lastRecoveryRevision == revision && d->Modified());
