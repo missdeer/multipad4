@@ -5409,19 +5409,19 @@
       "path": "src/ThemeConfiguration.cpp",
       "references": [
         {
-          "line": 42,
+          "line": 45,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
-          "line": 120,
+          "line": 123,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 121,
+          "line": 135,
           "symbols": [
             "LanguageDefinition"
           ]
@@ -5432,26 +5432,26 @@
       "path": "src/ThemeDialog.cpp",
       "references": [
         {
-          "line": 52,
+          "line": 56,
           "symbols": [
             "LanguageDefinition"
           ]
         },
         {
-          "line": 72,
+          "line": 76,
           "symbols": [
             "LanguageCatalog",
             "LanguageDefinition"
           ]
         },
         {
-          "line": 312,
+          "line": 326,
           "symbols": [
             "LanguageCatalog"
           ]
         },
         {
-          "line": 455,
+          "line": 469,
           "symbols": [
             "LanguageCatalog"
           ]
