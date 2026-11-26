@@ -1,0 +1,13 @@
+mode,range,sample,milliseconds,pages,pens
+before,all,0,3682.69,40,80
+before,2-3,0,897.769,2,4
+after,all,0,3117.12,40,0
+after,2-3,0,895.346,2,0
+before,all,1,3219.06,40,80
+before,2-3,1,901.479,2,4
+after,all,1,3116.12,40,0
+after,2-3,1,882.819,2,0
+before,all,2,3152.94,40,80
+before,2-3,2,848.027,2,4
+after,all,2,3114.34,40,0
+after,2-3,2,781.367,2,0
