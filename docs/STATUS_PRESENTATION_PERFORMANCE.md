@@ -102,3 +102,10 @@ inventory hash regressions (0.09 s) and status_statistics (0.22 s). A focused
 non-author review confirmed both features' test translation units, compile
 definitions and CLI routes remain intact. The measured producer/benchmark did
 not change, so the valid paired measurements were not repeated.
+
+Master ade667d (#47) then merged without conflicts. Its public test-hook define
+required a rebuild to verify the shared layout and both test objects. Wrapper
+reconfigure/build passed; seven targeted checks passed in 13.52 seconds:
+tab_strip_layout 5.84 s, frame_refresh 0.54 s, status_presentation 1.12 s,
+edit_transforms 5.47 s, inventory coverage/hash 0.18/0.10 s and status_statistics
+0.24 s. The status producer and measured benchmark are unchanged.

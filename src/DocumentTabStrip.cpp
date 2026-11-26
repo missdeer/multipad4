@@ -136,12 +136,11 @@ DocumentTabStrip::~DocumentTabStrip() {
     if (icons) ImageList_Destroy(icons);
 }
 
-int DocumentTabStrip::GetItemCount() const { return control ? TabCtrl_GetItemCount(control) : 0; }
+int DocumentTabStrip::GetItemCount() const { return static_cast<int>(order.size()); }
 int DocumentTabStrip::GetCurSel() const { return control ? TabCtrl_GetCurSel(control) : -1; }
-HWND DocumentTabStrip::ChildAt(int index) const {
-    TCITEMW item{};
-    item.mask = TCIF_PARAM;
-    return TabCtrl_GetItem(control, index, &item) ? reinterpret_cast<HWND>(item.lParam) : nullptr;
+HWND DocumentTabStrip::ChildAt(int index) const { return index >= 0 && index < GetItemCount() ? order[index] : nullptr; }
+int DocumentTabStrip::IndexOf(HWND child) const {
+    const auto found = positions.find(child); return found == positions.end() ? -1 : found->second;
 }
 
 bool DocumentTabStrip::Insert(HWND child, const wchar_t* title) {
@@ -151,7 +150,13 @@ bool DocumentTabStrip::Insert(HWND child, const wchar_t* title) {
     item.pszText = label.data();
     item.lParam = reinterpret_cast<LPARAM>(child);
     item.iImage = -1;
-    if (TabCtrl_InsertItem(control, GetItemCount(), &item) < 0) return false;
+    if (order.size() == order.capacity()) order.reserve((std::max)(size_t(8), order.size() * 2));
+    auto [position, added] = positions.emplace(child, GetItemCount());
+    if (!added) return false;
+    const int inserted = TabCtrl_InsertItem(control, GetItemCount(), &item);
+    if (inserted < 0) { positions.erase(position); return false; }
+    order.insert(order.begin() + inserted, child);
+    for (int i = inserted; i < GetItemCount(); ++i) positions.at(order[i]) = i;
     ++structureRevision;
     SyncSelection();
     ApplyLayout();
@@ -159,13 +164,14 @@ bool DocumentTabStrip::Insert(HWND child, const wchar_t* title) {
 }
 
 void DocumentTabStrip::Remove(int index) {
-    TCITEMW item{};
-    item.mask = TCIF_IMAGE;
-    if (TabCtrl_GetItem(control, index, &item) && item.iImage >= 0) TabCtrl_RemoveImage(control, item.iImage);
-    TabCtrl_DeleteItem(control, index);
+    if (index < 0 || index >= GetItemCount()) return;
+    TCITEMW item{}; item.mask = TCIF_IMAGE;
+    if (!TabCtrl_GetItem(control, index, &item) || !TabCtrl_DeleteItem(control, index)) return;
+    positions.erase(order[index]); order.erase(order.begin() + index);
+    for (int i = index; i < GetItemCount(); ++i) positions.at(order[i]) = i;
+    if (item.iImage >= 0) TabCtrl_RemoveImage(control, item.iImage);
     ++structureRevision;
-    SyncSelection();
-    ApplyLayout();
+    SyncSelection(); ApplyLayout();
 }
 
 void DocumentTabStrip::SetTitle(int index, const wchar_t* title) {
@@ -177,18 +183,13 @@ void DocumentTabStrip::SetTitle(int index, const wchar_t* title) {
 }
 
 void DocumentTabStrip::SetIcon(HWND child, HICON icon) {
-    if (!icons || !icon) return;
-    for (int index = 0; index < GetItemCount(); ++index) {
-        if (ChildAt(index) != child) continue;
-        TCITEMW item{};
-        item.mask = TCIF_IMAGE;
-        if (!TabCtrl_GetItem(control, index, &item)) return;
-        const auto image = ImageList_ReplaceIcon(icons, item.iImage, icon);
-        if (image < 0) return;
-        item.iImage = image;
-        TabCtrl_SetItem(control, index, &item);
-        return;
-    }
+    const int index = IndexOf(child);
+    if (!icons || !icon || index < 0) return;
+    TCITEMW item{}; item.mask = TCIF_IMAGE;
+    if (!TabCtrl_GetItem(control, index, &item)) return;
+    const auto image = ImageList_ReplaceIcon(icons, item.iImage, icon);
+    if (image < 0) return;
+    item.iImage = image; TabCtrl_SetItem(control, index, &item);
 }
 
 void DocumentTabStrip::UpdateImages() {
@@ -212,13 +213,8 @@ void DocumentTabStrip::UpdateImages() {
 
 void DocumentTabStrip::SyncSelection(HWND active) {
     if (!active) active = reinterpret_cast<HWND>(::SendMessageW(mdi, WM_MDIGETACTIVE, 0, 0));
-    for (int i = 0; i < GetItemCount(); ++i) {
-        if (ChildAt(i) == active) {
-            if (i != GetCurSel()) TabCtrl_SetCurSel(control, i);
-            return;
-        }
-    }
-    TabCtrl_SetCurSel(control, -1);
+    const int index = IndexOf(active);
+    if (index != GetCurSel()) TabCtrl_SetCurSel(control, index);
 }
 
 bool DocumentTabStrip::MoveItem(int from, int to) {
@@ -233,14 +229,24 @@ bool DocumentTabStrip::MoveItem(int from, int to) {
     item.lParam = reinterpret_cast<LPARAM>(child);
     const int inserted = TabCtrl_InsertItem(control, to + (from < to), &item);
     if (inserted < 0) return false;
-    TabCtrl_DeleteItem(control, from + (inserted <= from));
+    if (!TabCtrl_DeleteItem(control, from + (inserted <= from))) {
+        TabCtrl_DeleteItem(control, inserted); return false;
+    }
+    if (from < to) std::rotate(order.begin() + from, order.begin() + from + 1, order.begin() + to + 1);
+    else std::rotate(order.begin() + to, order.begin() + from, order.begin() + from + 1);
+    for (int i = (std::min)(from, to); i <= (std::max)(from, to); ++i) positions.at(order[i]) = i;
     ++structureRevision;
     SyncSelection();
     ::PostMessageW(frame, WM_DOCUMENT_CHANGED, 0, 0);
     return true;
 }
 
-BOOL DocumentTabStrip::GetItemRect(int index, RECT* rect) const { return TabCtrl_GetItemRect(control, index, rect); }
+BOOL DocumentTabStrip::GetItemRect(int index, RECT* rect) const {
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+    if (tabTesting::measure) ++tabTesting::rectangles;
+#endif
+    return TabCtrl_GetItemRect(control, index, rect);
+}
 void DocumentTabStrip::EnsureVisible(int index, bool, bool) {
     // The common control scrolls its single row when the focus item changes.
     SendMessage(TCM_SETCURFOCUS, index, 0);
@@ -380,20 +386,32 @@ int DocumentTabStrip::HitTest(POINT point) const {
 
 RECT DocumentTabStrip::TabViewport() const {
     RECT visible{};
-    if (GetWindowRgnBox(control, &visible) == ERROR) return {};
+    GetClientRect(control, &visible);
+    RECT region{};
+    const auto kind = GetWindowRgnBox(control, &region);
+    if (kind == NULLREGION) return {};
+    if (kind != ERROR) IntersectRect(&visible, &visible, &region);
     if (const HWND scroll = FindWindowExW(control, nullptr, UPDOWN_CLASSW, nullptr);
         scroll && (GetWindowLongPtrW(scroll, GWL_STYLE) & WS_VISIBLE)) {
         RECT buttons{};
         GetWindowRect(scroll, &buttons);
         MapWindowPoints(nullptr, control, reinterpret_cast<POINT*>(&buttons), 2);
-        visible.right = std::min(visible.right, buttons.left);
+        RECT overlap{};
+        if (IntersectRect(&overlap, &visible, &buttons)) {
+            if (buttons.left + buttons.right < visible.left + visible.right) visible.left = (std::max)(visible.left, buttons.right);
+            else visible.right = (std::min)(visible.right, buttons.left);
+        }
     }
     return visible;
 }
 
 RECT DocumentTabStrip::TabCloseRect(int index, const RECT& viewport) const {
     RECT tab{};
-    if (!GetItemRect(index, &tab)) return {};
+    if (index < 0 || !GetItemRect(index, &tab)) return {};
+    return TabCloseRect(tab, viewport);
+}
+
+RECT DocumentTabStrip::TabCloseRect(const RECT& tab, const RECT& viewport) const {
     RECT clipped{};
     if (!IntersectRect(&clipped, &tab, &viewport)) return {};
     const int size = std::min<LONG>(MulDiv(14, TitleDpi(), 96), clipped.bottom - clipped.top);
@@ -409,15 +427,68 @@ HWND DocumentTabStrip::TabCloseAt(POINT point) const {
     return PtInRect(&bounds, point) ? ChildAt(index) : nullptr;
 }
 
+void DocumentTabStrip::InvalidateCloses(HWND oldChild, HWND newChild) const {
+    if (!oldChild && !newChild) return;
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+    if (tabTesting::baseline) { InvalidateRect(control, nullptr, FALSE); return; }
+#endif
+    const RECT viewport = TabViewport();
+    auto invalidate = [&](HWND child) {
+        if (!child) return;
+        const RECT bounds = TabCloseRect(IndexOf(child), viewport);
+        if (!IsRectEmpty(&bounds)) InvalidateRect(control, &bounds, FALSE);
+    };
+    invalidate(oldChild); if (newChild != oldChild) invalidate(newChild);
+}
+
 void DocumentTabStrip::PaintTabCloses(HDC dc) const {
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+    if (tabTesting::baseline) {
+        const int count = TabCtrl_GetItemCount(control); const RECT viewport = TabViewport();
+        for (int index = 0; index < count; ++index) {
+            const RECT button = TabCloseRect(index, viewport);
+            if (IsRectEmpty(&button) || !RectVisible(dc, &button)) continue;
+            TCITEMW item{}; item.mask = TCIF_PARAM; TabCtrl_GetItem(control, index, &item);
+            const HWND child = reinterpret_cast<HWND>(item.lParam);
+            const bool hot = hotClose == child && dragIndex < 0 && (!pressedClose || pressedClose == child);
+            if (tabTesting::measure) ++tabTesting::draws;
+            PaintTabButton(control, dc, button, 0, hot, true, true);
+        }
+        return;
+    }
+#endif
     const int count = GetItemCount();
     const RECT viewport = TabViewport();
-    for (int index = 0; index < count; ++index) {
-        const RECT button = TabCloseRect(index, viewport);
-        if (IsRectEmpty(&button) || !RectVisible(dc, &button)) continue;
+    RECT clip{}, dirty{};
+    if (GetClipBox(dc, &clip) == ERROR || !IntersectRect(&dirty, &clip, &viewport)) return;
+    auto paint = [&](int index, const RECT& tab) {
+        const RECT button = TabCloseRect(tab, viewport);
+        if (IsRectEmpty(&button) || !RectVisible(dc, &button)) return;
         const HWND child = ChildAt(index);
         const bool hot = hotClose == child && dragIndex < 0 && (!pressedClose || pressedClose == child);
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+        if (tabTesting::measure) ++tabTesting::draws;
+#endif
         PaintTabButton(control, dc, button, 0, hot, true, true);
+    };
+    if (count <= 8) {
+        for (int index = 0; index < count; ++index) { RECT tab{}; if (GetItemRect(index, &tab)) paint(index, tab); }
+        return;
+    }
+    RECT first{}, last{};
+    if (!GetItemRect(0, &first) || !GetItemRect(count - 1, &last)) return;
+    const bool forward = first.left <= last.left;
+    auto native = [&](int sorted) { return forward ? sorted : count - sorted - 1; };
+    int lower = 0, upper = count;
+    while (lower < upper) {
+        const int middle = lower + (upper - lower) / 2; RECT tab{};
+        if (!GetItemRect(native(middle), &tab)) return;
+        if (tab.right <= dirty.left) lower = middle + 1; else upper = middle;
+    }
+    for (int sorted = lower; sorted < count; ++sorted) {
+        RECT tab{}; const int index = native(sorted);
+        if (!GetItemRect(index, &tab) || tab.left >= dirty.right) break;
+        paint(index, tab);
     }
 }
 
@@ -465,23 +536,43 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
     POINT point{GET_X_LPARAM(l), GET_Y_LPARAM(l)};
     switch (message) {
     case WM_PAINT: {
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+        if (tabTesting::baseline) {
+            const auto result = DefSubclassProc(window, message, w, l);
+            if (HDC dc = GetDC(window)) { tabs.PaintTabCloses(dc); ReleaseDC(window, dc); }
+            return result;
+        }
+#endif
+        HRGN update = CreateRectRgn(0, 0, 0, 0);
+        int kind = update ? GetUpdateRgn(window, update, FALSE) : ERROR;
+#ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
+        if (tabTesting::failUpdateRegion) kind = ERROR;
+#endif
         const auto result = DefSubclassProc(window, message, w, l);
         if (HDC dc = GetDC(window)) {
-            tabs.PaintTabCloses(dc);
+            const int saved = SaveDC(dc);
+            if (saved) {
+                if (kind == ERROR) tabs.PaintTabCloses(dc);
+                else if (kind != NULLREGION) {
+                    ExtSelectClipRgn(dc, update, RGN_AND); tabs.PaintTabCloses(dc);
+                }
+                RestoreDC(dc, saved);
+            } else if (kind != NULLREGION) tabs.PaintTabCloses(dc);
             ReleaseDC(window, dc);
         }
+        if (update) DeleteObject(update);
         return result;
     }
     case WM_PRINT:
     case WM_PRINTCLIENT: {
-        // PrintWindow supplies a DC without the window's screen clipping region.
         const auto dc = reinterpret_cast<HDC>(w);
+        const int saved = SaveDC(dc); if (!saved) break;
         RECT row{};
-        if (GetWindowRgnBox(window, &row) == ERROR) break;
-        const int saved = SaveDC(dc);
-        if (!saved) break;
+        if (GetWindowRgnBox(window, &row) == ERROR) GetClientRect(window, &row);
         IntersectClipRect(dc, row.left, row.top, row.right, row.bottom);
+        const int nativeState = SaveDC(dc);
         const auto result = DefSubclassProc(window, message, w, l);
+        if (nativeState) RestoreDC(dc, nativeState);
         tabs.PaintTabCloses(dc);
         RestoreDC(dc, saved);
         return result;
@@ -489,23 +580,24 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
     case WM_LBUTTONDOWN:
     case WM_LBUTTONDBLCLK: {
         if (const HWND child = tabs.TabCloseAt(point)) {
+            const HWND old = tabs.hotClose;
             tabs.pressedClose = tabs.hotClose = child;
             SetCapture(window);
-            InvalidateRect(window, nullptr, FALSE);
+            tabs.InvalidateCloses(old, child);
             return 0;
         }
         if (message == WM_LBUTTONDBLCLK) break;
         const auto result = DefSubclassProc(window, message, w, l);
         tabs.dragIndex = tabs.HitTest(point);
         tabs.dragOrigin = point;
-        if (tabs.dragIndex >= 0) SetCapture(window);
+        if (tabs.dragIndex >= 0) { SetCapture(window); tabs.InvalidateCloses(tabs.hotClose); }
         return result;
     }
     case WM_MOUSEMOVE: {
         const auto hot = tabs.TabCloseAt(point);
         if (hot != tabs.hotClose) {
-            tabs.hotClose = hot;
-            InvalidateRect(window, nullptr, FALSE);
+            const HWND old = tabs.hotClose; tabs.hotClose = hot;
+            tabs.InvalidateCloses(old, hot);
         }
         if (hot) {
             TRACKMOUSEEVENT tracking{sizeof(tracking), TME_LEAVE, window, 0};
@@ -520,27 +612,28 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
         }
         break;
     }
-    case WM_MOUSELEAVE:
-        tabs.hotClose = nullptr;
-        InvalidateRect(window, nullptr, FALSE);
-        break;
+    case WM_MOUSELEAVE: {
+        const HWND old = tabs.hotClose; tabs.hotClose = nullptr;
+        tabs.InvalidateCloses(old); break;
+    }
     case WM_LBUTTONUP:
         if (const HWND child = tabs.pressedClose) {
-            tabs.hotClose = tabs.TabCloseAt(point);
+            const HWND old = tabs.hotClose;
+            tabs.hotClose = tabs.TabCloseAt(point); tabs.pressedClose = nullptr;
+            tabs.InvalidateCloses(old, tabs.hotClose); tabs.InvalidateCloses(child);
             ReleaseCapture();
             if (child == tabs.hotClose) ::PostMessageW(tabs.frame, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(child), 0);
             return 0;
         }
         if (GetCapture() == window) ReleaseCapture();
         break;
-    case WM_CAPTURECHANGED:
-        if (tabs.pressedClose) {
-            tabs.pressedClose = nullptr;
-            InvalidateRect(window, nullptr, FALSE);
-        }
-        tabs.dragIndex = -1;
-        tabs.dragging = false;
+    case WM_CAPTURECHANGED: {
+        const HWND old = tabs.pressedClose;
+        const bool wasDragging = tabs.dragIndex >= 0;
+        tabs.pressedClose = nullptr; tabs.dragIndex = -1; tabs.dragging = false;
+        tabs.InvalidateCloses(old, wasDragging ? tabs.hotClose : nullptr);
         break;
+    }
     case WM_MBUTTONUP:
         if (auto child = tabs.ChildAt(tabs.HitTest(point)))
             ::PostMessageW(tabs.frame, WM_CLOSE_TAB, reinterpret_cast<WPARAM>(child), 0);
@@ -555,10 +648,18 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
     }
     const auto result = DefSubclassProc(window, message, w, l);
     switch (message) {
+    case WM_SIZE:
+    case WM_SETFONT:
+    case WM_STYLECHANGED:
+    case WM_HSCROLL:
+    case TCM_SETCURFOCUS:
+    case TCM_SETCURSEL:
+        InvalidateRect(window, nullptr, FALSE); break;
     case TCM_INSERTITEMW:
     case TCM_SETITEMW:
     case TCM_DELETEITEM:
     case TCM_SETITEMSIZE: {
+        InvalidateRect(window, nullptr, FALSE);
         RECT area{};
         GetClientRect(tabs.bar, &area);
         tabs.LayoutCloseButton(area.right, area.bottom);
