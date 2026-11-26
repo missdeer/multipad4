@@ -56,7 +56,7 @@ inline void RunCloseReentrancyTests(MainFrame& frame) {
         }
     };
     auto restore = [&] {
-        frame.runtime.pendingTabCloses.clear(); cleanDocuments();
+        frame.runtime.ClearPendingTabCloses(); cleanDocuments();
         frame.settings = savedSettings;
         for (int i = 0; i < frame.tabs.GetPageCount(); ++i)
             if (frame.tabs.GetPageData(i) == priorActive) frame.tabs.SetActivePage(i);

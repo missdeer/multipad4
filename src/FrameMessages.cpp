@@ -73,14 +73,13 @@ LRESULT MainFrame::OnDeferredCommand(UINT, WPARAM, LPARAM, BOOL&) {
     if (runtime.operationDepth || runtime.inBackgroundWork || !IsWindowEnabled()) return 0;
     if (!runtime.pendingTabCloses.empty()) {
         FrameOperation operation(runtime, m_hWnd);
-        const HWND child = runtime.pendingTabCloses.front();
-        runtime.pendingTabCloses.erase(runtime.pendingTabCloses.begin());
+        const HWND child=TakePending(runtime.pendingTabCloses,runtime.pendingTabCloseHead);
         for (int i = 0; i < tabs.GetPageCount(); ++i)
             if (tabs.GetPageHWND(i) == child) { Close(i); break; }
         return 0;
     }
     if (runtime.pendingCommands.empty()) return 0;
-    auto pending = std::move(runtime.pendingCommands.front()); runtime.pendingCommands.erase(runtime.pendingCommands.begin());
+    auto pending=TakePending(runtime.pendingCommands,runtime.pendingCommandHead);
     COPYDATASTRUCT data{pending.first, static_cast<DWORD>((pending.second.size() + 1) * sizeof(wchar_t)), pending.second.data()};
     BOOL handled = TRUE; OnCopyData(WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data), handled); return 0;
 }

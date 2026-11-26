@@ -83,4 +83,3 @@ inline void RunPluginIndexTests(MainFrame& frame,const std::filesystem::path& di
 #endif
     report.close();require(bool(report));
 }
-

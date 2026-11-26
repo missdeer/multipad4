@@ -1,6 +1,7 @@
 #include "MainFrame.h"
 #ifdef MULTIPAD4_TESTING
 #include "SmokeTest.h"
+#include "../tests/DeferredQueueTests.h"
 #include "../tests/PluginIndexTests.h"
 #include "../tests/SearchRetirementTests.h"
 #include "../tests/TabStripTests.h"
@@ -162,6 +163,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
     bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
+    bool deferredQueueTest=count==3&&wcscmp(args[1],L"--deferred-queue-test")==0;
     bool pluginIndexTest=count==3&&wcscmp(args[1],L"--plugin-index-test")==0;
     bool settingsProfileTest=count==3&&wcscmp(args[1],L"--settings-profile-test")==0;
     bool configurationTest=count==4&&wcscmp(args[1],L"--configuration-test")==0;
@@ -179,7 +181,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = pluginIndexTest ||
+    bool smoke =
+        pluginIndexTest ||
         settingsProfileTest ||
         saveWhitespaceTest ||
         autosaveCaptureTest ||
@@ -203,7 +206,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         configurationMode ||
         lexerBaseline ||
         noPluginsTest ||
-        (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+        (count == 2 && wcscmp(args[1], L"--smoke-test") == 0) ||
+        deferredQueueTest;
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     if (statusPresentation || statusPresentationBenchmark) smoke = true;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
@@ -292,6 +296,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (commentTest || commentBenchmark) { RunCommentTests(frame, commentBenchmark); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
+                else if(deferredQueueTest){RunDeferredQueueTests(frame,args[2]);}
                 else if(pluginIndexTest){RunPluginIndexTests(frame,args[2]);}
                 else if(settingsProfileTest){RunSettingsProfileTests(args[2]);}
                 else if(configurationTest){RunConfigurationFeatureTests(frame,args[2],args[3]);}

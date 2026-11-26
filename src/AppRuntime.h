@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdint>
 #include <climits>
+#include <cstddef>
 #include <memory>
 #include "DirectoryWatch.h"
 #include <unordered_set>
@@ -26,6 +27,15 @@ struct DocumentRuntime {
     unsigned lastRecoveryEncoding = UINT_MAX;
     int lastRecoveryEol = -1;
 };
+// Clear exhausted queues so existing empty checks always describe the live suffix.
+template<class T> T TakePending(std::vector<T>& queue,size_t& head) {
+    auto value=std::move(queue[head++]);
+    if(head==queue.size()){queue.clear();head=0;}
+    else if(head>=1024 && head>=queue.size()-head){
+        queue.erase(queue.begin(),queue.begin()+static_cast<std::ptrdiff_t>(head));head=0;
+    }
+    return value;
+}
 struct FrameRuntime {
     HMENU mainMenu = nullptr;
     bool menuVisible = true, fullScreen = false, trayPresent = false;
@@ -40,6 +50,8 @@ struct FrameRuntime {
     unsigned operationDepth = 0;
     std::vector<std::pair<ULONG_PTR, std::wstring>> pendingCommands;
     std::vector<HWND> pendingTabCloses;
+    size_t pendingCommandHead=0,pendingTabCloseHead=0;
+    void ClearPendingTabCloses(){pendingTabCloses.clear();pendingTabCloseHead=0;}
     int restoredShowCmd = SW_SHOWNORMAL;
     size_t styleCursor = 0;
     std::shared_ptr<AutoSaveTask> autoSaveTask;
