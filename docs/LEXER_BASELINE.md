@@ -49,7 +49,7 @@ python tools/inventory_lexer_baseline.py --check
 ```powershell
 .\cmake-msvc-build\lexer_baseline_export.exe --export tests/baselines/lexer-catalog.xml
 $baseline = Join-Path $PWD 'tests/baselines/lexer-behavior.txt'
-$run = Start-Process .\cmake-msvc-build\multipad4.exe -ArgumentList '--export-lexer-baseline', ('"' + $baseline + '"') -WindowStyle Hidden -PassThru -Wait
+$run = Start-Process .\cmake-msvc-build\multipad4-tests.exe -ArgumentList '--export-lexer-baseline', ('"' + $baseline + '"') -WindowStyle Hidden -PassThru -Wait
 if ($run.ExitCode) { throw 'Behavior export failed' }
 python tools/inventory_lexer_baseline.py
 ```

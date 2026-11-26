@@ -125,6 +125,8 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 
 ## 验证
 
+集成测试和 QA/性能测试命令改由 `multipad4-tests.exe` 执行（`BUILD_TESTING=ON` 时构建），正式编辑器不包含这些测试入口。
+
 启用 `BUILD_TESTING=ON` 时，CMake 注册 14 项测试，根据 Python、随附插件和五个第三方插件 DLL 的可用情况，最多再注册 4 项。CI 检查构建产物和运行时配置，应用及插件测试可在本地通过 CTest 执行。
 
 | CTest 名称 | 主要范围 |
@@ -150,9 +152,9 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 
 ```powershell
 python tools/inventory_notepad4.py
-.\cmake-msvc-build\multipad4.exe --migration-report tmp/migration-status-check.json
+.\cmake-msvc-build\multipad4-tests.exe --migration-report tmp/migration-status-check.json
 python tools/check_migration.py tmp/migration-status-check.json
-.\cmake-msvc-build\multipad4.exe --qa-render tmp/qa-render
+.\cmake-msvc-build\multipad4-tests.exe --qa-render tmp/qa-render
 ```
 
 资源数量和命令路由只证明入口覆盖；窗口渲染与自动回归也不替代真实交互验收。全部语言/对话框/动态菜单的行为一致性、鼠标拖动、输入法、多显示器 DPI、实际打印及真实系统集成仍需逐项验证。

@@ -39,4 +39,6 @@ void LaunchAppUpdateWorker(StagedAppUpdate& update, const std::filesystem::path&
 std::optional<AppUpdateRestart> TakeAppUpdateRestart();
 std::filesystem::path UpdateSessionPath(const MainFrame& frame, const std::filesystem::path& stage);
 void CleanUpAppUpdate(const AppUpdateRestart& restart);
+#ifdef MULTIPAD4_TESTING
 void TestAppUpdate(const std::filesystem::path& scratch);
+#endif

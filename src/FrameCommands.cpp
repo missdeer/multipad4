@@ -432,7 +432,7 @@ bool ExecuteFrameCommand(MainFrame& frame, UINT id) {
         else if (frame.settings.Get(IDM_VIEW_NOESCFUNC) == 2) frame.PostMessage(WM_CLOSE);
         break;
     case CMD_SHIFTESC: frame.PostMessage(WM_CLOSE); break;
-    case IDM_CMDLINE_HELP: frame.MessageBox(L"MultiPad4 [file ...]\n\nEach file opens in its own MDI document.\nCtrl+Tab: next document; Ctrl+W: close document.\n/n: new window.\n/e:<codepage>: open using an explicit encoding.\n/g:<line>,<column>: jump after opening.\n/r: open read-only.\n--smoke-test: run integration checks.", L"Command Line", MB_OK); break;
+    case IDM_CMDLINE_HELP: frame.MessageBox(L"MultiPad4 [file ...]\n\nEach file opens in its own MDI document.\nCtrl+Tab: next document; Ctrl+W: close document.\n/n: new window.\n/e:<codepage>: open using an explicit encoding.\n/g:<line>,<column>: jump after opening.\n/r: open read-only.", L"Command Line", MB_OK); break;
     default: {
         const wchar_t* url = nullptr;
         switch (id) {

@@ -24,7 +24,7 @@
 - 2026-11-10 15:19，使用 MSVC 包装脚本重新编译后，CTest **2/2 通过**（17.26 秒）。新增 `UIConsistencyTests.h`：13 段状态栏样例、选区/矩形选择/数字分组/大小格式、通知与取消路径、长行限制和临时自动缩进；27 个工具栏路由；204 条已编译快捷键记录（199 条上游 + 5 条 MDI）的目标/归属检查，以及 `Ctrl+N`、`Ctrl+Tab`、`Ctrl+Shift+Tab`、`Ctrl+W`、`Ctrl+F4` 实际快捷键转换。最终日志副本为 `tmp/acceptance-ctest-final.log`。
 - 本轮修正状态栏统计与格式、CSV 状态栏入口及取消语义、三个遗漏的快捷键命令、浏览按钮图像及状态栏缩放对话框定位；见缺陷账本 B13–B18。菜单入口复查仍为 **418/418**。完整逐项索引已覆盖 418 个菜单命令、32 个对话框、27 个工具栏按钮、13 个状态栏字段及 199 条上游快捷键记录；索引中的测试引用不是覆盖率或通过判定。
 - 2026-11-10 14:51（Asia/Singapore），对当前构建运行 `ctest --test-dir cmake-msvc-build --output-on-failure`：`fileio_roundtrip`、`editor_integration` **2/2 通过**，约 20 秒。此轮未重新编译；所用 `multipad4.exe` 修改时间为 14:47:53，晚于当时最新应用/测试源码。
-- 重新运行 `multipad4.exe --migration-report tmp/migration-status-check.json`，再执行 `python tools/check_migration.py tmp/migration-status-check.json`：**418/418 菜单命令已建立路由**。此数字仅覆盖资源清单中的不同菜单命令，不等于全部功能行为通过。
+- 重新运行 `multipad4-tests.exe --migration-report tmp/migration-status-check.json`，再执行 `python tools/check_migration.py tmp/migration-status-check.json`：**418/418 菜单命令已建立路由**。此数字仅覆盖资源清单中的不同菜单命令，不等于全部功能行为通过。
 - `editor_integration` 已调用缺陷账本 B01–B12 的对应回归，包括 MDI 布局、语言切换、注册表状态迁移、关闭重入和对话框尺寸手柄。系统集成只操作隔离 HKCU 测试键，不等于真实 HKLM/系统记事本替换验证。
 - 当前版本 `--qa-render` 运行成功，输出 `tmp/qa-acceptance-final/` 中 172 张窗口渲染图及 172 份布局记录；本轮浏览了前一轮全部缩略图，并复查最终状态栏和运行对话框图片。示例见 [状态栏](images/mdi-status-acceptance.png)、[运行对话框](images/run-dialog-acceptance.png)。这属于当前环境下的渲染抽查，不能替代真实鼠标、输入法、打印或多显示器 DPI 检查。
 

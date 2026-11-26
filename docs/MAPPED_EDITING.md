@@ -75,7 +75,7 @@ UTF-8、UTF-8 BOM、UTF-16 LE/BE 及无 BOM UTF-16 的可见字符和编辑位�
 ```powershell
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_SEARCH = '1'
-$check = Start-Process .\cmake-msvc-build\multipad4.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/search-benchmark.csv -RedirectStandardError tmp/search-benchmark.err
+$check = Start-Process .\cmake-msvc-build\multipad4-tests.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/search-benchmark.csv -RedirectStandardError tmp/search-benchmark.err
 $check.ExitCode
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SEARCH
@@ -149,7 +149,7 @@ $env:MULTIPAD4_LARGE_TEST_MAPPED = '1'
 $env:MULTIPAD4_LARGE_TEST_QA = "$PWD/tmp/mapped-editor-qa"
 # 可选，写出完整副本并逐字节比较，需足够磁盘空间
 $env:MULTIPAD4_LARGE_TEST_SAVE_TO = "$PWD/tmp/mapped-5GiB-saved-copy.txt"
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_MAPPED
 Remove-Item Env:MULTIPAD4_LARGE_TEST_QA
