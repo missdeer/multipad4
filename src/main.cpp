@@ -2,6 +2,9 @@
 #ifdef MULTIPAD4_TESTING
 #include "SmokeTest.h"
 #include "../tests/StatusStatisticsTests.h"
+#ifdef MULTIPAD4_INDENT_TEST
+#include "../tests/IndentReadTests.h"
+#endif
 #include "../tests/OrdinarySearchTests.h"
 #include "../tests/LargeFileTests.h"
 #include "../tests/PluginFeatureTests.h"
@@ -126,6 +129,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool ordinaryBenchmark = count == 3 && wcscmp(args[1], L"--ordinary-search-benchmark") == 0;
     bool statusTest = count == 2 && wcscmp(args[1], L"--status-statistics-test") == 0;
     bool statusBenchmark = count == 3 && wcscmp(args[1], L"--status-statistics-benchmark") == 0;
+    bool indentTest = false, indentBenchmark = false;
+#ifdef MULTIPAD4_INDENT_TEST
+    indentTest = count == 2 && wcscmp(args[1], L"--indent-read-test") == 0;
+    indentBenchmark = count == 2 && wcscmp(args[1], L"--indent-read-benchmark") == 0;
+#endif
     bool largeTest = count == 2 && wcscmp(args[1], L"--large-file-test") == 0;
     bool noPluginsTest = count == 2 && wcscmp(args[1], L"--no-plugins-test") == 0;
     bool lexerBaseline = count == 3 && (wcscmp(args[1], L"--export-lexer-baseline") == 0 || wcscmp(args[1], L"--check-lexer-baseline") == 0);
@@ -134,12 +142,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool benchmark=count==3&&wcscmp(args[1],L"--configuration-benchmark")==0;
     bool configurationMode=configurationTest||themeReport||benchmark;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
-    bool smoke = replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
+    bool smoke = indentTest || indentBenchmark || replacementTest || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || configurationMode || lexerBaseline || noPluginsTest || (count == 2 && wcscmp(args[1], L"--smoke-test") == 0);
     bool report = count == 3 && wcscmp(args[1], L"--migration-report") == 0;
     bool render = count == 3 && wcscmp(args[1], L"--qa-render") == 0;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -150,7 +158,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
         if (smoke || render) {
             frame.plugins.onlyModule = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
@@ -201,6 +209,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
             if (pluginTest) { frame.ShowWindow(SW_SHOWNORMAL); frame.ShowWindow(SW_SHOWNORMAL); frame.NewDocument(); }
             frame.plugins.Ready();
             try {
+#ifdef MULTIPAD4_INDENT_TEST
+                if (indentTest || indentBenchmark) { RunIndentReadTests(frame, indentBenchmark); }
+                else
+#endif
                 if (statusTest || statusBenchmark) { RunStatusStatisticsTests(frame, statusBenchmark ? args[2] : nullptr); }
                 else if (ordinaryTest) { RunOrdinarySearchTests(frame); }
                 else if (ordinaryBenchmark) { RunOrdinarySearchBenchmark(frame, args[2]); }
