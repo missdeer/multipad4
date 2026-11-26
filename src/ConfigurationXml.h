@@ -19,6 +19,8 @@ struct ConfigurationXmlNode {
 };
 ConfigurationXmlNode ParseConfigurationXml(const std::string& bytes, const std::filesystem::path& source);
 ConfigurationXmlNode ReadConfigurationXml(const std::filesystem::path& source);
+// Root metadata only; callers must fully validate before publishing configuration.
+ConfigurationXmlNode ReadConfigurationXmlRoot(const std::filesystem::path& source);
 std::string EmbeddedConfiguration(unsigned resource);
 std::string ConfigurationUtf8(const std::wstring& value);
 std::wstring ConfigurationWide(const std::string& value);

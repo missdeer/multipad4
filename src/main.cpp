@@ -12,6 +12,7 @@
 #include "../tests/ModelinePreferenceTests.h"
 #include "../tests/PrivateClipboard.h"
 #include "../tests/RichTextTests.h"
+#include "../tests/ThemeEnumerationTests.h"
 #include "../tests/SessionCaptureTests.h"
 #include "../tests/AutoSaveCaptureTests.h"
 #include "../tests/SaveWhitespaceTests.h"
@@ -180,6 +181,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool transformTest = count == 2 && wcscmp(args[1], L"--edit-transform-test") == 0;
     bool transformBenchmark = count == 2 && wcscmp(args[1], L"--edit-transform-benchmark") == 0;
     bool saveWhitespaceTest = count == 2 && (wcscmp(args[1], L"--save-whitespace-test") == 0 || wcscmp(args[1], L"--save-whitespace-benchmark") == 0);
+    bool themeEnumerationTest = count == 2 && (wcscmp(args[1], L"--theme-enumeration-test") == 0 || wcscmp(args[1], L"--theme-enumeration-benchmark") == 0);
     bool sessionCaptureTest = count == 2 && (wcscmp(args[1], L"--session-capture-test") == 0 || wcscmp(args[1], L"--session-capture-benchmark") == 0);
     bool autosaveCaptureTest = count == 2 && (wcscmp(args[1], L"--autosave-capture-test") == 0 || wcscmp(args[1], L"--autosave-capture-benchmark") == 0);
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
@@ -188,6 +190,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     bool smoke =
         pluginIndexTest ||
         settingsProfileTest ||
+        themeEnumerationTest ||
         sessionCaptureTest ||
         saveWhitespaceTest ||
         autosaveCaptureTest ||
@@ -220,7 +223,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (commentTest || commentBenchmark) smoke = true;
     if (render) qaArtifactDirectory = std::filesystem::absolute(args[2]);
 #else
-    constexpr bool autosaveCaptureTest=false, sessionCaptureTest=false, saveWhitespaceTest=false, richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
+    constexpr bool sessionCaptureTest=false, autosaveCaptureTest=false, themeEnumerationTest=false, saveWhitespaceTest=false, richTextTest=false, richTextBenchmark=false, modelineTest=false, modelineBenchmark=false, tabStripTest=false, transformTest=false, transformBenchmark=false, searchRetirementTest=false, refreshTest=false, refreshBenchmark=false, indentTest=false, indentBenchmark=false, pluginTest=false, statusTest=false, statusBenchmark=false, ordinaryTest=false, ordinaryBenchmark=false;
     constexpr bool largeTest=false, lexerBaseline=false, configurationMode=false, smoke=false, report=false, render=false;
 #endif
     int result = 0;
@@ -231,7 +234,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         MainFrame frame;
         StartupLock startupLock;
         bool startupReady = largeTest || smoke || report || render || pluginTest || startupLock.Acquire();
-        frame.plugins.enabled = !(autosaveCaptureTest || sessionCaptureTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
+        frame.plugins.enabled = !(sessionCaptureTest || autosaveCaptureTest || themeEnumerationTest || saveWhitespaceTest || richTextTest || richTextBenchmark || modelineTest || modelineBenchmark || tabStripTest || transformTest || transformBenchmark || searchRetirementTest || refreshTest || refreshBenchmark || indentTest || indentBenchmark || statusTest || statusBenchmark || ordinaryTest || ordinaryBenchmark || largeTest || report || lexerBaseline || configurationMode);
 #ifdef MULTIPAD4_TESTING
         if (statusPresentation || statusPresentationBenchmark) frame.plugins.enabled = false;
         if (smoke || render) {
@@ -293,6 +296,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
                 else if (modelineTest || modelineBenchmark) { RunModelinePreferenceTests(frame, modelineBenchmark); }
                 else if (transformTest || transformBenchmark) { RunEditTransformTests(frame, transformBenchmark); }
                 else if (saveWhitespaceTest) { RunSaveWhitespaceTests(frame, wcscmp(args[1], L"--save-whitespace-benchmark") == 0); }
+                else if (themeEnumerationTest) { RunThemeEnumerationTests(frame, wcscmp(args[1], L"--theme-enumeration-benchmark") == 0); }
                 else if (sessionCaptureTest) { RunSessionCaptureTests(frame, wcscmp(args[1], L"--session-capture-benchmark") == 0); }
                 else if (autosaveCaptureTest) { RunAutoSaveCaptureTests(frame, wcscmp(args[1], L"--autosave-capture-benchmark") == 0); }
                 else if (richTextTest || richTextBenchmark) { RunRichTextTests(frame, richTextBenchmark); }
