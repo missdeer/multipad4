@@ -27,7 +27,7 @@ if(icon_sources)
   message(FATAL_ERROR "File icons without permanent resource IDs: ${icon_sources}")
 endif()
 
-set(default_file_icon "${PROJECT_SOURCE_DIR}/3rdparty/notepad4/res/Notepad4.ico")
+set(default_file_icon "${icon_directory}/default.ico")
 string(APPEND icon_resources "IDI_DEFAULT_FILE ICON \"${default_file_icon}\"\n")
 
 file(CONFIGURE OUTPUT "${PROJECT_BINARY_DIR}/FileIconResources.rcinc" CONTENT "@icon_resources@" @ONLY)

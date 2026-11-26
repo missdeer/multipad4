@@ -172,13 +172,15 @@ def main():
     extensions = catalog()
     labels = small_labels(extensions.keys())
     assert len(labels) == len(set(labels.values())) == len(extensions)
+    extensions[""] = set()
+    labels[""] = "FIL"
     if not check:
         OUTPUT.mkdir(parents=True, exist_ok=True)
     small_frames = set()
     for ext, owners in sorted(extensions.items()):
-        path = OUTPUT / f"file-{ext}.ico"
+        path = OUTPUT / (f"file-{ext}.ico" if ext else "default.ico")
         if not check:
-            images = [render(size, ext, labels[ext], owners) for size in SIZES]
+            images = [render(size, ext or "file", labels[ext], owners) for size in SIZES]
             images[-1].save(path, sizes=sorted(FRAMES), append_images=images[:-1])
         with Image.open(path) as icon:
             assert icon.format == "ICO" and icon.ico.sizes() == FRAMES, path
@@ -189,7 +191,7 @@ def main():
                 if size == 16:
                     small_frames.add(frame.tobytes())
     assert len(small_frames) == len(extensions), "Duplicate 16 px icons"
-    assert {path.stem for path in OUTPUT.glob("*.ico")} == {f"file-{ext}" for ext in extensions}
+    assert {path.stem for path in OUTPUT.glob("*.ico")} == {f"file-{ext}" if ext else "default" for ext in extensions}
     if not check:
         preview()
     print(f"Verified {len(extensions)} icons, {len(SIZES)} sizes per icon.")
