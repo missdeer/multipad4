@@ -1,5 +1,7 @@
 #pragma once
 #include "SearchDialogFeatureTests.h"
+#include "ResultPageTests.h"
+#include "CompletionBudgetTests.h"
 #include <chrono>
 #include <fstream>
 #include <psapi.h>
@@ -17,6 +19,8 @@ inline LRESULT CALLBACK CountIndicatorNotifications(HWND window, UINT message, W
     return DefSubclassProc(window, message, w, l);
 }
 inline void RunOrdinarySearchTests(MainFrame& frame) {
+    RunResultPageTests(frame);
+    RunCompletionBudgetTests(frame);
     auto require = [](bool value, std::source_location where = std::source_location::current()) {
         if (!value) throw std::runtime_error("Ordinary search regression at " + std::to_string(where.line()));
     };

@@ -32,7 +32,7 @@
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_SEARCH = '1'
 $env:MULTIPAD4_LARGE_TEST_SEARCH_COMPARE = '1'
-$run = Start-Process .\cmake-msvc-build\multipad4.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/parallel-production-5GiB.csv -RedirectStandardError tmp/parallel-production-5GiB.err
+$run = Start-Process .\cmake-msvc-build\multipad4-tests.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/parallel-production-5GiB.csv -RedirectStandardError tmp/parallel-production-5GiB.err
 $run.ExitCode
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SEARCH
@@ -80,7 +80,7 @@ i9-12900HK、约 32 GiB、Windows 11；MSVC RelWithDebInfo、SSE4.2。同一份 
 bash -lc "cmake-build cmake-msvc-build"
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_PARALLEL_SEARCH = '1'
-$run = Start-Process .\cmake-msvc-build\multipad4.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/parallel-search-5GiB.csv -RedirectStandardError tmp/parallel-search-5GiB.err
+$run = Start-Process .\cmake-msvc-build\multipad4-tests.exe --large-file-test -Wait -PassThru -RedirectStandardOutput tmp/parallel-search-5GiB.csv -RedirectStandardError tmp/parallel-search-5GiB.err
 $run.ExitCode
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_PARALLEL_SEARCH

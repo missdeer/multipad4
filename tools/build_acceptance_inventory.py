@@ -1,7 +1,7 @@
 """Index every pinned UI item and its evidence without claiming behavioral parity.
 
 Usage: python tools/build_acceptance_inventory.py tmp/migration-status-check.json
-The runtime JSON is produced by multipad4 --migration-report. Test references
+The runtime JSON is produced by multipad4-tests --migration-report. Test references
 are navigation aids only; neither a reference nor a supported flag is a pass.
 """
 import argparse

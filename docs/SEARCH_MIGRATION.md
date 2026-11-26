@@ -53,7 +53,7 @@ collapse/expand, default action per tab, transparency modes and Chinese labels.
 The file-result regression drives Find in Files, double-clicks a result, then
 clicks Find Next, Find Previous, Find All in Current Document and Replace in the
 newly opened editor, checking source-document isolation and live F3 queries.
-QA images are generated with `multipad4 --qa-render tmp/search-layout-qa`.
+QA images are generated with `multipad4-tests --qa-render tmp/search-layout-qa`.
 
 This is a host adaptation, not the original Notepad++ dialog class linked into
 Win32. Notepad++ project-panel searches have no corresponding project model here.

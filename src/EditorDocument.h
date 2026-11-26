@@ -1,6 +1,7 @@
 #pragma once
 #include "App.h"
 #include "FileIO.h"
+#include "FileSearch.h"
 #include "StyleState.h"
 #include "AppRuntime.h"
 #include "FileVariables.h"
@@ -9,6 +10,8 @@
 #include <functional>
 #include <unordered_map>
 #include "StatusStatistics.h"
+#include "SimdText.h"
+namespace files { struct ReplacePattern; }
 struct SearchState {
     std::wstring findText, replaceText;
     int flags = 0;
@@ -30,6 +33,7 @@ struct SearchMatch {
     std::shared_ptr<const large::Document::Snapshot> diskSource;
     unsigned long long sourceRevision = 0, sourceSize = 0, sourceWriteTime = 0;
     LRESULT sourceBase = 0;
+    std::optional<files::ReplacementTarget> replacementTarget;
 };
 struct OrdinarySearchResult {
     struct Line { LRESULT number, start; std::shared_ptr<const std::string> text; };
@@ -40,7 +44,9 @@ struct EditorDocument {
     inline static unsigned long long nextSearchIdentity = 0;
     const unsigned long long searchIdentity = ++nextSearchIdentity;
     ~EditorDocument() { fastView.reset(); if (hwnd && ::IsWindow(hwnd)) ::DestroyWindow(hwnd); }
-    struct LoadMetrics { files::ReadStats fileRead; double allocation = 0, readDecode = 0, lineScan = 0, insertion = 0, configure = 0; } loadMetrics;
+    struct LoadMetrics { files::ReadStats fileRead; double allocation = 0, readDecode = 0, lineScan = 0, insertion = 0, configure = 0;
+        simd::LineEndings endings; unsigned long long revision = 0; LRESULT document = 0;
+    } loadMetrics;
     std::unique_ptr<FastFileView> fastView;
     bool FastView() const { return fastView && fastView->Active(); }
     HWND ViewWindow() const { return fastView ? fastView->Window() : hwnd; }
@@ -55,6 +61,8 @@ struct EditorDocument {
     std::wstring language = L"Text";
     SearchState search;
     DocumentStyleState style;
+    uint64_t completionEpoch = 0;
+    bool completionComposing = false;
     DocumentRuntime runtime;
     StatusStatistics statusStatistics;
     FileVariableState fileVariables;
@@ -88,6 +96,7 @@ struct EditorDocument {
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     large::SearchOptions MappedSearchOptions() const;
     std::string SearchReplacement();
+    files::ReplacePattern SearchReplacePattern();
     void ValidateSearch(bool replacing = false);
     std::vector<SearchMatch> MappedMatches(const large::Document::Snapshot& snapshot, const std::vector<large::SearchHit>& hits);
     bool ReplaceOne();

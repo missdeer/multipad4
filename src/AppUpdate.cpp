@@ -348,6 +348,7 @@ void CleanUpAppUpdate(const AppUpdateRestart& restart) {
     } catch (const std::exception&) {}
 }
 
+#ifdef MULTIPAD4_TESTING
 void TestAppUpdate(const fs::path& scratch) {
     const auto require = [](bool ok) { if (!ok) throw std::runtime_error("App update check failed."); };
     std::promise<void> resume;
@@ -409,3 +410,5 @@ void TestAppUpdate(const fs::path& scratch) {
     require(failed && settings == "settings" && fs::exists(replacement) && !fs::exists(backup) && !keepStaging);
 
 }
+
+#endif

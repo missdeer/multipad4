@@ -8,7 +8,7 @@ set_target_properties(Base64 PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${PR
 configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/License.txt" Notepad4.License.txt COPYONLY)
 add_dependencies(multipad4 Base64)
 if(BUILD_TESTING)
-  target_compile_definitions(multipad4 PRIVATE MULTIPAD4_TEST_BASE64)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_BASE64)
 endif()
 install(TARGETS Base64 RUNTIME DESTINATION plugins/Base64)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/Notepad4.License.txt" DESTINATION plugins/Base64)

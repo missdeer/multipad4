@@ -23,5 +23,5 @@ configure_file("${PROJECT_SOURCE_DIR}/THIRD_PARTY.md"
   "${PROJECT_BINARY_DIR}/plugins/OpenDocuments/THIRD_PARTY.md" COPYONLY)
 add_dependencies(multipad4 OpenDocuments)
 if(BUILD_TESTING)
-  target_compile_definitions(multipad4 PRIVATE MULTIPAD4_TEST_OPEN_DOCUMENTS)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_OPEN_DOCUMENTS)
 endif()

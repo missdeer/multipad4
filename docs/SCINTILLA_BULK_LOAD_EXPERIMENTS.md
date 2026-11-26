@@ -147,25 +147,25 @@ Remove-Item Env:MULTIPAD4_PROFILE_SCINTILLA
 Remove-Item Env:MULTIPAD4_EXPERIMENT_BULK
 # 正确性专项
 $env:MULTIPAD4_LARGE_TEST_BULK_VERIFY = '1'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_LARGE_TEST_BULK_VERIFY
 # 真实编辑器端到端，BULK 分别取 direct / adopt / cow
 $env:MULTIPAD4_LARGE_TEST_SOURCE = (Resolve-Path tmp/random-text-5GiB.txt).Path
 $env:MULTIPAD4_LARGE_TEST_E2E = '1'
 $env:MULTIPAD4_LARGE_TEST_BULK = 'direct'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 # COW 缓存条件 / 首次编辑控制（可选）
 $env:MULTIPAD4_LARGE_TEST_BULK = 'cow'
 $env:MULTIPAD4_LARGE_TEST_RETAIN_SOURCE = '1'
 $env:MULTIPAD4_BULK_EDITPROBE = '1'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_BULK_EDITPROBE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_RETAIN_SOURCE
 Remove-Item Env:MULTIPAD4_LARGE_TEST_BULK
 Remove-Item Env:MULTIPAD4_LARGE_TEST_E2E
 # 独立片段存储测试，计时与完整编辑器分开解读
 $env:MULTIPAD4_LARGE_TEST_PIECES = '1'
-.\cmake-msvc-build\multipad4.exe --large-file-test
+.\cmake-msvc-build\multipad4-tests.exe --large-file-test
 Remove-Item Env:MULTIPAD4_LARGE_TEST_PIECES
 Remove-Item Env:MULTIPAD4_LARGE_TEST_SOURCE
 # 恢复产品构建

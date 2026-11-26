@@ -25,6 +25,7 @@ public:
     void AddFile(files::FileSearchResult result, unsigned long long identity = 0, unsigned long long revision = 0);
     bool LoadMore(size_t archive);
     void Finish(size_t hits, size_t files);
+    void Skipped(const std::filesystem::path& path, const std::string& reason);
     bool Navigate(size_t line, size_t matchIndex = 0);
     BOOL PreTranslateMessage(MSG* message);
     LRESULT Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
@@ -46,6 +47,19 @@ public:
 private:
     struct MappedPage { unsigned long long identity; std::filesystem::path path; large::Document::Snapshot snapshot; std::shared_ptr<large::HitArchive> hits; size_t next = 0; files::FileSearchResult disk; unsigned long long revision = 0; bool file = false; std::shared_ptr<OrdinarySearchResult> ordinary; std::wstring title; };
     std::vector<MappedPage> archives;
+    struct Row { std::string text; SearchResultLexer::Line style; Target target; };
+    std::vector<Row> pendingRows;
+    unsigned batchDepth = 0;
+    bool changingText = false;
+    size_t pendingStyle = SIZE_MAX;
+    struct Batch {
+        SearchResultsPane& pane;
+        int exceptions;
+        explicit Batch(SearchResultsPane& pane);
+        ~Batch() noexcept(false);
+    };
+    void CommitRows();
+    void StyleRows(size_t first, size_t last = SIZE_MAX);
     size_t header = 0;
     void Append(const std::string& text, SearchResultLexer::Line style, Target target);
 };

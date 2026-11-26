@@ -26,7 +26,7 @@ Match nearby C++ code: four-space indentation, same-line opening braces, PascalC
 
 ## Testing Guidelines
 
-CTest runs custom C++ checks: `fileio_roundtrip` and `editor_integration` (the application’s `--smoke-test` mode). Extend file tests for encoding, newline preservation, invalid input, and failed-save protection; extend smoke checks for document isolation and UI behavior. No numerical coverage target is configured. Manually verify affected drag, input-method, and multi-monitor DPI interactions; include screenshots for visual changes.
+CTest runs custom C++ checks: `fileio_roundtrip` and `editor_integration` (`multipad4-tests.exe --smoke-test`). Integration test entry points are excluded from the production executable; `BUILD_TESTING=ON` builds the separate test executable. Extend file tests for encoding, newline preservation, invalid input, and failed-save protection; extend smoke checks for document isolation and UI behavior. No numerical coverage target is configured. Manually verify affected drag, input-method, and multi-monitor DPI interactions; include screenshots for visual changes.
 
 ## Commit & Pull Request Guidelines
 

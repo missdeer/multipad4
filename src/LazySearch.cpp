@@ -15,6 +15,9 @@
 namespace large {
 namespace {
 constexpr Position CacheBytes = 64 * 1024;
+#ifdef MULTIPAD4_REGEX_ITERATOR_TEST
+unsigned long long decodedCharacters = 0;
+#endif
 void FoldAscii(std::string& text) {
     size_t at = 0;
     const auto lower = _mm_set1_epi8('A' - 1), upper = _mm_set1_epi8('Z' + 1), bit = _mm_set1_epi8(32);
@@ -40,6 +43,7 @@ struct Reader {
     struct Cache { Position begin = 0; std::string bytes; unsigned long long stamp = 0; };
     mutable std::array<Cache, 4> cache;
     mutable unsigned long long clock = 0, visits = 0;
+    mutable size_t hot = 0;
     mutable std::map<Position, Position> checkpoints{{0, 0}};
     mutable std::map<Position, std::vector<Position>> boundaries;
     unsigned width = 1, codePage = CP_UTF8;
@@ -63,13 +67,24 @@ struct Reader {
     }
     unsigned char Byte(Position position) const {
         if (position >= Size()) throw std::runtime_error("Search iterator out of bounds.");
-        for (auto& block : cache) if (!block.bytes.empty() && position >= block.begin && position - block.begin < block.bytes.size()) { block.stamp = ++clock; return static_cast<unsigned char>(block.bytes[static_cast<size_t>(position - block.begin)]); }
+#ifndef MULTIPAD4_REGEX_ITERATOR_BASELINE
+        const auto& recent = cache[hot];
+        if (!recent.bytes.empty() && position >= recent.begin && position - recent.begin < recent.bytes.size()) {
+            cache[hot].stamp = ++clock;
+            return static_cast<unsigned char>(recent.bytes[static_cast<size_t>(position - recent.begin)]);
+        }
+#endif
+        for (auto& block : cache) if (!block.bytes.empty() && position >= block.begin && position - block.begin < block.bytes.size()) { block.stamp = ++clock; hot = static_cast<size_t>(&block - cache.data()); return static_cast<unsigned char>(block.bytes[static_cast<size_t>(position - block.begin)]); }
         Check(); auto* slot = &*std::min_element(cache.begin(), cache.end(), [](const auto& a, const auto& b) { return a.stamp < b.stamp; });
+        hot = static_cast<size_t>(slot - cache.data());
         slot->begin = position / CacheBytes * CacheBytes; slot->bytes = Read(slot->begin, static_cast<size_t>((std::min)(CacheBytes + 8, Size() - slot->begin))); slot->stamp = ++clock;
         return static_cast<unsigned char>(slot->bytes[static_cast<size_t>(position - slot->begin)]);
     }
     unsigned Unit(Position position) const { auto a = Byte(position), b = Byte(position + 1); return little ? a | (b << 8) : (a << 8) | b; }
     Character At(Position position) const {
+#ifdef MULTIPAD4_REGEX_ITERATOR_TEST
+        ++decodedCharacters;
+#endif
         if ((++visits & 1023) == 0) Check(); Character result;
         if (width == 2) { result.value[0] = static_cast<wchar_t>(Unit(position)); result.bytes = 2; return result; }
         auto first = Byte(position);
@@ -85,11 +100,12 @@ struct Reader {
         if (!units) throw std::runtime_error("Invalid encoded search input.");
         result.units = units; result.bytes = count; return result;
     }
-    Position Next(Position position) const {
-        if (position >= Size()) return Size(); auto value = At(position); auto next = position + value.bytes;
+    Position Next(Position position, Character value) const {
+        auto next = position + value.bytes;
         if (dbcs && next / CacheBytes != position / CacheBytes) checkpoints[next / CacheBytes] = next;
         return next;
     }
+    Position Next(Position position) const { return position >= Size() ? Size() : Next(position, At(position)); }
     Position Previous(Position position) const {
         if (!position) return 0;
         if (width == 2) return position - 2;
@@ -134,17 +150,57 @@ struct Iterator {
     Reader* reader = nullptr;
     Position position = 0;
     unsigned part = 0;
-    wchar_t operator*() const { return reader->At(position).value[part]; }
-    Iterator& operator++() { auto c = reader->At(position); if (part + 1 < c.units) ++part; else { position = reader->Next(position); part = 0; } return *this; }
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+    Reader::Character Current() const { return reader->At(position); }
+#else
+    mutable Reader::Character current;
+    mutable bool decoded = false;
+    const Reader::Character& Current() const {
+        if ((++reader->visits & 1023) == 0) reader->Check();
+        if (!decoded) { current = reader->At(position); decoded = true; }
+        return current;
+    }
+#endif
+    wchar_t operator*() const { return Current().value[part]; }
+    Iterator& operator++() {
+        const auto c = Current();
+        if (part + 1 < c.units) ++part;
+        else {
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+            position = reader->Next(position);
+#else
+            position = reader->Next(position, c); decoded = false;
+#endif
+            part = 0;
+        }
+        return *this;
+    }
     Iterator operator++(int) { auto copy = *this; ++*this; return copy; }
-    Iterator& operator--() { if (part) --part; else { position = reader->Previous(position); part = reader->At(position).units - 1; } return *this; }
+    Iterator& operator--() {
+        if (part) --part;
+        else {
+            position = reader->Previous(position);
+#ifndef MULTIPAD4_REGEX_ITERATOR_BASELINE
+            decoded = false;
+#endif
+            part = Current().units - 1;
+        }
+        return *this;
+    }
     Iterator operator--(int) { auto copy = *this; --*this; return copy; }
     bool operator==(const Iterator& other) const { return reader == other.reader && position == other.position && part == other.part; }
     bool operator!=(const Iterator& other) const { return !(*this == other); }
-    Position Start() const { if (reader->width == 2 && position && position < reader->Size() && reader->Unit(position) >= 0xDC00 && reader->Unit(position) <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position - 2; return position; }
+    unsigned CurrentUnit() const {
+#ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
+        return reader->Unit(position);
+#else
+        return Current().value[0];
+#endif
+    }
+    Position Start() const { if (reader->width == 2 && position && position < reader->Size() && CurrentUnit() >= 0xDC00 && CurrentUnit() <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position - 2; return position; }
     Position End() const {
-        if (part) return position + reader->At(position).bytes;
-        if (reader->width == 2 && position && position < reader->Size() && reader->Unit(position) >= 0xDC00 && reader->Unit(position) <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position + 2;
+        if (part) return position + Current().bytes;
+        if (reader->width == 2 && position && position < reader->Size() && CurrentUnit() >= 0xDC00 && CurrentUnit() <= 0xDFFF && reader->Unit(position - 2) >= 0xD800 && reader->Unit(position - 2) <= 0xDBFF) return position + 2;
         return position;
     }
 };
@@ -153,6 +209,10 @@ struct HitArchive::Impl {
     struct Record { Position start, end, line, lineStart; };
     HANDLE file = INVALID_HANDLE_VALUE;
     std::vector<Record> pending;
+    struct PageIndex { size_t first, count; Position end; };
+    std::vector<PageIndex> pages;
+    size_t cachedPage = SIZE_MAX;
+    std::vector<Record> cachedRecords;
     size_t count = 0;
     bool retainOffsets;
     explicit Impl(bool retain) : retainOffsets(retain) {}
@@ -168,8 +228,23 @@ struct HitArchive::Impl {
         if (file == INVALID_HANDLE_VALUE) Open();
         LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((count - pending.size()) * sizeof(Record)); DWORD written = 0;
         const auto bytes = static_cast<DWORD>(pending.size() * sizeof(Record));
+        const auto needed = pages.size() + (pending.size() + 15) / 16;
+        if (needed > pages.capacity()) pages.reserve((std::max)(needed, pages.capacity() * 2));
         if (!SetFilePointerEx(file, offset, nullptr, FILE_BEGIN) || !WriteFile(file, pending.data(), bytes, &written, nullptr) || written != bytes) throw std::runtime_error("Cannot write complete search result archive.");
+        const auto first = count - pending.size();
+        for (size_t at = 0; at < pending.size(); at += 16) {
+            const auto take = (std::min)(size_t(16), pending.size() - at);
+            pages.push_back({first + at, take, pending[at + take - 1].end});
+        }
         pending.clear();
+    }
+    void ReadRecords(size_t first, Record* records, size_t count) const {
+#ifdef MULTIPAD4_ARCHIVE_BENCHMARK
+        ++archiveReadCalls; archiveReadBytes += count * sizeof(Record);
+#endif
+        LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>(first * sizeof(Record)); DWORD got = 0;
+        const auto bytes = static_cast<DWORD>(count * sizeof(Record));
+        if (!SetFilePointerEx(file, offset, nullptr, FILE_BEGIN) || !ReadFile(file, records, bytes, &got, nullptr) || got != bytes) throw std::runtime_error("Cannot read search result page.");
     }
 };
 HitArchive::HitArchive(bool retainOffsets) : impl(std::make_unique<Impl>(retainOffsets)) {}
@@ -179,6 +254,25 @@ void HitArchive::Append(const SearchHit& hit) {
     if (!impl->retainOffsets) { ++impl->count; return; }
     impl->pending.push_back({hit.start, hit.end, hit.line, hit.lineStart}); ++impl->count;
     if (impl->pending.size() == 4096) impl->Flush();
+}
+void HitArchive::AppendArchive(const HitArchive& archive, const std::atomic<bool>* cancel) {
+    if (&archive == this || !impl->retainOffsets || !archive.impl->retainOffsets) throw std::runtime_error("Invalid retained search archive merge.");
+    if (archive.Count() > static_cast<size_t>(LLONG_MAX) / sizeof(Impl::Record) - Count()) throw std::runtime_error("Too many search results.");
+    auto append = [&](const Impl::Record* data, size_t count) {
+        while (count) {
+            if (cancel && cancel->load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+            const auto take = (std::min)(count, size_t(4096) - impl->pending.size());
+            impl->pending.insert(impl->pending.end(), data, data + take); impl->count += take; data += take; count -= take;
+            if (impl->pending.size() == 4096) impl->Flush();
+        }
+    };
+    std::vector<Impl::Record> records;
+    const auto diskCount = archive.impl->count - archive.impl->pending.size();
+    for (size_t at = 0; at < diskCount; at += 4096) {
+        if (cancel && cancel->load(std::memory_order_relaxed)) throw std::runtime_error("Search cancelled.");
+        records.resize((std::min)(size_t(4096), diskCount - at)); archive.impl->ReadRecords(at, records.data(), records.size()); append(records.data(), records.size());
+    }
+    append(archive.impl->pending.data(), archive.impl->pending.size());
 }
 size_t HitArchive::Count() const { return impl->count; }
 bool HitArchive::RetainsOffsets() const { return impl->retainOffsets; }
@@ -203,17 +297,25 @@ std::vector<SearchHit> HitArchive::Page(size_t first, size_t count) const {
     impl->Flush();
     for (size_t index = 0; index < count;) {
         const auto take = (std::min)(size_t(4096), count - index); std::vector<Impl::Record> records(take);
-        LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>((first + index) * sizeof(Impl::Record)); DWORD got = 0;
-        const auto bytes = static_cast<DWORD>(take * sizeof(Impl::Record));
-        if (!SetFilePointerEx(impl->file, offset, nullptr, FILE_BEGIN) || !ReadFile(impl->file, records.data(), bytes, &got, nullptr) || got != bytes) throw std::runtime_error("Cannot read search result page.");
+        impl->ReadRecords(first + index, records.data(), take);
         for (const auto& record : records) output.push_back({record.start, record.end, {}, record.line, record.lineStart}); index += take;
     }
     return output;
 }
 size_t HitArchive::FirstEndingAtOrAfter(Position position) const {
-    size_t low = 0, high = Count();
-    while (low < high) { auto middle = low + (high - low) / 2; auto hit = Page(middle, 1)[0]; if (hit.end < position) low = middle + 1; else high = middle; }
-    return low;
+    if (!impl->retainOffsets) { if (!Count()) return 0; throw std::runtime_error("Offsets are unavailable for a count-only search."); }
+    const auto page = std::lower_bound(impl->pages.begin(), impl->pages.end(), position, [](const auto& item, auto value) { return item.end < value; });
+    if (page == impl->pages.end()) {
+        const auto hit = std::lower_bound(impl->pending.begin(), impl->pending.end(), position, [](const auto& item, auto value) { return item.end < value; });
+        return impl->count - impl->pending.size() + static_cast<size_t>(hit - impl->pending.begin());
+    }
+    const auto index = static_cast<size_t>(page - impl->pages.begin());
+    if (impl->cachedPage != index) {
+        impl->cachedPage = SIZE_MAX;
+        impl->cachedRecords.resize(page->count); impl->ReadRecords(page->first, impl->cachedRecords.data(), page->count); impl->cachedPage = index;
+    }
+    const auto hit = std::lower_bound(impl->cachedRecords.begin(), impl->cachedRecords.end(), position, [](const auto& item, auto value) { return item.end < value; });
+    return page->first + static_cast<size_t>(hit - impl->cachedRecords.begin());
 }
 struct Search::Impl {
     Reader reader;
@@ -221,6 +323,9 @@ struct Search::Impl {
     boost::wregex expression;
     std::string nativeNeedle;
     bool fastLiteral;
+    bool fixedRegex = false;
+    std::unique_ptr<HitArchive> reverseRegex;
+    Position reverseLower = 0, reverseUpper = 0;
     std::string literalBytes;
     Position literalBegin = 0;
     std::wstring literalWide;
@@ -306,12 +411,66 @@ struct Search::Impl {
             cursor = next; literalBytes.clear();
         }
     }
+    std::optional<SearchHit> ReverseLiteral(Position begin, Position end) {
+        const auto halo = Halo();
+        for (;;) {
+            reader.Check();
+            if (end <= begin || options.pattern.empty()) return {};
+            if (literalBytes.empty() || end <= literalBegin || end > literalBegin + literalBytes.size() ||
+                (literalBegin > begin && end - literalBegin <= halo + 4)) {
+                auto first = end - begin > 1024 * 1024 ? end - 1024 * 1024 : begin;
+                first = reader.dbcs && first ? reader.Previous(first) : reader.Align(first);
+                LoadLiteral(first, end);
+            }
+            const auto lower = (std::max)(begin, literalBegin);
+            auto acceptable = [&](Position first, Position last) {
+                return first >= lower && last <= end && first % reader.width == 0 &&
+                    ((!options.wholeWord && !options.wordStart) || !reader.WordBefore(first)) &&
+                    (!options.wholeWord || !reader.Word(last));
+            };
+            if (fastLiteral || asciiLiteral) {
+                const auto& bytes = asciiLiteral ? foldedBytes : literalBytes;
+                const auto& needle = asciiLiteral ? asciiNeedle : nativeNeedle;
+                if (end - literalBegin >= needle.size()) {
+                    auto found = bytes.rfind(needle, static_cast<size_t>(end - literalBegin - needle.size()));
+                    while (found != std::string::npos) {
+                        const auto first = literalBegin + found, last = first + needle.size();
+                        if (first < lower) break;
+                        if (acceptable(first, last)) return SearchHit{first, last, {{first, last, true}}};
+                        if (!found) break; found = bytes.rfind(needle, found - 1);
+                    }
+                }
+            } else {
+                auto index = [&](Position position) {
+                    return reader.width == 2 ? static_cast<size_t>((position - literalBegin) / 2) : literalAscii ? static_cast<size_t>(position - literalBegin) :
+                        static_cast<size_t>(std::lower_bound(wideOffsets.begin(), wideOffsets.end(), position - literalBegin) - wideOffsets.begin());
+                };
+                const auto first = index(lower); auto last = index(end);
+                while (last > first) {
+                    const auto found = FindStringOrdinal(FIND_FROMEND, literalWide.data() + first, static_cast<int>(last - first),
+                        options.pattern.data(), static_cast<int>(options.pattern.size()), !options.matchCase);
+                    if (found < 0) break;
+                    const auto at = first + found, finish = at + options.pattern.size();
+                    const auto start = LiteralOffset(at), stop = LiteralOffset(finish);
+                    if (acceptable(start, stop)) return SearchHit{start, stop, {{start, stop, true}}};
+                    last = finish - 1;
+                }
+            }
+            if (literalBegin <= begin) return {};
+            const auto overlapEnd = reader.Align(literalBegin + halo);
+            const auto next = reader.Advance(reader.Previous(overlapEnd), false);
+            if (next <= begin || next >= end) throw std::runtime_error("Invalid reverse search block boundary.");
+            end = next; literalBytes.clear();
+        }
+    }
     Impl(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions value, const std::atomic<bool>* cancel, bool independentReads) : reader(std::move(snapshot), encoding, cancel, independentReads), options(std::move(value)), fastLiteral(!options.regex && options.matchCase && !options.wholeWord && !options.wordStart && !reader.dbcs) {
         if (options.pattern.size() > INT_MAX) throw std::runtime_error("Search expression is too long.");
         try { boost::wregex::flag_type flags = options.regex ? boost::wregex::ECMAScript : boost::wregex::literal;
             if (!options.matchCase) flags |= boost::wregex::icase;
             if (!options.pattern.empty()) expression.assign(options.pattern, flags);
         } catch (const boost::regex_error& error) { throw std::runtime_error(std::string("Invalid regular expression: ") + error.what()); }
+        fixedRegex = options.regex && !options.pattern.empty() &&
+            options.pattern.find_first_of(L"\\.^$|?*+()[]{}") == std::wstring::npos;
         if (!options.regex) {
             nativeNeedle = files::Encode({files::ToUtf8(options.pattern), Plain(encoding)});
             if (reader.width == 1 && std::all_of(options.pattern.begin(), options.pattern.end(), [](wchar_t c) { return c < 128; })) {
@@ -319,6 +478,27 @@ struct Search::Impl {
                 if (!options.matchCase) for (char& c : asciiNeedle) if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
             }
         }
+    }
+    std::optional<SearchHit> ReverseFixedRegex(Position lower, Position upper) {
+        // Literal regexes have no upper-bound dependencies, but retain regex non-overlap.
+        if (!reverseRegex || lower != reverseLower || upper > reverseUpper) {
+            auto hits = std::make_unique<HitArchive>();
+            for (auto position = lower; position <= upper;) {
+                auto hit = Forward(position, upper); if (!hit) break;
+                hits->Append(*hit); position = hit->end;
+            }
+            reverseRegex = std::move(hits); reverseLower = lower; reverseUpper = upper;
+        }
+        reader.Check();
+        size_t first = 0, last = reverseRegex->Count();
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
+            if (reverseRegex->Page(middle, 1)[0].end <= upper) first = middle + 1;
+            else last = middle;
+        }
+        if (!first) return {};
+        auto hit = reverseRegex->Page(first - 1, 1)[0];
+        hit.captures.push_back({hit.start, hit.end, true}); return hit;
     }
     static constexpr Position ParallelBlock = 64 * 1024 * 1024;
     unsigned Workers(Position length) const {
@@ -403,7 +583,7 @@ struct Search::Impl {
 };
 Search::Search(Document::Snapshot snapshot, files::Encoding encoding, SearchOptions options, const std::atomic<bool>* cancel, bool independentReads) : impl(std::make_unique<Impl>(std::move(snapshot), encoding, std::move(options), cancel, independentReads)) {}
 Search::~Search() = default;
-void Search::Rebase(Document::Snapshot snapshot) { impl->reader.snapshot = std::move(snapshot); if (impl->reader.session) impl->reader.session = std::make_unique<Document::ReadSession>(impl->reader.snapshot); impl->reader.cache = {}; impl->reader.checkpoints = {{0, 0}}; impl->reader.boundaries.clear(); impl->literalBytes.clear(); impl->literalWide.clear(); impl->wideOffsets.clear(); }
+void Search::Rebase(Document::Snapshot snapshot) { impl->reader.snapshot = std::move(snapshot); if (impl->reader.session) impl->reader.session = std::make_unique<Document::ReadSession>(impl->reader.snapshot); impl->reader.cache = {}; impl->reader.checkpoints = {{0, 0}}; impl->reader.boundaries.clear(); impl->literalBytes.clear(); impl->literalWide.clear(); impl->wideOffsets.clear(); impl->reverseRegex.reset(); }
 Position Search::Advance(Position position, bool backwards) const { return impl->reader.Advance(position, backwards); }
 Position Search::Size() const { return impl->reader.Size(); }
 std::optional<SearchHit> Search::Next(Position start, Position limit, bool backwards) {
@@ -440,7 +620,8 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
     }
     if (!backwards) return impl->Forward(start, limit);
     if (start < limit) return {};
-    if (impl->fastLiteral && !impl->nativeNeedle.empty()) {
+    if (impl->fastLiteral && impl->Halo() > 512 * 1024) {
+        // Preserve the existing native path for needles larger than a decoded block halo.
         for (auto end = start; end > limit;) {
             impl->reader.Check();
             const auto bytesToRead = Position(1024 * 1024) + impl->nativeNeedle.size();
@@ -453,6 +634,8 @@ std::optional<SearchHit> Search::Next(Position start, Position limit, bool backw
         }
         return {};
     }
+    if (!impl->options.regex && impl->Halo() <= 512 * 1024) return impl->ReverseLiteral(limit, start);
+    if (impl->fixedRegex) return impl->ReverseFixedRegex(limit, start);
     std::optional<SearchHit> last;
     auto position = limit;
     while (position <= start) {
@@ -489,10 +672,7 @@ void Search::Enumerate(Position first, Position limit, HitArchive& hits) {
             if (!job.hit) continue;
             previousEnd = job.lastEnd;
             if (!hits.RetainsOffsets()) hits.AddCount(job.archive->Count());
-            else for (size_t at = 0; at < job.archive->Count();) {
-                impl->reader.Check(); auto page = job.archive->Page(at, 4096);
-                for (const auto& hit : page) hits.Append(hit); at += page.size();
-            }
+            else hits.AppendArchive(*job.archive, impl->reader.cancel);
         }
         first = last;
     }

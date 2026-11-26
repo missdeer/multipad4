@@ -78,6 +78,10 @@ LRESULT MainFrame::Dispatch(UINT message, WPARAM w, LPARAM l, BOOL& handled) {
     case WM_DESTROY: return OnDestroy(message, w, l, handled);
     case WM_DROPFILES: return OnDrop(message, w, l, handled);
     case WM_DOCUMENT_CHANGED: return OnChanged(message, w, l, handled);
+    case WM_COMPLETION_CONTINUE:
+        if (IsWindowEnabled() && !runtime.operationDepth && !runtime.inBackgroundWork && !CompletionInputPending())
+            if (auto* d = Active(); d && d->style.completionPending) ProcessStyleBackground(*d, 1, true);
+        return 0;
     case WM_CLOSE_TAB: return OnCloseTab(message, w, l, handled);
     case WM_TAB_CONTEXT: return OnTabContextMenu(message, w, l, handled);
     case WM_TAB_ACTIVATED: return OnTabActivated(message, w, l, handled);
@@ -210,6 +214,7 @@ EditorDocument* MainFrame::AddDocument(std::unique_ptr<EditorDocument> document)
     return raw;
 }
 bool MainFrame::Open(const std::filesystem::path& input, std::optional<files::Encoding> forcedEncoding) {
+    if (searchDialog.DeferOpen(input, forcedEncoding)) return false;
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
         for (int i = 0; i < tabs.GetPageCount(); ++i) {
@@ -244,6 +249,9 @@ bool MainFrame::Save(EditorDocument& document, SaveMode mode, bool keepBackup) {
     return SaveTo(document, path, mode == SaveMode::Copy, keepBackup);
 }
 bool MainFrame::SaveTo(EditorDocument& document, const std::filesystem::path& input, bool copy, bool keepBackup) {
+    if (searchDialog.CommittingReplacement()) {
+        ::MessageBoxW(m_hWnd, L"A file replacement is committing. Please retry saving shortly.", L"Replace in Files", MB_OK | MB_ICONINFORMATION); return false;
+    }
     CancelDocumentBackup(*this, document);
     try {
         auto path = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
@@ -628,7 +636,7 @@ LRESULT MainFrame::OnChanged(UINT, WPARAM lightweight, LPARAM, BOOL&) {
         lightweight = lightweight && message.wParam;
     if (!lightweight || settings.Get(IDM_VIEW_SHOWEXCERPT)) Refresh();
     else { UpdateStatus(); UpdateCommandUI(); }
-    if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending; })) {
+    if (!runtime.workTimerArmed && std::any_of(documents.begin(), documents.end(), [](const auto& d) { return d->style.occurrencePending || d->style.completionPending; })) {
         SetTimer(3, 30); runtime.workTimerArmed = true;
     }
     return 0;

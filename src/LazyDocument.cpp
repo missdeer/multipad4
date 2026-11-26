@@ -6,10 +6,15 @@
 #include <stdexcept>
 #include <vector>
 #include <limits>
+#include <array>
+#include <cstring>
 #include "VectorISA.h"
 namespace large {
 namespace {
 constexpr size_t IndexBlockBytes = 64 * 1024;
+#ifdef MULTIPAD4_PIECE_READ_TEST
+thread_local Position backingReads = 0, copiedBytes = 0, largestMappedVisit = 0;
+#endif
 thread_local const std::atomic<bool>* cancellation = nullptr;
 struct CancelScope {
     const std::atomic<bool>* previous = cancellation;
@@ -27,10 +32,35 @@ unsigned Unit(std::string_view bytes, size_t offset, unsigned width, bool little
     if (width == 1) return a;
     auto b = static_cast<unsigned char>(bytes[offset + 1]); return little ? a | (b << 8) : (a << 8) | b;
 }
+constexpr size_t AppendBlockBytes = 64 * 1024;
+#ifdef MULTIPAD4_APPEND_TEST
+Position journalWrites = 0, failJournalAfter = UINT64_MAX;
+#endif
 class Journal {
     HANDLE file = INVALID_HANDLE_VALUE;
-    Position size = 0;
+    Position size = 0, persisted = 0;
+    std::array<char, AppendBlockBytes> pending{};
+    size_t used = 0;
     std::mutex mutex;
+    void Persist(std::string_view bytes) {
+        LARGE_INTEGER position{}; position.QuadPart = persisted;
+        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
+        try {
+            for (size_t offset = 0; offset < bytes.size();) {
+                DWORD written = 0, count = static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(16 * 1024 * 1024)));
+#ifdef MULTIPAD4_APPEND_TEST
+                if (failJournalAfter == 0) throw std::runtime_error("Injected partial journal write failure.");
+                count = static_cast<DWORD>((std::min)(Position(count), failJournalAfter));
+                failJournalAfter -= count; ++journalWrites;
+#endif
+                if (!WriteFile(file, bytes.data() + offset, count, &written, nullptr) || !written) throw std::runtime_error("Cannot write edit journal.");
+                offset += written;
+            }
+        } catch (...) { SetFilePointerEx(file, position, nullptr, FILE_BEGIN); SetEndOfFile(file); throw; }
+        persisted += bytes.size();
+    }
+    void Flush() { if (used) { Persist(std::string_view(pending.data(), used)); used = 0; } }
+
 public:
     Journal() {
         wchar_t directory[32768]{}, name[32768]{};
@@ -41,29 +71,32 @@ public:
     }
     ~Journal() { if (file != INVALID_HANDLE_VALUE) CloseHandle(file); }
     Position Append(std::string_view bytes) {
-        std::lock_guard guard(mutex); auto begin = size;
-        LARGE_INTEGER position{}; position.QuadPart = size;
-        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
-        try {
-            for (size_t offset = 0; offset < bytes.size();) {
-                DWORD written = 0, count = static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(16 * 1024 * 1024)));
-                if (!WriteFile(file, bytes.data() + offset, count, &written, nullptr) || !written) throw std::runtime_error("Cannot write edit journal.");
-                offset += written;
-            }
-        } catch (...) { SetFilePointerEx(file, position, nullptr, FILE_BEGIN); SetEndOfFile(file); throw; }
+        std::lock_guard guard(mutex); const auto begin = size;
+#ifdef MULTIPAD4_APPEND_BASELINE
+        Persist(bytes);
+#else
+        if (bytes.size() > pending.size() - used) Flush();
+        if (bytes.size() >= pending.size()) Persist(bytes);
+        else { memcpy(pending.data() + used, bytes.data(), bytes.size()); used += bytes.size(); }
+#endif
         size += bytes.size(); return begin;
     }
-    std::string Read(Position offset, size_t length) {
+    void ReadInto(Position offset, size_t length, char* output) {
         std::lock_guard guard(mutex);
         if (offset > size || length > size - offset) throw std::runtime_error("Invalid journal range.");
-        LARGE_INTEGER position{}; position.QuadPart = offset;
-        if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
-        std::string bytes(length, '\0');
-        for (size_t done = 0; done < length;) {
-            DWORD got = 0, count = static_cast<DWORD>((std::min)(length - done, size_t(16 * 1024 * 1024)));
-            if (!ReadFile(file, bytes.data() + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
+        const auto diskLength = offset < persisted ? static_cast<size_t>((std::min)(Position(length), persisted - offset)) : 0;
+        if (diskLength) {
+            LARGE_INTEGER position{}; position.QuadPart = offset;
+            if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) throw std::runtime_error("Cannot seek edit journal.");
         }
-        return bytes;
+        for (size_t done = 0; done < diskLength;) {
+            DWORD got = 0, count = static_cast<DWORD>((std::min)(diskLength - done, size_t(16 * 1024 * 1024)));
+            if (!ReadFile(file, output + done, count, &got, nullptr) || !got) throw std::runtime_error("Cannot read edit journal."); done += got;
+        }
+        if (length > diskLength) memcpy(output + diskLength, pending.data() + static_cast<size_t>(offset + diskLength - persisted), length - diskLength);
+    }
+    std::string Read(Position offset, size_t length) {
+        std::string bytes(length, '\0'); ReadInto(offset, length, bytes.data()); return bytes;
     }
 };
 struct Counters { std::atomic<Position> read{0}, added{0}, blocks{0}, nodes{0}; };
@@ -138,6 +171,33 @@ class Source {
         if (full) tree.summary = result;
         return result;
     }
+    std::optional<Position> Select(Index& tree, Position first, Position last, Position begin, Position end, Position line, Summary& prefix) {
+        CheckCancel();
+        const auto regionBegin = first * IndexBlockBytes, regionEnd = (std::min)(size, last * IndexBlockBytes);
+        if (end <= regionBegin || begin >= regionEnd) return {};
+        const bool full = begin <= regionBegin && end >= regionEnd;
+        if (full && tree.summary && Join(prefix, *tree.summary).breaks < line) { prefix = Join(prefix, *tree.summary); return {}; }
+        if (last - first == 1) {
+            const auto left = (std::max)(begin, regionBegin), right = (std::min)(end, regionEnd);
+            const auto summary = Query(tree, first, last, left, right);
+            const auto combined = Join(prefix, summary);
+            if (combined.breaks < line) { prefix = combined; return {}; }
+            const auto& ends = tree.block->ends;
+            auto candidate = std::upper_bound(ends.begin(), ends.end(), static_cast<uint32_t>(left - regionBegin));
+            auto ordinal = line - prefix.breaks;
+            if (prefix.bytes && prefix.last == '\r' && summary.first == '\n') ++ordinal;
+            const auto remaining = static_cast<Position>(ends.end() - candidate);
+            // A piece ending between CR and LF has a break not yet in ends.
+            if (ordinal > remaining || regionBegin + candidate[static_cast<size_t>(ordinal - 1)] > right) return right;
+            return regionBegin + candidate[static_cast<size_t>(ordinal - 1)];
+        }
+        const auto middle = first + (last - first) / 2;
+        if (!tree.left) tree.left = std::make_unique<Index>(); if (!tree.right) tree.right = std::make_unique<Index>();
+        auto result = Select(*tree.left, first, middle, begin, end, line, prefix);
+        if (!result) result = Select(*tree.right, middle, last, begin, end, line, prefix);
+        if (full && tree.left->summary && tree.right->summary) tree.summary = Join(*tree.left->summary, *tree.right->summary);
+        return result;
+    }
 public:
     unsigned Width() const { return width; }
     bool Little() const { return little; }
@@ -148,6 +208,43 @@ public:
         journal(std::move(changes)), journalBegin(begin), counters(std::move(values)), blockCount((length + IndexBlockBytes - 1) / IndexBlockBytes), width(unitWidth), little(isLittle), size(length) {}
     Source(std::shared_ptr<const std::string> text, std::shared_ptr<Counters> values) :
         memory(std::move(text)), counters(std::move(values)), blockCount((memory->size() + IndexBlockBytes - 1) / IndexBlockBytes), width(1), little(true), size(memory->size()) {}
+    std::shared_ptr<Source> Combined(Position offset, Position length, const Source& next, Position nextOffset, Position nextLength) {
+        if (!journal || journal != next.journal || journalBegin + offset + length != next.journalBegin + nextOffset) return {};
+        const auto first = journalBegin + offset, last = first + length + nextLength;
+        if (first / AppendBlockBytes != (last - 1) / AppendBlockBytes) return {};
+        return std::make_shared<Source>(journal, first, length + nextLength, width, little, counters);
+    }
+    bool Contiguous(Position offset, Position length, const Source& next, Position nextOffset) const {
+        if (journal && journal == next.journal) return journalBegin + offset + length == next.journalBegin + nextOffset;
+        if (file && file == next.file) return offset + length == nextOffset;
+        return this == &next && offset + length == nextOffset;
+    }
+    void ReadInto(Position offset, size_t count, char* output, ReadSessions* sessions) {
+#ifdef MULTIPAD4_PIECE_READ_TEST
+        ++backingReads; copiedBytes += count;
+#endif
+        // Coalesced journal runs may extend past this Source into the same backing journal.
+        if (journal) { journal->ReadInto(journalBegin + offset, count, output); return; }
+        if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
+        if (memory) { memcpy(output, memory->data() + static_cast<size_t>(offset), count); return; }
+        auto fill = [&](files::MappedFile& mapped) {
+            for (size_t done = 0; done < count;) {
+                const auto take = (std::min)(count - done, size_t(16 * 1024 * 1024));
+#ifdef MULTIPAD4_PIECE_READ_TEST
+                largestMappedVisit = (std::max)(largestMappedVisit, Position(take));
+#endif
+                mapped.Visit(offset + done, take, [&](std::string_view bytes) { memcpy(output + done, bytes.data(), bytes.size()); });
+                done += take;
+            }
+        };
+        if (sessions) {
+            auto& session = (*sessions)[this]; if (!session) session = file->NewReadSession();
+            fill(*session);
+        } else {
+            std::lock_guard guard(readMutex); fill(*file);
+        }
+        counters->read += count;
+    }
     std::string Read(Position offset, size_t count, ReadSessions* sessions = nullptr) {
         if (offset > size || count > size - offset) throw std::runtime_error("Invalid source range.");
         if (memory) return memory->substr(static_cast<size_t>(offset), count);
@@ -172,6 +269,10 @@ public:
     Summary Describe(Position offset, Position length) {
         if (!length) return {};
         std::lock_guard guard(indexMutex); return Query(index, 0, blockCount, offset, offset + length);
+    }
+    std::optional<Position> Select(Position offset, Position length, Position line, Summary& prefix) {
+        if (!length) return {};
+        std::lock_guard guard(indexMutex); return Select(index, 0, blockCount, offset, offset + length, line, prefix);
     }
 };
 struct Piece { std::shared_ptr<Source> source; Position offset = 0, length = 0; };
@@ -219,13 +320,67 @@ struct Document::Impl {
         auto first = node->piece, second = first; first.length = position - left; second.offset += first.length; second.length -= first.length;
         return {Merge(node->left, Make(first)), Merge(Make(second), node->right)};
     }
+    Root PopLast(const Root& node) { return node->right ? Make(node->piece, node->left, PopLast(node->right), node->priority) : node->left; }
+    Root PopFirst(const Root& node) { return node->left ? Make(node->piece, PopFirst(node->left), node->right, node->priority) : node->right; }
+    Root Concat(Root a, Root b) {
+#ifdef MULTIPAD4_APPEND_BASELINE
+        return Merge(a, b);
+#else
+        if (!a) return b; if (!b) return a;
+        auto last = a.get(), first = b.get();
+        while (last->right) last = last->right.get();
+        while (first->left) first = first->left.get();
+        auto piece = last->piece;
+        if (piece.source == first->piece.source && piece.offset + piece.length == first->piece.offset) piece.length += first->piece.length;
+        else {
+            auto combined = piece.source->Combined(piece.offset, piece.length, *first->piece.source, first->piece.offset, first->piece.length);
+            if (!combined) return Merge(a, b);
+            piece = {std::move(combined), 0, piece.length + first->piece.length};
+        }
+        return Merge(Merge(PopLast(a), Make(std::move(piece))), PopFirst(b));
+#endif
+    }
+#ifdef MULTIPAD4_PIECE_READ_BASELINE
     static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
         if (!node || !length) return;
         const auto left = Length(node->left), end = left + node->piece.length;
         if (offset < left) { auto take = (std::min)(length, left - offset); Append(node->left, offset, take, output, sessions); offset += take; length -= take; }
-        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset); output += node->piece.source->Read(node->piece.offset + start, static_cast<size_t>(take), sessions); offset += take; length -= take; }
+        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset);
+#ifdef MULTIPAD4_PIECE_READ_TEST
+            ++backingReads; copiedBytes += 2 * take;
+#endif
+            output += node->piece.source->Read(node->piece.offset + start, static_cast<size_t>(take), sessions); offset += take; length -= take; }
         if (length) Append(node->right, offset - end, length, output, sessions);
     }
+#else
+    struct ReadBuffer {
+        char* output;
+        ReadSessions* sessions;
+        Source* source = nullptr;
+        Position offset = 0, length = 0;
+        void Flush() {
+            if (!length) return;
+            source->ReadInto(offset, static_cast<size_t>(length), output, sessions);
+            output += length; length = 0;
+        }
+        void Add(const Piece& piece, Position start, Position count) {
+            if (length && !source->Contiguous(offset, length, *piece.source, start)) Flush();
+            if (!length) { source = piece.source.get(); offset = start; }
+            length += count;
+        }
+    };
+    static void Append(const Root& node, Position offset, Position length, ReadBuffer& buffer) {
+        if (!node || !length) return;
+        const auto left = Length(node->left), end = left + node->piece.length;
+        if (offset < left) { auto take = (std::min)(length, left - offset); Append(node->left, offset, take, buffer); offset += take; length -= take; }
+        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset); buffer.Add(node->piece, node->piece.offset + start, take); offset += take; length -= take; }
+        if (length) Append(node->right, offset - end, length, buffer);
+    }
+    static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
+        output.resize(static_cast<size_t>(length));
+        ReadBuffer buffer{output.data(), sessions}; Append(node, offset, length, buffer); buffer.Flush();
+    }
+#endif
     static void Stream(const Root& node, const files::ChunkConsumer& consume) {
         if (!node) return;
         Stream(node->left, consume); node->piece.source->Stream(node->piece.offset, node->piece.length, consume); Stream(node->right, consume);
@@ -245,6 +400,20 @@ struct Document::Impl {
         result = Join(result, node->piece.source->Describe(node->piece.offset, count));
         if (length > left + count) result = Join(result, Prefix(node->right, length - left - count));
         return result;
+    }
+    static std::optional<Position> SelectLine(const Root& node, Position base, Position line, Summary& prefix) {
+        if (!node) return {};
+        CheckCancel();
+        {
+            std::lock_guard guard(node->mutex);
+            if (node->summary && Join(prefix, *node->summary).breaks < line) { prefix = Join(prefix, *node->summary); return {}; }
+        }
+        if (auto found = SelectLine(node->left, base, line, prefix)) return found;
+        const auto pieceBase = base + Length(node->left);
+        if (auto found = node->piece.source->Select(node->piece.offset, node->piece.length, line, prefix)) return pieceBase + *found - node->piece.offset;
+        auto found = SelectLine(node->right, pieceBase + node->piece.length, line, prefix);
+        if (!found) Describe(node); // All source blocks in this subtree are now cached.
+        return found;
     }
 };
 Document::Document(std::shared_ptr<files::MappedFile> file, files::Encoding encoding, std::string signature) : impl(std::make_unique<Impl>()) {
@@ -312,7 +481,13 @@ void Document::Replace(Position offset, Position length, std::string_view native
     const bool single = !impl->depth;
     if (single) Begin({offset, offset});
     try {
-        auto [left, rest] = impl->Split(impl->root, offset); auto [removed, right] = impl->Split(rest, length);
+        auto [left, rest] = impl->Split(impl->root, offset);
+        Impl::Root right;
+#ifdef MULTIPAD4_APPEND_BASELINE
+        right = impl->Split(rest, length).second;
+#else
+        if (length) right = impl->Split(rest, length).second; else right = std::move(rest);
+#endif
         Impl::Root added;
         if (!nativeBytes.empty()) {
             if (!impl->journal) impl->journal = std::make_shared<Journal>();
@@ -320,7 +495,7 @@ void Document::Replace(Position offset, Position length, std::string_view native
             auto source = std::make_shared<Source>(impl->journal, begin, nativeBytes.size(), impl->width, impl->little, impl->counters);
             added = impl->Make({source, 0, nativeBytes.size()}); impl->counters->added += nativeBytes.size();
         }
-        impl->root = impl->Merge(impl->Merge(left, added), right);
+        impl->root = impl->Concat(impl->Concat(left, added), right);
     } catch (...) { if (single) End({offset, offset}); throw; }
     if (single) End({offset + nativeBytes.size(), offset + nativeBytes.size()});
 }
@@ -348,7 +523,17 @@ Position Document::FileSize() const { return Size() + impl->signature.size(); }
 void Document::Write(const files::ChunkConsumer& consume) const {
     const auto snapshot = Capture();
     consume(impl->signature);
+#ifdef MULTIPAD4_APPEND_BASELINE
     Impl::Stream(snapshot.root, consume);
+#else
+    std::string pending; pending.reserve(AppendBlockBytes);
+    auto flush = [&] { if (!pending.empty()) { consume(pending); pending.clear(); } };
+    Impl::Stream(snapshot.root, [&](std::string_view bytes) {
+        if (bytes.size() >= AppendBlockBytes) { flush(); consume(bytes); }
+        else { if (bytes.size() > AppendBlockBytes - pending.size()) flush(); pending.append(bytes); }
+    });
+    flush();
+#endif
 }
 void Document::Save(const std::filesystem::path& path, bool copy) {
     files::WriteAtomicChunks(path, [&](const files::ChunkConsumer& consume) { Write(consume); });
@@ -358,14 +543,27 @@ Document::Metrics Document::Statistics() const { return {impl->counters->read.lo
 Position Document::LineCount(const Snapshot& snapshot, const std::atomic<bool>* cancel) { CancelScope scope(cancel); return Impl::Describe(snapshot.root).breaks + 1; }
 Position Document::PositionFromLine(const Snapshot& snapshot, Position line, const std::atomic<bool>* cancel) {
     CancelScope scope(cancel); if (!line) return 0;
-    const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
-    while (high < size && Impl::Prefix(snapshot.root, high).breaks < line) { low = high; high = (std::min)(size, high * 2); }
-    if (Impl::Prefix(snapshot.root, high).breaks < line) return size;
+#ifdef MULTIPAD4_LINE_BENCHMARK
+    extern bool lineLookupBaseline;
+    if (lineLookupBaseline) {
+        const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
+        while (high < size && Impl::Prefix(snapshot.root, high).breaks < line) { low = high; high = (std::min)(size, high * 2); }
+        if (Impl::Prefix(snapshot.root, high).breaks < line) return size;
+        const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
+        const bool little = !snapshot.root || snapshot.root->piece.source->Little();
+        low /= width; high /= width;
+        while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width).breaks >= line) high = middle; else low = middle + 1; }
+        low *= width;
+        if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
+        return low;
+    }
+#endif
+    const auto size = Size(snapshot); Summary prefix;
+    const auto found = Impl::SelectLine(snapshot.root, 0, line, prefix);
+    if (!found) return size;
+    auto low = *found;
     const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
     const bool little = !snapshot.root || snapshot.root->piece.source->Little();
-    low /= width; high /= width;
-    while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width).breaks >= line) high = middle; else low = middle + 1; }
-    low *= width;
     if (low && low < size) { auto pair = Read(snapshot, low - width, 2 * width); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
     return low;
 }

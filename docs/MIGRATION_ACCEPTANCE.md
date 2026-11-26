@@ -66,7 +66,7 @@
 ```powershell
 bash -lc "cmake-build cmake-msvc-build"
 ctest --test-dir cmake-msvc-build --output-on-failure
-$report = Start-Process .\cmake-msvc-build\multipad4.exe -ArgumentList '--migration-report','tmp/migration-status-check.json' -WindowStyle Hidden -PassThru
+$report = Start-Process .\cmake-msvc-build\multipad4-tests.exe -ArgumentList '--migration-report','tmp/migration-status-check.json' -WindowStyle Hidden -PassThru
 $report.WaitForExit()
 python tools/check_migration.py tmp/migration-status-check.json
 python tools/build_acceptance_inventory.py tmp/migration-status-check.json

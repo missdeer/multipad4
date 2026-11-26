@@ -5,7 +5,18 @@
 #include <cwctype>
 #include <stdexcept>
 #include <chrono>
+#include <imm.h>
 namespace {
+LRESULT CALLBACK CompletionWindowProc(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data) {
+    auto& document=*reinterpret_cast<EditorDocument*>(data);
+    if(message==WM_KILLFOCUS || message==WM_IME_STARTCOMPOSITION){document.style.completionPending=false;++document.completionEpoch;}
+    if(message==WM_IME_STARTCOMPOSITION)document.completionComposing=true;
+    if(message==WM_IME_CHAR || (message==WM_IME_COMPOSITION && (l&GCS_RESULTSTR)))document.completionComposing=false;
+    if(message==WM_IME_COMPOSITION && (l&GCS_COMPSTR))document.completionComposing=true;
+    if(message==WM_IME_ENDCOMPOSITION)document.completionComposing=false;
+    if(message==WM_NCDESTROY)RemoveWindowSubclass(window,CompletionWindowProc,id);
+    return DefSubclassProc(window,message,w,l);
+}
 using LoadClock = std::chrono::steady_clock;
 double LoadElapsed(LoadClock::time_point start) { return std::chrono::duration<double, std::milli>(LoadClock::now() - start).count(); }
 }
@@ -99,6 +110,7 @@ bool EditorDocument::Create(HWND parent) {
     hwnd = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         0, 0, 0, 0, parent, nullptr, GetModuleHandleW(nullptr), nullptr);
     if (!hwnd) return false;
+    if(!SetWindowSubclass(hwnd,CompletionWindowProc,1,reinterpret_cast<DWORD_PTR>(this))){DestroyWindow(hwnd);hwnd=nullptr;return false;}
     directFunction = reinterpret_cast<SciFnDirect>(::SendMessageW(hwnd, SCI_GETDIRECTFUNCTION, 0, 0));
     directPointer = ::SendMessageW(hwnd, SCI_GETDIRECTPOINTER, 0, 0);
     editorThread = GetCurrentThreadId();
@@ -216,6 +228,9 @@ void EditorDocument::LoadStream(size_t reserve, int additionalDocumentOptions, c
     Send(SCI_EMPTYUNDOBUFFER); Send(SCI_SETSAVEPOINT); Send(SCI_GOTOPOS, 0);
     style.occurrenceNeedle.clear(); style.occurrenceCursor = 0; style.occurrences = 0;
     style.occurrencePending = false; style.occurrenceRevision = style.revision;
+    loadMetrics.endings = endings;
+    loadMetrics.revision = style.revision;
+    loadMetrics.document = Send(SCI_GETDOCPOINTER);
 }
 void EditorDocument::SetEncoding(files::Encoding value) {
     if (FastView()) { if (encoding == value) return; throw std::runtime_error("Use the full editor to convert the file encoding."); }

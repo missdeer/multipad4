@@ -22,6 +22,7 @@ public:
     explicit HitArchive(bool retainOffsets = true);
     ~HitArchive();
     void Append(const SearchHit& hit);
+    void AppendArchive(const HitArchive& archive, const std::atomic<bool>* cancel = nullptr);
     size_t Count() const;
     bool RetainsOffsets() const;
     void AddCount(size_t count);

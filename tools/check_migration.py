@@ -1,7 +1,7 @@
 """Compare the pinned resource inventory with actual runtime command routing.
 
 This is a wiring check. Behavioral regression and visual acceptance are separate.
-Run multipad4 --migration-report tmp/migration-runtime.json before this script.
+Run multipad4-tests --migration-report tmp/migration-runtime.json before this script.
 """
 from pathlib import Path
 import json

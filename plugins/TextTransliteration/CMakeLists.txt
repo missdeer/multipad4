@@ -9,7 +9,7 @@ set_target_properties(TextTransliteration PROPERTIES PREFIX "" RUNTIME_OUTPUT_DI
 configure_file("${PROJECT_SOURCE_DIR}/3rdparty/notepad4/License.txt" Notepad4.License.txt COPYONLY)
 add_dependencies(multipad4 TextTransliteration)
 if(BUILD_TESTING)
-  target_compile_definitions(multipad4 PRIVATE MULTIPAD4_TEST_TEXT_TRANSLITERATION)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_TEXT_TRANSLITERATION)
 endif()
 install(TARGETS TextTransliteration RUNTIME DESTINATION plugins/TextTransliteration)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/Notepad4.License.txt" DESTINATION plugins/TextTransliteration)

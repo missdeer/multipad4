@@ -459,7 +459,12 @@ void FastFileView::StartSearch(large::SearchOptions options, bool backwards, boo
     const bool skipZero = repeatZero && lastHit && lastHit->start == lastHit->end && lastHit->start == start && matchSnapshot.root == snapshot.root && SameSearch(lastOptions, options);
     auto hit = std::make_shared<std::optional<large::SearchHit>>();
     Launch([this, options, lower, upper, start, backwards, wrap, skipZero, hit](const auto& source, const auto& stop) mutable -> std::optional<large::Document::Match> {
-        large::Search search(source, encoding, options, &stop);
+        // Launch drains the previous worker; the view owns the stable cancellation flag.
+        if (!navigationSearch || navigationSnapshot.root != source.root || !SameSearch(navigationOptions, options)) {
+            navigationSearch = std::make_unique<large::Search>(source, encoding, options, &stop);
+            navigationSnapshot = source; navigationOptions = options;
+        }
+        auto& search = *navigationSearch;
         const auto original = start;
         bool exhausted = false;
         if (skipZero) { if (start == (backwards ? lower : upper)) exhausted = true; else start = search.Advance(start, backwards); }

@@ -36,7 +36,7 @@ notepad4 与 Notepad++ 的 Scintilla fork 有 ABI 差异：兼容层补充旧的
 ## 验证
 
 当构建目录内存在全部五个目标 DLL 时，CTest 自动注册 `notepadpp_plugins`。
-也可运行 `multipad4.exe --plugin-test`。这是使用真实 DLL 的集成检查，会使用系统剪贴板。
+也可运行 `multipad4-tests.exe --plugin-test`。这是使用真实 DLL 的集成检查，会使用系统剪贴板。
 报告写至 `plugins/Config/MultiPad4-plugin-test.log`，窗格截图写至
 `plugins/Config/MultiPad4-QA`。普通 `--smoke-test` 不加载外部插件，以保持编辑器回归独立。
 
