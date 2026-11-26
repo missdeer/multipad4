@@ -295,6 +295,11 @@ inline void RunSearchDialogFeatureTests(MainFrame& frame) {
     require(std::wstring_view(conflict).find(L"0 matches") != std::wstring_view::npos && std::wstring_view(conflict).find(L"1 files/folders skipped") != std::wstring_view::npos);
     require(aliasDocument->Text() == "needle in live buffer" && files::Read(currentAlias).utf8 == "changed changed");
     require(std::none_of(results.lines.begin(), results.lines.end(), [](const auto& line) { return line.style == SearchResultLexer::Default; }));
+    // The worker's fresh identity index must recover a stale dialog miss for a new hard link.
+    SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
+    results.Clear(); dialog.Execute(IDC_SEARCH_FILES); WaitForFileSearch(dialog);
+    require(std::any_of(results.targets.begin(), results.targets.end(), [&](const auto& target) { return target.identity == aliasDocument->searchIdentity; }));
+    require(aliasDocument->Text() == "needle in live buffer" && files::Read(currentAlias).utf8 == "changed changed");
     require(DeleteFileW(currentAlias.c_str()));
     SetDlgItemTextW(dialog.hwnd, IDC_SEARCH_FILTER, L"first.txt"); SetDlgItemTextW(dialog.hwnd, IDC_FINDTEXT, L"needle");
     replaceAlias();

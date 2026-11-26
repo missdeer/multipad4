@@ -34,6 +34,13 @@ Eight worker threads sharing the production walker and reading/decoding each sel
 
 Slow or offline SMB shares were not available for measurement. Unsupported file-ID providers use the fallback; unsupported large-fetch enumeration flags retry without that flag. Individual Windows filesystem calls may still block on a slow provider. Exact input-to-paint percentiles, physical disk bytes and full application throughput were not measured. This is a metadata/index benchmark, not a claim about all end-to-end search time.
 
+If a fresh search worker identifies an open document but the dialog's older
+index misses a newly created hard-link alias, the read-search consumer refreshes
+that index once before resolving the live buffer. Ordinary closed-file misses
+keep the indexed path. A regression disables monitoring, warms the dialog
+index, atomically replaces an open path, and searches its new hard link for
+unsaved buffer-only text while verifying that disk and buffer stay unchanged.
+
 ```powershell
 bash -lc "cmake-reconfigure cmake-msvc-build"
 bash -lc "cmake-build cmake-msvc-build"

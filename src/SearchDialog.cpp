@@ -501,6 +501,8 @@ void SearchDialog::FileStep() {
     files::FileSearchResult result;
     if (fileTask->Poll(result)) {
         EditorDocument* open = FindOpenFile(result.path);
+        // A fresh worker can recognize an alias created after the cached open-file identity changed.
+        if (!open && result.openDocument) open = FindOpenFile(result.path, true);
         if (open) {
             UseSearch state(*open, fileSearch);
             if (open->FastView()) {
