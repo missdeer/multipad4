@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdlib>
 #include "StyleState.h"
+struct EditorDocument;
 struct FileVariableState {
     bool active = false;
     DocumentStyleState baseline, applied;
@@ -12,6 +13,7 @@ struct FileVariableState {
     int baselineEdge = 80, appliedEdge = 80;
 };
 namespace filevars {
+std::string Region(const EditorDocument& document);
 // Adapted from pinned Edit.cpp::FileVars_Find/ParseInt/ParseStr. The upstream
 // scan is case-sensitive and examines the final 512 bytes only if the first
 // 512 contain no recognized variables.

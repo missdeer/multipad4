@@ -1,3 +1,6 @@
+#ifdef MULTIPAD4_MODELINE_TEST
+#include "../tests/ModelinePreferenceHooks.h"
+#endif
 #include "FrameCommands.h"
 #include "MainFrame.h"
 #include "UpstreamUI.h"
@@ -592,6 +595,9 @@ void ApplyDocumentPreferences(MainFrame& frame, EditorDocument& d) {
     }
 }
 void RememberDocumentPreferences(MainFrame& frame, EditorDocument& d, UINT command) {
+#ifdef MULTIPAD4_MODELINE_TEST
+    if (modelinetest::preferencesBaseline) { modelinetest::preferencesBaseline(frame, d, command); return; }
+#endif
     if (command == IDM_VIEW_TABSASSPACES) {
         d.style.tabsAsSpaces = !d.Send(SCI_GETUSETABS);
         d.style.tabsOverride = true;
@@ -649,7 +655,7 @@ void RememberDocumentPreferences(MainFrame& frame, EditorDocument& d, UINT comma
             // while BackspaceMask and DetectIndentation are always global.
             int value = 0;
             const bool fileTabIndents = other.get() != &d && other->fileVariables.active
-                && filevars::Integer(filevars::Region(other->Text()), "*tab-always-indent", value)
+                && filevars::Integer(filevars::Region(*other), "*tab-always-indent", value)
                 && other->style.tabIndents == other->fileVariables.applied.tabIndents;
             if (!fileTabIndents) other->style.tabIndents = style.tabIndents;
             if (other->fileVariables.active) other->fileVariables.baseline.tabIndents = style.tabIndents;
@@ -669,13 +675,13 @@ void RememberDocumentPreferences(MainFrame& frame, EditorDocument& d, UINT comma
     if (command == IDM_VIEW_LONGLINEMARKER || command == IDM_VIEW_LONGLINESETTINGS) {
         writeStyle(L"EdgeVisible", style.longLineEnabled); writeStyle(L"EdgeColumn", style.longLineColumn); writeStyle(L"EdgeMode", style.longLineMode);
         for (auto& other : frame.documents) {
-            int value = 0;
-            const bool fileColumn = other->fileVariables.active
-                && filevars::Integer(filevars::Region(other->Text()), "fill-column", value)
-                && other->Send(SCI_GETEDGECOLUMN) == other->fileVariables.appliedEdge;
             if (command == IDM_VIEW_LONGLINESETTINGS && other.get() != &d) {
+                int value = 0;
+                const auto column = other->Send(SCI_GETEDGECOLUMN);
+                const bool fileColumn = other->fileVariables.active && column == other->fileVariables.appliedEdge
+                    && filevars::Integer(filevars::Region(*other), "fill-column", value);
                 // Preserve an explicit file value; ordinary peers follow the global limit.
-                if (!fileColumn && other->Send(SCI_GETEDGECOLUMN) == previousTabs.longLineColumn)
+                if (!fileColumn && column == previousTabs.longLineColumn)
                     other->Send(SCI_SETEDGECOLUMN, style.longLineColumn);
                 if (other->style.longLineColumn == previousTabs.longLineColumn)
                     other->style.longLineColumn = style.longLineColumn;

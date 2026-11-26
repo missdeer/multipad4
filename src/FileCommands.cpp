@@ -1,3 +1,6 @@
+#ifdef MULTIPAD4_MODELINE_TEST
+#include "../tests/ModelinePreferenceHooks.h"
+#endif
 #include "ComObject.h"
 #include "SimdText.h"
 #include "FileCommands.h"
@@ -133,13 +136,21 @@ void RestoreFileVariables(EditorDocument& document){
     ApplyDocumentWrapSettings(document);
     if (document.LargeFile()) document.Send(SCI_SETWRAPMODE, SC_WRAP_NONE);
 }
+std::string filevars::Region(const EditorDocument& document) {
+    if (document.FastView()) throw std::runtime_error("Use the full editor for this whole-document command.");
+    const auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
+    if (!length) return {};
+    auto head = document.Range(0, (std::min)(length, size_t(512)));
+    if (length <= 512 || Recognized(head)) return head;
+    return document.Range(length - 512, 512);
+}
 void ApplyFileVariables(EditorDocument& document){
+#ifdef MULTIPAD4_MODELINE_TEST
+    if (modelinetest::applyBaseline) { modelinetest::applyBaseline(document); return; }
+#endif
     if (document.FastView()) return;
     RestoreFileVariables(document);
-    auto sample = document.Range(0, 4096);
-    auto length = static_cast<size_t>(document.Send(SCI_GETLENGTH));
-    if (length > 4096) sample += document.Range((std::max)(size_t(4096), length - (std::min)(length, size_t(4096))), 4096);
-    auto region=filevars::Region(sample);int value=0;
+    auto region=filevars::Region(document);int value=0;
     if(filevars::Integer(region,"enable-local-variables",value)&&!value)return;
     auto& baseline=document.fileVariables;baseline.baseline=document.style;baseline.baselineWrap=static_cast<int>(document.Send(SCI_GETWRAPMODE));baseline.baselineEdge=static_cast<int>(document.Send(SCI_GETEDGECOLUMN));
     auto mode=filevars::String(region,"mode");if(!mode.empty())SelectDocumentScheme(document,files::FromUtf8(mode));
