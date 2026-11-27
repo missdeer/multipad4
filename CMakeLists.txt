@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(MultiPad4 VERSION 0.4.0 LANGUAGES C CXX RC)
+project(MultiPad4 VERSION 0.5.0 LANGUAGES C CXX RC)
 if("$ENV{GITHUB_REF_TYPE}" STREQUAL "tag" AND "$ENV{GITHUB_REF_NAME}" MATCHES "^v([0-9]+\\.[0-9]+(\\.[0-9]+)?)$")
   if(NOT PROJECT_VERSION VERSION_EQUAL CMAKE_MATCH_1)
     message(FATAL_ERROR "Release tag $ENV{GITHUB_REF_NAME} does not match MultiPad4 ${PROJECT_VERSION}.")

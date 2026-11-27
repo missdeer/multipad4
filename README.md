@@ -4,7 +4,7 @@ English | [简体中文](README_zh.md)
 
 **MultiPad4** is a Windows x64 tabbed MDI text editor built with C++20, Win32, and notepad4's optimized Scintilla. It brings notepad4's editing features to a multi-document workflow with on-demand large-file editing, Notepad++-style search, and dockable plugin panes.
 
-Builds from the current source show `v0.4` in the About dialog and report `0.4.0.0` in Windows executable metadata.
+Builds from the current source show `v0.5` in the About dialog and report `0.5.0.0` in Windows executable metadata.
 
 Official release builds check for updates automatically. Use **Help → Check for Updates** to check on demand or **Help → Check for Updates Automatically** to change the preference. If you accept an update, MultiPad4 verifies the matching compiler and SIMD package against the SHA-256 published by GitHub, then closes and restarts. The installation directory must be writable.
 
