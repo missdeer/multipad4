@@ -118,3 +118,8 @@ server failure. In local testing, the LLVM 24 development clangd recorded exits
 with `0xC000001D` during CodeComplete in FileBrowse.cpp; this is a server failure,
 and the plugin restores built-in completion afterward. Local Qt Creator clangd
 22.1.8 is another installed server that can be selected using its absolute path.
+
+Completion candidates retain server filtering and ranking, including fuzzy matches
+and filterText values that differ from display labels. Scintilla displays the
+returned list without an extra label-prefix filter; the original word start is
+tracked separately for items without an explicit TextEdit.

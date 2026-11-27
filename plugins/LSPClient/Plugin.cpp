@@ -125,6 +125,7 @@ ULONGLONG scheduledAt = 0;
 struct Completion {
     UINT_PTR buffer = 0;
     uint64_t revision = 0;
+    LRESULT start = 0;
     std::map<std::string, Json> items;
     LRESULT separator = ' ', typeSeparator = '?', order = 0, chooseSingle = 0;
 } completion;
@@ -340,8 +341,10 @@ void ShowCompletion(Document& d, const Json& result) {
     // Single-choice insertion bypasses SCN_AUTOCSELECTION and loses LSP TextEdits.
     Sci(h,SCI_AUTOCSETCHOOSESINGLE,FALSE);
     Sci(h,SCI_AUTOCSETSEPARATOR,'\n'); Sci(h,SCI_AUTOCSETTYPESEPARATOR,0x1f); Sci(h,SCI_AUTOCSETORDER,SC_ORDER_CUSTOM);
-    auto caret = Sci(h,SCI_GETCURRENTPOS); auto start = Sci(h,SCI_WORDSTARTPOSITION,caret,TRUE);
-    Sci(h,SCI_AUTOCSHOW,caret-start,reinterpret_cast<LPARAM>(list.c_str()));
+    const auto caret = Sci(h,SCI_GETCURRENTPOS);
+    completion.start = Sci(h,SCI_WORDSTARTPOSITION,caret,TRUE);
+    // The server has already filtered candidates; labels may be fuzzy matches.
+    Sci(h,SCI_AUTOCSHOW,0,reinterpret_cast<LPARAM>(list.c_str()));
 }
 void InsertCompletion(const SCNotification& notification) {
     const auto id = completion.buffer; auto h = Editor(id); auto found = documents.find(id);
@@ -359,7 +362,7 @@ void InsertCompletion(const SCNotification& notification) {
         edits.push_back({start,end,std::move(text)});
     };
     if (value.contains("textEdit")) add(value.at("textEdit"));
-    else edits.push_back({static_cast<size_t>(notification.position),static_cast<size_t>(Sci(h,SCI_GETCURRENTPOS)),value.value("insertText",value.at("label").get<std::string>())});
+    else edits.push_back({static_cast<size_t>(completion.start),static_cast<size_t>(Sci(h,SCI_GETCURRENTPOS)),value.value("insertText",value.at("label").get<std::string>())});
     const auto mainStart=edits[0].start; auto caret=edits[0].start+edits[0].text.size();
     for (const auto& edit : value.value("additionalTextEdits",Json::array())) {
         add(edit); const auto& added=edits.back();

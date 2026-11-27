@@ -116,6 +116,13 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
     document->Send(SCI_AUTOCCOMPLETE);require(document->Text()=="hello;");
     document->Send(SCI_UNDO);require(document->Text()=="he2");
+    for(const auto& [typedText,expected] : {std::pair{"fb","fooBar"},std::pair{"alias","resolvedText"}}) {
+        document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(typedText));
+        document->Send(SCI_GOTOPOS,document->Send(SCI_GETLENGTH));SetFocus(document->hwnd);
+        command(L"Complete");require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
+        document->Send(SCI_AUTOCCOMPLETE);require(document->Text()==expected);
+        document->Send(SCI_UNDO);require(document->Text()==typedText);
+    }
     const std::string positioned = std::string(5, '\n') + std::string(22, ' ') + "hello(42) symbol";
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(positioned.c_str()));
     const auto signaturePosition=static_cast<LRESULT>(positioned.find("42"));

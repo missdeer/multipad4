@@ -51,7 +51,10 @@ int main(int argc,char** argv) {
                         }
                         if(completions==2)Require(value["params"]["context"]["triggerKind"]==3);
                         result=Json::parse(R"([{"label":"hello","detail":"completion documentation","textEdit":{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}},"newText":"hello"},"additionalTextEdits":[{"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":2}},"newText":";"}]}])");
-                        if(documents.at(value["params"]["textDocument"]["uri"].get<std::string>())=="he2") {
+                        const auto& current=documents.at(value["params"]["textDocument"]["uri"].get<std::string>());
+                        if(current=="fb")result=Json::array({{{"label","fooBar"}}});
+                        else if(current=="alias")result=Json::array({{{"label","Pretty Display"},{"filterText","alias"},{"insertText","resolvedText"}}});
+                        if(current=="he2") {
                             result[0]["label"]="he2Result";
                             result[0]["textEdit"]["range"]["end"]["character"]=3;
                             result[0]["additionalTextEdits"][0]["range"]["start"]["character"]=3;
