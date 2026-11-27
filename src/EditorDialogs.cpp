@@ -114,7 +114,8 @@ INT_PTR CALLBACK AboutProcedure(HWND window, UINT message, WPARAM w, LPARAM l) {
         SetWindowTextW(window, L"About MultiPad4");
         SetDlgItemTextW(window, IDC_VERSION, AppVersion);
         SetDlgItemTextW(window, IDC_BUILD_INFO, BuildDetails.c_str());
-        SetDlgItemTextW(window, IDC_NEW_PAGE_LINK, L"<a href=\"https://github.com/zufuliu/notepad4\">notepad4 upstream</a> | <a href=\"https://github.com/missdeer/multipad4\">MultiPad4</a>");
+        SetDlgItemTextW(window, IDC_APP_PAGE_LINK, L"<a href=\"https://github.com/missdeer/multipad4\">MultiPad4</a>");
+        SetDlgItemTextW(window, IDC_NEW_PAGE_LINK, L"<a href=\"https://github.com/zufuliu/notepad4\">notepad4 upstream</a>");
         SetDlgItemTextW(window, IDC_MOD_PAGE_LINK, L"<a href=\"https://github.com/XhmikosR/notepad2-mod\">Notepad2-mod</a>");
         SetDlgItemTextW(window, IDC_WEBPAGE_LINK, L"<a href=\"https://www.flos-freeware.ch\">www.flos-freeware.ch</a>");
         SetDlgItemTextW(window, IDC_EMAIL_LINK, L"florian.balmer@gmail.com");
