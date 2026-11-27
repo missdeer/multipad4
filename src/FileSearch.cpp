@@ -8,7 +8,7 @@
 namespace files {
 namespace {
 #ifdef MULTIPAD4_FILE_STREAM_TEST
-std::atomic<unsigned long long> tempSnapshotBytes{0}, decodedBytes{0};
+#include "../tests/hooks/FileSearch.cpp.01.inc"
 #endif
 class LiteralStream {
     std::string needle, buffer;
@@ -275,7 +275,7 @@ void FileSearch::State::Run() {
                 matcher.Rebase({});
                 const bool streamLiteral =
 #ifdef MULTIPAD4_FILE_STREAM_BASELINE
-                    false &&
+#include "../tests/hooks/FileSearch.cpp.02.inc"
 #endif
                     !pattern.regex && pattern.matchCase && !pattern.wholeWord && !pattern.wordStart && !pattern.pattern.empty();
                 // Keep this version stable until a matching file's independent snapshot is captured.
@@ -300,7 +300,7 @@ void FileSearch::State::Run() {
                     }
                     void Write(std::string_view bytes) {
 #ifdef MULTIPAD4_FILE_STREAM_TEST
-                        tempSnapshotBytes += bytes.size();
+#include "../tests/hooks/FileSearch.cpp.03.inc"
 #endif
                         DWORD written = 0;
                         if (!WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) || written != bytes.size()) throw std::runtime_error("Cannot write search snapshot.");
@@ -320,7 +320,7 @@ void FileSearch::State::Run() {
                 try {
                     searchedEncoding = ReadChunks(*path, [&](std::string_view chunk) {
 #ifdef MULTIPAD4_FILE_STREAM_TEST
-                        decodedBytes += chunk.size();
+#include "../tests/hooks/FileSearch.cpp.04.inc"
 #endif
                         if (cancel.load()) throw std::runtime_error("Search cancelled.");
                         if (chunk.find('\0') != std::string_view::npos) throw Binary{};
@@ -330,7 +330,7 @@ void FileSearch::State::Run() {
                         if (!literal->hits->Count()) continue;
                         ReadChunks(*path, [&](std::string_view chunk) {
 #ifdef MULTIPAD4_FILE_STREAM_TEST
-                            decodedBytes += chunk.size();
+#include "../tests/hooks/FileSearch.cpp.05.inc"
 #endif
                             capture(chunk);
                         }, read, searchedEncoding);

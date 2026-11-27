@@ -9,9 +9,5 @@ UINT NormalizeCommand(UINT id);
 class MainFrame;
 void UpdateMenuCommands(MainFrame& frame, HMENU menu);
 #ifdef MULTIPAD4_TESTING
-struct StatusMeasurementCounters {
-    size_t extents = 0, margins = 0, localeQueries = 0, formatLoads = 0;
-};
-extern StatusMeasurementCounters statusMeasurementCounters;
-extern bool statusPresentationBaseline;
+#include "../tests/hooks/UpstreamUI.h.01.inc"
 #endif

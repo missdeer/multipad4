@@ -13,9 +13,7 @@
 #include <cwchar>
 #include <string_view>
 #ifdef MULTIPAD4_TESTING
-#include "../tests/StatusPresentationBaseline.h"
-StatusMeasurementCounters statusMeasurementCounters;
-bool statusPresentationBaseline = false;
+#include "../tests/hooks/UpstreamUI.cpp.01.inc"
 #endif
 namespace {
 // Order and bitmap indices from Notepad4.cpp::tbbMainWnd.
@@ -226,7 +224,7 @@ void MainFrame::UpdateCommandUI() {
 }
 void MainFrame::UpdateStatus() {
 #ifdef MULTIPAD4_TESTING
-    if (statusPresentationBaseline) { BaselineStatusPresentation(*this); return; }
+#include "../tests/hooks/UpstreamUI.cpp.02.inc"
 #endif
     if (!m_hWndStatusBar || !statusVisible) { KillTimer(2); return; }
     constexpr unsigned allParts = (1u << 13) - 1;
@@ -245,7 +243,7 @@ void MainFrame::UpdateStatus() {
     if (!statusLocaleValid) {
         wchar_t separator[4]{};
 #ifdef MULTIPAD4_TESTING
-        ++statusMeasurementCounters.localeQueries;
+#include "../tests/hooks/UpstreamUI.cpp.03.inc"
 #endif
         GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_STHOUSAND, separator, _countof(separator));
         statusSeparator = separator[0] ? separator[0] : L','; statusLocaleValid = true; statusValuesValid = 0;
@@ -254,7 +252,7 @@ void MainFrame::UpdateStatus() {
     if (!statusFormatValid || statusLanguage != language) {
         wchar_t format[512]{};
 #ifdef MULTIPAD4_TESTING
-        ++statusMeasurementCounters.formatLoads;
+#include "../tests/hooks/UpstreamUI.cpp.04.inc"
 #endif
         LoadStringW(GetModuleHandleW(nullptr), IDS_STATUSITEM_FORMAT, format, _countof(format));
         statusFormat = format; statusLanguage = language; statusFormatValid = true; statusValuesValid = 0;
@@ -289,7 +287,7 @@ void MainFrame::UpdateStatus() {
                 lineNumberMetrics != metrics || lineNumberFont != font || lineNumberLocale != locale) {
                 const auto text = "__" + std::to_string(lineCount);
 #ifdef MULTIPAD4_TESTING
-                ++statusMeasurementCounters.margins;
+#include "../tests/hooks/UpstreamUI.cpp.05.inc"
 #endif
                 lineNumberWidth = d->Send(SCI_TEXTWIDTH, STYLE_LINENUMBER, reinterpret_cast<LPARAM>(text.c_str()));
                 lineNumberIdentity = identity; lineNumberCount = lineCount; lineNumberMetrics = metrics;
@@ -376,7 +374,7 @@ void MainFrame::UpdateStatus() {
                 SIZE size{};
                 if (!statusText[i].empty()) {
 #ifdef MULTIPAD4_TESTING
-                    ++statusMeasurementCounters.extents;
+#include "../tests/hooks/UpstreamUI.cpp.06.inc"
 #endif
                     if (!GetTextExtentPoint32W(dc, statusText[i].c_str(), static_cast<int>(statusText[i].size()), &size)) measured = false;
                 }

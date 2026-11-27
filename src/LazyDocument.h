@@ -7,7 +7,7 @@
 #include <optional>
 namespace large {
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-namespace testing { inline std::atomic<void*> nextIndexGate{nullptr}; inline std::atomic<bool> indexEntered{false}; }
+#include "../tests/hooks/LazyDocument.h.01.inc"
 #endif
 using Position = uint64_t;
 struct Selection { Position caret = 0, anchor = 0; };

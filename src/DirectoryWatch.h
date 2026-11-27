@@ -18,7 +18,7 @@ public:
     bool Arm();
     static std::vector<Change> Drain(HWND owner);
 #ifdef MULTIPAD4_DIRECTORY_WATCH_TEST
-    void FailForTest();
+#include "../tests/hooks/DirectoryWatch.h.01.inc"
 #endif
     const std::filesystem::path path;
     const UINT_PTR token;

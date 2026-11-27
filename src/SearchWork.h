@@ -33,8 +33,7 @@ struct ReadRegistry { std::mutex mutex; std::vector<std::weak_ptr<ReadState>> st
 // Retired callbacks can unregister during CRT teardown; the registry lasts until process exit.
 inline ReadRegistry* Readers() { static auto* value = new ReadRegistry; return value; }
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-inline std::atomic<HANDLE> gate{nullptr};
-inline std::atomic<size_t> entered{0};
+#include "../tests/hooks/SearchWork.h.01.inc"
 #endif
 struct StateBase : std::enable_shared_from_this<StateBase> {
     std::atomic<bool> cancel{false}, ready{false}, retryScheduled{false};
@@ -144,7 +143,7 @@ template<class T> class SearchTask {
         try {
             state.io.Bind();
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-            if (const auto gate = searchDetail::gate.load()) { ++searchDetail::entered; WaitForSingleObject(gate, INFINITE); }
+#include "../tests/hooks/SearchWork.h.02.inc"
 #endif
             if (state.cancel.load(std::memory_order_acquire)) throw std::runtime_error("Search cancelled.");
             if constexpr (std::is_void_v<T>) { state.action(state.cancel); state.result.emplace(); }

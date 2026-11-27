@@ -1,0 +1,1 @@
+                        decodedBytes += chunk.size();

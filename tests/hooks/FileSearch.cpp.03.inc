@@ -1,0 +1,1 @@
+                        tempSnapshotBytes += bytes.size();

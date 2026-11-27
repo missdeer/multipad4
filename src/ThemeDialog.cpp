@@ -310,12 +310,12 @@ INT_PTR CALLBACK ThemeProcedure(HWND window,UINT message,WPARAM w,LPARAM l) {
             const auto enumerationStarted = std::chrono::steady_clock::now();
             auto add=[&](const std::filesystem::path& directory){std::error_code error;if(!std::filesystem::is_directory(directory,error))return;for(const auto& entry:std::filesystem::directory_iterator(directory))if(entry.path().extension()==L".xml"){context->files.push_back(entry.path());auto label=entry.path().stem().wstring();try{auto xml=
 #ifdef MULTIPAD4_THEME_ENUM_TEST
-                themeenumerationtest::baseline?ReadConfigurationXml(entry.path()):
+#include "../tests/hooks/ThemeDialog.cpp.01.inc"
 #endif
                 ReadConfigurationXmlRoot(entry.path());label=xml.Attribute(L"name",label);if(label.size()>256)label.resize(256);}catch(const std::exception&){}SendMessageW(combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));}};
             add(ConfigurationDirectory()/L"themes");if(!preferencePath.empty())add(preferencePath.parent_path()/L"config/themes");
 #ifdef MULTIPAD4_THEME_ENUM_TEST
-            themeenumerationtest::enumerationMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - enumerationStarted).count();
+#include "../tests/hooks/ThemeDialog.cpp.02.inc"
 #else
             (void)enumerationStarted;
 #endif

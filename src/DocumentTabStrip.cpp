@@ -243,7 +243,7 @@ bool DocumentTabStrip::MoveItem(int from, int to) {
 
 BOOL DocumentTabStrip::GetItemRect(int index, RECT* rect) const {
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-    if (tabTesting::measure) ++tabTesting::rectangles;
+#include "../tests/hooks/DocumentTabStrip.cpp.01.inc"
 #endif
     return TabCtrl_GetItemRect(control, index, rect);
 }
@@ -430,7 +430,7 @@ HWND DocumentTabStrip::TabCloseAt(POINT point) const {
 void DocumentTabStrip::InvalidateCloses(HWND oldChild, HWND newChild) const {
     if (!oldChild && !newChild) return;
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-    if (tabTesting::baseline) { InvalidateRect(control, nullptr, FALSE); return; }
+#include "../tests/hooks/DocumentTabStrip.cpp.02.inc"
 #endif
     const RECT viewport = TabViewport();
     auto invalidate = [&](HWND child) {
@@ -443,19 +443,7 @@ void DocumentTabStrip::InvalidateCloses(HWND oldChild, HWND newChild) const {
 
 void DocumentTabStrip::PaintTabCloses(HDC dc) const {
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-    if (tabTesting::baseline) {
-        const int count = TabCtrl_GetItemCount(control); const RECT viewport = TabViewport();
-        for (int index = 0; index < count; ++index) {
-            const RECT button = TabCloseRect(index, viewport);
-            if (IsRectEmpty(&button) || !RectVisible(dc, &button)) continue;
-            TCITEMW item{}; item.mask = TCIF_PARAM; TabCtrl_GetItem(control, index, &item);
-            const HWND child = reinterpret_cast<HWND>(item.lParam);
-            const bool hot = hotClose == child && dragIndex < 0 && (!pressedClose || pressedClose == child);
-            if (tabTesting::measure) ++tabTesting::draws;
-            PaintTabButton(control, dc, button, 0, hot, true, true);
-        }
-        return;
-    }
+#include "../tests/hooks/DocumentTabStrip.cpp.03.inc"
 #endif
     const int count = GetItemCount();
     const RECT viewport = TabViewport();
@@ -467,7 +455,7 @@ void DocumentTabStrip::PaintTabCloses(HDC dc) const {
         const HWND child = ChildAt(index);
         const bool hot = hotClose == child && dragIndex < 0 && (!pressedClose || pressedClose == child);
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-        if (tabTesting::measure) ++tabTesting::draws;
+#include "../tests/hooks/DocumentTabStrip.cpp.04.inc"
 #endif
         PaintTabButton(control, dc, button, 0, hot, true, true);
     };
@@ -537,16 +525,12 @@ LRESULT CALLBACK DocumentTabStrip::TabProcedure(HWND window, UINT message, WPARA
     switch (message) {
     case WM_PAINT: {
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-        if (tabTesting::baseline) {
-            const auto result = DefSubclassProc(window, message, w, l);
-            if (HDC dc = GetDC(window)) { tabs.PaintTabCloses(dc); ReleaseDC(window, dc); }
-            return result;
-        }
+#include "../tests/hooks/DocumentTabStrip.cpp.05.inc"
 #endif
         HRGN update = CreateRectRgn(0, 0, 0, 0);
         int kind = update ? GetUpdateRgn(window, update, FALSE) : ERROR;
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-        if (tabTesting::failUpdateRegion) kind = ERROR;
+#include "../tests/hooks/DocumentTabStrip.cpp.06.inc"
 #endif
         const auto result = DefSubclassProc(window, message, w, l);
         if (HDC dc = GetDC(window)) {

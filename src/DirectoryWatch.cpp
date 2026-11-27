@@ -192,10 +192,5 @@ std::vector<DirectoryWatch::Change> DirectoryWatch::Drain(HWND owner) {
 }
 
 #ifdef MULTIPAD4_DIRECTORY_WATCH_TEST
-void DirectoryWatch::FailForTest() {
-    if (!state) return;
-    { std::lock_guard lock(state->mutex); CancelIoEx(state->directory, &state->overlapped); }
-    WaitForThreadpoolIoCallbacks(state->io, FALSE);
-    std::lock_guard lock(state->mutex); state->error = ERROR_ACCESS_DENIED;
-}
+#include "../tests/hooks/DirectoryWatch.cpp.01.inc"
 #endif

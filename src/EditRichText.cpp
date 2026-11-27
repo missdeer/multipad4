@@ -8,8 +8,7 @@
 #include <string_view>
 #include <vector>
 #ifdef MULTIPAD4_RICH_TEXT_TEST
-#include "../tests/RichTextMetrics.h"
-#define RTF_UTF16(value) richtexttest::Decode(value)
+#include "../tests/hooks/EditRichText.cpp.01.inc"
 #else
 #define RTF_UTF16(value) files::FromUtf8(value)
 #endif
@@ -45,7 +44,7 @@ bool SetData(UINT format, const void *data, size_t size) {
 } // namespace
 void CopyRichText(EditorDocument &d) {
 #ifdef MULTIPAD4_RICH_TEXT_TEST
-    if (richtexttest::baseline) { richtexttest::baseline(d); return; }
+#include "../tests/hooks/EditRichText.cpp.02.inc"
 #endif
     auto start = d.Send(SCI_GETSELECTIONSTART), end = d.Send(SCI_GETSELECTIONEND);
     if (start == end) { start = 0; end = d.Send(SCI_GETLENGTH); }

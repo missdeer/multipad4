@@ -122,7 +122,7 @@ Encoding FromCodePage(unsigned page) {
 }
 bool ParseEncodingName(const std::wstring& value, Encoding& encoding) {
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-    if(testing::encodingAliasParser)return testing::encodingAliasParser(value,encoding);
+#include "../tests/hooks/FileIO.cpp.01.inc"
 #endif
     auto normalize=[](const std::string& text){std::string result;for(unsigned char c:text)if(isalnum(c))result+=static_cast<char>(tolower(c));return result;};
     auto name=normalize(ToUtf8(value));
@@ -351,7 +351,7 @@ public:
         size = static_cast<unsigned long long>(length.QuadPart);
         if (size && backend == ReadBackend::Mapped
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-            && !testing::bufferedSessions.load()
+#include "../tests/hooks/FileIO.cpp.02.inc"
 #endif
         ) mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
         SYSTEM_INFO info{}; GetSystemInfo(&info); granularity = info.dwAllocationGranularity;
@@ -400,7 +400,7 @@ public:
         }
         std::lock_guard guard(*fallbackMutex);
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-        if (const auto gate = testing::nextFallbackGate.exchange(nullptr)) { testing::fallbackEntered = true; WaitForSingleObject(gate, INFINITE); }
+#include "../tests/hooks/FileIO.cpp.03.inc"
 #endif
         LARGE_INTEGER position{}; position.QuadPart = offset;
         if (!SetFilePointerEx(file, position, nullptr, FILE_BEGIN)) Fail("Cannot seek file.");

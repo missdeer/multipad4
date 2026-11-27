@@ -79,7 +79,7 @@ bool NeedsRecovery(const EditorDocument& d) {
 }
 RecoveryOutcome WriteRecovery(const RecoveryRequest& request, const std::string& text) {
 #ifdef MULTIPAD4_AUTOSAVE_TEST_HOOKS
-    if (auto gate = autosavetest::beforeWrite.load()) gate(request.path, request.overwrite && !request.path.empty());
+#include "../tests/hooks/AutoSave.cpp.01.inc"
 #endif
     if (request.overwrite && !request.path.empty()) {
         try { files::WriteAtomic(request.path, {text, request.encoding}); return {{}, true}; } catch (const std::exception&) {}
@@ -196,12 +196,7 @@ void PumpDocumentBackup(MainFrame& frame) {
         frame.runtime.autoSaveTask.reset(); d.runtime.lastAutoSave = 0; return;
     }
 #ifdef MULTIPAD4_AUTOSAVE_TEST_HOOKS
-    if (autosavetest::baselineCapture && task->offset < task->length) {
-        auto bytes = d.Range(task->offset, (std::min)(size_t(256 * 1024), task->length - task->offset));
-        task->offset += bytes.size(); task->text.append(bytes);
-        autosavetest::rangeCopies += bytes.size(); autosavetest::captureCopies += bytes.size(); ++autosavetest::captureSlices;
-        return;
-    }
+#include "../tests/hooks/AutoSave.cpp.02.inc"
 #endif
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2);
     size_t captured = 0;
@@ -212,7 +207,7 @@ void PumpDocumentBackup(MainFrame& frame) {
         if (!bytes) { frame.runtime.autoSaveTask.reset(); d.runtime.lastAutoSave = 0; return; }
         task->text.append(bytes, count); task->offset += count; captured += count;
 #ifdef MULTIPAD4_AUTOSAVE_TEST_HOOKS
-        autosavetest::captureCopies += count; ++autosavetest::captureSlices;
+#include "../tests/hooks/AutoSave.cpp.03.inc"
 #endif
         const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
         task->captureBytes = static_cast<size_t>((std::clamp)(count * (0.25 / (std::max)(elapsed, 0.001)), 65536.0, 1048576.0));

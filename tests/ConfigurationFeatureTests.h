@@ -2,7 +2,7 @@
 #include "../src/LanguageConfiguration.h"
 #include "../src/ConfigurationXml.h"
 #include "../src/ThemeDialog.h"
-#include "../src/LexerMetrics.h"
+#include "LexerMetrics.h"
 #include "LexerBaselineTests.h"
 #include "StyleDialogTests.h"
 #include <source_location>

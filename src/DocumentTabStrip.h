@@ -5,10 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #ifdef MULTIPAD4_TAB_STRIP_TEST_HOOKS
-namespace tabTesting {
-inline bool baseline = false, measure = false, failUpdateRegion = false;
-inline size_t rectangles = 0, draws = 0;
-}
+#include "../tests/hooks/DocumentTabStrip.h.01.inc"
 #endif
 
 class DocumentTabStrip {

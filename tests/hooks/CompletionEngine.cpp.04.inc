@@ -1,0 +1,1 @@
+    switch(command){case IDM_LEXER_XSD:return kwXmlSchema;case IDM_LEXER_XSLT:return kwXmlStylesheet;case IDM_LEXER_APACHE:return kwApache;case IDM_LEXER_PROPERTY_LIST:return kwPList;default:return nullptr;}
