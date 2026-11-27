@@ -103,7 +103,7 @@ public:
         else ::SendMessageW(m_hWndMDIClient, WM_MDITILE, command == ID_WINDOW_TILE_VERT ? MDITILE_VERTICAL : MDITILE_HORIZONTAL, 0);
         return 0;
     }
-    LRESULT OnPluginNotify(UINT, WPARAM, LPARAM l, BOOL&) { plugins.ScintillaNotification(*reinterpret_cast<SCNotification*>(l)); return 0; }
+    LRESULT OnPluginNotify(UINT, WPARAM, LPARAM l, BOOL&) { return plugins.ScintillaNotification(*reinterpret_cast<SCNotification*>(l)); }
     LRESULT OnPluginMessage(UINT msg, WPARAM w, LPARAM l, BOOL&) { return plugins.Message(msg, w, l); }
     LRESULT OnPluginAdmin(WORD, WORD id, HWND, BOOL&) {
         if (id == IDM_SETTING_PLUGINADM) pluginAdmin.Show(*this);

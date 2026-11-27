@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "languageId": "cpp",
+      "extensions": [".cpp", ".cc", ".cxx", ".h", ".hpp"],
+      "command": ["clangd", "--background-index", "--completion-style=detailed"],
+      "rootMarkers": ["compile_commands.json", ".clangd", ".git"],
+      "settings": {}
+    },
+    {
+      "languageId": "c",
+      "extensions": [".c"],
+      "command": ["clangd", "--background-index"],
+      "rootMarkers": ["compile_commands.json", ".clangd", ".git"]
+    },
+    {
+      "languageId": "python",
+      "extensions": [".py", ".pyi"],
+      "command": ["pylsp"],
+      "rootMarkers": ["pyproject.toml", ".git"]
+    }
+  ]
+}

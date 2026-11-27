@@ -44,8 +44,8 @@ void EditorChild::UpdateLayout() {
 void EditorChild::Notify(const NMHDR& notification) {
     if (document && notification.hwndFrom == document->hwnd) {
         const auto& sci = reinterpret_cast<const SCNotification&>(notification);
-        SendMessageW(owner, WM_APP + 0x120, 0, reinterpret_cast<LPARAM>(&sci));
-        HandleStyleNotification(*document, sci);
+        if (!SendMessageW(owner, WM_APP + 0x120, 0, reinterpret_cast<LPARAM>(&sci)))
+            HandleStyleNotification(*document, sci);
         if (sci.nmhdr.code == SCN_SAVEPOINTLEFT || sci.nmhdr.code == SCN_SAVEPOINTREACHED) document->titleDirty = true;
         if (sci.nmhdr.code == SCN_MODIFIED && (sci.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT)) &&
             sci.position <= document->Send(SCI_GETLINEENDPOSITION, 0)) ++document->excerptRevision;

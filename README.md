@@ -49,13 +49,14 @@ See [On-demand editable documents](docs/MAPPED_EDITING.md) and [Parallel large-f
 
 ### Bundled plugins
 
-The default build includes seven plugin DLLs. Set a plugin's CMake option to `OFF` to omit it.
+The default build includes eight plugin DLLs. Set a plugin's CMake option to `OFF` to omit it.
 
 | Plugin | Features | CMake option |
 | --- | --- | --- |
 | Matepath | **Plugins → Matepath → File Browser** opens the Windows Shell browser. Navigate folders, filter or sort files, show hidden files, refresh, or locate the active document. Paths are subject to the upstream `MAX_PATH` limit, and icon loading can pause navigation in large folders. [Matepath plugin](docs/MATEPATH_MIGRATION.md) | `MULTIPAD4_BUILD_MATEPATH` |
 | OpenDocuments | **Plugins → OpenDocuments → Open Documents** shows the tab order, active document, and unsaved changes in a dockable list. Double-click an entry or press Enter to switch to it. [OpenDocuments plugin](docs/OPEN_DOCUMENTS_PLUGIN.md) | `MULTIPAD4_BUILD_OPEN_DOCUMENTS` |
 | Project | **Project → Edit Projects…** groups files and folders into projects. **Project → Project Pane** opens a dockable list for switching projects and opening members. Loading a folder opens its immediate files. [Project plugin](docs/PLUGINS.md#project-插件) | `MULTIPAD4_BUILD_PROJECT` |
+| LSP Client | Configure and start external language servers for completion, signature help, hover, definitions and diagnostics. [Setup and scope](docs/LSP_CLIENT.md) | `MULTIPAD4_BUILD_LSP_CLIENT` |
 | Base64 | Encode and decode selections, including URL-safe encoding, hex output, and HTML-embedded images. | `MULTIPAD4_BUILD_BASE64` |
 | Action on Selection | Open selected paths or links, evaluate expressions, search online, and run custom actions. | `MULTIPAD4_BUILD_SELECTION_ACTIONS` |
 | Text Transliteration | Convert full-width and half-width text, Simplified and Traditional Chinese, Japanese kana, and other scripts. | `MULTIPAD4_BUILD_TEXT_TRANSLITERATION` |
@@ -103,7 +104,7 @@ ctest --preset msvc-x64
 
 The `msvc-release` preset enables link-time optimization in Release builds. The local development wrappers and their setup are documented in [AGENTS.md](AGENTS.md).
 
-The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, its `multipad4-registry.exe` helper, `config/`, all seven bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
+The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, its `multipad4-registry.exe` helper, `config/`, all eight bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64
 
