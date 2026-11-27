@@ -131,6 +131,7 @@ void PluginHost::Initialize(MainFrame& owner) {
         if (!unicode || !unicode() || !info || !name || !funcs || !plugin.notify || !plugin.message) {
             errors.push_back(plugin.module + L": invalid Unicode plugin exports"); FreeLibrary(plugin.library); continue;
         }
+        plugin.editorNotification = reinterpret_cast<BOOL(__cdecl*)(const SCNotification*)>(GetProcAddress(plugin.library, "multipadHandleEditorNotification"));
         plugin.preTranslate = reinterpret_cast<BOOL(__cdecl*)(MSG*)>(GetProcAddress(plugin.library, "multipadPreTranslateMessage"));
         plugin.commandEnabled = reinterpret_cast<BOOL(__cdecl*)(UINT)>(GetProcAddress(plugin.library, "multipadCommandEnabled"));
         plugin.populateEditorContextMenu = reinterpret_cast<void(__cdecl*)(HMENU)>(
@@ -175,11 +176,16 @@ void PluginHost::Notify(UINT code, UINT_PTR buffer) {
     SCNotification notification{}; notification.nmhdr.hwndFrom = frame->m_hWnd; notification.nmhdr.idFrom = buffer; notification.nmhdr.code = code;
     for (auto& p : plugins) p.notify(&notification);
 }
-void PluginHost::ScintillaNotification(const SCNotification& source) {
-    if (!ready || stopped) return;
-    auto* d = frame->Active(); if (!d || d->FastView() || source.nmhdr.hwndFrom != d->hwnd) return;
+bool PluginHost::ScintillaNotification(const SCNotification& source) {
+    if (!ready || stopped) return false;
+    auto* d = frame->Active();
+    bool active = d && !d->FastView() && source.nmhdr.hwndFrom == d->hwnd;
+    bool consumed = false;
+    for (auto& p : plugins)
+        if (p.editorNotification) consumed |= p.editorNotification(&source) != FALSE;
     auto notification = source; notification.nmhdr.hwndFrom = proxy; notification.nmhdr.idFrom = 0;
-    for (auto& p : plugins) p.notify(&notification);
+    if (active) for (auto& p : plugins) p.notify(&notification);
+    return consumed && source.nmhdr.code != SCN_MODIFIED;
 }
 void PluginHost::Ready() { if (ready) return; ready = true; Notify(NPPN_TBMODIFICATION); Notify(NPPN_READY); Activated(); }
 void PluginHost::Activated() {
@@ -271,6 +277,17 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
             ExecuteExternalCommand(*frame, text);
             return TRUE;
         } catch (const std::exception& error) { frame->Error(error); return FALSE; }
+    case MPM_SETEXTERNALCOMPLETION: {
+        auto* doc = Document(w); if (!doc || doc->FastView()) return FALSE;
+        doc->externalCompletion = l != 0;
+        doc->Send(SCI_AUTOCCANCEL);
+        doc->style.completionPending = false; ++doc->completionEpoch;
+        return TRUE;
+    }
+    case MPM_GETBUFFEREDITORWINDOW: {
+        auto* doc = Document(w);
+        return doc && !doc->FastView() ? reinterpret_cast<LRESULT>(doc->hwnd) : 0;
+    }
     case MPM_GETEDITORWINDOW:
         return d && !d->FastView() ? reinterpret_cast<LRESULT>(d->hwnd) : 0;
     case MPM_GETLEXERMETADATA: {

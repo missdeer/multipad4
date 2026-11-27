@@ -50,3 +50,15 @@ struct MultiPadBufferTitle {
     wchar_t* text;
     size_t capacity; // Includes the terminator; query with nullptr for required length.
 };
+
+// Optional export BOOL multipadHandleEditorNotification(const SCNotification*).
+// UI-thread callback with the real editor HWND, before built-in style handling.
+// TRUE skips built-in handling for this event; legacy beNotified still runs.
+// Never consume SCN_MODIFIED: the host uses it for its revision bookkeeping.
+constexpr UINT MPM_GETBUFFEREDITORWINDOW = WM_USER + 1000 + 961;
+// wParam = buffer ID; returns its full editor HWND, or zero for closed/fast views.
+// HWND is borrowed and must be revalidated after document lifecycle callbacks.
+
+// wParam = buffer ID, lParam = BOOL; suspend built-in completion for that buffer.
+// Reset on plugin stop; does not suppress indentation or paired-character handling.
+constexpr UINT MPM_SETEXTERNALCOMPLETION = WM_USER + 1000 + 962;

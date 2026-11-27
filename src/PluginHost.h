@@ -36,6 +36,7 @@ public:
         PMESSAGEPROC message = nullptr;
         // Optional MultiPad4 extensions; absent exports preserve N++ behavior.
         BOOL (__cdecl* preTranslate)(MSG*) = nullptr;
+        BOOL (__cdecl* editorNotification)(const SCNotification*) = nullptr;
         BOOL (__cdecl* commandEnabled)(UINT) = nullptr;
         void (__cdecl* populateEditorContextMenu)(HMENU) = nullptr;
         HMENU submenu = nullptr;
@@ -68,7 +69,7 @@ public:
     void Shutdown();
     void Activated();
     void Notify(UINT code, UINT_PTR buffer = 0);
-    void ScintillaNotification(const SCNotification& notification);
+    bool ScintillaNotification(const SCNotification& notification);
     void UpdateMenu(HMENU submenu);
     void PopulateEditorContextMenu(HMENU submenu);
     bool Execute(UINT id);

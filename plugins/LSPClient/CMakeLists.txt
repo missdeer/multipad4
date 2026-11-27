@@ -1,0 +1,22 @@
+add_library(LSPClient SHARED Plugin.cpp Transport.cpp)
+target_include_directories(LSPClient PRIVATE
+  "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
+  "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")
+target_compile_options(LSPClient PRIVATE ${MULTIPAD4_WARNINGS})
+target_link_libraries(LSPClient PRIVATE multipad_files shlwapi)
+set_target_properties(LSPClient PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/plugins/LSPClient/$<0:>")
+add_custom_command(TARGET LSPClient POST_BUILD
+  COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/servers.example.json" "${CMAKE_CURRENT_SOURCE_DIR}/Kate.License.txt" "$<TARGET_FILE_DIR:LSPClient>")
+add_dependencies(multipad4 LSPClient)
+install(TARGETS LSPClient RUNTIME DESTINATION plugins/LSPClient)
+install(FILES servers.example.json Kate.License.txt DESTINATION plugins/LSPClient)
+if(BUILD_TESTING)
+  target_compile_definitions(multipad4-tests PRIVATE MULTIPAD4_TEST_LSP_CLIENT)
+  add_dependencies(multipad4-tests lsp_tests)
+  add_test(NAME lsp_editor_integration COMMAND multipad4-tests --lsp-test "${PROJECT_BINARY_DIR}/lsp-editor-test")
+  set_tests_properties(lsp_editor_integration PROPERTIES TIMEOUT 40 RUN_SERIAL TRUE)
+  add_executable(lsp_tests ../../tests/LSPTests.cpp Transport.cpp)
+  target_compile_options(lsp_tests PRIVATE ${MULTIPAD4_WARNINGS})
+  add_test(NAME lsp_protocol_transport COMMAND lsp_tests)
+  set_tests_properties(lsp_protocol_transport PROPERTIES TIMEOUT 30)
+endif()

@@ -464,6 +464,7 @@ void QueueCompletion(EditorDocument& d) {
         PostMessageW(owner,WM_COMPLETION_CONTINUE,0,0);
 }
 void Complete(EditorDocument& d,bool autoInsert=false) {
+    if (d.externalCompletion) return;
     if (d.Send(SCI_GETREADONLY) || d.Send(SCI_AUTOCACTIVE)) return;
     const auto requestRevision=d.style.revision,requestEpoch=d.completionEpoch;
     const auto requestConfiguration=d.style.configuration;const auto requestTheme=d.style.theme;const auto requestDialect=d.style.resolvedDialect;

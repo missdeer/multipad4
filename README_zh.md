@@ -56,6 +56,7 @@
 | Matepath | 通过**插件 → Matepath → 文件浏览器**打开 Windows Shell 文件浏览器，可浏览目录、筛选或排序文件、显示隐藏文件、手动刷新并定位活动文档。路径长度受上游 `MAX_PATH` 限制，大目录加载图标时可能暂停导航。[Matepath 插件](docs/MATEPATH_MIGRATION.md) | `MULTIPAD4_BUILD_MATEPATH` |
 | OpenDocuments | 通过**插件 → OpenDocuments → 打开的文档**打开可停靠的文档列表，查看标签顺序、活动文档和未保存标记。双击列表项或按 Enter 切换文档。[OpenDocuments 插件](docs/OPEN_DOCUMENTS_PLUGIN.md) | `MULTIPAD4_BUILD_OPEN_DOCUMENTS` |
 | Project | 在 **Project → Edit Projects…** 中将文件和文件夹组织成项目，通过 **Project → Project Pane** 打开可停靠面板，切换项目或打开成员。加载文件夹时会打开其中的直属文件。[Project 插件](docs/PLUGINS.md#project-插件) | `MULTIPAD4_BUILD_PROJECT` |
+| LSP Client | 配置并启动语言服务器，提供补全、参数提示、悬停、定义跳转和诊断。[配置与移植范围](docs/LSP_CLIENT.md) | `MULTIPAD4_BUILD_LSP_CLIENT` |
 | Base64 | 对选区进行 Base64 编解码，支持 URL 安全编码、十六进制输出和生成 HTML 内嵌图片。 | `MULTIPAD4_BUILD_BASE64` |
 | Action on Selection | 打开选中的路径或链接、计算表达式、在线搜索和执行自定义操作。 | `MULTIPAD4_BUILD_SELECTION_ACTIONS` |
 | Text Transliteration | 支持全角与半角、简体与繁体中文、日文假名及其他文字的转换。 | `MULTIPAD4_BUILD_TEXT_TRANSLITERATION` |

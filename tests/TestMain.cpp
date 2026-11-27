@@ -28,6 +28,9 @@
 #include "LexerBaselineTests.h"
 #include "ConfigurationBenchmark.h"
 #include "QAArtifacts.h"
+#ifdef MULTIPAD4_TEST_LSP_CLIENT
+#include "LSPPluginTests.h"
+#endif
 #include <shellapi.h>
 #include <cstdio>
 #include <fstream>
@@ -86,7 +89,9 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
     bool richTextTest = count == 2 && wcscmp(args[1], L"--rich-text-test") == 0;
     bool richTextBenchmark = count == 2 && wcscmp(args[1], L"--rich-text-benchmark") == 0;
     bool replacementTest = count == 2 && wcscmp(args[1], L"--file-replacement-test") == 0;
+    bool lspTest = count == 3 && wcscmp(args[1], L"--lsp-test") == 0;
     bool smoke =
+        lspTest ||
         dpiFontTest ||
         pluginIndexTest ||
         settingsProfileTest ||
@@ -130,6 +135,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
         startup.onlyPlugin = noPluginsTest ? L"__no_plugins__.dll" : L"__bundled__";
         startup.bundledModules = bundledTestModules;
     }
+    if (lspTest) startup.onlyPlugin = L"LSPClient.dll";
     if (commentTest || commentBenchmark) startup.pluginsEnabled = false;
     if(startup.isolated)startup.run=[&](MainFrame& frame){
         int result=0;
@@ -139,6 +145,10 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show) {
         try {
 #ifdef MULTIPAD4_INDENT_TEST
             if (indentTest || indentBenchmark) { RunIndentReadTests(frame, indentBenchmark); }
+            else
+#endif
+            #ifdef MULTIPAD4_TEST_LSP_CLIENT
+            if (lspTest) { RunLSPPluginTests(frame, args[2]); }
             else
 #endif
             if (tabStripTest) { RunTabStripTests(frame, count == 3 ? args[2] : nullptr); }

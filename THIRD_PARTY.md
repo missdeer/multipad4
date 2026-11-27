@@ -189,3 +189,12 @@ license as `Miniz.License.txt`.
 - The file icon generator uses Pillow (MIT-CMU) and Windows' installed
   Segoe UI font. The repository ships generated icon images.
   [Pillow license](https://pillow.readthedocs.io/en/stable/about.html#license)
+
+## Kate LSP Client reference
+
+`plugins/LSPClient` is a native Win32 adaptation informed by the local Kate
+`addons/lspclient` implementation (not a Qt/KTextEditor binary port).
+Reference author: Mark Nauwelaerts, copyright 2019, MIT license.
+See `plugins/LSPClient/Kate.License.txt` and `docs/LSP_CLIENT.md` for the native
+implementation scope and differences. Uses the existing bundled nlohmann JSON;
+no additional runtime library is introduced.
