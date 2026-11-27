@@ -8,18 +8,28 @@ Builds from the current source show `v0.4` in the About dialog and report `0.4.0
 
 Official release builds check for updates automatically. Use **Help → Check for Updates** to check on demand or **Help → Check for Updates Automatically** to change the preference. If you accept an update, MultiPad4 verifies the matching compiler and SIMD package against the SHA-256 published by GitHub, then closes and restarts. The installation directory must be writable.
 
-To use portable mode, create an empty `.portable` file alongside `MultiPad4.exe` in a writable folder. On the next launch, MultiPad4 stores settings and the exit session in `data` and automatic backups of untitled drafts in `data/AutoSave`. This takes precedence over `MULTIPAD4_SETTINGS`. Close MultiPad4 before moving the entire folder.
+Settings normally live in `%APPDATA%/MultiPad4/MultiPad4.ini`; `MULTIPAD4_SETTINGS` can select another INI path. To use portable mode, create an empty `.portable` file alongside `MultiPad4.exe` in a writable folder. On the next launch, MultiPad4 stores settings and the exit session in `data` and automatic backups of untitled drafts in `data/AutoSave`. This takes precedence over `MULTIPAD4_SETTINGS`. Close MultiPad4 before moving the entire folder.
 
 Behavioral parity with notepad4 is still being verified. See [project scope](docs/PROJECT_SCOPE.md), [migration history](docs/MIGRATION_STATUS.md), and [acceptance checks](docs/MIGRATION_ACCEPTANCE.md).
 
 ## Current features
 
-- **Multiple documents and docking.** Real MDI child windows, tab switching and drag reordering, independent undo stacks, Ctrl+Tab, and cascading/tiling. Right-click a tab to close it, close tabs to one side, close other tabs, or close all tabs. Tabs backed by an existing file also offer Windows Shell commands. Search results and plugin panes can dock, float, or hide. Use **Settings → Document Tab Settings** to choose the tab title font, size, and variable or fixed width. Maximized documents show the file type icon beside the menu bar.
+- **Multiple documents and docking.** Real MDI child windows, tab switching and drag reordering, independent undo stacks, Ctrl+Tab, and cascading/tiling. Tabs have individual close buttons. Right-click a tab to close it, close tabs to one side, close other tabs, or close all tabs. Tabs backed by an existing file also offer Windows Shell commands. Search results and plugin panes can dock, float, or hide. Use **Settings → Document Tab Settings** to choose the tab title font, size, and variable or fixed width. Maximized documents show the file type icon beside the menu bar.
 - **Files and encodings.** Open multiple files, drag and drop, use command-line arguments or single-instance reuse, and use Save, Save As, Save Copy, or Save All. The editor detects and converts UTF-8, UTF-16, and code pages, preserves BOMs and line endings, and supports file variables, backups, history, and favorites. If automatic decoding fails, ISO-8859-1 (Latin-1) lets the editor open the file as text and preserve the original bytes when saved without edits in that encoding. Explicitly selected UTF-8 still requires valid UTF-8. Windows file change notifications can prompt for reload or automatically reload unmodified documents, depending on the monitoring mode.
-- **Editing and languages.** Advanced selection and line operations, conversion, sorting, alignment, and insertion. The editor supports language detection, folding, bookmarks, occurrence highlighting, completion, auto-indent, auto-pairing, and LaTeX input.
+- **Editing and languages.** Advanced selection and line operations, conversion, sorting, alignment, and insertion. The editor supports language detection, folding, bookmarks, occurrence highlighting, completion, auto-indent, auto-pairing, and LaTeX input. **View → Change History Marker** shows unsaved edits in blue and saved edits in green. Tracking must start before editing; it is unavailable in on-demand large-file mode.
 - **Find and replace.** A modeless Find/Replace/Find in Files/Mark dialog supports plain text, extended escapes, regular expressions, counting, and search/replace in the current or all open documents. Ctrl+F focuses the Find field. Ctrl+H, Ctrl+Shift+F, and Ctrl+M open the other tabs. F7 shows results with folding, match highlighting, and navigation. The search dialog has English and Simplified Chinese labels. [Search UI](docs/SEARCH_MIGRATION.md)
-- **Directory search.** Windows thread pools run up to eight search workers with file filters, recursion, hidden-directory options, cancellation, and error counts. Open files are searched using their current buffers, including unsaved edits. Large decoded snapshots and dense match lists spill to temporary files, and the results pane displays matches in pages. Directory searches use the dialog's filters and traverse independently of `.gitignore`. Replacement runs one file at a time on the UI thread and preserves confirmation, encoding, atomic saves, and per-document undo. [File search](docs/FILE_SEARCH.md) · [Performance changes](docs/PERFORMANCE_CHANGES.md) · [Thread pools](docs/THREADING.md)
+- **Directory search and replacement.** Windows thread pools run up to eight search workers with file filters, recursion, hidden-directory options, cancellation, and error counts. Open files are searched using their current buffers, including unsaved edits. Large decoded snapshots and dense match lists spill to temporary files, and the results pane displays matches in pages. Eligible case-sensitive literal searches stream decoded text and avoid retaining snapshots for files without matches. Directory searches use the dialog's filters and traverse independently of `.gitignore`. Replacement handles one file at a time: closed-file matching and saving run in the background with version checks before commit; ordinary open buffers use revision-checked snapshots and apply prepared edits on the UI thread as one undo action. Open mapped documents retain their owner-thread matcher. [File search](docs/FILE_SEARCH.md) · [Streaming search](docs/FILE_STREAM_PERFORMANCE.md) · [Replacement behavior and checks](docs/FILE_REPLACEMENT_PERFORMANCE.md)
 - **Sessions and Windows integration.** Enable **Settings → Restore Previous Session on Startup** to reopen tabs in order after a normal exit, including unsaved drafts and edits. Restored drafts and edits remain marked as modified. The editor offers a configurable toolbar, a 13-part status bar, INI settings, autosave history, run commands, and printing. The Window and Plugins menus and Plugins Admin use localized resources. **Settings → File Associations** registers extensions and embedded file type icons for the current user. Select MultiPad4 as the default handler in Windows Default Apps. [File type icons](res/icons/README.md)
+
+The system integration dialog also configures the Explorer context menu, taskbar Jump List, and optional registry-based Windows Notepad replacement. Enabling or disabling Notepad replacement requests administrator access through the bundled `multipad4-registry.exe`; an existing replacement owned by another application must be disabled there first. Disable MultiPad4's replacement before moving or deleting its installation.
+
+### Responsiveness and DPI
+
+Long-line and selection statistics run incrementally; unfinished status fields show `...`. Automatic word completion scans nearby text within a time budget, while explicit completion retains its configured scope. Ordinary Count, Mark, and Find All use resumable Scintilla searches; results display 64 hits per page. Canceling or closing a search retires its work in the background with bounded outstanding jobs. Shutdown may still wait for outstanding I/O.
+
+Autosave captures text in adaptive chunks and writes complete, consistent snapshots in the background. Tab/title refresh, status presentation, settings writes, theme enumeration, session capture, editing transforms, and RTF export also avoid repeated scans or copies. Measurements and their conditions are recorded in the [performance review](docs/PERFORMANCE_REVIEW.md), [ordinary search](docs/ORDINARY_SEARCH_STORAGE.md), [search cancellation](docs/SEARCH_CANCELLATION_PERFORMANCE.md), and [autosave](docs/AUTOSAVE_CAPTURE_PERFORMANCE.md) reports.
+
+Native controls, including Matepath and OpenDocuments panes, use system fonts for their window DPI. Editor text keeps its configured font size and zoom. Physical mixed-DPI dragging and IME behavior still require manual verification. [DPI validation](docs/DPI_FONTS.md)
 
 ### Language and style
 
@@ -129,7 +139,7 @@ Application-side SIMD is used for UTF-8/UTF-16/ASCII detection, line-ending stat
 
 Integration tests and QA/benchmark commands run in `multipad4-tests.exe` (built with `BUILD_TESTING=ON`). The shipped editor excludes these test entry points.
 
-With `BUILD_TESTING=ON`, CMake registers 14 tests and up to four more when Python, the bundled plugins, or the five third-party plugin DLLs are available. CI verifies build artifacts and runtime configuration. Run CTest locally for the application and plugin checks.
+With `BUILD_TESTING=ON`, CMake currently registers 46 unconditional tests and up to five more: three require Python, one requires Matepath and OpenDocuments, and one requires all five third-party plugin DLLs at configure time. This is a coverage inventory, not a claim that the current checkout has passed every test. CI builds with `BUILD_TESTING=OFF` and verifies build artifacts and runtime configuration. Run CTest locally for the application and plugin checks.
 
 | CTest name | Main coverage |
 |---|---|
@@ -140,13 +150,22 @@ With `BUILD_TESTING=ON`, CMake registers 14 tests and up to four more when Pytho
 | `lazy_document` | Piece tree, random edits, snapshots, transactions, undo/redo, index reuse, and failed-save protection |
 | `large_file_integration` | On-demand view editing/saving, full-document search/replace, cancellation, encodings, and conversion to the full editor |
 | `file_search` | Serial/parallel consistency, directory filtering, encodings, regex, open-document handoff, and cancellation |
+| `reverse_search`, `file_stream`, `regex_iterator`, `hit_archive` | Reverse matching, eligible literal streaming, regex iteration, and bounded match archives |
+| `file_replace`, `file_replacement_integration` | Background file replacement, encoding parity, commit conflicts, cancellation, open-buffer undo, and result navigation |
+| `search_retirement`, `search_retirement_ui`, `ordinary_search_storage` | Canceled job lifetime, stale-result rejection, and resumable Count/Mark/Find All storage |
+| `append_block`, `piece_read`, `directory_watch` | Packed edit storage, direct piece reads, and directory notification handling |
 | `single_instance_integration` | Process startup and single-instance/window reuse; skipped if a MultiPad4 window is already open |
 | `plugin_maintenance` | Enable/disable/removal in isolated temporary directories, batch rollback, failed downloads, and rejection of invalid metadata |
 | `thread_pool` | Task lifetime, exception propagation, nested work, and concurrency limits |
 | `lexer_configuration_baseline`, `lexer_behavior_baseline` | Language data and runtime lexer behavior against the pinned upstream baseline |
 | `configuration_integration` | XML language configuration, native themes, and style configurator |
 | `editor_without_plugins` | Editor and session behavior with plugin loading disabled |
-| `configuration_data_equivalence`, `lexer_inventory_coverage` (Python) | XML data and resource inventory consistency |
+| `tab_strip`, `tab_strip_layout`, `frame_refresh`, `dpi_fonts` | Tab close buttons/layout, frame refresh state, and native control fonts across DPI changes |
+| `status_statistics`, `status_presentation`, `indent_read`, `modeline_preferences` | Incremental status data, presentation caching, indentation reads, and file-variable preferences |
+| `edit_transforms`, `comment_commands`, `save_whitespace`, `rich_text` | Editing/undo parity, comments, save-time whitespace handling, and clipboard export |
+| `autosave_capture`, `session_capture`, `settings_profile`, `theme_enumeration` | Consistent backups, relaunch state, INI persistence, and theme discovery |
+| `printing_separator`, `deferred_queue`, `plugin_index`, `app_update` | Print layout, deferred work, plugin routing indexes, and application update validation |
+| `configuration_data_equivalence`, `lexer_inventory_coverage`, `lexer_inventory_hashes` (Python) | XML data, lexer inventory coverage, and hashes normalized for checkout line endings |
 | `bundled_pane_restart` (Matepath and OpenDocuments enabled) | Docked, floating, and hidden pane layouts across process restarts |
 | `notepadpp_plugins` (five DLLs present at configure time) | Commands, panes, exports, and document routing for five real plugins |
 

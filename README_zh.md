@@ -8,18 +8,28 @@
 
 官方发布版本会自动检查更新。可通过 **帮助 → 检查更新** 手动检查，或通过 **帮助 → 自动检查更新** 更改设置。确认更新后，MultiPad4 将使用 GitHub 提供的 SHA-256 校验与当前编译器和 SIMD 指令集匹配的安装包，然后关闭并重启。安装目录需要可写。
 
-要启用便携模式，请在可写的 `MultiPad4.exe` 所在目录创建空文件 `.portable`。下次启动时，设置和退出会话会保存到 `data`，未命名草稿的自动保存备份会写入 `data/AutoSave`。便携模式优先于 `MULTIPAD4_SETTINGS`。移动整个目录前，请先退出 MultiPad4。
+设置默认保存在 `%APPDATA%/MultiPad4/MultiPad4.ini`，可通过 `MULTIPAD4_SETTINGS` 指定其他 INI 路径。要启用便携模式，请在可写的 `MultiPad4.exe` 所在目录创建空文件 `.portable`。下次启动时，设置和退出会话会保存到 `data`，未命名草稿的自动保存备份会写入 `data/AutoSave`。便携模式优先于 `MULTIPAD4_SETTINGS`。移动整个目录前，请先退出 MultiPad4。
 
 与 notepad4 的行为一致性仍在逐项验收。参见[项目范围](docs/PROJECT_SCOPE.md)、[迁移记录](docs/MIGRATION_STATUS.md)和[验收清单](docs/MIGRATION_ACCEPTANCE.md)。
 
 ## 当前功能
 
-- **多文档与停靠。** 支持真实 MDI 子窗口、标签切换和拖动排序、独立撤销栈、Ctrl+Tab、层叠和平铺。右键单击标签可关闭当前、左侧、右侧、其他或全部标签。已有磁盘文件的标签还提供 Windows Shell 命令。搜索结果和插件面板可停靠、浮动或隐藏。通过**设置 → 文档标签设置**调整标签标题字体、字号和宽度，可启用固定宽度。文档最大化时，菜单栏旁显示文件类型图标。
+- **多文档与停靠。** 支持真实 MDI 子窗口、标签切换和拖动排序、独立撤销栈、Ctrl+Tab、层叠和平铺，每个标签提供关闭按钮。右键单击标签可关闭当前、左侧、右侧、其他或全部标签。已有磁盘文件的标签还提供 Windows Shell 命令。搜索结果和插件面板可停靠、浮动或隐藏。通过**设置 → 文档标签设置**调整标签标题字体、字号和宽度，可启用固定宽度。文档最大化时，菜单栏旁显示文件类型图标。
 - **文件与编码。** 支持多文件打开、拖放、命令行参数、单实例复用、保存、另存为、保存副本和全部保存。支持 UTF-8、UTF-16 和代码页检测与转换，保留 BOM 和换行符，并支持文件变量、备份、历史和收藏夹。自动解码失败时，编辑器使用 ISO-8859-1（Latin-1）将文件作为文本打开，未编辑的内容以该编码保存时保留原始字节。显式选择 UTF-8 时仍会严格校验。文件在外部发生变化时，可根据监视模式提示重载，或自动重载未修改的文档。
-- **编辑与语言。** 支持高级选择与行操作、转换、排序、对齐、插入、语言检测、折叠、书签、匹配项高亮、自动补全、自动缩进、自动配对及 LaTeX 输入。
+- **编辑与语言。** 支持高级选择与行操作、转换、排序、对齐、插入、语言检测、折叠、书签、匹配项高亮、自动补全、自动缩进、自动配对及 LaTeX 输入。**查看 → 修改历史标记**以蓝色显示未保存修改、绿色显示已保存修改；须在编辑前启动追踪，按需大文件模式不提供此功能。
 - **查找与替换。** 无模式对话框提供查找、替换、文件中查找和标记，支持普通文本、扩展转义、正则表达式、计数，以及在当前文档或全部打开文档中查找和替换。Ctrl+F 聚焦查找输入框，Ctrl+H、Ctrl+Shift+F 和 Ctrl+M 打开其他对应页。F7 显示结果，支持折叠、命中高亮和跳转。查找对话框提供英文和简体中文界面。[查找界面](docs/SEARCH_MIGRATION.md)
-- **目录搜索。** 通过 Windows 线程池运行最多 8 个搜索任务，支持文件过滤、递归、隐藏目录选项、取消和错误统计。已打开的文件按当前缓冲区搜索，包含未保存的修改。大型解码快照和密集匹配列表会写入临时文件，结果分页显示。目录遍历使用对话框中的筛选条件，独立于 `.gitignore` 规则。文件替换在 UI 线程逐个执行，保留确认、编码、原子保存和各文档独立撤销。[文件搜索](docs/FILE_SEARCH.md) · [性能优化](docs/PERFORMANCE_CHANGES.md) · [线程池](docs/THREADING.md)
+- **目录搜索与替换。** 通过 Windows 线程池运行最多 8 个搜索任务，支持文件过滤、递归、隐藏目录选项、取消和错误统计。已打开的文件按当前缓冲区搜索，包含未保存的修改。大型解码快照和密集匹配列表会写入临时文件，结果分页显示。符合条件的区分大小写字面量搜索流式处理解码文本，不为未命中的文件保留快照。目录遍历使用对话框中的筛选条件，独立于 `.gitignore` 规则。替换逐文件处理：未打开文件在后台匹配和保存，提交前校验文件版本；已打开的普通文档使用修订号校验快照，在 UI 线程将准备好的修改应用为一次撤销操作。已打开的映射文档仍在所属线程执行匹配。[文件搜索](docs/FILE_SEARCH.md) · [流式搜索](docs/FILE_STREAM_PERFORMANCE.md) · [替换行为与检查](docs/FILE_REPLACEMENT_PERFORMANCE.md)
 - **会话与 Windows 集成。** 启用**设置 → 启动时恢复上次会话**后，正常退出时会保存标签顺序、未保存的草稿和修改。下次启动时按原顺序恢复，草稿和修改仍标记为未保存。支持可定制工具栏、13 段状态栏、INI 设置、自动保存历史、运行命令和打印。“窗口”“插件”菜单及“插件管理”使用本地化资源。通过**设置 → 文件关联**为当前用户注册扩展名和内嵌文件类型图标，再在 Windows 的“默认应用”中选择 MultiPad4。[文件类型图标](res/icons/README.md)
+
+系统集成对话框还可设置资源管理器右键菜单、任务栏跳转列表，以及通过注册表替换 Windows 记事本。启用或取消记事本替换时，随附的 `multipad4-registry.exe` 会请求管理员权限；如果其他程序已注册替换，须先在该程序中取消。移动或删除 MultiPad4 安装目录前，请先取消记事本替换。
+
+### 响应性与 DPI
+
+长行和选区统计增量执行，尚未完成的状态栏字段显示 `...`。自动词补全在时间预算内优先扫描附近文本，显式补全保留配置范围。普通文档的计数、标记和 Find All 使用可分批继续的 Scintilla 搜索，每页显示 64 条命中。取消或关闭搜索后，后台继续清理任务，并限制尚未退出的任务数量；程序退出仍可能等待未完成的 I/O。
+
+自动保存自适应分块捕获文本，将完整、一致的快照交给后台写盘。标签与标题刷新、状态栏展示、设置写入、主题枚举、会话捕获、编辑转换和 RTF 导出也减少了重复扫描或复制。测量方法与适用条件见[性能审查](docs/PERFORMANCE_REVIEW.md)、[普通文档搜索](docs/ORDINARY_SEARCH_STORAGE.md)、[搜索取消](docs/SEARCH_CANCELLATION_PERFORMANCE.md)和[自动保存](docs/AUTOSAVE_CAPTURE_PERFORMANCE.md)。
+
+原生控件（包括 Matepath 和 OpenDocuments 面板）使用对应窗口 DPI 的系统字体，编辑器正文保留配置的字号和缩放。真实混合 DPI 显示器拖动和输入法交互仍需人工验收。[DPI 验证](docs/DPI_FONTS.md)
 
 ### 语言与样式
 
@@ -93,7 +103,7 @@ ctest --preset msvc-x64
 
 `msvc-release` 预设为 Release 构建启用链接时优化。本地开发包装脚本及用法见 [AGENTS.md](AGENTS.md)。
 
-Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`config/`、七个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
+Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`multipad4-registry.exe` 辅助程序、`config/`、七个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64
 
@@ -127,7 +137,7 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 
 集成测试和 QA/性能测试命令改由 `multipad4-tests.exe` 执行（`BUILD_TESTING=ON` 时构建），正式编辑器不包含这些测试入口。
 
-启用 `BUILD_TESTING=ON` 时，CMake 注册 14 项测试，根据 Python、随附插件和五个第三方插件 DLL 的可用情况，最多再注册 4 项。CI 检查构建产物和运行时配置，应用及插件测试可在本地通过 CTest 执行。
+启用 `BUILD_TESTING=ON` 时，CMake 当前无条件注册 46 项测试，最多再注册 5 项：3 项需要 Python，1 项需要启用 Matepath 和 OpenDocuments，1 项需要配置时已有五个第三方插件 DLL。这是测试覆盖清单，不表示当前检出版本已通过全部测试。CI 使用 `BUILD_TESTING=OFF`，检查构建产物和运行时配置；应用及插件测试可在本地通过 CTest 执行。
 
 | CTest 名称 | 主要范围 |
 |---|---|
@@ -138,13 +148,22 @@ ctest --test-dir cmake-mingw64-build --output-on-failure
 | `lazy_document` | 片段树、随机编辑、快照、事务、撤销/重做、索引复用及保存失败保护 |
 | `large_file_integration` | 按需视图编辑/保存、全文查找替换、取消、编码及完整编辑器转换 |
 | `file_search` | 串行/并行一致性、目录过滤、编码、正则、打开文档交接与取消 |
+| `reverse_search`、`file_stream`、`regex_iterator`、`hit_archive` | 反向匹配、符合条件的字面量流式搜索、正则迭代和有界命中归档 |
+| `file_replace`、`file_replacement_integration` | 后台文件替换、编码一致性、提交冲突、取消、打开文档撤销及结果导航 |
+| `search_retirement`、`search_retirement_ui`、`ordinary_search_storage` | 取消任务生命周期、拒绝过期结果及可分批继续的计数/标记/Find All 存储 |
+| `append_block`、`piece_read`、`directory_watch` | 紧凑编辑存储、片段直接读取和目录通知处理 |
 | `single_instance_integration` | 进程启动和单实例/窗口复用；已有 MultiPad4 窗口时跳过 |
 | `plugin_maintenance` | 隔离临时目录中的启用、禁用和移除，批处理回滚、下载失败及拒绝无效元数据 |
 | `thread_pool` | 任务生命周期、异常传播、嵌套任务及并发上限 |
 | `lexer_configuration_baseline`、`lexer_behavior_baseline` | 对照固定的上游基线检查语言数据和运行时词法行为 |
 | `configuration_integration` | XML 语言配置、原生主题和语言样式配置器 |
 | `editor_without_plugins` | 禁用插件加载时的编辑器与会话行为 |
-| `configuration_data_equivalence`、`lexer_inventory_coverage`（需 Python） | XML 数据与资源清单的一致性 |
+| `tab_strip`、`tab_strip_layout`、`frame_refresh`、`dpi_fonts` | 标签关闭按钮与布局、主窗口刷新状态及 DPI 变化时的原生控件字体 |
+| `status_statistics`、`status_presentation`、`indent_read`、`modeline_preferences` | 增量状态统计、展示缓存、缩进读取和文件变量首选项 |
+| `edit_transforms`、`comment_commands`、`save_whitespace`、`rich_text` | 编辑/撤销一致性、注释、保存时空白处理及剪贴板导出 |
+| `autosave_capture`、`session_capture`、`settings_profile`、`theme_enumeration` | 一致的备份、重启状态、INI 持久化及主题发现 |
+| `printing_separator`、`deferred_queue`、`plugin_index`、`app_update` | 打印布局、延后任务、插件路由索引和应用更新校验 |
+| `configuration_data_equivalence`、`lexer_inventory_coverage`、`lexer_inventory_hashes`（需 Python） | XML 数据、lexer 清单覆盖及按检出换行符规范化的哈希 |
 | `bundled_pane_restart`（启用 Matepath 和 OpenDocuments） | 跨进程重启恢复停靠、浮动及隐藏的面板布局 |
 | `notepadpp_plugins`（配置时具备五个 DLL） | 五个真实插件的命令、面板、导出及文档路由 |
 
