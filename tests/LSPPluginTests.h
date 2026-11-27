@@ -189,6 +189,11 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     const auto revision=document->style.revision;
     document->Send(SCI_APPENDTEXT,1,reinterpret_cast<LPARAM>("!"));
     require(document->style.revision>revision);
+    other->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("exit-server"));
+    require(pump([&]{return !other->externalCompletion && !document->externalCompletion;}));
+    require(frame.Save(*document));
+    require(frame.Save(*other));
+    require(files::ReadWithEncoding(second,files::Encoding::Utf8).utf8=="exit-server");
     command(L"Stop");require(!document->externalCompletion && !other->externalCompletion);
     require(!document->Send(SCI_AUTOCACTIVE));
     document->Send(SCI_SETSAVEPOINT);other->Send(SCI_SETSAVEPOINT);

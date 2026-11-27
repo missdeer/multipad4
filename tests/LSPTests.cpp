@@ -42,6 +42,7 @@ int main(int argc,char** argv) {
                             auto start=Offset(text,change["range"]["start"]),end=Offset(text,change["range"]["end"]);
                             text.replace(start,end-start,change["text"].get<std::string>());
                         }
+                        if(text=="exit-server")ExitProcess(37);
                     }
                     else if(method=="textDocument/completion"){
                         Sleep(100);

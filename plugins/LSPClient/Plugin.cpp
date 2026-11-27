@@ -92,6 +92,7 @@ struct Session {
     ULONGLONG started = GetTickCount64();
     int initialize = 0;
     void Send(std::string_view method, Json params) {
+        if (!transport) throw std::runtime_error("Language server is not running");
         transport->Send({{"jsonrpc", "2.0"}, {"method", method}, {"params", std::move(params)}});
     }
 };
@@ -480,7 +481,10 @@ void Tick() {
             } catch(const std::exception& e) {
                 Error(std::runtime_error(std::string(e.what()) + "; server log: " + files::ToUtf8(s->stderrFile.wstring())));
                 s->failed=true;s->transport.reset();
-                for(auto& [id,d]:documents)if(d.session==s.get()){Host(MPM_SETEXTERNALCOMPLETION,id,FALSE);ClearDiagnostics(d);}
+                for(auto& [id,d]:documents)if(d.session==s.get()){
+                    d.opened=false;
+                    Host(MPM_SETEXTERNALCOMPLETION,id,FALSE);ClearDiagnostics(d);
+                }
             }
         }
         for(auto& [id,d]:documents)if(d.dirty && GetTickCount64()-d.changed>=180)Sync(d);
