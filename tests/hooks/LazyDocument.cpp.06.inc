@@ -1,0 +1,1 @@
+        ++backingReads; copiedBytes += count;

@@ -445,7 +445,7 @@ Block BlockMarker(EditorDocument &d) {
 } // namespace
 void ToggleDocumentComment(EditorDocument &d, bool block) {
 #ifdef MULTIPAD4_TESTING
-    if (commenttest::baseline) { commenttest::baseline(d, block); return; }
+#include "../tests/hooks/EditComments.cpp.01.inc"
 #endif
     if (RejectRectangularEdit(d.hwnd))
         return;

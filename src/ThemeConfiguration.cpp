@@ -123,12 +123,11 @@ std::shared_ptr<const ConfigurationSnapshot> ConfigurationWithTheme(std::shared_
     for(size_t i=0;i<90;++i){auto original=base->languages[i];std::shared_ptr<LanguageDefinition> changed;
         auto first = theme.keywords.lower_bound({original->id, 0});
 #ifdef MULTIPAD4_THEME_ENUM_TEST
-        if (themeenumerationtest::baseline) first = theme.keywords.begin();
+#include "../tests/hooks/ThemeConfiguration.cpp.01.inc"
 #endif
         for(auto it=first;it!=theme.keywords.end();++it){
 #ifdef MULTIPAD4_THEME_ENUM_TEST
-            ++themeenumerationtest::keywordVisits;
-            if (!themeenumerationtest::baseline && it->first.first != original->id) break;
+#include "../tests/hooks/ThemeConfiguration.cpp.02.inc"
 #else
             if (it->first.first != original->id) break;
 #endif

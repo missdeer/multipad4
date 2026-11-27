@@ -1,7 +1,7 @@
 #pragma once
 #include "EditTransformTests.h"
 #include "CommentMetrics.h"
-#include "../src/LexerMetrics.h"
+#include "LexerMetrics.h"
 #include <source_location>
 namespace commenttest {
 struct Copies {

@@ -146,7 +146,7 @@ std::string filevars::Region(const EditorDocument& document) {
 }
 void ApplyFileVariables(EditorDocument& document){
 #ifdef MULTIPAD4_MODELINE_TEST
-    if (modelinetest::applyBaseline) { modelinetest::applyBaseline(document); return; }
+#include "../tests/hooks/FileCommands.cpp.01.inc"
 #endif
     if (document.FastView()) return;
     RestoreFileVariables(document);

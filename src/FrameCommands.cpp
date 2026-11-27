@@ -596,7 +596,7 @@ void ApplyDocumentPreferences(MainFrame& frame, EditorDocument& d) {
 }
 void RememberDocumentPreferences(MainFrame& frame, EditorDocument& d, UINT command) {
 #ifdef MULTIPAD4_MODELINE_TEST
-    if (modelinetest::preferencesBaseline) { modelinetest::preferencesBaseline(frame, d, command); return; }
+#include "../tests/hooks/FrameCommands.cpp.01.inc"
 #endif
     if (command == IDM_VIEW_TABSASSPACES) {
         d.style.tabsAsSpaces = !d.Send(SCI_GETUSETABS);

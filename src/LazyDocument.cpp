@@ -13,7 +13,7 @@ namespace large {
 namespace {
 constexpr size_t IndexBlockBytes = 64 * 1024;
 #ifdef MULTIPAD4_PIECE_READ_TEST
-thread_local Position backingReads = 0, copiedBytes = 0, largestMappedVisit = 0;
+#include "../tests/hooks/LazyDocument.cpp.01.inc"
 #endif
 thread_local const std::atomic<bool>* cancellation = nullptr;
 struct CancelScope {
@@ -34,7 +34,7 @@ unsigned Unit(std::string_view bytes, size_t offset, unsigned width, bool little
 }
 constexpr size_t AppendBlockBytes = 64 * 1024;
 #ifdef MULTIPAD4_APPEND_TEST
-Position journalWrites = 0, failJournalAfter = UINT64_MAX;
+#include "../tests/hooks/LazyDocument.cpp.02.inc"
 #endif
 class Journal {
     HANDLE file = INVALID_HANDLE_VALUE;
@@ -49,9 +49,7 @@ class Journal {
             for (size_t offset = 0; offset < bytes.size();) {
                 DWORD written = 0, count = static_cast<DWORD>((std::min)(bytes.size() - offset, size_t(16 * 1024 * 1024)));
 #ifdef MULTIPAD4_APPEND_TEST
-                if (failJournalAfter == 0) throw std::runtime_error("Injected partial journal write failure.");
-                count = static_cast<DWORD>((std::min)(Position(count), failJournalAfter));
-                failJournalAfter -= count; ++journalWrites;
+#include "../tests/hooks/LazyDocument.cpp.03.inc"
 #endif
                 if (!WriteFile(file, bytes.data() + offset, count, &written, nullptr) || !written) throw std::runtime_error("Cannot write edit journal.");
                 offset += written;
@@ -73,7 +71,7 @@ public:
     Position Append(std::string_view bytes) {
         std::lock_guard guard(mutex); const auto begin = size;
 #ifdef MULTIPAD4_APPEND_BASELINE
-        Persist(bytes);
+#include "../tests/hooks/LazyDocument.cpp.04.inc"
 #else
         if (bytes.size() > pending.size() - used) Flush();
         if (bytes.size() >= pending.size()) Persist(bytes);
@@ -134,7 +132,7 @@ class Source {
     Block Build(Position number, ReadSessions& sessions) {
         CheckCancel(); auto begin = number * IndexBlockBytes;
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-        if (const auto gate = testing::nextIndexGate.exchange(nullptr)) { testing::indexEntered = true; WaitForSingleObject(gate, INFINITE); }
+#include "../tests/hooks/LazyDocument.cpp.05.inc"
 #endif
         const auto count = static_cast<size_t>((std::min)(Position(IndexBlockBytes), size - begin));
         auto bytes = Read(begin, count, &sessions);
@@ -250,7 +248,7 @@ public:
     }
     void ReadInto(Position offset, size_t count, char* output, ReadSessions* sessions) {
 #ifdef MULTIPAD4_PIECE_READ_TEST
-        ++backingReads; copiedBytes += count;
+#include "../tests/hooks/LazyDocument.cpp.06.inc"
 #endif
         // Coalesced journal runs may extend past this Source into the same backing journal.
         if (journal) {
@@ -264,7 +262,7 @@ public:
             for (size_t done = 0; done < count;) {
                 const auto take = (std::min)(count - done, size_t(16 * 1024 * 1024));
 #ifdef MULTIPAD4_PIECE_READ_TEST
-                largestMappedVisit = (std::max)(largestMappedVisit, Position(take));
+#include "../tests/hooks/LazyDocument.cpp.07.inc"
 #endif
                 mapped.Visit(offset + done, take, [&](std::string_view bytes) { memcpy(output + done, bytes.data(), bytes.size()); });
                 done += take;
@@ -362,7 +360,7 @@ struct Document::Impl {
     Root PopFirst(const Root& node) { return node->left ? Make(node->piece, PopFirst(node->left), node->right, node->priority) : node->right; }
     Root Concat(Root a, Root b) {
 #ifdef MULTIPAD4_APPEND_BASELINE
-        return Merge(a, b);
+#include "../tests/hooks/LazyDocument.cpp.08.inc"
 #else
         if (!a) return b; if (!b) return a;
         auto last = a.get(), first = b.get();
@@ -379,17 +377,7 @@ struct Document::Impl {
 #endif
     }
 #ifdef MULTIPAD4_PIECE_READ_BASELINE
-    static void Append(const Root& node, Position offset, Position length, std::string& output, ReadSessions* sessions = nullptr) {
-        if (!node || !length) return;
-        const auto left = Length(node->left), end = left + node->piece.length;
-        if (offset < left) { auto take = (std::min)(length, left - offset); Append(node->left, offset, take, output, sessions); offset += take; length -= take; }
-        if (length && offset < end) { auto start = offset - left, take = (std::min)(length, end - offset);
-#ifdef MULTIPAD4_PIECE_READ_TEST
-            ++backingReads; copiedBytes += 2 * take;
-#endif
-            output += node->piece.source->Read(node->piece.offset + start, static_cast<size_t>(take), sessions); offset += take; length -= take; }
-        if (length) Append(node->right, offset - end, length, output, sessions);
-    }
+#include "../tests/hooks/LazyDocument.cpp.09.inc"
 #else
     struct ReadBuffer {
         char* output;
@@ -523,7 +511,7 @@ void Document::Replace(Position offset, Position length, std::string_view native
         auto [left, rest] = impl->Split(impl->root, offset);
         Impl::Root right;
 #ifdef MULTIPAD4_APPEND_BASELINE
-        right = impl->Split(rest, length).second;
+#include "../tests/hooks/LazyDocument.cpp.10.inc"
 #else
         if (length) right = impl->Split(rest, length).second; else right = std::move(rest);
 #endif
@@ -563,7 +551,7 @@ void Document::Write(const files::ChunkConsumer& consume) const {
     const auto snapshot = Capture();
     consume(impl->signature);
 #ifdef MULTIPAD4_APPEND_BASELINE
-    Impl::Stream(snapshot.root, consume);
+#include "../tests/hooks/LazyDocument.cpp.11.inc"
 #else
     std::string pending; pending.reserve(AppendBlockBytes);
     auto flush = [&] { if (!pending.empty()) { consume(pending); pending.clear(); } };
@@ -583,19 +571,7 @@ Position Document::LineCount(const Snapshot& snapshot, const std::atomic<bool>* 
 Position Document::PositionFromLine(const Snapshot& snapshot, Position line, const std::atomic<bool>* cancel) {
     CancelScope scope(cancel); if (!line) return 0; ReadSessions sessions;
 #ifdef MULTIPAD4_LINE_BENCHMARK
-    extern bool lineLookupBaseline;
-    if (lineLookupBaseline) {
-        const auto size = Size(snapshot); Position high = (std::min)(size, Position(IndexBlockBytes)), low = 0;
-        while (high < size && Impl::Prefix(snapshot.root, high, sessions).breaks < line) { low = high; high = (std::min)(size, high * 2); }
-        if (Impl::Prefix(snapshot.root, high, sessions).breaks < line) return size;
-        const auto width = snapshot.root ? snapshot.root->piece.source->Width() : 1;
-        const bool little = !snapshot.root || snapshot.root->piece.source->Little();
-        low /= width; high /= width;
-        while (low < high) { auto middle = low + (high - low) / 2; if (Impl::Prefix(snapshot.root, middle * width, sessions).breaks >= line) high = middle; else low = middle + 1; }
-        low *= width;
-        if (low && low < size) { std::string pair; Impl::Append(snapshot.root, low - width, 2 * width, pair, &sessions); if (Unit(pair, 0, width, little) == '\r' && Unit(pair, width, width, little) == '\n') low += width; }
-        return low;
-    }
+#include "../tests/hooks/LazyDocument.cpp.12.inc"
 #endif
     const auto size = Size(snapshot); Summary prefix;
     const auto found = Impl::SelectLine(snapshot.root, 0, line, prefix, sessions);

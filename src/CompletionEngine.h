@@ -1,8 +1,7 @@
 #pragma once
 #include <cstdint>
 #ifdef MULTIPAD4_STATIC_BASELINE
-#include "../3rdparty/notepad4/src/EditLexer.h"
-using LanguageDefinition = EDITLEXER;
+#include "../tests/hooks/CompletionEngine.h.01.inc"
 #else
 #include "LanguageConfiguration.h"
 #endif

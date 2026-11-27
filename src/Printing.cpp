@@ -3,22 +3,18 @@
 #include "AppSettings.h"
 #include "resource.h"
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-namespace {thread_local PrintJobTest* printJobTest=nullptr;}
-bool PrintDocumentForTest(HWND owner,const EditorDocument& document,AppSettings* settings,PrintJobTest& job) {
-    struct Reset {~Reset(){printJobTest=nullptr;}} reset;
-    printJobTest=&job;return PrintDocument(owner,document,settings);
-}
+#include "../tests/hooks/Printing.cpp.01.inc"
 #endif
 void DrawPrintSeparator(HDC dc,int left,int right,int y) {
     // GDI owns BLACK_PEN; restore the page's previous pen before body formatting.
     HGDIOBJ pen=GetStockObject(BLACK_PEN);
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-    if(printJobTest && printJobTest->baseline){pen=CreatePen(PS_SOLID,1,RGB(0,0,0));++printJobTest->pens;}
+#include "../tests/hooks/Printing.cpp.02.inc"
 #endif
     const auto oldPen=SelectObject(dc,pen);
     MoveToEx(dc,left,y,nullptr);LineTo(dc,right,y);SelectObject(dc,oldPen);
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-    if(printJobTest && printJobTest->baseline)DeleteObject(pen);
+#include "../tests/hooks/Printing.cpp.03.inc"
 #endif
 }
 namespace {
@@ -91,11 +87,7 @@ bool PrintDocument(HWND owner, const EditorDocument& document, AppSettings* sett
     else dialog.Flags |= PD_SELECTION;
     bool dialogAccepted=false;
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-    if(printJobTest){
-        dialog.hDC=CreateDCW(L"WINSPOOL",L"Microsoft Print to PDF",nullptr,nullptr);
-        dialog.Flags=PD_PAGENUMS;dialog.nFromPage=static_cast<WORD>(printJobTest->from);dialog.nToPage=static_cast<WORD>(printJobTest->to);
-        dialogAccepted=dialog.hDC!=nullptr;
-    }else
+#include "../tests/hooks/Printing.cpp.04.inc"
 #endif
     dialogAccepted=PrintDlgW(&dialog)!=FALSE;
     if (!dialogAccepted) {
@@ -107,7 +99,7 @@ bool PrintDocument(HWND owner, const EditorDocument& document, AppSettings* sett
     HDC dc = dialog.hDC;
     DOCINFOW info{sizeof(info)}; auto title = document.Title(); info.lpszDocName = title.c_str();
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-    if(printJobTest)info.lpszOutput=printJobTest->output.c_str();
+#include "../tests/hooks/Printing.cpp.05.inc"
 #endif
     if (StartDocW(dc, &info) <= 0) { DeleteDC(dc); throw std::runtime_error("Cannot start print job."); }
     const int dpiX = GetDeviceCaps(dc, LOGPIXELSX), dpiY = GetDeviceCaps(dc, LOGPIXELSY);
@@ -140,7 +132,7 @@ bool PrintDocument(HWND owner, const EditorDocument& document, AppSettings* sett
         if (!ok || (printPage && StartPage(dc) <= 0)) { ok = false; break; }
         if(printPage){
 #ifdef MULTIPAD4_SEARCH_TEST_HOOKS
-        if(printJobTest)++printJobTest->pages;
+#include "../tests/hooks/Printing.cpp.06.inc"
 #endif
         SelectObject(dc,headerFont);SetTextColor(dc,RGB(0,0,0));SetBkMode(dc,TRANSPARENT);
         if(preferences.header!=3){

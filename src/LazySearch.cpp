@@ -17,7 +17,7 @@ namespace large {
 namespace {
 constexpr Position CacheBytes = 64 * 1024;
 #ifdef MULTIPAD4_REGEX_ITERATOR_TEST
-unsigned long long decodedCharacters = 0;
+#include "../tests/hooks/LazySearch.cpp.01.inc"
 #endif
 void FoldAscii(std::string& text) {
     size_t at = 0;
@@ -85,7 +85,7 @@ struct Reader {
     unsigned Unit(Position position) const { auto a = Byte(position), b = Byte(position + 1); return little ? a | (b << 8) : (a << 8) | b; }
     Character At(Position position) const {
 #ifdef MULTIPAD4_REGEX_ITERATOR_TEST
-        ++decodedCharacters;
+#include "../tests/hooks/LazySearch.cpp.02.inc"
 #endif
         if ((++visits & 1023) == 0) Check(); Character result;
         if (width == 2) { result.value[0] = static_cast<wchar_t>(Unit(position)); result.bytes = 2; return result; }
@@ -153,7 +153,7 @@ struct Iterator {
     Position position = 0;
     unsigned part = 0;
 #ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
-    Reader::Character Current() const { return reader->At(position); }
+#include "../tests/hooks/LazySearch.cpp.03.inc"
 #else
     mutable Reader::Character current;
     mutable bool decoded = false;
@@ -169,7 +169,7 @@ struct Iterator {
         if (part + 1 < c.units) ++part;
         else {
 #ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
-            position = reader->Next(position);
+#include "../tests/hooks/LazySearch.cpp.04.inc"
 #else
             position = reader->Next(position, c); decoded = false;
 #endif
@@ -194,7 +194,7 @@ struct Iterator {
     bool operator!=(const Iterator& other) const { return !(*this == other); }
     unsigned CurrentUnit() const {
 #ifdef MULTIPAD4_REGEX_ITERATOR_BASELINE
-        return reader->Unit(position);
+#include "../tests/hooks/LazySearch.cpp.05.inc"
 #else
         return Current().value[0];
 #endif
@@ -242,7 +242,7 @@ struct HitArchive::Impl {
     }
     void ReadRecords(size_t first, Record* records, size_t count) const {
 #ifdef MULTIPAD4_ARCHIVE_BENCHMARK
-        ++archiveReadCalls; archiveReadBytes += count * sizeof(Record);
+#include "../tests/hooks/LazySearch.cpp.06.inc"
 #endif
         LARGE_INTEGER offset{}; offset.QuadPart = static_cast<LONGLONG>(first * sizeof(Record)); DWORD got = 0;
         const auto bytes = static_cast<DWORD>(count * sizeof(Record));

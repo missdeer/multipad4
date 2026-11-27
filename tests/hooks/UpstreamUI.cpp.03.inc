@@ -1,0 +1,1 @@
+        ++statusMeasurementCounters.localeQueries;

@@ -34,7 +34,9 @@ public:
     void ServiceReplacement();
     static INT_PTR CALLBACK Procedure(HWND hwnd, UINT message, WPARAM w, LPARAM l);
 private:
-    friend void RunSearchRetirementTests(MainFrame& frame);
+#ifdef MULTIPAD4_TESTING
+#include "../tests/hooks/SearchDialog.h.01.inc"
+#endif
     struct SearchTask {
         uintptr_t token = 0;
         int command;

@@ -26,8 +26,7 @@
 #include <string_view>
 #include <unordered_map>
 #ifdef MULTIPAD4_TRANSFORM_TEST
-#include "../tests/EditTransformMetrics.h"
-#define TRANSFORM_WIDE(value) transformtest::Decode(value)
+#include "../tests/hooks/EditAdvanced.cpp.01.inc"
 #else
 #define TRANSFORM_WIDE(value) files::FromUtf8(value)
 #endif
@@ -50,7 +49,7 @@ Range Selection(EditorDocument &d, bool lines = false) {
 }
 std::string Text(EditorDocument &d, Range r) {
 #ifdef MULTIPAD4_TRANSFORM_TEST
-    ++transformtest::metrics.rangeCalls; transformtest::metrics.rangeBytes += static_cast<size_t>(r.end - r.start);
+#include "../tests/hooks/EditAdvanced.cpp.02.inc"
 #endif
     return d.Range(r.start, r.end - r.start);
 }
@@ -132,7 +131,7 @@ struct Line {
 };
 std::vector<Line> Lines(const std::string &text) {
 #ifdef MULTIPAD4_TRANSFORM_TEST
-    transformtest::metrics.splitBytes += text.size();
+#include "../tests/hooks/EditAdvanced.cpp.03.inc"
 #endif
     std::vector<Line> lines;
     size_t pos = 0;
@@ -656,7 +655,7 @@ CommandState AdvancedEditState(const EditorDocument *d, UINT id) {
 }
 bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
 #ifdef MULTIPAD4_TRANSFORM_TEST
-    if (transformtest::baseline) return transformtest::baseline(d, id);
+#include "../tests/hooks/EditAdvanced.cpp.04.inc"
 #endif
     auto state = AdvancedEditState(&d, id);
     if (!state.supported)
@@ -1104,7 +1103,7 @@ bool ExecuteAdvancedEdit(EditorDocument &d, UINT id) {
     }
     auto displayWidth = [&](const std::string &text) {
 #ifdef MULTIPAD4_TRANSFORM_TEST
-        ++transformtest::metrics.widthCalls;
+#include "../tests/hooks/EditAdvanced.cpp.05.inc"
 #endif
         auto wide = TRANSFORM_WIDE(text);
         size_t column = 0;
