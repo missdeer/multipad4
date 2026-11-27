@@ -201,6 +201,7 @@ void PaneInteraction::MoveDrag(POINT screen) {
         OffsetRect(&next.floating, left - next.floating.left, top - next.floating.top);
         moving = false;
         Apply(next);
+        SetActiveWindow(pane);
         moving = true;
         if (GetCapture() != pane) SetCapture(pane);
         initialRect = next.floating;

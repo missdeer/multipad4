@@ -3,6 +3,7 @@
 #include <shlwapi.h>
 #include <uxtheme.h>
 #include <vsstyle.h>
+#include <richedit.h>
 #include "Dlapi.h"
 
 namespace {
@@ -62,8 +63,15 @@ LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     };
     button(back, Back, L"后退"); button(forward, Forward, L"前进"); button(up, Up, L"上一级"); button(reload, Reload, L"刷新");
     button(go, Go, L"转到"); button(apply, Filter, L"筛选");
-    address = create(WC_EDITW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Address);
-    pattern = create(WC_EDITW, L"*.*", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, Pattern);
+    if (!richEditLibrary) return -1;
+    auto edit = [&](int id) {
+        HWND field = create(MSFTEDIT_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, id);
+        ::SendMessageW(field, EM_SETTEXTMODE, TM_PLAINTEXT, 0);
+        return field;
+    };
+    address = edit(Address);
+    pattern = edit(Pattern);
+    ::SetWindowTextW(pattern, L"*.*");
     ::SendMessageW(pattern, EM_SETLIMITTEXT, DL_FILTER_BUFSIZE - 2, 0);
     list = create(WC_LISTVIEWW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHAREIMAGELISTS | LVS_NOCOLUMNHEADER, WS_EX_CLIENTEDGE, 200);
     if (!list || !address || !pattern) { handled = TRUE; return -1; }

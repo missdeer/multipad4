@@ -101,6 +101,21 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
     for (int side : {1, 3, 4, 2}) {
         SendMessageW(pane, action, side, 0);
         VerifyPaneLayoutMembership(frame, pane, side != 4);
+        for (int id : {address, pattern}) {
+            HWND edit = GetDlgItem(pane, id);
+            SetFocus(list);
+            SendMessageW(edit, EM_SETSEL, 1, 1);
+            MSG click{edit, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 5)};
+            require(!frame.PreTranslateMessage(&click));
+            DispatchMessageW(&click);
+            require(GetFocus() == edit && GetCapture() == edit);
+            SendMessageW(edit, WM_LBUTTONUP, 0, click.lParam);
+            require(SendMessageW(edit, EM_GETSEL, 0, 0) == 0);
+            SendMessageW(edit, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(6, 5));
+            SendMessageW(edit, WM_LBUTTONUP, 0, MAKELPARAM(6, 5));
+            const auto selection = SendMessageW(edit, EM_GETSEL, 0, 0);
+            require(HIWORD(selection) > LOWORD(selection));
+        }
         SendMessageW(pane, action, 0, 0); require(!IsWindowVisible(pane));
         SendMessageW(pane, action, 0, 0);
         VerifyPaneLayoutMembership(frame, pane, side != 4);
