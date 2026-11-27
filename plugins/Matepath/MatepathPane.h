@@ -7,6 +7,8 @@ enum class DockSide { Left, Right, Bottom, Floating };
 class MatepathPane : public PaneWindow<MatepathPane> {
 public:
     static constexpr auto WindowClass = L"MultiPad4.MatepathPane";
+    std::unique_ptr<std::remove_pointer_t<HMODULE>, WinDeleter<HMODULE, FreeLibrary>> richEditLibrary{
+        LoadLibraryExW(L"Msftedit.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32)};
     enum { Back = 100, Forward, Up, Reload, Go, Filter, Hidden, Properties, SortName, SortSize, SortType, SortDate, Reverse, Follow, Address, Pattern };
     HWND owner = nullptr;
     HWND list = nullptr, address = nullptr, pattern = nullptr;
