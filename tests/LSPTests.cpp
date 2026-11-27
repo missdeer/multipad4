@@ -17,6 +17,7 @@ int main(int argc,char** argv) {
             const bool mock=std::string_view(argv[1])=="--mock-lsp";
             std::string uri;
             unsigned completions=0;
+            bool diagnosticsOnly=false;
             std::map<std::string,std::string> documents;
             while(ReadFile(GetStdHandle(STD_INPUT_HANDLE),bytes,sizeof(bytes),&count,nullptr) && count) {
                 decoder.Feed({bytes,count},[&](Json value){
@@ -24,7 +25,12 @@ int main(int argc,char** argv) {
                     if(!mock){send({{"jsonrpc","2.0"},{"id",value.at("id")},{"result",value.at("params")}});return;}
                     const auto method=value.value("method","");
                     Json result=nullptr;
-                    if(method=="initialize")result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true}}}};
+                    if(method=="initialize") {
+                        const auto& options=value["params"]["initializationOptions"];
+                        diagnosticsOnly=options.is_object() && options.value("diagnosticsOnly",false);
+                        result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true}}}};
+                        if(diagnosticsOnly)result["capabilities"].erase("completionProvider");
+                    }
                     else if(method=="textDocument/didOpen"){
                         uri=value["params"]["textDocument"]["uri"].get<std::string>();
                         documents[uri]=value["params"]["textDocument"]["text"].get<std::string>();
@@ -45,6 +51,7 @@ int main(int argc,char** argv) {
                         if(text=="exit-server")ExitProcess(37);
                     }
                     else if(method=="textDocument/completion"){
+                        if(diagnosticsOnly)ExitProcess(38);
                         Sleep(100);
                         if(++completions==1) {
                             send({{"jsonrpc","2.0"},{"id",value["id"]},{"result",{{"isIncomplete",true},{"items",Json::array()}}}});

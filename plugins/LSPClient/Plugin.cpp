@@ -91,6 +91,10 @@ struct Session {
     bool ready = false, failed = false;
     ULONGLONG started = GetTickCount64();
     int initialize = 0;
+    bool CanComplete() const {
+        const auto provider = capabilities.find("completionProvider");
+        return provider != capabilities.end() && provider->is_object();
+    }
     void Send(std::string_view method, Json params) {
         if (!transport) throw std::runtime_error("Language server is not running");
         transport->Send({{"jsonrpc", "2.0"}, {"method", method}, {"params", std::move(params)}});
@@ -248,7 +252,7 @@ void Sync(Document& d) {
     if (!d.opened) {
         s.Send("textDocument/didOpen", {{"textDocument",{{"uri",d.uri},{"languageId",d.language},{"version",++d.version},{"text",text}}}});
         d.opened = true;
-        Host(MPM_SETEXTERNALCOMPLETION, d.id, TRUE);
+        if (s.CanComplete()) Host(MPM_SETEXTERNALCOMPLETION, d.id, TRUE);
     } else if (text != d.text) {
         const auto sync = s.capabilities.value("textDocumentSync", Json(0));
         const auto kind = sync.is_number() ? sync.get<int>() : sync.value("change", 0);
@@ -263,6 +267,7 @@ void Sync(Document& d) {
 void Request(const std::string& method, LRESULT position = -1, ULONGLONG retryStarted = 0) {
     Attach(); auto it = documents.find(Active()); if (it == documents.end()) return;
     auto& d = it->second; if (!d.session->ready || d.session->failed) return;
+    if (method=="textDocument/completion" && !d.session->CanComplete()) return;
     auto h = Editor(d.id); if (!h || Sci(h, SCI_GETSELECTIONS) != 1) return;
     Sync(d);
     if (!d.opened || d.disabled) return;
@@ -567,7 +572,10 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
             if(d.id != Active()) break;
             if(d.session->ready && !d.session->failed && !Sci(Editor(d.id),SCI_GETREADONLY)) {
                 if(n->ch=='(' || n->ch==',') scheduledMethod=SignatureMethod;
-                else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) scheduledMethod=CompleteMethod;
+                else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) {
+                    if(d.session->CanComplete())scheduledMethod=CompleteMethod;
+                    else scheduledMethod.clear();
+                }
                 else scheduledMethod.clear();
                 scheduledAt=GetTickCount64()+200;
             }

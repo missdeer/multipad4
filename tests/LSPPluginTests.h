@@ -196,5 +196,18 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     require(files::ReadWithEncoding(second,files::Encoding::Utf8).utf8=="exit-server");
     command(L"Stop");require(!document->externalCompletion && !other->externalCompletion);
     require(!document->Send(SCI_AUTOCACTIVE));
+    settings["servers"][0]["initializationOptions"]={{"diagnosticsOnly",true}};
+    files::WriteAtomic(directory/L"LSPClient.json",{settings.dump()});
+    command(L"Start / Restart");
+    require(pump([&]{return other->Send(SCI_INDICATORVALUEAT,frame.plugins.nextIndicator-1,0)!=0;}));
+    require(!other->externalCompletion);
+    SetFocus(other->hwnd);other->Send(SCI_GOTOPOS,other->Send(SCI_GETLENGTH));
+    other->Send(WM_CHAR,'2');command(L"Complete");
+    const auto diagnosticDeadline=GetTickCount64()+400;
+    require(pump([&]{return GetTickCount64()>=diagnosticDeadline;}));
+    require(!other->externalCompletion);
+    const auto diagnosticLog=files::ReadWithEncoding(directory/L"LSPClient-client.log",files::Encoding::Utf8).utf8;
+    require(diagnosticLog.find("0x00000026")==std::string::npos);
+    command(L"Stop");
     document->Send(SCI_SETSAVEPOINT);other->Send(SCI_SETSAVEPOINT);
 }
