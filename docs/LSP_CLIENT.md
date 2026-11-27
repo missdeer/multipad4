@@ -123,3 +123,7 @@ Completion candidates retain server filtering and ranking, including fuzzy match
 and filterText values that differ from display labels. Scintilla displays the
 returned list without an extra label-prefix filter; the original word start is
 tracked separately for items without an explicit TextEdit.
+
+LSP acceptance follows the editor's Enter/Tab completion options. Tentative or
+already-handled character notifications do not trigger requests, and the host's
+IME composition state suppresses both requests and late-arriving popup results.

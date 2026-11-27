@@ -268,7 +268,7 @@ void Request(const std::string& method, LRESULT position = -1, ULONGLONG retrySt
     Attach(); auto it = documents.find(Active()); if (it == documents.end()) return;
     auto& d = it->second; if (!d.session->ready || d.session->failed) return;
     if (method=="textDocument/completion" && !d.session->CanComplete()) return;
-    auto h = Editor(d.id); if (!h || Sci(h, SCI_GETSELECTIONS) != 1) return;
+    auto h = Editor(d.id); if (!h || Sci(h, SCI_GETSELECTIONS) != 1 || (Host(MPM_GETCOMPLETIONSTATE,d.id)&MPC_COMPOSING)) return;
     Sync(d);
     if (!d.opened || d.disabled) return;
     if (pending.size() >= 128) return;
@@ -356,6 +356,13 @@ void InsertCompletion(const SCNotification& notification) {
     const auto id = completion.buffer; auto h = Editor(id); auto found = documents.find(id);
     auto item = completion.items.find(notification.text ? notification.text : "");
     if (!h || found == documents.end() || item == completion.items.end() || found->second.revision != completion.revision || Sci(h,SCI_GETREADONLY)) { ClearCompletion(); return; }
+    const auto state=Host(MPM_GETCOMPLETIONSTATE,id);
+    if((notification.listCompletionMethod==SC_AC_NEWLINE && !(state&MPC_ACCEPTENTER)) ||
+        (notification.listCompletionMethod==SC_AC_TAB && !(state&MPC_ACCEPTTAB))) {
+        ClearCompletion();
+        Sci(h,notification.listCompletionMethod==SC_AC_NEWLINE?SCI_NEWLINE:SCI_TAB);
+        return;
+    }
     auto value = item->second;
     struct Edit { size_t start,end; std::string text; };
     std::vector<Edit> edits;
@@ -441,6 +448,7 @@ void Receive(Session& session,const Json& message) {
     if(message.contains("error")){lastError=message["error"].dump();return;}
     auto doc=documents.find(request.buffer);auto h=Editor(request.buffer);
     if(doc==documents.end() || Active()!=request.buffer || !h || doc->second.dirty || request.revision!=doc->second.revision || request.epoch!=epoch || request.caret!=Sci(h,SCI_GETCURRENTPOS) || GetFocus()!=h)return;
+    if(Host(MPM_GETCOMPLETIONSTATE,request.buffer)&MPC_COMPOSING)return;
     if(request.method=="textDocument/hover" && request.hoverEpoch!=hoverEpoch)return;
     const auto& result=message.at("result");if(result.is_null())return;
     if(request.method=="textDocument/completion") {
@@ -569,7 +577,8 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
             }
             break;
         case SCN_CHARADDED:
-            if(d.id != Active()) break;
+            if(d.id != Active() || n->listType || n->characterSource==SC_CHARACTERSOURCE_TENTATIVE_INPUT ||
+                (Host(MPM_GETCOMPLETIONSTATE,d.id)&MPC_COMPOSING)) break;
             if(d.session->ready && !d.session->failed && !Sci(Editor(d.id),SCI_GETREADONLY)) {
                 if(n->ch=='(' || n->ch==',') scheduledMethod=SignatureMethod;
                 else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) {

@@ -123,6 +123,32 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
         document->Send(SCI_AUTOCCOMPLETE);require(document->Text()==expected);
         document->Send(SCI_UNDO);require(document->Text()==typedText);
     }
+    for(const auto& [setting,key] : {std::pair{IDC_AUTOC_FILLUP_ENTER,VK_RETURN},std::pair{IDC_AUTOC_FILLUP_TAB,VK_TAB}}) {
+        document->style.completionOptions[setting]=0;
+        document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("he"));document->Send(SCI_GOTOPOS,2);SetFocus(document->hwnd);
+        command(L"Complete");require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
+        document->Send(WM_KEYDOWN,key);
+        require(!document->Send(SCI_AUTOCACTIVE));
+        const auto edited=document->Text();
+        require(edited.starts_with("he") && edited.size()>2 && edited.find("hello")==std::string::npos);
+        require(edited[2]=='\r' || edited[2]=='\n' || edited[2]=='\t' || edited[2]==' ');
+        document->style.completionOptions[setting]=1;
+    }
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("he"));document->Send(SCI_GOTOPOS,2);SetFocus(document->hwnd);
+    command(L"Complete");
+    document->Send(WM_IME_STARTCOMPOSITION);
+    require(document->completionComposing);
+    SCNotification tentative{};tentative.nmhdr.hwndFrom=document->hwnd;tentative.nmhdr.code=SCN_CHARADDED;
+    tentative.ch='e';tentative.characterSource=SC_CHARACTERSOURCE_TENTATIVE_INPUT;
+    frame.plugins.ScintillaNotification(tentative);
+    command(L"Complete");
+    const auto imeDeadline=GetTickCount64()+400;
+    require(pump([&]{return GetTickCount64()>=imeDeadline;}));
+    require(!document->Send(SCI_AUTOCACTIVE));
+    document->Send(WM_IME_ENDCOMPOSITION);
+    require(!document->completionComposing);
+    command(L"Complete");require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
+    document->Send(SCI_AUTOCCANCEL);
     const std::string positioned = std::string(5, '\n') + std::string(22, ' ') + "hello(42) symbol";
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(positioned.c_str()));
     const auto signaturePosition=static_cast<LRESULT>(positioned.find("42"));

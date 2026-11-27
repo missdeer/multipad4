@@ -62,3 +62,7 @@ constexpr UINT MPM_GETBUFFEREDITORWINDOW = WM_USER + 1000 + 961;
 // wParam = buffer ID, lParam = BOOL; suspend built-in completion for that buffer.
 // Reset on plugin stop; does not suppress indentation or paired-character handling.
 constexpr UINT MPM_SETEXTERNALCOMPLETION = WM_USER + 1000 + 962;
+
+// wParam = buffer ID; returns current acceptance and IME state (zero if unavailable).
+constexpr UINT MPM_GETCOMPLETIONSTATE = WM_USER + 1000 + 963;
+constexpr unsigned MPC_ACCEPTENTER = 1, MPC_ACCEPTTAB = 2, MPC_COMPOSING = 4;

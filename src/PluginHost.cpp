@@ -277,6 +277,16 @@ LRESULT PluginHost::Message(UINT msg, WPARAM w, LPARAM l) {
             ExecuteExternalCommand(*frame, text);
             return TRUE;
         } catch (const std::exception& error) { frame->Error(error); return FALSE; }
+    case MPM_GETCOMPLETIONSTATE: {
+        auto* doc = Document(w); if (!doc || doc->FastView()) return 0;
+        const auto accepts = [&](int id) {
+            const auto found = doc->style.completionOptions.find(id);
+            return found == doc->style.completionOptions.end() || found->second != 0;
+        };
+        return (accepts(IDC_AUTOC_FILLUP_ENTER) ? MPC_ACCEPTENTER : 0) |
+            (accepts(IDC_AUTOC_FILLUP_TAB) ? MPC_ACCEPTTAB : 0) |
+            (doc->completionComposing ? MPC_COMPOSING : 0);
+    }
     case MPM_SETEXTERNALCOMPLETION: {
         auto* doc = Document(w); if (!doc || doc->FastView()) return FALSE;
         doc->externalCompletion = l != 0;
