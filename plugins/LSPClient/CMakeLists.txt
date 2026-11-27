@@ -1,4 +1,4 @@
-add_library(LSPClient SHARED Plugin.cpp Transport.cpp)
+add_library(LSPClient SHARED Plugin.cpp Transport.cpp LSPClientVersion.rc)
 target_include_directories(LSPClient PRIVATE
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad-plus-plus-plugin-api"
   "${PROJECT_SOURCE_DIR}/3rdparty/notepad4-scintilla/scintilla/include")

@@ -49,7 +49,7 @@ See [On-demand editable documents](docs/MAPPED_EDITING.md) and [Parallel large-f
 
 ### Bundled plugins
 
-The default build includes seven plugin DLLs. Set a plugin's CMake option to `OFF` to omit it.
+The default build includes eight plugin DLLs. Set a plugin's CMake option to `OFF` to omit it.
 
 | Plugin | Features | CMake option |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ ctest --preset msvc-x64
 
 The `msvc-release` preset enables link-time optimization in Release builds. The local development wrappers and their setup are documented in [AGENTS.md](AGENTS.md).
 
-The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, its `multipad4-registry.exe` helper, `config/`, all seven bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
+The Windows Build workflow runs on pushes, pull requests, and manual dispatch. It builds 24 x64 Release variants on Windows Server 2022 across eight toolchains (MSVC, Clang-CL, Intel oneAPI, MINGW64 GCC/Clang, UCRT64 GCC/Clang, and CLANG64) and three SIMD targets (SSE4.2, AVX2, and AVX512). Each artifact contains `multipad4.exe`, its `multipad4-registry.exe` helper, `config/`, all eight bundled plugin DLLs, license notices, and toolchain runtime DLLs where needed. On a tag push, the workflow publishes `multipad4-<toolchain>-x64-<SIMD>.zip` packages and generates release notes from commit messages. [Windows Build workflow](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64
 

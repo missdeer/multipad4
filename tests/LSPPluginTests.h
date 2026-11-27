@@ -109,6 +109,13 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     require(document->Send(SCI_INDICATORVALUEAT,frame.plugins.nextIndicator-1,0)==0); // Native handler must not insert a second time.
     document->Send(SCI_UNDO);require(document->Text()=="he");
     require(pump([&]{return !document->style.completionPending;}));
+    document->Send(SCI_GOTOPOS,2);SetFocus(document->hwnd);
+    command(L"Complete");require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
+    document->Send(WM_CHAR,'2');
+    require(!document->Send(SCI_AUTOCACTIVE));
+    require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
+    document->Send(SCI_AUTOCCOMPLETE);require(document->Text()=="hello;");
+    document->Send(SCI_UNDO);require(document->Text()=="he2");
     const std::string positioned = std::string(5, '\n') + std::string(22, ' ') + "hello(42) symbol";
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(positioned.c_str()));
     const auto signaturePosition=static_cast<LRESULT>(positioned.find("42"));
@@ -163,6 +170,12 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     pump([&]{return GetTickCount64()>=end;});
     require(!other->Send(SCI_AUTOCACTIVE) && other->Text()=="other");
     require(document->externalCompletion && other->externalCompletion);
+    SCNotification inactiveDwell{};inactiveDwell.nmhdr.hwndFrom=document->hwnd;
+    inactiveDwell.nmhdr.code=SCN_DWELLSTART;inactiveDwell.position=0;
+    frame.plugins.ScintillaNotification(inactiveDwell);
+    const auto hoverDeadline=GetTickCount64()+250;
+    require(pump([&]{return GetTickCount64()>=hoverDeadline;}));
+    require(!other->Send(SCI_CALLTIPACTIVE));
     const auto clientLog=files::ReadWithEncoding(directory/L"LSPClient-client.log",files::Encoding::Utf8).utf8;
     require(clientLog.find("Ignored diagnostic:")!=std::string::npos);
     require(clientLog.find("Ignored LSP message window/logMessage")!=std::string::npos);

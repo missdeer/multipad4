@@ -10,6 +10,7 @@ void Require(bool value, std::source_location where=std::source_location::curren
 int main(int argc,char** argv) {
     try {
         if(argc>1) {
+            if(std::string_view(argv[1])=="--idle-server") { Sleep(INFINITE); return 0; }
             if(std::string_view(argv[1])=="--exit-test") { std::cerr<<"mock server fatal detail"<<std::endl; return 37; }
             _setmode(_fileno(stdout),_O_BINARY);
             Decoder decoder;char bytes[8192]; DWORD count;
@@ -50,6 +51,12 @@ int main(int argc,char** argv) {
                         }
                         if(completions==2)Require(value["params"]["context"]["triggerKind"]==3);
                         result=Json::parse(R"([{"label":"hello","detail":"completion documentation","textEdit":{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}},"newText":"hello"},"additionalTextEdits":[{"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":2}},"newText":";"}]}])");
+                        if(documents.at(value["params"]["textDocument"]["uri"].get<std::string>())=="he2") {
+                            result[0]["label"]="he2Result";
+                            result[0]["textEdit"]["range"]["end"]["character"]=3;
+                            result[0]["additionalTextEdits"][0]["range"]["start"]["character"]=3;
+                            result[0]["additionalTextEdits"][0]["range"]["end"]["character"]=3;
+                        }
                     }else if(method=="textDocument/hover") {
                         send({{"jsonrpc","2.0"},{"method","window/logMessage"},{"params",{{"message",7}}}});
                         result={{"contents",{{"kind","plaintext"},{"value","Mock hover documentation"}}}};
@@ -96,6 +103,11 @@ int main(int argc,char** argv) {
         }
         // Destruction must cancel a reader blocked on an idle server.
         {Transport transport(Quote(executable)+L" --server",std::filesystem::path(executable).parent_path());}
+        {
+            Transport transport(Quote(executable)+L" --idle-server",std::filesystem::path(executable).parent_path());
+            transport.Send({{"jsonrpc","2.0"},{"method","test"},{"params",std::string(1024*1024,'x')}});
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
         const auto log=std::filesystem::temp_directory_path()/(L"MultiPad4-LSP-exit-"+std::to_wstring(GetCurrentProcessId())+L".log");
         {
             Transport transport(Quote(executable)+L" --exit-test",std::filesystem::path(executable).parent_path(),log);

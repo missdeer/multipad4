@@ -550,13 +550,17 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
         auto& d=found->second;
         switch(n->nmhdr.code){
         case SCN_MODIFIED:
-            if(n->modificationType&(SC_MOD_INSERTTEXT|SC_MOD_DELETETEXT)){++d.revision;d.dirty=true;d.changed=GetTickCount64();ClearDiagnostics(d);}
+            if(n->modificationType&(SC_MOD_INSERTTEXT|SC_MOD_DELETETEXT)){
+                ++d.revision;d.dirty=true;d.changed=GetTickCount64();
+                if(completion.buffer==d.id)ClearCompletion();
+                ClearDiagnostics(d);
+            }
             break;
         case SCN_CHARADDED:
             if(d.id != Active()) break;
             if(d.session->ready && !d.session->failed && !Sci(Editor(d.id),SCI_GETREADONLY)) {
                 if(n->ch=='(' || n->ch==',') scheduledMethod=SignatureMethod;
-                else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z')) scheduledMethod=CompleteMethod;
+                else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) scheduledMethod=CompleteMethod;
                 else scheduledMethod.clear();
                 scheduledAt=GetTickCount64()+200;
             }
@@ -569,8 +573,8 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
         case SCN_AUTOCCANCELLED:if(completion.buffer==d.id)ClearCompletion(false);break;
         case SCN_CALLTIPCLICK:
             if(signatureBuffer==d.id && !signatures.empty()){signatureIndex=(signatureIndex+(n->position==1?signatures.size()-1:1))%signatures.size();Signature();return TRUE;}break;
-        case SCN_DWELLSTART:if(d.session->ready && n->position>=0){Request(HoverMethod,n->position);return TRUE;}break;
-        case SCN_DWELLEND:++hoverEpoch;Sci(Editor(d.id),SCI_CALLTIPCANCEL);break;
+        case SCN_DWELLSTART:if(d.id==Active() && d.session->ready && n->position>=0){Request(HoverMethod,n->position);return TRUE;}break;
+        case SCN_DWELLEND:if(d.id==Active()){++hoverEpoch;Sci(Editor(d.id),SCI_CALLTIPCANCEL);}break;
         }
     }catch(const std::exception& e){ClearCompletion();Error(e);return selecting;}
     return FALSE;

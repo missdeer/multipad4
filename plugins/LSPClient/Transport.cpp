@@ -75,18 +75,20 @@ Transport::Transport(const std::wstring& command, const std::filesystem::path& r
         });
     } catch (...) {
         stopped = true; wake.notify_all();
+        if (job) TerminateJobObject(job, 1);
         if (process) TerminateProcess(process, 1);
         if (pi.hThread) CloseHandle(pi.hThread);
-        if (reader.joinable()) { CancelSynchronousIo(reader.native_handle()); reader.join(); }
+        if (reader.joinable()) reader.join();
         for (HANDLE h : {childIn, childOut, nullError, input, output, process, job}) if (h && h != INVALID_HANDLE_VALUE) CloseHandle(h);
         throw;
     }
 }
 Transport::~Transport() {
     stopped = true; wake.notify_all();
+    // Closing all server pipe ends releases blocked I/O on every thread backend.
     if (job) TerminateJobObject(job, 0);
-    if (reader.joinable()) { CancelSynchronousIo(reader.native_handle()); reader.join(); }
-    if (writer.joinable()) { CancelSynchronousIo(writer.native_handle()); writer.join(); }
+    if (reader.joinable()) reader.join();
+    if (writer.joinable()) writer.join();
     for (HANDLE h : {input, output, process, job}) if (h) CloseHandle(h);
 }
 void Transport::Send(Json value) {

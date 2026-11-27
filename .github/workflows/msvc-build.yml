@@ -80,7 +80,7 @@ jobs:
 
       - name: Verify bundled plugins
         run: |
-          foreach ($name in @('Base64', 'Matepath', 'OpenDocuments', 'Project', 'SelectionActions', 'TextTransliteration', 'WebTools')) {
+          foreach ($name in @('Base64', 'Matepath', 'OpenDocuments', 'Project', 'SelectionActions', 'TextTransliteration', 'WebTools', 'LSPClient')) {
             $plugin = "cmake-${{ matrix.toolchain.id }}-build/plugins/$name/$name.dll"
             if (!(Test-Path -LiteralPath $plugin -PathType Leaf)) {
               throw "The bundled plugin is missing: $plugin"
@@ -88,6 +88,13 @@ jobs:
             $version = (Get-Item -LiteralPath $plugin).VersionInfo
             if (!$version.FileVersion -or !$version.FileDescription) {
               throw "The plugin version or description is missing: $plugin"
+            }
+          }
+
+          foreach ($file in @('servers.example.json', 'Kate.License.txt')) {
+            $path = "cmake-${{ matrix.toolchain.id }}-build/plugins/LSPClient/$file"
+            if (!(Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "The LSP Client support file is missing: $path"
             }
           }
 
@@ -116,6 +123,9 @@ jobs:
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/OpenDocuments.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/OpenDocuments/THIRD_PARTY.md
             cmake-${{ matrix.toolchain.id }}-build/plugins/Project/Project.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/LSPClient/LSPClient.dll
+            cmake-${{ matrix.toolchain.id }}-build/plugins/LSPClient/servers.example.json
+            cmake-${{ matrix.toolchain.id }}-build/plugins/LSPClient/Kate.License.txt
             cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.dll
             cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/THIRD_PARTY.md
             cmake-${{ matrix.toolchain.id }}-build/plugins/Matepath/Matepath.License.txt
@@ -191,6 +201,9 @@ jobs:
           selection_actions_plugin="$build_dir/plugins/SelectionActions/SelectionActions.dll"
           transliteration_plugin="$build_dir/plugins/TextTransliteration/TextTransliteration.dll"
           web_tools_plugin="$build_dir/plugins/WebTools/WebTools.dll"
+          lsp_plugin="$build_dir/plugins/LSPClient/LSPClient.dll"
+          mkdir -p "$build_dir/package/plugins/LSPClient"
+          cp "$build_dir/plugins/LSPClient/servers.example.json" "$build_dir/plugins/LSPClient/Kate.License.txt" "$build_dir/package/plugins/LSPClient/"
           mkdir -p "$build_dir/package/plugins/Base64"
           cp "$build_dir/plugins/Base64/Notepad4.License.txt" "$build_dir/package/plugins/Base64/"
           mkdir -p "$build_dir/package/plugins/SelectionActions"
@@ -209,7 +222,7 @@ jobs:
           cp "$build_dir/plugins/Matepath/THIRD_PARTY.md" \
             "$build_dir/plugins/Matepath/Matepath.License.txt" "$build_dir/package/plugins/Matepath/"
           # Stage plugins beside the EXE so their runtime DLLs land in the same directory.
-          cp "$plugin" "$documents_plugin" "$project_plugin" "$base64_plugin" "$selection_actions_plugin" "$transliteration_plugin" "$web_tools_plugin" "$build_dir/package/"
+          cp "$plugin" "$documents_plugin" "$project_plugin" "$base64_plugin" "$selection_actions_plugin" "$transliteration_plugin" "$web_tools_plugin" "$lsp_plugin" "$build_dir/package/"
           # Read PE imports without loading target code, including AVX512 builds.
           # mingwdeployqt also scans DLLs beside the EXE.
           "$(cygpath -u "$MINGWDEPLOYQT")" -d "$(cygpath -m "$MINGW_PREFIX/bin")" \
@@ -235,6 +248,7 @@ jobs:
           mv "$build_dir/package/SelectionActions.dll" "$build_dir/package/plugins/SelectionActions/"
           mv "$build_dir/package/TextTransliteration.dll" "$build_dir/package/plugins/TextTransliteration/"
           mv "$build_dir/package/WebTools.dll" "$build_dir/package/plugins/WebTools/"
+          mv "$build_dir/package/LSPClient.dll" "$build_dir/package/plugins/LSPClient/"
 
       - name: Verify packaged runtime configuration
         shell: pwsh

@@ -49,7 +49,7 @@
 
 ### 随附插件
 
-默认构建七个插件 DLL。将相应的 CMake 选项设为 `OFF` 即可跳过该插件。
+默认构建八个插件 DLL。将相应的 CMake 选项设为 `OFF` 即可跳过该插件。
 
 | 插件 | 功能 | CMake 选项 |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ ctest --preset msvc-x64
 
 `msvc-release` 预设为 Release 构建启用链接时优化。本地开发包装脚本及用法见 [AGENTS.md](AGENTS.md)。
 
-Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`multipad4-registry.exe` 辅助程序、`config/`、七个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
+Windows Build 工作流在 push、PR 或手动触发时运行。它在 Windows Server 2022 上用 8 套工具链（MSVC、Clang-CL、Intel oneAPI、MINGW64 GCC/Clang、UCRT64 GCC/Clang 和 CLANG64）和 3 档 SIMD（SSE4.2、AVX2 和 AVX512）构建 24 种 x64 Release 产物。每份产物包含 `multipad4.exe`、`multipad4-registry.exe` 辅助程序、`config/`、八个随附插件 DLL 和许可声明，并按需附带工具链运行库 DLL。推送 Git 标签后，工作流发布 `multipad4-<toolchain>-x64-<SIMD>.zip`，并根据提交信息生成发布说明。[Windows Build 工作流](.github/workflows/msvc-build.yml)
 
 ### MinGW-w64
 
