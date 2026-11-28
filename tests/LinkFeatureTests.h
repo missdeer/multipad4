@@ -32,5 +32,18 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("plain text"));
     document->Send(SCI_COLOURISE,0,-1);
     require(document->LinkTargetAt(2).empty());
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("www.user@example.com\n"));
+    document->Send(SCI_COLOURISE,0,-1);
+    require(document->LinkTargetAt(0) == L"mailto:www.user@example.com");
+    document->path=L"links.md"; document->ConfigureLexer();
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("[site](https://example.com)\n<https://example.org>\n"));
+    document->Send(SCI_COLOURISE,0,-1);
+    require(document->LinkTargetAt(8) == L"https://example.com");
+    require(document->LinkTargetAt(29) == L"https://example.org");
+    document->path=L"links.reb"; document->ConfigureLexer();
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("https://example.com user@example.com\n"));
+    document->Send(SCI_COLOURISE,0,-1);
+    require(document->LinkTargetAt(0) == L"https://example.com");
+    require(document->LinkTargetAt(20) == L"mailto:user@example.com");
     document->Send(SCI_SETSAVEPOINT); frame.Close(frame.tabs.GetActivePage());
 }
