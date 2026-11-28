@@ -9,6 +9,15 @@
 namespace {
 LRESULT CALLBACK CompletionWindowProc(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data) {
     auto& document=*reinterpret_cast<EditorDocument*>(data);
+    if (message == WM_LBUTTONDOWN && (w & MK_CONTROL)) {
+        const auto position = document.Send(SCI_POSITIONFROMPOINTCLOSE,static_cast<short>(LOWORD(l)),static_cast<short>(HIWORD(l)));
+        const auto target = document.LinkTargetAt(position);
+        if (!target.empty()) {
+            if (reinterpret_cast<INT_PTR>(ShellExecuteW(window,L"open",target.c_str(),nullptr,nullptr,SW_SHOWNORMAL)) <= 32)
+                MessageBeep(MB_ICONERROR);
+            return 0; // Keep Ctrl+click from adding a second caret.
+        }
+    }
     if(message==WM_KILLFOCUS || message==WM_IME_STARTCOMPOSITION || message==SCI_CANCEL ||
         (message==WM_KEYDOWN && w==VK_ESCAPE)){document.style.completionPending=false;++document.completionEpoch;}
     if(message==WM_IME_STARTCOMPOSITION)document.completionComposing=true;
@@ -109,6 +118,17 @@ void EditorChild::UpdateFileIcon() {
 }
 std::wstring EditorDocument::Title() const {
     return (Modified() ? L"* " : L"") + (path.empty() ? untitled : path.filename().wstring());
+}
+std::wstring EditorDocument::LinkTargetAt(LRESULT position) const {
+    if (position < 0 || position >= Send(SCI_GETLENGTH) || !Send(SCI_INDICATORVALUEAT,INDICATOR_LINK,position)) return {};
+    const auto begin = Send(SCI_INDICATORSTART,INDICATOR_LINK,position);
+    const auto end = Send(SCI_INDICATOREND,INDICATOR_LINK,position);
+    if (end <= begin || end - begin > 32767) return {};
+    auto target = files::FromUtf8(Range(static_cast<size_t>(begin),static_cast<size_t>(end-begin)));
+    if (target.starts_with(L"www.")) return L"https://" + target;
+    if (_wcsnicmp(target.c_str(),L"https://",8)==0 || _wcsnicmp(target.c_str(),L"http://",7)==0) return target;
+    if (target.find(L'@')!=std::wstring::npos && target.find_first_of(L":/?#&=\\") == std::wstring::npos) return L"mailto:" + target;
+    return {};
 }
 bool EditorDocument::Create(HWND parent) {
     hwnd = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,

@@ -37,8 +37,10 @@
 #include "MatepathPaneTests.h"
 #include "OpenDocumentsPaneTests.h"
 #include "PluginPaneStateTests.h"
+#include "LinkFeatureTests.h"
 // Runs against actual Win32 and Scintilla windows on the application's UI thread.
 inline void RunSmokeTest(MainFrame& frame) {
+    RunLinkFeatureTests(frame);
     RunWindowMenuTests(frame);
     RunDockLayoutTests(frame);
     auto require = [](bool ok, std::source_location where = std::source_location::current()) { if (!ok) throw std::runtime_error("Editor integration assertion failed at line " + std::to_string(where.line())); };

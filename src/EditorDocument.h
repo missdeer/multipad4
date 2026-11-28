@@ -98,6 +98,7 @@ struct EditorDocument {
     void SaveStreaming(const std::filesystem::path& destination) const;
     std::string Range(size_t start, size_t length) const;
     std::string Text() const;
+    std::wstring LinkTargetAt(LRESULT position) const;
     void ConfigureLexer();
     bool FindNext(bool backwards = false, const std::function<bool(bool)>& confirmWrap = {});
     large::SearchOptions MappedSearchOptions() const;
