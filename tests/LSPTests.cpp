@@ -29,7 +29,7 @@ int main(int argc,char** argv) {
                     if(method=="initialize") {
                         const auto& options=value["params"]["initializationOptions"];
                         diagnosticsOnly=options.is_object() && options.value("diagnosticsOnly",false);
-                        result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true},{"referencesProvider",true},{"documentFormattingProvider",true},{"selectionRangeProvider",true}}}};
+                        result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true},{"referencesProvider",true},{"documentOnTypeFormattingProvider",{{"firstTriggerCharacter","\n"}}},{"documentFormattingProvider",true},{"selectionRangeProvider",true}}}};
                         if(diagnosticsOnly)result["capabilities"].erase("completionProvider");
                     }
                     else if(method=="textDocument/didOpen"){
@@ -74,6 +74,11 @@ int main(int argc,char** argv) {
                         result={{"contents",{{"kind","plaintext"},{"value","Mock hover documentation"}}}};
                     }
                     else if(method=="textDocument/signatureHelp")result=Json::parse(R"json({"signatures":[{"label":"hello(int value)","parameters":[{"label":[6,15]}]},{"label":"hello(double value)","parameters":[{"label":[6,18]}]}],"activeSignature":null,"activeParameter":null})json");
+                    else if(method=="textDocument/onTypeFormatting") {
+                        const auto& params=value.at("params");
+                        Require(params.at("ch")=="\n" && params.at("position").at("character")==4);
+                        result=Json::parse(R"([{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":4}},"newText":"  "}])");
+                    }
                     else if(method=="textDocument/formatting") {
                         const auto& text=documents.at(value.at("params").at("textDocument").at("uri").get<std::string>());
                         Json edit{{"range",{{"start",Position(text,0)},{"end",Position(text,text.size())}}},

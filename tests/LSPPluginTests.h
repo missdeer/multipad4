@@ -95,6 +95,16 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
         if(project)document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(original.c_str()));
         document->Send(SCI_SETSAVEPOINT);return;
     }
+    command(L"Format on typing");
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("first\n"));
+    document->Send(SCI_GOTOPOS,6);
+    SCNotification newline{};
+    newline.nmhdr.hwndFrom=document->hwnd; newline.nmhdr.code=SCN_CHARADDED; newline.ch='\n';
+    frame.plugins.ScintillaNotification(newline);
+    // The host applies indentation after returning from SCN_CHARADDED.
+    document->Send(SCI_REPLACESEL,0,reinterpret_cast<LPARAM>("    "));
+    require(pump([&]{return document->Text()=="first\n  ";}));
+    command(L"Format on typing");
     command(L"Format on save");
     require(GetMenuState(options,item(L"Format on save")._cmdID,MF_BYCOMMAND)&MF_CHECKED);
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("first middle last"));

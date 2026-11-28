@@ -691,7 +691,19 @@ void Tick() {
     } catch(const std::exception& e){Error(e);}
     ticking=false;
 }
-LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {if(m==WM_TIMER){Tick();return 0;}return DefWindowProcW(h,m,w,l);}
+constexpr UINT FormatAfterInput = WM_APP + 1;
+UINT_PTR inputSequence = 0;
+LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
+    if(m==WM_TIMER){Tick();return 0;}
+    if(m==FormatAfterInput) {
+        if(w==inputSequence && enabled && options[OnTyping] && GetFocus()==Editor(Active())) {
+            try { Request("textDocument/onTypeFormatting",-1,0,std::string(1,static_cast<char>(l))); }
+            catch(const std::exception& e){Error(e);}
+        }
+        return 0;
+    }
+    return DefWindowProcW(h,m,w,l);
+}
 void SetSuspended(bool value);
 void Start() {
     auto buffers=std::move(suspendedBuffers);
@@ -953,6 +965,7 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
             }
             break;
         case SCN_CHARADDED:
+            ++inputSequence;
             if(d.id != Active() || n->listType || n->characterSource==SC_CHARACTERSOURCE_TENTATIVE_INPUT ||
                 (Host(MPM_GETCOMPLETIONSTATE,d.id)&MPC_COMPOSING)) break;
             if(d.session->ready && !d.session->failed && !Sci(Editor(d.id),SCI_GETREADONLY)) {
@@ -961,7 +974,7 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
                     std::string ch(1,static_cast<char>(n->ch));
                     auto more=provider.value("moreTriggerCharacter",std::vector<std::string>{});
                     if(provider.value("firstTriggerCharacter","")==ch || std::find(more.begin(),more.end(),ch)!=more.end())
-                        Request("textDocument/onTypeFormatting",-1,0,ch);
+                        PostMessageW(timerWindow,FormatAfterInput,inputSequence,n->ch);
                 }
                 if(options[AutoSignature] && (n->ch=='(' || n->ch==',')) scheduledMethod=SignatureMethod;
                 else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) {
@@ -972,7 +985,7 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
                 scheduledAt=GetTickCount64()+200;
             }
             break;
-        case SCN_FOCUSOUT:++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;break;
+        case SCN_FOCUSOUT:++inputSequence;++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;break;
         case SCN_AUTOCSELECTIONCHANGE:
             if(options[Documentation] && completion.buffer==d.id && n->text) {
                 auto item=completion.items.find(n->text);
@@ -1008,7 +1021,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* n){
             auto doc=documents.find(n->nmhdr.idFrom);
             if(doc!=documents.end()) FormatBeforeSave(doc->second);
         }
-        if(n->nmhdr.code==NPPN_BUFFERACTIVATED || n->nmhdr.code==NPPN_FILEOPENED){++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;Attach();}
+        if(n->nmhdr.code==NPPN_BUFFERACTIVATED || n->nmhdr.code==NPPN_FILEOPENED){++inputSequence;++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;Attach();}
         if(n->nmhdr.code==NPPN_FILESAVED){
             Attach();auto it=documents.find(n->nmhdr.idFrom);if(it!=documents.end()){
                 Sync(it->second);auto& s=*it->second.session;
