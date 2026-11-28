@@ -113,6 +113,38 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
     navigate(folder / L"missing"); require(ListView_GetItemCount(list) == 3);
     navigate(std::wstring(MAX_PATH + 5, L'x')); require(ListView_GetItemCount(list) == 3);
     KillTimer(nullptr, dismissTimer);
+    HWND combo = GetDlgItem(pane, pattern);
+    COMBOBOXINFO comboInfo{sizeof(comboInfo)};
+    require(GetComboBoxInfo(combo, &comboInfo) != FALSE);
+    require(SendMessageW(combo, CB_GETCOUNT, 0, 0) >= 3);
+    std::ofstream(folder / L"header.hpp") << "// header";
+    std::ofstream(folder / L"Example.java") << "class Example {}";
+    auto preset = [&](const wchar_t* prefix) {
+        const auto index = SendMessageW(combo, CB_FINDSTRING, -1, reinterpret_cast<LPARAM>(prefix));
+        require(index != CB_ERR);
+        SendMessageW(combo, CB_SETCURSEL, index, 0);
+        SendMessageW(pane, WM_COMMAND, MAKEWPARAM(pattern, CBN_SELENDOK), reinterpret_cast<LPARAM>(combo));
+    };
+    preset(L"*.c;"); require(ListView_GetItemCount(list) == 3);
+    select((folder / L"header.hpp").c_str());
+    preset(L"*.java;"); require(ListView_GetItemCount(list) == 2);
+    select((folder / L"Example.java").c_str());
+    if (!qaArtifactDirectory.empty()) {
+        CaptureQAWindow(pane, L"Matepath-filter-presets");
+        SendMessageW(combo, CB_SHOWDROPDOWN, TRUE, 0);
+        CaptureQAWindow(comboInfo.hwndList, L"Matepath-filter-dropdown");
+        SendMessageW(combo, CB_SHOWDROPDOWN, FALSE, 0);
+    }
+    std::filesystem::remove(folder / L"header.hpp");
+    std::filesystem::remove(folder / L"Example.java");
+    SetWindowTextW(combo, L"*.cpp;*.txt");
+    MSG filterKey{}; filterKey.hwnd = comboInfo.hwndItem; filterKey.message = WM_KEYDOWN; filterKey.wParam = VK_RETURN;
+    require(frame.plugins.PreTranslate(&filterKey));
+    require(ListView_GetItemCount(list) == 3);
+    filterKey.wParam = VK_TAB;
+    require(frame.plugins.PreTranslate(&filterKey) && GetFocus() == list);
+    SetWindowTextW(combo, L""); filterKey.wParam = VK_RETURN;
+    require(frame.plugins.PreTranslate(&filterKey) && ListView_GetItemCount(list) == 3);
     SetDlgItemTextW(pane, pattern, L"*.txt"); command(filter);
     require(ListView_GetItemCount(list) == 2);
     command(hidden); require(ListView_GetItemCount(list) == 3); command(hidden);
@@ -132,15 +164,19 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
     for (int side : {1, 3, 4, 2}) {
         SendMessageW(pane, action, side, 0);
         VerifyPaneLayoutMembership(frame, pane, side != 4);
-        for (int id : {address, pattern}) {
-            HWND edit = GetDlgItem(pane, id);
+        require(GetComboBoxInfo(combo, &comboInfo) != FALSE);
+        SetFocus(combo); require(GetFocus() == comboInfo.hwndItem);
+        filterKey.hwnd = comboInfo.hwndItem; filterKey.wParam = VK_TAB;
+        require(frame.plugins.PreTranslate(&filterKey) && GetFocus() == list);
+        {
+            HWND edit = GetDlgItem(pane, address);
             SetFocus(list);
             SendMessageW(edit, EM_SETSEL, 1, 1);
             MSG click{edit, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 5)};
             require(!frame.PreTranslateMessage(&click));
             DispatchMessageW(&click);
             require(GetFocus() == edit && GetCapture() == edit);
-            SendMessageW(edit, WM_LBUTTONUP, 0, click.lParam);
+            SendMessageW(click.hwnd, WM_LBUTTONUP, 0, click.lParam);
             require(SendMessageW(edit, EM_GETSEL, 0, 0) == 0);
             SendMessageW(edit, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(6, 5));
             SendMessageW(edit, WM_LBUTTONUP, 0, MAKELPARAM(6, 5));

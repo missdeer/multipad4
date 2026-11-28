@@ -52,7 +52,7 @@ public:
         case WM_COMMAND: {
             const WORD id = LOWORD(w), code = HIWORD(w);
             const auto control = reinterpret_cast<HWND>(l);
-            if ((id >= Back && id <= Follow) || id == Browse) return OnCommand(code, id, control, handled);
+            if ((id >= Back && id <= Follow) || id == Browse || id == Pattern) return OnCommand(code, id, control, handled);
             break;
         }
         }

@@ -71,9 +71,13 @@ LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
         return field;
     };
     address = edit(Address);
-    pattern = edit(Pattern);
+    pattern = create(WC_COMBOBOXW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL, 0, Pattern);
+    for (const wchar_t* preset : {L"*.*", L"*.c;*.cc;*.cpp;*.cxx;*.h;*.hh;*.hpp;*.hxx;*.ixx;*.cppm",
+            L"*.java;*.jav", L"*.cs;*.csx", L"*.py;*.pyw", L"*.js;*.jsx;*.mjs;*.ts;*.tsx",
+            L"*.html;*.htm;*.css", L"*.json;*.xml;*.yaml;*.yml;*.toml", L"*.txt;*.md;*.rst"})
+        ::SendMessageW(pattern, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(preset));
     ::SetWindowTextW(pattern, L"*.*");
-    ::SendMessageW(pattern, EM_SETLIMITTEXT, DL_FILTER_BUFSIZE - 2, 0);
+    ::SendMessageW(pattern, CB_LIMITTEXT, DL_FILTER_BUFSIZE - 2, 0);
     list = create(WC_LISTVIEWW, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHAREIMAGELISTS | LVS_NOCOLUMNHEADER, WS_EX_CLIENTEDGE, 200);
     if (!list || !address || !pattern) { handled = TRUE; return -1; }
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_LABELTIP);
@@ -147,7 +151,8 @@ void MatepathPane::Layout() {
     const int editWidth = max(0, width - button - gap);
     ::MoveWindow(address, gap, row + gap * 2, editWidth, row, TRUE);
     ::MoveWindow(go, gap * 2 + editWidth, row + gap * 2, button, row, TRUE);
-    ::MoveWindow(pattern, gap, row * 2 + gap * 3, editWidth, row, TRUE);
+    ::MoveWindow(pattern, gap, row * 2 + gap * 3, editWidth, row * 10, TRUE);
+    ::SendMessageW(pattern, CB_SETDROPPEDWIDTH, px(420), 0);
     ::MoveWindow(apply, gap * 2 + editWidth, row * 2 + gap * 3, button, row, TRUE);
     const int top = row * 3 + gap * 4;
     ::MoveWindow(list, gap, top, width, max(0, static_cast<int>(r.bottom) - top - gap), TRUE);
@@ -208,7 +213,10 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
     if (msg->message == WM_KEYDOWN) {
         if (msg->wParam == VK_RETURN) {
             if (msg->hwnd == address) SendMessage(WM_COMMAND, Go);
-            else if (msg->hwnd == pattern) SendMessage(WM_COMMAND, Filter);
+            else if (msg->hwnd == pattern || ::IsChild(pattern, msg->hwnd)) {
+                if (::SendMessageW(pattern, CB_GETDROPPEDSTATE, 0, 0)) return FALSE;
+                SendMessage(WM_COMMAND, Filter);
+            }
             else if (msg->hwnd == list) ActivateSelection();
             else if (const int id = ::GetDlgCtrlID(msg->hwnd); (id >= Back && id <= Filter) || id == Browse)
                 ::SendMessageW(msg->hwnd, BM_CLICK, 0, 0);
@@ -224,14 +232,26 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
     // The pane's buttons and edits share tab order without claiming frame shortcuts.
     if (msg->message == WM_KEYDOWN && msg->wParam == VK_TAB
         && GetKeyState(VK_CONTROL) >= 0 && GetKeyState(VK_MENU) >= 0) {
-        if (HWND next = ::GetNextDlgTabItem(m_hWnd, msg->hwnd, GetKeyState(VK_SHIFT) < 0))
+        const HWND current = ::IsChild(pattern, msg->hwnd) ? pattern : msg->hwnd;
+        if (HWND next = ::GetNextDlgTabItem(m_hWnd, current, GetKeyState(VK_SHIFT) < 0))
             ::SetFocus(next);
         return TRUE;
     }
     return FALSE;
 }
-LRESULT MatepathPane::OnCommand(WORD, WORD id, HWND, BOOL&) {
+LRESULT MatepathPane::OnCommand(WORD code, WORD id, HWND, BOOL&) {
     switch (id) {
+    case Pattern:
+        if (code == CBN_SELENDOK) {
+            const auto index = ::SendMessageW(pattern, CB_GETCURSEL, 0, 0);
+            if (index != CB_ERR) {
+                std::wstring preset(static_cast<size_t>(::SendMessageW(pattern, CB_GETLBTEXTLEN, index, 0)) + 1, L'\0');
+                ::SendMessageW(pattern, CB_GETLBTEXT, index, reinterpret_cast<LPARAM>(preset.data()));
+                ::SetWindowTextW(pattern, preset.c_str());
+                SendMessage(WM_COMMAND, Filter);
+            }
+        }
+        break;
     case Back: case Forward: {
         if (history.empty() || (id == Back ? historyIndex == 0 : historyIndex + 1 >= history.size())) break;
         const size_t next = id == Back ? historyIndex - 1 : historyIndex + 1;
