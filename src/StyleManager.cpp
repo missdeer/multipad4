@@ -710,6 +710,9 @@ void ConfigureDocumentStyle(EditorDocument& d) {
         }
     };
     applyAll(lexer,0);
+    ApplyStyle(d,STYLE_LINK,Value(d,*lexerCatalog[0],21));
+    d.Send(SCI_STYLESETUNDERLINE,STYLE_LINK,TRUE);
+    d.Send(SCI_STYLESETHOTSPOT,STYLE_LINK,TRUE);
     if(lexer.rid==NP2LEX_HTML || lexer.rid==NP2LEX_XML || lexer.rid==NP2LEX_MARKDOWN || lexer.rid==NP2LEX_PHP){
         if(lexer.rid!=NP2LEX_MARKDOWN){applyAll(Language("javascript"),SCE_STYLE_OFFSET_JS);applyAll(Language("css"),SCE_STYLE_OFFSET_CSS);}
         if(lexer.rid==NP2LEX_MARKDOWN || lexer.rid==NP2LEX_PHP)applyAll(Language("html"),0,SCE_H_QUESTION);
