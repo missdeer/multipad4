@@ -45,5 +45,15 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
     document->Send(SCI_COLOURISE,0,-1);
     require(document->LinkTargetAt(0) == L"https://example.com");
     require(document->LinkTargetAt(20) == L"mailto:user@example.com");
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(" https://example.com "));
+    document->Send(SCI_COLOURISE,0,-1);
+    auto hit = [&](LRESULT character) {
+        const auto left = document->Send(SCI_POINTXFROMPOSITION,0,character);
+        const auto right = document->Send(SCI_POINTXFROMPOSITION,0,character+1);
+        return document->LinkTargetAt(document->Send(SCI_CHARPOSITIONFROMPOINTCLOSE,left+(right-left)*3/4,1));
+    };
+    require(hit(0).empty());
+    require(hit(19) == L"https://example.com");
+    require(hit(20).empty());
     document->Send(SCI_SETSAVEPOINT); frame.Close(frame.tabs.GetActivePage());
 }

@@ -10,7 +10,7 @@ namespace {
 LRESULT CALLBACK CompletionWindowProc(HWND window, UINT message, WPARAM w, LPARAM l, UINT_PTR id, DWORD_PTR data) {
     auto& document=*reinterpret_cast<EditorDocument*>(data);
     if (message == WM_LBUTTONDOWN && (w & MK_CONTROL)) {
-        const auto position = document.Send(SCI_POSITIONFROMPOINTCLOSE,static_cast<short>(LOWORD(l)),static_cast<short>(HIWORD(l)));
+        const auto position = document.Send(SCI_CHARPOSITIONFROMPOINTCLOSE,static_cast<short>(LOWORD(l)),static_cast<short>(HIWORD(l)));
         const auto target = document.LinkTargetAt(position);
         if (!target.empty()) {
             if (reinterpret_cast<INT_PTR>(ShellExecuteW(window,L"open",target.c_str(),nullptr,nullptr,SW_SHOWNORMAL)) <= 32)
