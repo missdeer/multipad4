@@ -9,11 +9,11 @@ public:
     static constexpr auto WindowClass = L"MultiPad4.MatepathPane";
     std::unique_ptr<std::remove_pointer_t<HMODULE>, WinDeleter<HMODULE, FreeLibrary>> richEditLibrary{
         LoadLibraryExW(L"Msftedit.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32)};
-    enum { Back = 100, Forward, Up, Reload, Go, Filter, Hidden, Properties, SortName, SortSize, SortType, SortDate, Reverse, Follow, Address, Pattern };
+    enum { Back = 100, Forward, Up, Reload, Go, Filter, Hidden, Properties, SortName, SortSize, SortType, SortDate, Reverse, Follow, Address, Pattern, Browse };
     HWND owner = nullptr;
     HWND list = nullptr, address = nullptr, pattern = nullptr;
     HWND back = nullptr, forward = nullptr, up = nullptr, reload = nullptr, go = nullptr, apply = nullptr;
-    HWND tooltips = nullptr;
+    HWND browse = nullptr, tooltips = nullptr;
     UniqueFont iconFont;
     int iconDpi = 0;
     std::filesystem::path directory;
@@ -52,7 +52,7 @@ public:
         case WM_COMMAND: {
             const WORD id = LOWORD(w), code = HIWORD(w);
             const auto control = reinterpret_cast<HWND>(l);
-            if (id >= Back && id <= Follow) return OnCommand(code, id, control, handled);
+            if ((id >= Back && id <= Follow) || id == Browse) return OnCommand(code, id, control, handled);
             break;
         }
         }
