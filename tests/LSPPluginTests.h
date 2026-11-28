@@ -27,16 +27,25 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     const auto prefix=project?original+"\n":std::string();
     auto server=fs::path(exe).parent_path()/L"plugins/LSPClient/lsp_tests.exe";
     lsp::Json settings{{"servers",lsp::Json::array({{{"languageId","test"},{"extensions",lsp::Json::array({".lsptest"})},{"command",lsp::Json::array({files::ToUtf8(server.wstring()),"--mock-lsp"})}}})}};
+    if(!real) {
+        settings["servers"][0]["rootMarkers"]=lsp::Json::array({".lsp-test-root"});
+        fs::create_directories(directory/L".lsp-test-root");
+    }
     if(real) settings["servers"][0]["command"]=lsp::Json::array({files::ToUtf8(realServer),"--log=error"});
     if(project)settings["servers"][0]["command"][1]="--log=verbose";
     if(project)settings["servers"][0]["command"].push_back("--compile-commands-dir="+files::ToUtf8(fs::path(exe).parent_path().wstring()));
     files::WriteAtomic(directory/L"LSPClient.json",{settings.dump()});
     const auto source=project?fs::path(projectFile):directory/(real?L"real.cpp":L"unicode-中文.lsptest");
-    const auto second=directory/L"second.lsptest";
+    fs::create_directories(directory/L"nested");
+    const auto second=directory/L"nested/second.lsptest";
     if(real){settings["servers"][0]["extensions"]=lsp::Json::array({".cpp"});settings["servers"][0]["languageId"]="cpp";files::WriteAtomic(directory/L"LSPClient.json",{settings.dump()});}
     const std::string initial=real?prefix+"int main() { int number = 0; num }\n":"he";
     if(!project)files::WriteAtomic(source,{initial});
     files::WriteAtomic(second,{"other"});
+    // Reproduce editor readiness with configuration installed before opening a file.
+    item(L"Stop")._pFunc();
+    SCNotification ready{};ready.nmhdr.code=NPPN_READY;
+    plugin->notify(&ready);
     require(frame.Open(source));auto* document=frame.Active();
     if(project)document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(initial.c_str()));
     frame.ShowWindow(SW_SHOWNORMAL);SetForegroundWindow(frame);SetFocus(document->hwnd);
@@ -57,13 +66,21 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     CaptureQAPopup(frame,plugin->submenu,L"LSP-menu");
     CaptureQAPopup(frame,options,L"LSP-options");
     document->Send(SCI_AUTOCSETCHOOSESINGLE,TRUE);
+    require(pump([&]{return document->externalCompletion;}));
+    require(document->Send(SCI_GETCODEPAGE)==SC_CP_UTF8);
+    command(L"Stop");
+    require(frame.Open(second));
+    require(!frame.Active()->externalCompletion && !document->externalCompletion);
+    require(frame.Open(source));
+    require(frame.Active()==document && !document->externalCompletion);
     // The old completion list must not survive an LSP ownership transfer.
     document->Send(SCI_AUTOCSETSEPARATOR,'\n');
     document->Send(SCI_AUTOCSHOW,0,reinterpret_cast<LPARAM>("oldOne\noldTwo"));
     require(document->Send(SCI_AUTOCACTIVE)!=0);
-    command(L"Restart All LSP Servers");require(pump([&]{return document->externalCompletion;}));
+    // Restored source files are already active when the host announces readiness.
+    plugin->notify(&ready);
+    require(pump([&]{return document->externalCompletion;}));
     require(!document->Send(SCI_AUTOCACTIVE));
-    require(document->Send(SCI_GETCODEPAGE)==SC_CP_UTF8);
     if(real) {
         auto caret=initial.find("num }")+3;document->Send(SCI_GOTOPOS,caret);SetFocus(document->hwnd);
         command(L"Complete");require(pump([&]{return document->Send(SCI_AUTOCACTIVE)!=0;}));
@@ -241,9 +258,18 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("he"));document->Send(SCI_GOTOPOS,2);
     command(L"Go to Definition");require(pump([&]{return document->Send(SCI_GETCURRENTPOS)==0;}));
     document->Send(SCI_GOTOPOS,2);SetFocus(document->hwnd);command(L"Complete");
+    auto serverStarts=[&] {
+        size_t count=0;
+        const auto prefix=L"LSPClient-server-"+std::to_wstring(GetCurrentProcessId())+L"-";
+        for(const auto& entry:fs::directory_iterator(directory))
+            if(entry.path().filename().wstring().starts_with(prefix)) ++count;
+        return count;
+    };
+    const auto startsBeforeSecond=serverStarts();
     // A delayed response for the first document must not affect the second.
     require(frame.Open(second));auto* other=frame.Active();SetFocus(other->hwnd);
     require(pump([&]{return other->externalCompletion;}));
+    require(serverStarts()==startsBeforeSecond);
     const auto end=GetTickCount64()+250;
     pump([&]{return GetTickCount64()>=end;});
     require(!other->Send(SCI_AUTOCACTIVE) && other->Text()=="other");

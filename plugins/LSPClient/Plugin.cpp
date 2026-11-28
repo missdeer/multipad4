@@ -705,7 +705,7 @@ LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
     return DefWindowProcW(h,m,w,l);
 }
 void SetSuspended(bool value);
-void Start() {
+void StartServers(bool displayErrors) {
     auto buffers=std::move(suspendedBuffers);
     for(const auto& [id,doc]:documents) buffers.push_back(id);
     SetSuspended(false);
@@ -713,8 +713,9 @@ void Start() {
         Stop();ReadConfig();enabled=true;lastError.clear();
         for(auto id:buffers) Attach(id);
         Attach();SetTimer(timerWindow,1,40,nullptr);
-    }catch(const std::exception& e){Stop();Error(e,true);}
+    }catch(const std::exception& e){Stop();Error(e,displayErrors);}
 }
+void Start() { StartServers(true); }
 void Configure() {
     try {
         auto path=Config();
@@ -1012,6 +1013,10 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* n){
     if(!n)return;
     try {
         if(n->nmhdr.code==NPPN_SHUTDOWN){Stop();if(timerWindow)DestroyWindow(timerWindow);timerWindow=nullptr;UnregisterClassW(L"MultiPad4.LSPClient",instance);return;}
+        if(n->nmhdr.code==NPPN_READY) {
+            if(fs::exists(Config())) StartServers(false);
+            return;
+        }
         if(n->nmhdr.code==NPPN_FILEBEFORECLOSE) {
             resultTabs.erase(n->nmhdr.idFrom);
             highlightedEditors.erase(Editor(n->nmhdr.idFrom));

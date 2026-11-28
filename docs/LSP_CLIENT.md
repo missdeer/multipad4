@@ -14,8 +14,11 @@ included in the plugin distribution.
    when necessary. Commands are local programs; edit this user configuration only
    with commands you intend to run. Project files cannot supply executable commands.
 4. Save configuration, activate a source file, then choose LSP Client > Restart All LSP Servers.
-   LSP remains off until explicitly started in each editor session. Stop restores
-   built-in completion. A restart reloads configuration and clears server errors.
+   On subsequent editor launches, existing configuration enables LSP automatically;
+   servers start when a matching source file is opened or activated. Stop disables
+   LSP for the rest of the editor session and restores built-in completion until
+   restarted manually. A restart reloads configuration and clears server errors.
+   Automatic startup errors are logged and available in Status / Last Server Message.
 
 Completion triggers after typing an identifier or `.`, with a 200 ms delay.
 Ctrl+Alt+Space requests completion explicitly. Ctrl+Alt+Shift+Space requests
