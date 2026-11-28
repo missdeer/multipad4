@@ -393,19 +393,62 @@ Edit ReadEdit(HWND h, const Json& edit) {
         throw std::runtime_error("Invalid text edit");
     return parsed;
 }
-void ApplyEdits(HWND h, std::vector<Edit>& edits) {
-    if (Sci(h,SCI_GETREADONLY) || edits.empty()) return;
+void PrepareEdits(std::vector<Edit>& edits) {
     std::stable_sort(edits.begin(),edits.end(),[](const auto& a,const auto& b){return std::tie(a.start,a.end)<std::tie(b.start,b.end);});
     for(size_t i=1;i<edits.size();++i) if(edits[i].start<edits[i-1].end) throw std::runtime_error("Overlapping text edits");
+}
+void ApplyEdits(HWND h, const std::vector<Edit>& edits) {
+    if (Sci(h,SCI_GETREADONLY) || edits.empty()) return;
     Sci(h,SCI_BEGINUNDOACTION);
     for(auto it=edits.rbegin();it!=edits.rend();++it){Sci(h,SCI_SETTARGETRANGE,it->start,it->end);Sci(h,SCI_REPLACETARGET,it->text.size(),reinterpret_cast<LPARAM>(it->text.data()));}
     Sci(h,SCI_ENDUNDOACTION);
 }
+// Follow unchanged text across reindentation, including a whole-document edit.
+size_t FormattedOffset(std::string_view before, std::string_view after, size_t position) {
+    if (position == before.size()) return after.size();
+    const auto whitespace = [](char c) { return c==' ' || c=='\t' || c=='\r' || c=='\n'; };
+    size_t oldByte=0, newByte=0;
+    while (oldByte < before.size()) {
+        const auto oldStart=oldByte, newStart=newByte;
+        while (oldByte<before.size() && whitespace(before[oldByte])) ++oldByte;
+        while (newByte<after.size() && whitespace(after[newByte])) ++newByte;
+        if (position < oldByte) return newStart + std::min(position-oldStart,newByte-newStart);
+        if (position == oldByte) return newByte;
+        if (newByte==after.size() || before[oldByte]!=after[newByte]) break;
+        ++oldByte; ++newByte;
+    }
+    // A formatter may rewrite tokens too. Keep positions in the common suffix exact.
+    size_t oldEnd=before.size(), newEnd=after.size();
+    while (oldEnd>oldByte && newEnd>newByte && before[oldEnd-1]==after[newEnd-1]) { --oldEnd; --newEnd; }
+    size_t mapped=position>=oldEnd ? newEnd+(position-oldEnd) : newByte+std::min(position-oldByte,newEnd-newByte);
+    while (mapped && mapped<after.size() && (static_cast<unsigned char>(after[mapped])&0xc0)==0x80) --mapped;
+    return mapped;
+}
 void FormatResult(HWND h,const Json& result) {
-    if (!result.is_array()) return;
+    if (!result.is_array() || result.empty() || Sci(h,SCI_GETREADONLY)) return;
     std::vector<Edit> edits;
     for (const auto& edit : result) edits.push_back(ReadEdit(h,edit));
+    std::vector<std::pair<size_t,size_t>> selections;
+    const auto count=Sci(h,SCI_GETSELECTIONS);
+    for (LRESULT i=0;i<count;++i)
+        selections.emplace_back(Sci(h,SCI_GETSELECTIONNANCHOR,i),Sci(h,SCI_GETSELECTIONNCARET,i));
+    PrepareEdits(edits);
+    for (auto it=edits.rbegin();it!=edits.rend();++it) {
+        auto length=it->end-it->start;
+        const char* bytes=length ? reinterpret_cast<const char*>(Sci(h,SCI_GETRANGEPOINTER,it->start,length)) : "";
+        if (!bytes) throw std::runtime_error("Cannot read formatting range");
+        auto map=[&](size_t position) {
+            if (position<it->start) return position;
+            if (position>=it->end) return position-length+it->text.size();
+            return it->start+FormattedOffset({bytes,length},it->text,position-it->start);
+        };
+        for (auto& [anchor,caret]:selections) { anchor=map(anchor); caret=map(caret); }
+    }
     ApplyEdits(h,edits);
+    for (size_t i=0;i<selections.size();++i) {
+        Sci(h,SCI_SETSELECTIONNANCHOR,i,selections[i].first);
+        Sci(h,SCI_SETSELECTIONNCARET,i,selections[i].second);
+    }
 }
 void StatusText(const std::string& message) {
     const auto wide = files::FromUtf8(message);
@@ -485,6 +528,7 @@ void InsertCompletion(const SCNotification& notification) {
         edits.push_back(ReadEdit(h,edit)); const auto& added=edits.back();
         if (added.end<=mainStart) caret = caret + added.text.size() - (added.end-added.start);
     }
+    PrepareEdits(edits);
     ClearCompletion();
     ApplyEdits(h,edits);
     Sci(h,SCI_SETSEL,caret,caret);
@@ -830,6 +874,7 @@ void FormatBeforeSave(Document& d) {
         Json response;
         for(auto& message:s.transport->Poll()) {
             if(!message.contains("method") && message.contains("id") && message["id"]==id) response=std::move(message);
+            else if(message.contains("method") && message.contains("id")) Receive(s,message);
             else s.deferred.push_back(std::move(message));
         }
         if(!response.is_null()) { FormatResult(d.editor,response.at("result")); return; }

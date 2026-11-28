@@ -97,10 +97,14 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     }
     command(L"Format on save");
     require(GetMenuState(options,item(L"Format on save")._cmdID,MF_BYCOMMAND)&MF_CHECKED);
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("first middle last"));
+    document->Send(SCI_SETSEL,12,7);
     require(frame.Save(*document));
-    require(files::ReadWithEncoding(source,files::Encoding::Utf8).utf8=="formatted");
+    require(files::ReadWithEncoding(source,files::Encoding::Utf8).utf8=="  first   middle  last");
+    require(document->Send(SCI_GETANCHOR)==16 && document->Send(SCI_GETCURRENTPOS)==11);
     command(L"Format on save");
-    document->Send(SCI_UNDO);require(document->Text()=="he");
+    document->Send(SCI_UNDO);require(document->Text()=="first middle last");
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("he"));
     command(L"Format");
     require(pump([&]{return document->Text()=="formatted";}));
     document->Send(SCI_UNDO);require(document->Text()=="he");

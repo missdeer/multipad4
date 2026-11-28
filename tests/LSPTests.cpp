@@ -16,6 +16,7 @@ int main(int argc,char** argv) {
             Decoder decoder;char bytes[8192]; DWORD count;
             const bool mock=std::string_view(argv[1])=="--mock-lsp";
             std::string uri;
+            Json formattingReply;
             unsigned completions=0;
             bool diagnosticsOnly=false;
             std::map<std::string,std::string> documents;
@@ -73,8 +74,18 @@ int main(int argc,char** argv) {
                         result={{"contents",{{"kind","plaintext"},{"value","Mock hover documentation"}}}};
                     }
                     else if(method=="textDocument/signatureHelp")result=Json::parse(R"json({"signatures":[{"label":"hello(int value)","parameters":[{"label":[6,15]}]},{"label":"hello(double value)","parameters":[{"label":[6,18]}]}],"activeSignature":null,"activeParameter":null})json");
-                    else if(method=="textDocument/formatting")
-                        result=Json::parse(R"([{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}},"newText":"formatted"}])");
+                    else if(method=="textDocument/formatting") {
+                        const auto& text=documents.at(value.at("params").at("textDocument").at("uri").get<std::string>());
+                        Json edit{{"range",{{"start",Position(text,0)},{"end",Position(text,text.size())}}},
+                            {"newText",text=="he" ? "formatted" : "  first   middle  last"}};
+                        formattingReply={{"jsonrpc","2.0"},{"id",value.at("id")},{"result",Json::array({edit})}};
+                        send({{"jsonrpc","2.0"},{"id","format-settings"},{"method","workspace/configuration"},
+                            {"params",{{"items",Json::array({Json::object()})}}}});
+                        return;
+                    } else if(method.empty() && value.at("id")=="format-settings") {
+                        Require(value.at("result").size()==1);
+                        send(formattingReply); return;
+                    }
                     else if(method=="textDocument/selectionRange")
                         result=Json::parse(R"([{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}}}])");
                     else if(method=="textDocument/definition" || method=="textDocument/references") {
