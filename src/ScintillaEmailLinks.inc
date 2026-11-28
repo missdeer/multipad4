@@ -5,6 +5,11 @@ auto localChar = [](unsigned char ch) noexcept {
     return IsAlphaNumeric(ch) || ch == '.' || ch == '_' || ch == '%' || ch == '+' || ch == '-';
 };
 auto domainChar = [](unsigned char ch) noexcept { return IsAlphaNumeric(ch) || ch == '-'; };
+auto emailBoundaryValid = [&](Sci_PositionU begin) noexcept {
+    if (!begin) return true;
+    const unsigned char previous = emailView[begin - 1];
+    return previous < 128 && !localChar(previous) && !strchr("!#$&'*/=?^`{|}~\"\\", previous);
+};
 for (Sci_PositionU scan = startPos; scan < emailLimit;) {
     const bool first = scan < emailView.length1;
     const char* segment = first ? emailView.segment1 : emailView.segment2;
@@ -16,6 +21,8 @@ for (Sci_PositionU scan = startPos; scan < emailLimit;) {
     Sci_PositionU begin = middle, end = scan;
     while (begin > startPos && localChar(emailView[begin - 1])) --begin;
     if (begin == middle || emailView[begin] == '.' || emailView[middle - 1] == '.') continue;
+    // Reject unsupported local parts in full instead of linking a different recipient.
+    if (!emailBoundaryValid(begin)) continue;
     while (end < emailLimit && (domainChar(emailView[end]) || emailView[end] == '.')) ++end;
     // A sentence's final period is not part of the address.
     if (end > scan && emailView[end - 1] == '.') --end;

@@ -38,6 +38,13 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("user%41@example.com\n"));
     document->Send(SCI_COLOURISE,0,-1);
     require(document->LinkTargetAt(0) == L"mailto:user%2541@example.com");
+    for (char special : std::string("!#$&'*/=?^`{|}~\"\\")) {
+        const std::string unsupported = std::string("o") + special + "www.connor@example.com\n";
+        document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(unsupported.c_str()));
+        document->Send(SCI_COLOURISE,0,-1);
+        require(document->LinkTargetAt(2).empty());
+        require(!document->Send(SCI_INDICATORVALUEAT,INDICATOR_LINK,2));
+    }
     document->path=L"links.md"; document->ConfigureLexer();
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("[site](https://example.com)\n<https://example.org>\n"));
     document->Send(SCI_COLOURISE,0,-1);
