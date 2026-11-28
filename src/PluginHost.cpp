@@ -150,6 +150,8 @@ void PluginHost::Initialize(MainFrame& owner) {
             AppendMenuW(submenu, MF_STRING | (item._init2Check ? MF_CHECKED : 0), item._cmdID, item._itemName);
             if (auto* key = item._pShKey; key && key->_key) keys.push_back({static_cast<BYTE>(FVIRTKEY | (key->_isCtrl ? FCONTROL : 0) | (key->_isAlt ? FALT : 0) | (key->_isShift ? FSHIFT : 0)), key->_key, static_cast<WORD>(item._cmdID)});
         }
+        if (auto customize = reinterpret_cast<void(__cdecl*)(HMENU)>(GetProcAddress(plugin.library, "multipadCustomizeMenu")))
+            customize(submenu);
         const auto getMainMenuLabel = reinterpret_cast<const wchar_t* (__cdecl*)()>(
             GetProcAddress(plugin.library, "multipadGetMainMenuLabel"));
         const wchar_t* mainMenuLabel = getMainMenuLabel ? getMainMenuLabel() : nullptr;
@@ -240,8 +242,8 @@ bool PluginHost::Execute(UINT id) {
     p.items[target.item]._pFunc();frame->Refresh();return true;
 }
 bool PluginHost::PreTranslate(MSG* msg) {
-    if (accelerators && TranslateAcceleratorW(*frame, accelerators, msg)) return true;
     for(auto index:pretranslators)if(plugins[index].preTranslate(msg))return true;
+    if (accelerators && TranslateAcceleratorW(*frame, accelerators, msg)) return true;
     for (HWND dialog : modeless) if (::IsWindow(dialog) && IsDialogMessageW(dialog, msg)) return true;
     return false;
 }

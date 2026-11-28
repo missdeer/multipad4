@@ -28,7 +28,7 @@ int main(int argc,char** argv) {
                     if(method=="initialize") {
                         const auto& options=value["params"]["initializationOptions"];
                         diagnosticsOnly=options.is_object() && options.value("diagnosticsOnly",false);
-                        result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true}}}};
+                        result={{"capabilities",{{"textDocumentSync",{{"openClose",true},{"change",2},{"save",true}}},{"completionProvider",Json::object()},{"hoverProvider",true},{"definitionProvider",true},{"referencesProvider",true},{"documentFormattingProvider",true},{"selectionRangeProvider",true}}}};
                         if(diagnosticsOnly)result["capabilities"].erase("completionProvider");
                     }
                     else if(method=="textDocument/didOpen"){
@@ -73,7 +73,11 @@ int main(int argc,char** argv) {
                         result={{"contents",{{"kind","plaintext"},{"value","Mock hover documentation"}}}};
                     }
                     else if(method=="textDocument/signatureHelp")result=Json::parse(R"json({"signatures":[{"label":"hello(int value)","parameters":[{"label":[6,15]}]},{"label":"hello(double value)","parameters":[{"label":[6,18]}]}],"activeSignature":null,"activeParameter":null})json");
-                    else if(method=="textDocument/definition") {
+                    else if(method=="textDocument/formatting")
+                        result=Json::parse(R"([{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}},"newText":"formatted"}])");
+                    else if(method=="textDocument/selectionRange")
+                        result=Json::parse(R"([{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}}}])");
+                    else if(method=="textDocument/definition" || method=="textDocument/references") {
                         result=Json::parse(R"([{"uri":"","range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}}}])");
                         result[0]["uri"]=uri;
                     }

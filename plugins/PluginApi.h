@@ -4,6 +4,7 @@
 // Optional export BOOL multipadCommandEnabled(UINT commandId) controls menu and dispatch.
 // Optional export void multipadPopulateEditorContextMenu(HMENU) appends commands
 // using the IDs assigned to the plugin's FuncItem entries.
+// Optional export void multipadCustomizeMenu(HMENU) groups assigned command IDs into submenus.
 // Optional export const wchar_t* multipadGetMainMenuLabel() runs after getFuncsArray.
 // Return a UTF-16 label in static storage to place the plugin's FuncItem menu on the
 // main menu bar. Return nullptr or an empty label to use the Plugins menu.

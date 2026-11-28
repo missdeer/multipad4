@@ -10,11 +10,12 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     };
     auto plugin=std::find_if(frame.plugins.plugins.begin(),frame.plugins.plugins.end(),[](const auto& p){return p.module==L"LSPClient.dll";});
     require(plugin!=frame.plugins.plugins.end());
-    auto command=[&](std::wstring_view label){
-        for(int i=0;i<plugin->count;++i)if(label==plugin->items[i]._itemName){require(frame.plugins.Execute(plugin->items[i]._cmdID));return;}
+    auto item=[&](std::wstring_view label)->FuncItem&{
+        for(int i=0;i<plugin->count;++i)if(label==std::wstring_view(plugin->items[i]._itemName).substr(0,std::wstring_view(plugin->items[i]._itemName).find(L'\t'))) return plugin->items[i];
         throw std::runtime_error("Missing LSP command");
     };
-    struct Restore {PluginHost& host;fs::path config;PFUNCPLUGINCMD stop;~Restore(){stop();host.config=std::move(config);}} restore{frame.plugins,frame.plugins.config,plugin->items[2]._pFunc};
+    auto command=[&](std::wstring_view label){if(!frame.plugins.Execute(item(label)._cmdID)) throw std::runtime_error("Disabled LSP command: "+files::ToUtf8(std::wstring(label)));};
+    struct Restore {PluginHost& host;fs::path config;PFUNCPLUGINCMD stop;~Restore(){stop();host.config=std::move(config);}} restore{frame.plugins,frame.plugins.config,item(L"Stop")._pFunc};
     fs::create_directories(directory);frame.plugins.config=directory;
     qaArtifactDirectory=directory/L"screenshots";
     wchar_t exe[32768];GetModuleFileNameW(nullptr,exe,_countof(exe));
@@ -44,12 +45,23 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
         do {MSG message;while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}if(predicate())return true;MsgWaitForMultipleObjects(0,nullptr,FALSE,10,QS_ALLINPUT);}while(GetTickCount64()<end);
         return false;
     };
+    auto main=frame.runtime.mainMenu;
+    bool topLevel=false;
+    for (int i=0;i<GetMenuItemCount(main);++i) topLevel |= GetSubMenu(main,i)==plugin->submenu;
+    require(topLevel);
+    auto options=GetSubMenu(plugin->submenu,GetMenuItemCount(plugin->submenu)-1);
+    require(options && GetMenuItemCount(options)>=11);
+    require(GetMenuState(options,item(L"Show hover information")._cmdID,MF_BYCOMMAND)&MF_CHECKED);
+    frame.plugins.UpdateMenu(plugin->submenu);
+    require(GetMenuState(plugin->submenu,item(L"Go to Declaration")._cmdID,MF_BYCOMMAND)&MF_GRAYED);
+    CaptureQAPopup(frame,plugin->submenu,L"LSP-menu");
+    CaptureQAPopup(frame,options,L"LSP-options");
     document->Send(SCI_AUTOCSETCHOOSESINGLE,TRUE);
     // The old completion list must not survive an LSP ownership transfer.
     document->Send(SCI_AUTOCSETSEPARATOR,'\n');
     document->Send(SCI_AUTOCSHOW,0,reinterpret_cast<LPARAM>("oldOne\noldTwo"));
     require(document->Send(SCI_AUTOCACTIVE)!=0);
-    command(L"Start / Restart");require(pump([&]{return document->externalCompletion;}));
+    command(L"Restart All LSP Servers");require(pump([&]{return document->externalCompletion;}));
     require(!document->Send(SCI_AUTOCACTIVE));
     require(document->Send(SCI_GETCODEPAGE)==SC_CP_UTF8);
     if(real) {
@@ -83,6 +95,25 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
         if(project)document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(original.c_str()));
         document->Send(SCI_SETSAVEPOINT);return;
     }
+    command(L"Format on save");
+    require(GetMenuState(options,item(L"Format on save")._cmdID,MF_BYCOMMAND)&MF_CHECKED);
+    require(frame.Save(*document));
+    require(files::ReadWithEncoding(source,files::Encoding::Utf8).utf8=="formatted");
+    command(L"Format on save");
+    document->Send(SCI_UNDO);require(document->Text()=="he");
+    command(L"Format");
+    require(pump([&]{return document->Text()=="formatted";}));
+    document->Send(SCI_UNDO);require(document->Text()=="he");
+    document->Send(SCI_GOTOPOS,0);
+    command(L"Expand Selection");
+    require(pump([&]{return document->Send(SCI_GETSELECTIONEND)==2;}));
+    command(L"Shrink Selection");require(document->Send(SCI_GETSELECTIONEMPTY));
+    command(L"Find References");
+    require(pump([&]{return frame.Active()!=document;}));
+    require(frame.Active()->Text().find(".lsptest:1")!=std::string::npos);
+    command(L"Close All Dynamic Reference Tabs");require(frame.Active()==document);
+    command(L"Restart LSP Server");
+    SetFocus(document->hwnd);
     require(pump([&]{return document->Send(SCI_INDICATORVALUEAT,frame.plugins.nextIndicator-1,0)!=0;}));
     document->Send(SCI_GOTOPOS,2);SetFocus(document->hwnd);
     command(L"Complete");
@@ -224,7 +255,7 @@ inline void RunLSPPluginTests(MainFrame& frame, const std::filesystem::path& dir
     require(!document->Send(SCI_AUTOCACTIVE));
     settings["servers"][0]["initializationOptions"]={{"diagnosticsOnly",true}};
     files::WriteAtomic(directory/L"LSPClient.json",{settings.dump()});
-    command(L"Start / Restart");
+    command(L"Restart All LSP Servers");
     require(pump([&]{return other->Send(SCI_INDICATORVALUEAT,frame.plugins.nextIndicator-1,0)!=0;}));
     require(!other->externalCompletion);
     SetFocus(other->hwnd);other->Send(SCI_GOTOPOS,other->Send(SCI_GETLENGTH));

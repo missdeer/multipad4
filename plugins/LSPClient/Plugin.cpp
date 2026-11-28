@@ -19,6 +19,14 @@ NppData host{};
 HINSTANCE instance;
 HWND timerWindow;
 bool enabled = false, ticking = false;
+enum Option { Documentation, AutoSignature, IncludeDeclaration, Parentheses, AutoHover, OnTyping,
+    OnSave, Incremental, GotoHighlight, DiagnosticNotifications, Messages, OptionCount };
+bool options[OptionCount]{true,true,true,true,true,false,false,false,true,true,true};
+bool suspended = false;
+int highlightIndicator = -1;
+std::map<UINT_PTR, std::vector<Json>> resultTabs;
+std::set<HWND> highlightedEditors;
+std::vector<UINT_PTR> suspendedBuffers;
 int indicator = -1, nextRequest = 1;
 std::string lastError;
 constexpr size_t MaxDocument = 8 * 1024 * 1024;
@@ -91,6 +99,11 @@ struct Session {
     bool ready = false, failed = false;
     ULONGLONG started = GetTickCount64();
     int initialize = 0;
+    std::deque<Json> deferred;
+    bool Supports(const char* name) const {
+        auto it = capabilities.find(name);
+        return ready && !failed && it != capabilities.end() && (it->is_object() || *it == true);
+    }
     bool CanComplete() const {
         const auto provider = capabilities.find("completionProvider");
         return provider != capabilities.end() && provider->is_object();
@@ -110,6 +123,8 @@ struct Document {
     bool opened = false, dirty = true, disabled = false;
     ULONGLONG changed = 0;
     std::vector<Json> diagnostics;
+    std::vector<std::pair<LRESULT,LRESULT>> selections;
+    std::pair<LRESULT,LRESULT> expanded;
 };
 std::map<std::wstring, std::unique_ptr<Session>> sessions;
 std::map<UINT_PTR, Document> documents;
@@ -158,10 +173,11 @@ void ClearDiagnostics(Document& d) {
     }
     d.diagnostics.clear();
 }
+void ClearHighlights(HWND);
 void Stop() {
     enabled = false; completionRetry.reset(); scheduledMethod.clear(); ++epoch; ClearCompletion();
     for (auto& [id, d] : documents) {
-        ClearDiagnostics(d); Host(MPM_SETEXTERNALCOMPLETION, id, FALSE);
+        ClearHighlights(d.editor); ClearDiagnostics(d); Host(MPM_SETEXTERNALCOMPLETION, id, FALSE);
         if (auto h = Editor(id)) Sci(h, SCI_CALLTIPCANCEL);
     }
     // The process job also stops descendants when a server ignores shutdown.
@@ -179,13 +195,13 @@ void Error(const std::exception& e, bool display = false) {
 }
 Json ReadConfig() {
     std::ifstream input(Config());
-    if (!input) throw std::runtime_error("Use LSP Client > Configure Servers first");
+    if (!input) throw std::runtime_error("Use LSP Client > More Options > Configure Servers first");
     auto config = Json::parse(input);
     if (!config.is_object() || !config.contains("servers") || !config["servers"].is_array()) throw std::runtime_error("Expected a servers array in LSPClient.json");
     return config;
 }
-void Attach() {
-    const auto id = Active(); const auto path = Path(id); auto h = Editor(id);
+void Attach(UINT_PTR id = Active()) {
+    const auto path = Path(id); auto h = Editor(id);
     if (!enabled || !h || path.empty() || Sci(h, SCI_GETCODEPAGE) != SC_CP_UTF8 || Sci(h, SCI_GETLENGTH) > MaxDocument) return;
     if (documents.contains(id) && documents.at(id).uri == Uri(path)) return;
     if (documents.contains(id)) {
@@ -258,13 +274,19 @@ void Sync(Document& d) {
         const auto kind = sync.is_number() ? sync.get<int>() : sync.value("change", 0);
         if (kind) {
             Json change{{"text",text}};
-            if (kind == 2) change = Change(d.text, text);
+            if (kind == 2) {
+                if (options[Incremental]) change = Change(d.text, text);
+                else change["range"] = {{"start",{{"line",0},{"character",0}}},{"end",Position(d.text,d.text.size())}};
+            }
             s.Send("textDocument/didChange", {{"textDocument",{{"uri",d.uri},{"version",++d.version}}},{"contentChanges",Json::array({change})}});
         }
     }
     d.text = std::move(text); d.dirty = false;
 }
-void Request(const std::string& method, LRESULT position = -1, ULONGLONG retryStarted = 0) {
+Json FormatOptions(HWND h) {
+    return {{"tabSize",Sci(h,SCI_GETTABWIDTH)},{"insertSpaces",!Sci(h,SCI_GETUSETABS)}};
+}
+void Request(const std::string& method, LRESULT position = -1, ULONGLONG retryStarted = 0, std::string argument = {}) {
     Attach(); auto it = documents.find(Active()); if (it == documents.end()) return;
     auto& d = it->second; if (!d.session->ready || d.session->failed) return;
     if (method=="textDocument/completion" && !d.session->CanComplete()) return;
@@ -278,6 +300,17 @@ void Request(const std::string& method, LRESULT position = -1, ULONGLONG retrySt
     pending.emplace(request, Pending{method,d.id,d.revision,epoch,hoverEpoch,Sci(h,SCI_GETCURRENTPOS),position,retryStarted?retryStarted:GetTickCount64(),d.session});
     Json params{{"textDocument",{{"uri",d.uri}}},{"position",Position(d.text,position)}};
     if (method == "textDocument/completion") params["context"] = {{"triggerKind",retryStarted?3:1}};
+    if (method == "workspace/symbol") params = {{"query",argument}};
+    if (method == "textDocument/selectionRange") {
+        params["positions"] = Json::array({Position(d.text,Sci(h,SCI_GETSELECTIONSTART))});
+        params.erase("position");
+    }
+    if (method == "textDocument/formatting" || method == "textDocument/onTypeFormatting") {
+        params["options"] = FormatOptions(h);
+        if (argument.empty()) params.erase("position");
+        else params["ch"] = argument;
+    }
+    if (method == "textDocument/references") params["context"] = {{"includeDeclaration",options[IncludeDeclaration]}};
     d.session->transport->Send({{"jsonrpc","2.0"},{"id",request},{"method",method},{"params",std::move(params)}});
 }
 std::string Content(const Json& content) {
@@ -352,6 +385,82 @@ void ShowCompletion(Document& d, const Json& result) {
     // The server has already filtered candidates; labels may be fuzzy matches.
     Sci(h,SCI_AUTOCSHOW,0,reinterpret_cast<LPARAM>(list.c_str()));
 }
+struct Edit { size_t start,end; std::string text; };
+Edit ReadEdit(HWND h, const Json& edit) {
+    const auto& range = edit.contains("range") ? edit.at("range") : edit.at("replace");
+    Edit parsed{EditorOffset(h,range.at("start")),EditorOffset(h,range.at("end")),edit.at("newText").get<std::string>()};
+    if (parsed.end < parsed.start || parsed.text.find('\0') != std::string::npos)
+        throw std::runtime_error("Invalid text edit");
+    return parsed;
+}
+void ApplyEdits(HWND h, std::vector<Edit>& edits) {
+    if (Sci(h,SCI_GETREADONLY) || edits.empty()) return;
+    std::stable_sort(edits.begin(),edits.end(),[](const auto& a,const auto& b){return std::tie(a.start,a.end)<std::tie(b.start,b.end);});
+    for(size_t i=1;i<edits.size();++i) if(edits[i].start<edits[i-1].end) throw std::runtime_error("Overlapping text edits");
+    Sci(h,SCI_BEGINUNDOACTION);
+    for(auto it=edits.rbegin();it!=edits.rend();++it){Sci(h,SCI_SETTARGETRANGE,it->start,it->end);Sci(h,SCI_REPLACETARGET,it->text.size(),reinterpret_cast<LPARAM>(it->text.data()));}
+    Sci(h,SCI_ENDUNDOACTION);
+}
+void FormatResult(HWND h,const Json& result) {
+    if (!result.is_array()) return;
+    std::vector<Edit> edits;
+    for (const auto& edit : result) edits.push_back(ReadEdit(h,edit));
+    ApplyEdits(h,edits);
+}
+void StatusText(const std::string& message) {
+    const auto wide = files::FromUtf8(message);
+    Host(NPPM_SETSTATUSBAR,0,reinterpret_cast<LPARAM>(wide.c_str()));
+}
+void MarkRange(HWND h,const Json& range) {
+    if (highlightIndicator < 0) return;
+    auto start = EditorOffset(h,range.at("start")), end = EditorOffset(h,range.at("end"));
+    Sci(h,SCI_INDICSETSTYLE,highlightIndicator,INDIC_ROUNDBOX);
+    Sci(h,SCI_INDICSETFORE,highlightIndicator,RGB(65,150,225));
+    Sci(h,SCI_SETINDICATORCURRENT,highlightIndicator);
+    if(end>start) {
+        Sci(h,SCI_INDICATORFILLRANGE,start,end-start);
+        highlightedEditors.insert(h);
+    }
+}
+void ClearHighlights(HWND h) {
+    if (highlightedEditors.erase(h)) {
+        Sci(h,SCI_SETINDICATORCURRENT,highlightIndicator);
+        Sci(h,SCI_INDICATORCLEARRANGE,0,Sci(h,SCI_GETLENGTH));
+    }
+}
+void Jump(const Json& location) {
+    auto path = FromUri(location.value("uri",location.value("targetUri",std::string())));
+    auto range = location.contains("range") ? location.at("range") : location.at("targetSelectionRange");
+    if (!Host(NPPM_DOOPEN,0,reinterpret_cast<LPARAM>(path.c_str()))) return;
+    if (auto h = Editor(Active())) {
+        Sci(h,SCI_GOTOPOS,EditorOffset(h,range.at("start")));
+        Sci(h,SCI_SCROLLCARET);
+        if (options[GotoHighlight]) { ClearHighlights(h); MarkRange(h,range); }
+    }
+}
+void ShowLocations(const Json& result, const wchar_t* title) {
+    std::string lines;
+    std::vector<Json> locations;
+    for (const auto& entry : result) {
+        auto& location = entry.contains("location") ? entry.at("location") : entry;
+        const auto range = location.contains("range") ? location.at("range") : location.at("targetSelectionRange");
+        const auto path = FromUri(location.value("uri",location.value("targetUri",std::string())));
+        auto name = entry.value("name","");
+        std::replace_if(name.begin(),name.end(),[](char c){return c=='\r'||c=='\n';},' ');
+        lines += name + (name.empty()?"":"  ") + files::ToUtf8(path.wstring()) + ":" +
+            std::to_string(range.at("start").at("line").get<int64_t>()+1) + "\r\n";
+        locations.push_back(location);
+    }
+    if (locations.empty()) { StatusText("No matching locations"); return; }
+    auto previous = Active();
+    if (!Host(NPPM_MENUCOMMAND,0,41001) || Active()==previous) return;
+    auto id = Active(); auto h = Editor(id);
+    if (!h || !Path(id).empty() || Sci(h,SCI_GETLENGTH)) return;
+    Host(NPPM_SETUNTITLEDNAME,id,reinterpret_cast<LPARAM>(title));
+    Sci(h,SCI_SETTEXT,0,reinterpret_cast<LPARAM>(lines.c_str()));
+    Sci(h,SCI_EMPTYUNDOBUFFER); Sci(h,SCI_SETSAVEPOINT); Sci(h,SCI_SETREADONLY,TRUE);
+    resultTabs.emplace(id,std::move(locations));
+}
 void InsertCompletion(const SCNotification& notification) {
     const auto id = completion.buffer; auto h = Editor(id); auto found = documents.find(id);
     auto item = completion.items.find(notification.text ? notification.text : "");
@@ -364,29 +473,21 @@ void InsertCompletion(const SCNotification& notification) {
         return;
     }
     auto value = item->second;
-    struct Edit { size_t start,end; std::string text; };
     std::vector<Edit> edits;
-    auto add = [&](const Json& edit) {
-        auto range = edit.contains("range") ? edit.at("range") : edit.at("replace");
-        auto start=EditorOffset(h,range.at("start")),end=EditorOffset(h,range.at("end"));
-        if (end<start) throw std::runtime_error("Invalid completion edit range");
-        auto text=edit.at("newText").get<std::string>();
-        if(text.find('\0')!=std::string::npos) throw std::runtime_error("NUL in completion edit");
-        edits.push_back({start,end,std::move(text)});
-    };
-    if (value.contains("textEdit")) add(value.at("textEdit"));
+    if (value.contains("textEdit")) edits.push_back(ReadEdit(h,value.at("textEdit")));
     else edits.push_back({static_cast<size_t>(completion.start),static_cast<size_t>(Sci(h,SCI_GETCURRENTPOS)),value.value("insertText",value.at("label").get<std::string>())});
-    const auto mainStart=edits[0].start; auto caret=edits[0].start+edits[0].text.size();
+    const int kind = value.value("kind",0);
+    bool addParens = options[Parentheses] && (kind == 2 || kind == 3) &&
+        edits.front().text.find('(') == std::string::npos && Sci(h,SCI_GETCHARAT,edits.front().end) != '(';
+    if (addParens) edits.front().text += "()";
+    const auto mainStart=edits[0].start; auto caret=edits[0].start+edits[0].text.size() - addParens;
     for (const auto& edit : value.value("additionalTextEdits",Json::array())) {
-        add(edit); const auto& added=edits.back();
+        edits.push_back(ReadEdit(h,edit)); const auto& added=edits.back();
         if (added.end<=mainStart) caret = caret + added.text.size() - (added.end-added.start);
     }
-    std::sort(edits.begin(),edits.end(),[](const auto& a,const auto& b){return a.start<b.start;});
-    for(size_t i=1;i<edits.size();++i) if(edits[i].start<edits[i-1].end || edits[i].start==edits[i-1].start) throw std::runtime_error("Overlapping completion edits");
     ClearCompletion();
-    Sci(h,SCI_BEGINUNDOACTION);
-    for(auto it=edits.rbegin();it!=edits.rend();++it){Sci(h,SCI_SETTARGETRANGE,it->start,it->end);Sci(h,SCI_REPLACETARGET,it->text.size(),reinterpret_cast<LPARAM>(it->text.data()));}
-    Sci(h,SCI_SETSEL,caret,caret); Sci(h,SCI_ENDUNDOACTION);
+    ApplyEdits(h,edits);
+    Sci(h,SCI_SETSEL,caret,caret);
 }
 void Diagnostics(Session& session,const Json& params) {
     for (auto& [id,d] : documents) {
@@ -396,6 +497,8 @@ void Diagnostics(Session& session,const Json& params) {
         ClearDiagnostics(d);
         if(indicator<0) continue;
         Sci(h,SCI_INDICSETSTYLE,indicator,INDIC_SQUIGGLE); Sci(h,SCI_INDICSETFORE,indicator,RGB(220,55,55)); Sci(h,SCI_SETINDICATORCURRENT,indicator);
+        if (options[DiagnosticNotifications] && id==Active() && !params.at("diagnostics").empty())
+            StatusText(params.at("diagnostics").front().value("message",""));
         size_t count = 0;
         bool reported = false;
         for(const auto& diagnostic:params.at("diagnostics")) {
@@ -431,7 +534,10 @@ void Receive(Session& session,const Json& message) {
             }
             session.transport->Send({{"jsonrpc","2.0"},{"id",message["id"]},{"result",result}});
         } else if(method=="textDocument/publishDiagnostics") Diagnostics(session,message.at("params"));
-        else if(method=="window/logMessage" || method=="window/showMessage") lastError=message.at("params").value("message","");
+        else if(method=="window/logMessage" || method=="window/showMessage") {
+            lastError=message.at("params").value("message","");
+            if (options[Messages]) StatusText(lastError);
+        }
         return;
     }
     if(!message.contains("id") || !message["id"].is_number_integer()) return;
@@ -464,13 +570,32 @@ void Receive(Session& session,const Json& message) {
         signatureIndex=(std::min)(result.contains("activeSignature") && !result["activeSignature"].is_null() ? result["activeSignature"].get<size_t>() : size_t(0),signatures.size()-1);
         if(!signatures[signatureIndex].contains("activeParameter"))signatures[signatureIndex]["activeParameter"]=result.contains("activeParameter") ? result["activeParameter"] : Json(0u);
         signatureBuffer=request.buffer;signatureAnchor=request.caret;Signature();
-    } else if(request.method=="textDocument/definition") {
-        Json location=result.is_array()?(result.empty()?Json():result.front()):result;if(location.is_null())return;
-        auto path=FromUri(location.value("uri",location.value("targetUri",std::string())));
-        auto range=location.contains("range")?location["range"]:location.at("targetSelectionRange");
-        if(Host(NPPM_DOOPEN,0,reinterpret_cast<LPARAM>(path.c_str()))) {
-            auto target=Editor(Active());if(!target)return;auto text=Text(target);auto position=Offset(text,range.at("start"));Sci(target,SCI_GOTOPOS,position);Sci(target,SCI_SCROLLCARET);
+    } else if (request.method=="textDocument/documentHighlight") {
+        ClearHighlights(h);
+        for (const auto& item : result) MarkRange(h,item.at("range"));
+    } else if (request.method=="textDocument/selectionRange") {
+        auto start = Sci(h,SCI_GETSELECTIONSTART), end = Sci(h,SCI_GETSELECTIONEND);
+        if (result.empty()) return;
+        for (const Json* node = &result.at(0); node;) {
+            const auto& range = node->at("range");
+            auto left = static_cast<LRESULT>(EditorOffset(h,range.at("start")));
+            auto right = static_cast<LRESULT>(EditorOffset(h,range.at("end")));
+            if (left<=start && end<=right && (left<start || end<right)) {
+                if (doc->second.expanded!=std::pair{start,end}) doc->second.selections.clear();
+                doc->second.expanded={left,right};
+                doc->second.selections.emplace_back(Sci(h,SCI_GETANCHOR),request.caret);
+                Sci(h,SCI_SETSEL,left,right);
+                break;
+            }
+            auto parent = node->find("parent");
+            node = parent==node->end() ? nullptr : &*parent;
         }
+    } else if (request.method=="textDocument/formatting" || request.method=="textDocument/onTypeFormatting") {
+        FormatResult(h,result);
+    } else if (request.method=="workspace/symbol" || request.method=="textDocument/references" || (result.is_array() && result.size()>1)) {
+        ShowLocations(result,request.method=="workspace/symbol" ? L"LSP Symbols" : L"LSP References");
+    } else if (!result.empty()) {
+        Jump(result.is_array()?result.front():result);
     }
 }
 void Tick() {
@@ -482,7 +607,12 @@ void Tick() {
             try {
                 auto failure=s->transport->Error();if(!failure.empty())throw std::runtime_error(failure);
                 if(!s->ready && GetTickCount64()-s->started>15000)throw std::runtime_error("Language server initialization timed out");
-                for(const auto& message:s->transport->Poll()) {
+                auto incoming = s->transport->Poll();
+                if (!s->deferred.empty()) {
+                    s->deferred.insert(s->deferred.end(),std::make_move_iterator(incoming.begin()),std::make_move_iterator(incoming.end()));
+                    incoming.clear(); incoming.swap(s->deferred);
+                }
+                for(const auto& message:incoming) {
                     try { Receive(*s,message); }
                     catch(const std::exception& e) {
                         if (!s->ready) throw;
@@ -518,9 +648,15 @@ void Tick() {
     ticking=false;
 }
 LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {if(m==WM_TIMER){Tick();return 0;}return DefWindowProcW(h,m,w,l);}
+void SetSuspended(bool value);
 void Start() {
+    auto buffers=std::move(suspendedBuffers);
+    for(const auto& [id,doc]:documents) buffers.push_back(id);
+    SetSuspended(false);
     try {
-        Stop();ReadConfig();enabled=true;lastError.clear();Attach();SetTimer(timerWindow,1,40,nullptr);
+        Stop();ReadConfig();enabled=true;lastError.clear();
+        for(auto id:buffers) Attach(id);
+        Attach();SetTimer(timerWindow,1,40,nullptr);
     }catch(const std::exception& e){Stop();Error(e,true);}
 }
 void Configure() {
@@ -535,33 +671,228 @@ void Configure() {
 }
 template<const char* Method> void Command() {try{Request(Method);}catch(const std::exception& e){Error(e,true);}}
 constexpr char CompleteMethod[]="textDocument/completion",HoverMethod[]="textDocument/hover",SignatureMethod[]="textDocument/signatureHelp",DefinitionMethod[]="textDocument/definition";
-void Status(){MessageBoxW(host._nppHandle,files::FromUtf8(lastError.empty()?(enabled?"LSP enabled. Servers: "+std::to_string(sessions.size()):"LSP stopped. Configure Servers, then Start / Restart."):lastError).c_str(),L"LSP Client",MB_OK);}
+void Status(){MessageBoxW(host._nppHandle,files::FromUtf8(lastError.empty()?(enabled?"LSP enabled. Servers: "+std::to_string(sessions.size()):"LSP stopped. Configure Servers, then Restart All LSP Servers."):lastError).c_str(),L"LSP Client",MB_OK);}
+constexpr char DeclarationMethod[]="textDocument/declaration", TypeMethod[]="textDocument/typeDefinition",
+    ImplementationMethod[]="textDocument/implementation", HighlightMethod[]="textDocument/documentHighlight",
+    FormatMethod[]="textDocument/formatting", SelectionMethod[]="textDocument/selectionRange",
+    ReferencesMethod[]="textDocument/references";
+INT_PTR CALLBACK QueryProc(HWND dialog,UINT message,WPARAM w,LPARAM l) {
+    if (message==WM_INITDIALOG) { SetWindowLongPtrW(dialog,DWLP_USER,l); return TRUE; }
+    if (message!=WM_COMMAND) return FALSE;
+    if (LOWORD(w)==IDOK) GetDlgItemTextW(dialog,101,reinterpret_cast<wchar_t*>(GetWindowLongPtrW(dialog,DWLP_USER)),512);
+    else if (LOWORD(w)!=IDCANCEL) return FALSE;
+    EndDialog(dialog,LOWORD(w)); return TRUE;
+}
+void SearchSymbol() {
+    wchar_t query[512]{};
+    if (DialogBoxParamW(instance,MAKEINTRESOURCEW(100),host._nppHandle,QueryProc,reinterpret_cast<LPARAM>(query))==IDOK) {
+        try { Request("workspace/symbol",-1,0,files::ToUtf8(query)); } catch(const std::exception& e){ Error(e,true); }
+    }
+}
+void Shrink() {
+    auto& d = documents.at(Active());
+    auto [anchor,caret] = d.selections.back();
+    d.selections.pop_back();
+    d.expanded=std::minmax(anchor,caret);
+    Sci(d.editor,SCI_SETSEL,anchor,caret);
+}
+void CloseResults() {
+    std::vector<UINT_PTR> ids;
+    for (auto& [id,locations] : resultTabs) ids.push_back(id);
+    for (auto id : ids) Host(MPM_CLOSEBUFFER,id);
+}
+void RestartCurrent() {
+    auto it=documents.find(Active());
+    if(it==documents.end()) return;
+    auto* session=it->second.session;
+    ++epoch; completionRetry.reset(); scheduledMethod.clear(); ClearCompletion();
+    std::erase_if(pending,[&](const auto& entry){return entry.second.session==session;});
+    std::vector<UINT_PTR> buffers;
+    for (auto doc=documents.begin();doc!=documents.end();) {
+        auto& d=doc->second;
+        if (d.session!=session) { ++doc; continue; }
+        Host(MPM_SETEXTERNALCOMPLETION,d.id,FALSE); ClearDiagnostics(d); ClearHighlights(d.editor);
+        Sci(d.editor,SCI_CALLTIPCANCEL);
+        buffers.push_back(d.id);
+        doc=documents.erase(doc);
+    }
+    std::erase_if(sessions,[&](const auto& entry){return entry.second.get()==session;});
+    try { for(auto id:buffers) Attach(id); } catch(const std::exception& e){Error(e,true);}
+}
+void Suspend();
+template<Option option> void Toggle();
 ShortcutKey completeKey{true,true,false,VK_SPACE},signatureKey{true,true,true,VK_SPACE},definitionKey{false,true,false,VK_F12};
+ShortcutKey symbolKey{true,true,false,'P'},expandKey{true,false,false,'2'};
 FuncItem commands[]{
-    {L"Configure Servers...",Configure},{L"Start / Restart",Start},{L"Stop",Stop},
-    {L"Complete",Command<CompleteMethod>,0,false,&completeKey},
-    {L"Signature Help",Command<SignatureMethod>,0,false,&signatureKey},
-    {L"Hover",Command<HoverMethod>},{L"Go to Definition",Command<DefinitionMethod>,0,false,&definitionKey},
-    {L"Status / Last Server Message",Status},
+    {L"Go to Definition",Command<DefinitionMethod>,0,false,&definitionKey},
+    {L"Go to Declaration",Command<DeclarationMethod>},
+    {L"Go to Type Definition",Command<TypeMethod>},
+    {L"Find Implementations",Command<ImplementationMethod>},
+    {L"Highlight",Command<HighlightMethod>},{L"Symbol Info",Command<HoverMethod>},
+    {L"Search and Go to Symbol\tCtrl+Alt+P",SearchSymbol,0,false,&symbolKey},
+    {L"Format\tCtrl+T, F",Command<FormatMethod>},
+    {L"Expand Selection\tCtrl+2",Command<SelectionMethod>,0,false,&expandKey},
+    {L"Shrink Selection\tCtrl+Shift+2",Shrink},
+    {},{L"Close All Dynamic Reference Tabs",CloseResults},{L"Suspend All",Suspend},{},
+    {L"Restart LSP Server",RestartCurrent},{L"Restart All LSP Servers",Start},{},
+    {L"Show selected completion documentation",Toggle<Documentation>},
+    {L"Enable signature help with auto completion",Toggle<AutoSignature>},
+    {L"Include declaration in references",Toggle<IncludeDeclaration>},
+    {L"Add parentheses upon function completion",Toggle<Parentheses>},
+    {L"Show hover information",Toggle<AutoHover>},{L"Format on typing",Toggle<OnTyping>},
+    {L"Format on save",Toggle<OnSave>},{L"Incremental document synchronization",Toggle<Incremental>},
+    {L"Highlight goto location",Toggle<GotoHighlight>},
+    {L"Show Diagnostics Notifications",Toggle<DiagnosticNotifications>},{L"Show Messages",Toggle<Messages>},
+    {},{L"Configure Servers...",Configure},{L"Complete",Command<CompleteMethod>,0,false,&completeKey},
+    {L"Signature Help",Command<SignatureMethod>,0,false,&signatureKey},{L"Find References",Command<ReferencesMethod>},
+    {L"Status / Last Server Message",Status},{L"Stop",Stop},
 };
+FuncItem& Item(PFUNCPLUGINCMD function) {
+    return *std::find_if(std::begin(commands),std::end(commands),[&](auto& item){return item._pFunc==function;});
+}
+void SetSuspended(bool value) {
+    suspended=value;
+    Host(NPPM_SETMENUITEMCHECK,Item(Suspend)._cmdID,value);
+}
+void Suspend() {
+    if (suspended) { Start(); }
+    else {
+        suspendedBuffers.clear();
+        for(const auto& [id,doc]:documents) suspendedBuffers.push_back(id);
+        Stop(); SetSuspended(true);
+    }
+}
+template<Option option> void Toggle() {
+    try {
+        auto& item=(&Item(Toggle<Documentation>))[option];
+        auto path=Config().parent_path()/L"LSPClient.ini";
+        if (!WritePrivateProfileStringW(L"Options",item._itemName,options[option]?L"0":L"1",path.c_str()))
+            throw std::runtime_error("Cannot save LSP menu options");
+        options[option]=!options[option];
+        Host(NPPM_SETMENUITEMCHECK,item._cmdID,options[option]);
+        if constexpr(option==AutoHover) { ++hoverEpoch; Sci(Editor(Active()),SCI_CALLTIPCANCEL); }
+    } catch(const std::exception& e){Error(e,true);}
+}
+void BuildOptionsMenu(HMENU root) {
+    const auto first=&Item(Toggle<Documentation>)-commands;
+    HMENU menu=CreatePopupMenu();
+    if(!menu) return;
+    const auto path=Config().parent_path()/L"LSPClient.ini";
+    for (auto i=first;i<std::ssize(commands);++i) {
+        auto& item=commands[i];
+        DeleteMenu(root,static_cast<UINT>(first),MF_BYPOSITION);
+        if (i-first==DiagnosticNotifications || i-first==Messages) AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+        UINT flags=item._pFunc?MF_STRING:MF_SEPARATOR;
+        if (i-first<OptionCount) {
+            auto& flag=options[i-first];
+            flag=GetPrivateProfileIntW(L"Options",item._itemName,flag,path.c_str())!=0;
+            if (flag) flags|=MF_CHECKED;
+        }
+        AppendMenuW(menu,flags,item._cmdID,item._itemName);
+    }
+    AppendMenuW(root,MF_POPUP,reinterpret_cast<UINT_PTR>(menu),L"More Options");
+}
+bool Available(UINT id) {
+    auto found=std::find_if(std::begin(commands),std::end(commands),[&](const auto& item){return static_cast<UINT>(item._cmdID)==id;});
+    if(found==std::end(commands)) return false;
+    auto f=found->_pFunc;
+    if(f==CloseResults) return !resultTabs.empty();
+    auto doc=documents.find(Active());
+    if(f==RestartCurrent) return doc!=documents.end();
+    if(f==Shrink) return doc!=documents.end() && !doc->second.selections.empty() &&
+        doc->second.expanded==std::pair{Sci(doc->second.editor,SCI_GETSELECTIONSTART),Sci(doc->second.editor,SCI_GETSELECTIONEND)};
+    const char* provider=nullptr;
+    if(f==Command<DefinitionMethod>) provider="definitionProvider";
+    if(f==Command<DeclarationMethod>) provider="declarationProvider";
+    if(f==Command<TypeMethod>) provider="typeDefinitionProvider";
+    if(f==Command<ImplementationMethod>) provider="implementationProvider";
+    if(f==Command<HighlightMethod>) provider="documentHighlightProvider";
+    if(f==Command<HoverMethod>) provider="hoverProvider";
+    if(f==SearchSymbol) provider="workspaceSymbolProvider";
+    if(f==Command<ReferencesMethod>) provider="referencesProvider";
+    if(f==Command<FormatMethod>) provider="documentFormattingProvider";
+    if(f==Command<SelectionMethod>) provider="selectionRangeProvider";
+    if(!provider) return true;
+    return doc!=documents.end() && !doc->second.disabled && doc->second.session->Supports(provider) &&
+        (f!=Command<FormatMethod> || !Sci(doc->second.editor,SCI_GETREADONLY));
+}
+void FormatBeforeSave(Document& d) {
+    if (!d.session->Supports("documentFormattingProvider") || Sci(d.editor,SCI_GETREADONLY)) return;
+    Sync(d);
+    if (!d.opened) return;
+    auto& s=*d.session;
+    const int id=nextRequest++;
+    s.transport->Send({{"jsonrpc","2.0"},{"id",id},{"method",FormatMethod},{"params",{
+        {"textDocument",{{"uri",d.uri}}},{"options",FormatOptions(d.editor)}}}});
+    // Save is synchronous. Defer unrelated UI responses until after the write.
+    auto deadline=GetTickCount64()+1000;
+    do {
+        Json response;
+        for(auto& message:s.transport->Poll()) {
+            if(!message.contains("method") && message.contains("id") && message["id"]==id) response=std::move(message);
+            else s.deferred.push_back(std::move(message));
+        }
+        if(!response.is_null()) { FormatResult(d.editor,response.at("result")); return; }
+        if(!s.transport->Error().empty()) break;
+        Sleep(5);
+    } while(GetTickCount64()<deadline);
+    Log("Format on save timed out; saving current text");
+}
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,LPVOID){if(reason==DLL_PROCESS_ATTACH){instance=module;DisableThreadLibraryCalls(module);}return TRUE;}
 extern "C" __declspec(dllexport) BOOL isUnicode(){return TRUE;}
 extern "C" __declspec(dllexport) const wchar_t* getName(){return L"LSP Client";}
+extern "C" __declspec(dllexport) const wchar_t* multipadGetMainMenuLabel(){return L"LSP Client";}
+extern "C" __declspec(dllexport) BOOL multipadCommandEnabled(UINT id){return Available(id);}
+extern "C" __declspec(dllexport) void multipadCustomizeMenu(HMENU menu){
+    try { BuildOptionsMenu(menu); } catch(const std::exception& e){Error(e);}
+}
 extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* count){*count=_countof(commands);return commands;}
 extern "C" __declspec(dllexport) void setInfo(NppData data){
     host=data;WNDCLASSW cls{};cls.hInstance=instance;cls.lpfnWndProc=WindowProc;cls.lpszClassName=L"MultiPad4.LSPClient";
     RegisterClassW(&cls);timerWindow=CreateWindowW(cls.lpszClassName,L"",0,0,0,0,0,HWND_MESSAGE,nullptr,instance,nullptr);
-    Host(NPPM_ALLOCATEINDICATOR,1,reinterpret_cast<LPARAM>(&indicator));
+    if (!Host(NPPM_ALLOCATEINDICATOR,1,reinterpret_cast<LPARAM>(&highlightIndicator))) highlightIndicator=-1;
+    if (!Host(NPPM_ALLOCATEINDICATOR,1,reinterpret_cast<LPARAM>(&indicator))) indicator=-1;
 }
 extern "C" __declspec(dllexport) LRESULT messageProc(UINT,WPARAM,LPARAM){return TRUE;}
 extern "C" __declspec(dllexport) BOOL multipadPreTranslateMessage(MSG* m){
+    static ULONGLONG chordDeadline=0;
+    // Selection Actions also binds Ctrl+Shift+2. Claim it only while an LSP expansion can be undone.
+    if(m->message==WM_KEYDOWN && m->wParam=='2' && GetKeyState(VK_CONTROL)<0 && GetKeyState(VK_SHIFT)<0 &&
+        GetKeyState(VK_MENU)>=0 && m->hwnd==Editor(Active()) && Available(Item(Shrink)._cmdID)) {
+        Shrink(); return TRUE;
+    }
+    if(m->message==WM_KEYDOWN && (chordDeadline || (m->wParam=='T' && GetKeyState(VK_CONTROL)<0) ||
+        (m->wParam==VK_RETURN && !resultTabs.empty())) && m->hwnd==Editor(Active())) {
+        if (m->wParam!=VK_CONTROL && m->wParam!=VK_SHIFT && m->wParam!=VK_MENU) {
+            bool format=chordDeadline && GetTickCount64()<chordDeadline && m->wParam=='F';
+            chordDeadline=0;
+            if ((format || (m->wParam=='T' && GetKeyState(VK_CONTROL)<0)) && Available(Item(Command<FormatMethod>)._cmdID)) {
+                if(format) { Command<FormatMethod>(); return TRUE; }
+                if(m->wParam=='T' && GetKeyState(VK_CONTROL)<0 && GetKeyState(VK_SHIFT)>=0 && GetKeyState(VK_MENU)>=0) {
+                    chordDeadline=GetTickCount64()+1500; return TRUE;
+                }
+            }
+        }
+        if(m->wParam==VK_RETURN && resultTabs.contains(Active())) {
+            const auto& rows=resultTabs.at(Active());
+            auto line=Sci(m->hwnd,SCI_LINEFROMPOSITION,Sci(m->hwnd,SCI_GETCURRENTPOS));
+            try { if(line>=0 && static_cast<size_t>(line)<rows.size()) Jump(rows[line]); } catch(const std::exception& e){Error(e);}
+            return TRUE;
+        }
+    }
     if(m->message==WM_KEYDOWN && m->wParam==VK_ESCAPE){++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;}
     if(m->message==WM_IME_STARTCOMPOSITION){++epoch;ClearCompletion();}
     return FALSE;
 }
 extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCNotification* n){
-    if(!enabled || !n)return FALSE;
+    if(!n)return FALSE;
+    if(n->nmhdr.code==SCN_DOUBLECLICK && resultTabs.contains(Active()) && n->nmhdr.hwndFrom==Editor(Active())) {
+        const auto& rows=resultTabs.at(Active());
+        try { if(n->line>=0 && static_cast<size_t>(n->line)<rows.size()) Jump(rows[n->line]); } catch(const std::exception& e){Error(e);}
+        return TRUE;
+    }
+    if(!enabled)return FALSE;
     const bool selecting = n->nmhdr.code==SCN_AUTOCSELECTION && completion.buffer!=0;
     try {
         auto found=documents.find(Active());
@@ -571,7 +902,7 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
         switch(n->nmhdr.code){
         case SCN_MODIFIED:
             if(n->modificationType&(SC_MOD_INSERTTEXT|SC_MOD_DELETETEXT)){
-                ++d.revision;d.dirty=true;d.changed=GetTickCount64();
+                d.selections.clear(); ClearHighlights(d.editor); ++d.revision;d.dirty=true;d.changed=GetTickCount64();
                 if(completion.buffer==d.id)ClearCompletion();
                 ClearDiagnostics(d);
             }
@@ -580,7 +911,14 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
             if(d.id != Active() || n->listType || n->characterSource==SC_CHARACTERSOURCE_TENTATIVE_INPUT ||
                 (Host(MPM_GETCOMPLETIONSTATE,d.id)&MPC_COMPOSING)) break;
             if(d.session->ready && !d.session->failed && !Sci(Editor(d.id),SCI_GETREADONLY)) {
-                if(n->ch=='(' || n->ch==',') scheduledMethod=SignatureMethod;
+                if (options[OnTyping] && d.session->Supports("documentOnTypeFormattingProvider") && n->ch>0 && n->ch<128) {
+                    const auto& provider=d.session->capabilities.at("documentOnTypeFormattingProvider");
+                    std::string ch(1,static_cast<char>(n->ch));
+                    auto more=provider.value("moreTriggerCharacter",std::vector<std::string>{});
+                    if(provider.value("firstTriggerCharacter","")==ch || std::find(more.begin(),more.end(),ch)!=more.end())
+                        Request("textDocument/onTypeFormatting",-1,0,ch);
+                }
+                if(options[AutoSignature] && (n->ch=='(' || n->ch==',')) scheduledMethod=SignatureMethod;
                 else if(n->ch=='.' || n->ch=='_' || (n->ch>='a' && n->ch<='z') || (n->ch>='A' && n->ch<='Z') || (n->ch>='0' && n->ch<='9')) {
                     if(d.session->CanComplete())scheduledMethod=CompleteMethod;
                     else scheduledMethod.clear();
@@ -590,6 +928,15 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
             }
             break;
         case SCN_FOCUSOUT:++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;break;
+        case SCN_AUTOCSELECTIONCHANGE:
+            if(options[Documentation] && completion.buffer==d.id && n->text) {
+                auto item=completion.items.find(n->text);
+                if(item!=completion.items.end()) {
+                    auto docs=Content(item->second.value("documentation",Json()));
+                    StatusText(docs.empty()?item->second.value("detail",""):docs);
+                }
+            }
+            break;
         case SCN_AUTOCSELECTION:
             if(completion.buffer==d.id){InsertCompletion(*n);return TRUE;}break;
         case SCN_AUTOCCHARDELETED:
@@ -597,7 +944,7 @@ extern "C" __declspec(dllexport) BOOL multipadHandleEditorNotification(const SCN
         case SCN_AUTOCCANCELLED:if(completion.buffer==d.id)ClearCompletion(false);break;
         case SCN_CALLTIPCLICK:
             if(signatureBuffer==d.id && !signatures.empty()){signatureIndex=(signatureIndex+(n->position==1?signatures.size()-1:1))%signatures.size();Signature();return TRUE;}break;
-        case SCN_DWELLSTART:if(d.id==Active() && d.session->ready && n->position>=0){Request(HoverMethod,n->position);return TRUE;}break;
+        case SCN_DWELLSTART:if(options[AutoHover] && d.id==Active() && d.session->ready && n->position>=0){Request(HoverMethod,n->position);return TRUE;}break;
         case SCN_DWELLEND:if(d.id==Active()){++hoverEpoch;Sci(Editor(d.id),SCI_CALLTIPCANCEL);}break;
         }
     }catch(const std::exception& e){ClearCompletion();Error(e);return selecting;}
@@ -607,7 +954,15 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* n){
     if(!n)return;
     try {
         if(n->nmhdr.code==NPPN_SHUTDOWN){Stop();if(timerWindow)DestroyWindow(timerWindow);timerWindow=nullptr;UnregisterClassW(L"MultiPad4.LSPClient",instance);return;}
+        if(n->nmhdr.code==NPPN_FILEBEFORECLOSE) {
+            resultTabs.erase(n->nmhdr.idFrom);
+            highlightedEditors.erase(Editor(n->nmhdr.idFrom));
+        }
         if(!enabled)return;
+        if(n->nmhdr.code==NPPN_FILEBEFORESAVE && options[OnSave]) {
+            auto doc=documents.find(n->nmhdr.idFrom);
+            if(doc!=documents.end()) FormatBeforeSave(doc->second);
+        }
         if(n->nmhdr.code==NPPN_BUFFERACTIVATED || n->nmhdr.code==NPPN_FILEOPENED){++epoch;scheduledMethod.clear();ClearCompletion();signatureBuffer=0;Attach();}
         if(n->nmhdr.code==NPPN_FILESAVED){
             Attach();auto it=documents.find(n->nmhdr.idFrom);if(it!=documents.end()){
