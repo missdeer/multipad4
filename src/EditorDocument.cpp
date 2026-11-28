@@ -126,7 +126,15 @@ std::wstring EditorDocument::LinkTargetAt(LRESULT position) const {
     if (end <= begin || end - begin > 32767) return {};
     auto target = files::FromUtf8(Range(static_cast<size_t>(begin),static_cast<size_t>(end-begin)));
     if (_wcsnicmp(target.c_str(),L"https://",8)==0 || _wcsnicmp(target.c_str(),L"http://",7)==0) return target;
-    if (target.find(L'@')!=std::wstring::npos && target.find_first_of(L":/?#&=\\") == std::wstring::npos) return L"mailto:" + target;
+    if (target.find(L'@')!=std::wstring::npos && target.find_first_of(L":/?#&=\\") == std::wstring::npos) {
+        std::wstring mail = L"mailto:";
+        for (wchar_t ch : target) {
+            if (ch == L'%') mail += L"%25";
+            else if (ch == L'+') mail += L"%2B";
+            else mail += ch;
+        }
+        return mail;
+    }
     if (target.starts_with(L"www.")) return L"https://" + target;
     return {};
 }

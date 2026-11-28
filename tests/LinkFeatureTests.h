@@ -13,7 +13,7 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
     require(target("www.baidu.com") == L"https://www.baidu.com");
     require(target("https://192") == L"https://192.168.1.1");
     require(target("http://192") == L"http://192.168.1.2");
-    require(target("user+") == L"mailto:user+tag@example.com");
+    require(target("user+") == L"mailto:user%2Btag@example.com");
     require(target("ordinary").empty() && target("a@b").empty() && target("a..b").empty());
     require(document->Send(SCI_STYLEGETUNDERLINE,STYLE_LINK));
     require(document->Send(SCI_STYLEGETHOTSPOT,STYLE_LINK));
@@ -35,6 +35,9 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("www.user@example.com\n"));
     document->Send(SCI_COLOURISE,0,-1);
     require(document->LinkTargetAt(0) == L"mailto:www.user@example.com");
+    document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("user%41@example.com\n"));
+    document->Send(SCI_COLOURISE,0,-1);
+    require(document->LinkTargetAt(0) == L"mailto:user%2541@example.com");
     document->path=L"links.md"; document->ConfigureLexer();
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("[site](https://example.com)\n<https://example.org>\n"));
     document->Send(SCI_COLOURISE,0,-1);
