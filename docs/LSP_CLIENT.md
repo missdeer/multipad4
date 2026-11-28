@@ -6,14 +6,14 @@ signature help. No Qt or KDE runtime is required. The reference license is
 included in the plugin distribution.
 
 1. Build normally (or disable with `MULTIPAD4_BUILD_LSP_CLIENT=OFF`).
-2. Plugins > LSP Client > Configure Servers creates and opens
+2. LSP Client > More Options > Configure Servers creates and opens
    `plugins/Config/LSPClient.json` from the bundled example.
 3. Install the desired language server separately, and adjust `command` (an
    executable and argument array), `extensions`, `languageId`, `rootMarkers`,
    optional `initializationOptions` and `settings`. Use absolute executable paths
    when necessary. Commands are local programs; edit this user configuration only
    with commands you intend to run. Project files cannot supply executable commands.
-4. Save configuration, activate a source file, then choose Start / Restart.
+4. Save configuration, activate a source file, then choose LSP Client > Restart All LSP Servers.
    LSP remains off until explicitly started in each editor session. Stop restores
    built-in completion. A restart reloads configuration and clears server errors.
 
@@ -21,8 +21,7 @@ Completion triggers after typing an identifier or `.`, with a 200 ms delay.
 Ctrl+Alt+Space requests completion explicitly. Ctrl+Alt+Shift+Space requests
 signature help; typing `(` or `,` also triggers it. Signature calltips have
 clickable overload arrows and highlight the active parameter. Hover is available
-from the menu or mouse dwell. Alt+F12 jumps to the first definition returned by
-the server. Diagnostics use squiggles and clear immediately when the document
+from the menu or mouse dwell. Alt+F12 opens the definition. Multiple matches open a results tab. Double-click a row or press Enter to jump to its location. Diagnostics use squiggles and clear immediately when the document
 changes. Status / Last Server Message reports startup/protocol errors and server
 messages. No feature writes files automatically.
 
@@ -40,13 +39,19 @@ activation epoch, caret and editor focus.
 Implemented: initialize/initialized, configuration requests, document
 open/change/save/close, completion arrays/lists, insertText and TextEdit /
 InsertReplaceEdit (replace range), additional text edits in one undo action,
-hover, signature help, first-definition navigation, pushed diagnostics.
+hover, signature help, definition/declaration/type/implementation navigation,
+references, workspace symbol search, document highlights, selection ranges,
+document and on-type formatting, and pushed diagnostics.
+
+More Options stores preferences in `plugins/Config/LSPClient.ini`.
+Format on save waits up to one second before continuing with the current text.
+Incremental synchronization sends the changed range when requested by the server.
+With the option off, the client replaces the complete document range.
 Completion advertises no snippets and ignores snippet items returned anyway.
 Lists are limited to 1000 entries, diagnostics to 2000, calltips to 16000 bytes.
 
 Remaining Kate features: completion resolve/itemDefaults, snippet tab stops,
-rich Markdown rendering, diagnostic panel/actions, references/symbol views,
-formatting, rename/workspace edits, semantic tokens, inlay hints, dynamic
+rich Markdown rendering, diagnostic panel/actions, rename/workspace edits, semantic tokens, inlay hints, dynamic
 registration, progress and server-command execution. Unsupported server requests
 receive JSON-RPC errors; applyEdit is not advertised. Servers must support UTF-16
 positions. Servers requiring dynamic registration may need configuration changes.
