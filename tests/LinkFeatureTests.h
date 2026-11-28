@@ -45,6 +45,15 @@ inline void RunLinkFeatureTests(MainFrame& frame) {
         require(document->LinkTargetAt(2).empty());
         require(!document->Send(SCI_INDICATORVALUEAT,INDICATOR_LINK,2));
     }
+    for (const std::string& invalid : {std::string("user@example.com\xc3\xa9"),std::string("user@example.com_x"),std::string("user@example.com@other.com"),std::string("user@example.com%41"),std::string("www.user@example.com\xc3\xa9"),std::string("www.user@example.com_x"),std::string("www.user@example.com%41"),std::string("a@user@example.com")}) {
+        const auto text = invalid + "\n";
+        document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>(text.c_str()));
+        document->Send(SCI_COLOURISE,0,-1);
+        for (size_t pos = 0; pos < invalid.size(); ++pos) {
+            require(document->LinkTargetAt(static_cast<LRESULT>(pos)).empty());
+            require(!document->Send(SCI_INDICATORVALUEAT,INDICATOR_LINK,pos));
+        }
+    }
     document->path=L"links.md"; document->ConfigureLexer();
     document->Send(SCI_SETTEXT,0,reinterpret_cast<LPARAM>("[site](https://example.com)\n<https://example.org>\n"));
     document->Send(SCI_COLOURISE,0,-1);

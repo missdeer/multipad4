@@ -8,7 +8,16 @@ auto domainChar = [](unsigned char ch) noexcept { return IsAlphaNumeric(ch) || c
 auto emailBoundaryValid = [&](Sci_PositionU begin) noexcept {
     if (!begin) return true;
     const unsigned char previous = emailView[begin - 1];
-    return previous < 128 && !localChar(previous) && !strchr("!#$&'*/=?^`{|}~\"\\", previous);
+    return previous < 128 && !localChar(previous) && !strchr("!#$&'*/=?^`{|}~@\"\\", previous);
+};
+auto webLinkAllowed = [&](Sci_PositionU begin, Sci_PositionU end) noexcept {
+    if (emailView[begin] != 'w') return true;
+    for (auto pos = begin; pos < end; ++pos) {
+        const unsigned char ch = emailView[pos];
+        if (ch == '/' || ch == '?' || ch == '#') return true;
+        if (ch == '@') return false; // Only the email pass may accept a mailbox.
+    }
+    return true;
 };
 for (Sci_PositionU scan = startPos; scan < emailLimit;) {
     const bool first = scan < emailView.length1;
@@ -24,6 +33,7 @@ for (Sci_PositionU scan = startPos; scan < emailLimit;) {
     // Reject unsupported local parts in full instead of linking a different recipient.
     if (!emailBoundaryValid(begin)) continue;
     while (end < emailLimit && (domainChar(emailView[end]) || emailView[end] == '.')) ++end;
+    if (end < emailView.length && !emailBoundaryValid(end + 1)) continue;
     // A sentence's final period is not part of the address.
     if (end > scan && emailView[end - 1] == '.') --end;
     bool dot = false, valid = end > scan;

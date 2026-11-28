@@ -36,7 +36,7 @@ foreach(source IN LISTS SCI_CORE_FILES)
       endforeach()
       string(REPLACE "const SplitView cbView = cb.AllView();" "#include \"ScintillaEmailLinks.inc\"\n\tconst SplitView cbView = cb.AllView();" text "${text}")
       # A www-like suffix must not reintroduce an email rejected by the email pass.
-      string(REPLACE "DecorationFillRange(backPos, 1, startPos - backPos - offset);" "bool rejectEmailSuffix = false;\n\t\t\t\t\tif (!emailBoundaryValid(backPos) && cbView[backPos] == 'w') {\n\t\t\t\t\t\tfor (auto pos = backPos; pos < startPos; ++pos) {\n\t\t\t\t\t\t\tif (cbView[pos] == '/' || cbView[pos] == '?' || cbView[pos] == '#') break;\n\t\t\t\t\t\t\tif (cbView[pos] == '@') { rejectEmailSuffix = true; break; }\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tif (!rejectEmailSuffix) DecorationFillRange(backPos, 1, startPos - backPos - offset);" text "${text}")
+      string(REPLACE "DecorationFillRange(backPos, 1, startPos - backPos - offset);" "if (webLinkAllowed(backPos, startPos - offset)) DecorationFillRange(backPos, 1, startPos - backPos - offset);" text "${text}")
     else()
       string(REPLACE "if (indicator.sacNormal.style == IndicatorStyle::TextFore) {" "if (indicator.sacNormal.style == IndicatorStyle::TextFore) {\n\t\t\t\t\t\t\t\thoverUnderline |= (deco->Indicator() == static_cast<int>(IndicatorNumbers::Link) && vsDraw.styles[static_cast<int>(StylesCommon::Link)].underline);" text "${text}")
     endif()
