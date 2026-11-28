@@ -2,6 +2,7 @@
 #include "../src/MainFrame.h"
 #include "QAArtifacts.h"
 #include <shellapi.h>
+#include <shlobj.h>
 
 inline HWND MatepathTestWindow() {
     HWND result = nullptr;
@@ -69,6 +70,36 @@ inline void RunMatepathPaneTests(MainFrame& frame, const std::filesystem::path& 
     SendMessageW(pane, action, 2, 0);
     SetDlgItemTextW(pane, pattern, L"*.*"); command(filter);
     navigate(folder);
+    constexpr int browse = 116;
+    require(IsWindowVisible(GetDlgItem(pane, browse)));
+    // Drive the real Shell picker on this test thread, including its cancel path.
+    static const wchar_t* chosenFolder = nullptr;
+    static bool pickerSeen = false;
+    auto pickFolder = [&](const wchar_t* path) {
+        chosenFolder = path; pickerSeen = false;
+        const auto timer = SetTimer(nullptr, 0, 100, [](HWND, UINT, UINT_PTR, DWORD) {
+            EnumThreadWindows(GetCurrentThreadId(), [](HWND dialog, LPARAM) -> BOOL {
+                if (!FindWindowExW(dialog, nullptr, L"SHBrowseForFolder ShellNameSpace Control", nullptr)) return TRUE;
+                pickerSeen = true;
+                if (chosenFolder) SendMessageW(dialog, BFFM_SETSELECTIONW, TRUE, reinterpret_cast<LPARAM>(chosenFolder));
+                PostMessageW(dialog, WM_COMMAND, chosenFolder ? IDOK : IDCANCEL, 0);
+                return FALSE;
+            }, 0);
+        });
+        require(timer != 0);
+        SendMessageW(GetDlgItem(pane, browse), BM_CLICK, 0, 0);
+        KillTimer(nullptr, timer);
+        require(pickerSeen);
+    };
+    pickFolder((folder / L"子目录").c_str());
+    require(ListView_GetItemCount(list) == 0);
+    command(back);
+    wchar_t currentDirectory[MAX_PATH]{};
+    GetDlgItemTextW(pane, address, currentDirectory, _countof(currentDirectory));
+    require(std::filesystem::path(currentDirectory) == folder);
+    pickFolder(nullptr);
+    command(forward); require(ListView_GetItemCount(list) == 0);
+    command(back);
     // Normalize persisted hidden-file visibility using the actual list.
     if (ListView_GetItemCount(list) == 4) command(hidden);
     require(ListView_GetItemCount(list) == 3);

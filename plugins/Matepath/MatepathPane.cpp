@@ -63,6 +63,7 @@ LRESULT MatepathPane::OnCreate(UINT, WPARAM, LPARAM, BOOL& handled) {
     };
     button(back, Back, L"后退"); button(forward, Forward, L"前进"); button(up, Up, L"上一级"); button(reload, Reload, L"刷新");
     button(go, Go, L"转到"); button(apply, Filter, L"筛选");
+    button(browse, Browse, L"选择文件夹");
     if (!richEditLibrary) return -1;
     auto edit = [&](int id) {
         HWND field = create(MSFTEDIT_CLASS, nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, id);
@@ -93,7 +94,7 @@ LRESULT MatepathPane::OnEraseBackground(UINT, WPARAM dc, LPARAM, BOOL&) {
 }
 LRESULT MatepathPane::OnDrawButton(UINT, WPARAM, LPARAM l, BOOL& handled) {
     const auto* item = reinterpret_cast<DRAWITEMSTRUCT*>(l);
-    if (item->CtlType != ODT_BUTTON || item->CtlID < Back || item->CtlID > Filter) {
+    if (item->CtlType != ODT_BUTTON || ((item->CtlID < Back || item->CtlID > Filter) && item->CtlID != Browse)) {
         handled = FALSE; return 0;
     }
     // Segoe MDL2 Assets: Back, Forward, Up, Refresh, Forward, Filter.
@@ -118,7 +119,8 @@ LRESULT MatepathPane::OnDrawButton(UINT, WPARAM, LPARAM l, BOOL& handled) {
     if (iconFont) SelectObject(item->hDC, iconFont.get());
     SetBkMode(item->hDC, TRANSPARENT);
     SetTextColor(item->hDC, GetSysColor(disabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
-    DrawTextW(item->hDC, &glyphs[item->CtlID - Back], 1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    const wchar_t glyph = item->CtlID == Browse ? 0xE8B7 : glyphs[item->CtlID - Back];
+    DrawTextW(item->hDC, &glyph, 1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
     if ((item->itemState & (ODS_FOCUS | ODS_NOFOCUSRECT)) == ODS_FOCUS) {
         RECT focus = item->rcItem; InflateRect(&focus, -3, -3);
         DrawFocusRect(item->hDC, &focus);
@@ -135,12 +137,13 @@ void MatepathPane::Layout() {
         iconFont.reset(CreateFontW(-px(16), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets"));
         iconDpi = dpi;
-        for (HWND control : {back, forward, up, reload, go, apply})
+        for (HWND control : {back, forward, up, reload, go, apply, browse})
             ::InvalidateRect(control, nullptr, TRUE);
     }
     const int gap = px(4), row = px(25), width = max(0, static_cast<int>(r.right) - gap * 2), button = px(32);
     ::MoveWindow(back, gap, gap, px(32), row, TRUE); ::MoveWindow(forward, gap + px(36), gap, px(32), row, TRUE);
     ::MoveWindow(up, gap + px(72), gap, px(32), row, TRUE); ::MoveWindow(reload, gap + px(108), gap, button, row, TRUE);
+    ::MoveWindow(browse, gap + px(144), gap, button, row, TRUE);
     const int editWidth = max(0, width - button - gap);
     ::MoveWindow(address, gap, row + gap * 2, editWidth, row, TRUE);
     ::MoveWindow(go, gap * 2 + editWidth, row + gap * 2, button, row, TRUE);
@@ -207,7 +210,7 @@ BOOL MatepathPane::PreTranslateMessage(MSG* msg) {
             if (msg->hwnd == address) SendMessage(WM_COMMAND, Go);
             else if (msg->hwnd == pattern) SendMessage(WM_COMMAND, Filter);
             else if (msg->hwnd == list) ActivateSelection();
-            else if (const int id = ::GetDlgCtrlID(msg->hwnd); id >= Back && id <= Filter)
+            else if (const int id = ::GetDlgCtrlID(msg->hwnd); (id >= Back && id <= Filter) || id == Browse)
                 ::SendMessageW(msg->hwnd, BM_CLICK, 0, 0);
             else return FALSE;
             return TRUE;
@@ -238,6 +241,24 @@ LRESULT MatepathPane::OnCommand(WORD, WORD id, HWND, BOOL&) {
     case Up: if (!Navigate(directory.parent_path())) MessageBeep(MB_ICONWARNING); break;
     case Reload: RefreshItems(); break;
     case Go: if (!Navigate(ControlText(address))) MessageBox(L"无法打开此目录（路径不存在、无法访问或过长）。", L"Matepath", MB_ICONWARNING); break;
+    case Browse: {
+        BROWSEINFOW info{};
+        info.hwndOwner = m_hWnd;
+        info.lpszTitle = L"选择文件夹";
+        info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+        info.lParam = reinterpret_cast<LPARAM>(directory.c_str());
+        info.lpfn = [](HWND dialog, UINT message, LPARAM, LPARAM initial) -> int {
+            if (message == BFFM_INITIALIZED) ::SendMessageW(dialog, BFFM_SETSELECTIONW, TRUE, initial);
+            return 0;
+        };
+        if (auto item = SHBrowseForFolderW(&info)) {
+            wchar_t path[MAX_PATH]{};
+            const bool valid = SHGetPathFromIDListW(item, path) != FALSE;
+            CoTaskMemFree(item);
+            if (!valid || !Navigate(path)) MessageBox(L"无法打开此目录（路径不存在、无法访问或过长）。", L"Matepath", MB_ICONWARNING);
+        }
+        break;
+    }
     case Filter: fileSpec = ControlText(pattern); if (fileSpec.empty()) fileSpec = L"*.*"; RefreshItems(); break;
     case Hidden: showHidden = !showHidden; RefreshItems(); break;
     case Properties: DirList_PropertyDlg(list, -1); break;
